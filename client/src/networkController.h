@@ -21,9 +21,9 @@ public:
     bool connect();
     void disconnect();
     bool isConnected() const;
-    bool send(const unsigned char* data, int length, PacketType type);
-    bool send(const std::string& data, PacketType type);
-    bool send(PacketType type);
+    void send(std::vector<unsigned char>&& data, PacketType type);
+    void send(const std::string& data, PacketType type);
+    void send(PacketType type);
 
 private:
     void startReceive();

@@ -20,7 +20,7 @@ public:
     int decode(const unsigned char* data, int dataLength, float* pcm, int frameSize, int decodeFec);
 
 private:
-    void initialize();
+    bool initialize();
 
 private:
     Config m_config;

@@ -27,6 +27,7 @@ set(CRYPTOPP_POSSIBLE_PATHS
     "../vendor/cryptopp/build"
     "../vendor/cryptopp/lib"
     "../vendor/cryptopp-master/Output/${CMAKE_BUILD_TYPE}"  
+    "../vendor/cryptopp-master/x64/Output/${CMAKE_BUILD_TYPE}"  
     "../vendor/cryptopp-master/build"   
 )
 

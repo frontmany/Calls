@@ -1,9 +1,12 @@
 #pragma once
 
-#include <future>;
-#include <queue>;
-#include <unordered_map>;
-#include <mutex>;
+#include <future>
+#include <queue>
+#include <iostream>
+#include <mutex>
+#include <optional>
+#include <thread>
+#include <chrono>
 
 #include "networkController.h"
 #include "audioEngine.h"
@@ -27,12 +30,15 @@ public:
     CallsClient(std::function<void(AuthorizationResult)> authorizationResultCallback,
         std::function<void(CreateCallResult)> createCallResultCallback,
         std::function<void(const IncomingCallData&)> onIncomingCall,
+        std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
+    ~CallsClient();
+
     void authorize(const std::string& nickname);
     void createCall(const std::string& friendNickname);
-    void declineCall(const std::string& friendNickname);
-    void acceptCall(const std::string& friendNickname);
+    void declineIncomingCall(const std::string& friendNickname);
+    void acceptIncomingCall(const std::string& friendNickname);
     void endCall();
 
 private:
@@ -50,7 +56,7 @@ private:
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
     std::thread m_queueProcessingThread;
     std::queue<std::function<void()>> m_callbacksQueue;
-    std::unordered_map< IncomingCallData> m_incomingCalls;
+    std::vector<IncomingCallData> m_incomingCalls;
     std::mutex m_mutex;
     NetworkController m_networkController;
     AudioEngine m_audioEngine;
@@ -61,6 +67,7 @@ private:
     std::function<void(CreateCallResult)> m_createCallResultCallback;
     std::function<void(const IncomingCallData&)> m_onIncomingCall;
     std::function<void()> m_onNetworkErrorCallback;
+    std::function<void()> m_onCallHangUpCallback;
 
     static constexpr const char* PUBLIC_KEY = "publicKey";
     static constexpr const char* NICKNAME = "nickname";

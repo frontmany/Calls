@@ -1,4 +1,4 @@
-#include "AudioEngine.h"
+#include "audioEngine.h"
 #include <iostream>
 #include <cstring>
 
@@ -89,7 +89,7 @@ void AudioEngine::playAudio(const unsigned char* data, int length) {
     AudioPacket packet;
 
     if (m_decoder && data && length > 0) {
-        int samplesDecoded = m_decoder->decode(data, length, m_decodedOutputBuffer.data(), m_decodedOutputBuffer.size(), 0);
+        int samplesDecoded = m_decoder->decode(data, length, m_decodedOutputBuffer.data(), static_cast<int>(m_decodedOutputBuffer.size()), 0);
 
         if (samplesDecoded > 0) {
             
@@ -104,7 +104,7 @@ void AudioEngine::playAudio(const unsigned char* data, int length) {
 
 void AudioEngine::processInputAudio(const float* input, unsigned long frameCount) {
     if (m_encoder && input) {
-        int encodedSize = m_encoder->encode(input, m_encodedInputBuffer.data(), m_encodedInputBuffer.size());
+        int encodedSize = m_encoder->encode(input, m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
         if (encodedSize > 0 && m_encodedInputCallback) {
             m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
         }

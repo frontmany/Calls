@@ -4,11 +4,14 @@
 
 #include "crypto.h"
 
+struct IncomingCallData;
+
 class Call {
 public:
 	Call(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey);
+	Call(const IncomingCallData& incomingCallData);
 	void createCallKey();
-	std::optional<const CryptoPP::SecByteBlock&> getCallKey() const;
+	const CryptoPP::SecByteBlock& getCallKey() const;
 	const CryptoPP::RSA::PublicKey& getFriendPublicKey() const;
 	const std::string& getFriendNickname() const;
 

@@ -20,7 +20,7 @@ Decoder::~Decoder()
     }
 }
 
-void Decoder::initialize() {
+bool Decoder::initialize() {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     int error;
@@ -28,9 +28,11 @@ void Decoder::initialize() {
 
     if (error != OPUS_OK || !m_decoder) {
         std::cerr << "Failed to create Opus decoder: " << opus_strerror(error) << std::endl;
+        return false;
     }
 
     m_initialized = true;
+    return true;
 }
 
 int Decoder::decode(const unsigned char* data, int dataLength, float* pcm, int frameSize, int decodeFec) {
