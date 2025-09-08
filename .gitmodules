@@ -6,3 +6,6 @@
 	path = vendor/portaudio
 	url = https://github.com/PortAudio/portaudio.git
 
+[submodule "vendor/cryptopp"]
+	path = vendor/cryptopp
+	url = https://github.com/weidai11/cryptopp.git
