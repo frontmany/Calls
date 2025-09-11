@@ -37,10 +37,10 @@ public:
 private:
     void processInputAudio(const float* input, unsigned long frameCount);
     void processOutputAudio(float* output, unsigned long frameCount);
-    
+
     static int paInputAudioCallback(const void* input, void* output, unsigned long frameCount,
-            const PaStreamCallbackTimeInfo* timeInfo,
-            PaStreamCallbackFlags statusFlags, void* userData);
+        const PaStreamCallbackTimeInfo* timeInfo,
+        PaStreamCallbackFlags statusFlags, void* userData);
 
 private:
     PaStream* m_stream = nullptr;
@@ -51,6 +51,7 @@ private:
     std::unique_ptr<Decoder> m_decoder;
     std::queue<AudioPacket> m_outputAudioQueue;
     std::mutex m_outputAudioQueueMutex;
+    std::mutex m_inputAudioMutex;
     std::function<void(const unsigned char* data, int length)> m_encodedInputCallback;
 
     int m_sampleRate = 48000;

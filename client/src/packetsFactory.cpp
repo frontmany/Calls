@@ -17,6 +17,7 @@ std::string PacketsFactory::getCreateCallPacket(const CryptoPP::RSA::PublicKey& 
 
     nlohmann::json jsonObject;
     jsonObject[NICKNAME] = crypto::AESEncrypt(thisPacketKey, myNickname);
+    jsonObject[NICKNAME_HASH] = crypto::calculateHash(call.getFriendNickname());
     jsonObject[CALL_KEY] = crypto::RSAEncryptAESKey(call.getFriendPublicKey(), call.getCallKey());
     jsonObject[PACKET_KEY] = crypto::RSAEncryptAESKey(call.getFriendPublicKey(), thisPacketKey);
     jsonObject[PUBLIC_KEY] = crypto::serializePublicKey(myPublicKey);

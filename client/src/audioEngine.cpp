@@ -103,6 +103,8 @@ void AudioEngine::playAudio(const unsigned char* data, int length) {
 }
 
 void AudioEngine::processInputAudio(const float* input, unsigned long frameCount) {
+    std::lock_guard<std::mutex> lock(m_inputAudioMutex);
+    
     if (m_encoder && input) {
         int encodedSize = m_encoder->encode(input, m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
         if (encodedSize > 0 && m_encodedInputCallback) {
@@ -128,6 +130,8 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
 }
 
 bool AudioEngine::startStream() {
+    std::lock_guard<std::mutex> lock(m_inputAudioMutex);
+
     if (!m_isInitialized) return false;
 
     m_lastError = Pa_StartStream(m_stream);
@@ -140,6 +144,8 @@ bool AudioEngine::startStream() {
 }
 
 bool AudioEngine::stopStream() {
+    std::lock_guard<std::mutex> lock(m_inputAudioMutex);
+
     if (!m_isInitialized || !m_isStream) return true;
 
     m_lastError = Pa_StopStream(m_stream);
