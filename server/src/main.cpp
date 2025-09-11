@@ -1,6 +1,11 @@
 #include <iostream>
 
+#include "callsServer.h"
+
 int main() {
-    std::cout << "Hello, CMake server!" << std::endl;
-    return 0;
+    CallsServer server;
+
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
 }

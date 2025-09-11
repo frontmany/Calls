@@ -35,11 +35,14 @@ public:
     );
     ~CallsClient();
 
+    bool isAuthorized();
+    const std::string& getNickname() const;
     void authorize(const std::string& nickname);
     void createCall(const std::string& friendNickname);
     void declineIncomingCall(const std::string& friendNickname);
     void acceptIncomingCall(const std::string& friendNickname);
     void endCall();
+    void logout();
 
 private:
     void onReceiveCallback(const unsigned char* data, int length, PacketType type);
@@ -50,8 +53,9 @@ private:
     void onInputVoice(const unsigned char* data, int length);
 
 private:
+    bool m_running = true;
     std::optional<Call> m_call = std::nullopt;
-    std::string m_myNickname;
+    std::string m_myNickname{};
     CryptoPP::RSA::PublicKey m_myPublicKey;
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
     std::thread m_queueProcessingThread;

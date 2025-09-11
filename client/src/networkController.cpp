@@ -166,7 +166,7 @@ void NetworkController::startReceive() {
 }
 
 void NetworkController::handleReceive(std::size_t bytesTransferred) {
-    if (bytesTransferred <= sizeof(PacketType)) {
+    if (bytesTransferred < sizeof(PacketType)) {
         std::cerr << "Received packet too small: " << bytesTransferred << " bytes" << std::endl;
 
         if (m_isConnected) {
