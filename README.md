@@ -1,50 +1,10 @@
-# Calls Project
-
-Проект для работы с аудио вызовами, использующий библиотеки Opus и PortAudio.
-
-## Автоматическая сборка
-
-Проект автоматически загружает и собирает все необходимые зависимости при первом запуске CMake.
-
-### Требования
-
-- CMake 3.16 или выше
-- Git
-- Компилятор C++ с поддержкой C++17
-
-### Сборка
-
-```bash
-# Клонируем проект
-git clone <your-repo-url>
-cd Calls
-
-# Создаем build директорию
-mkdir build
-cd build
-
-# Конфигурируем и собираем
-cmake ..
-cmake --build .
-```
-
-## Структура проекта
-
-- `client/` - Клиентская часть
-- `server/` - Серверная часть
-- `vendor/` - Зависимости (автоматически загружаются)
-
-## Зависимости
-
-- **Opus** - Аудио кодек
-- **PortAudio** - Кроссплатформенная библиотека для работы с аудио
-
-Все зависимости автоматически загружаются через CMake FetchContent и собираются как статические библиотеки.
-
-## Использование
-
-После сборки в директории `build/` будут созданы:
-- `client.exe` - Клиентское приложение
-- `server.exe` - Серверное приложение
-- `include/opus/` - Заголовочные файлы Opus
-- `include/portaudio/` - Заголовочные файлы PortAudio
+# Build for Windows and VS
+* clone the repository
+* run fetch_dependencies.bat file
+(this will run the cmake which will install all the dependencies)
+* run build_opus.bat and build_portaudio.bat files
+(this bat files will buld all configurations debug/release of a certain libraries)
+* however there is still one library you should build manually. Go to vendor/cryptopp folder and find cryptest.sln, open it and (super important) - go to cryptlib project properties, then  C/C++, then Code generation and set up runtime libraty to MDd. If you not do that, your project wouldn't link. Then build both configurations debug/release of cryptlib
+* run genDebug.bat or genRelease.bat depends on what configuration you want
+---
+After these five steps you may go to build directory and open calls.sln

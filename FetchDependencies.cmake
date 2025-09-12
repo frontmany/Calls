@@ -1,0 +1,57 @@
+include(FetchContent)
+
+set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
+set(CMAKE_PREFIX_PATH ${VENDOR_DIR} ${CMAKE_PREFIX_PATH})
+
+
+message(STATUS "Fetching dependencies...")
+
+FetchContent_Declare(
+    opus
+    GIT_REPOSITORY https://github.com/xiph/opus.git
+    GIT_TAG v1.4
+    SOURCE_DIR ${VENDOR_DIR}/opus
+)
+
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+    SOURCE_DIR ${VENDOR_DIR}/json
+)
+
+FetchContent_Declare(
+    cryptopp
+    GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
+    GIT_TAG CRYPTOPP_8_9_0
+    SOURCE_DIR ${VENDOR_DIR}/cryptopp
+)
+
+FetchContent_Declare(
+    portaudio
+    GIT_REPOSITORY https://github.com/PortAudio/portaudio.git
+    GIT_TAG v19.7.0
+    SOURCE_DIR ${VENDOR_DIR}/portaudio
+)
+
+FetchContent_Declare(
+    asio
+    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+    GIT_TAG asio-1-30-2
+    SOURCE_DIR ${VENDOR_DIR}/asio
+)
+
+FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio)
+
+set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "Build shared library" FORCE)
+set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build programs" FORCE)
+
+set(CRYPTOPP_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
+set(CRYPTOPP_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+set(CRYPTOPP_BUILD_BENCHMARKS OFF CACHE BOOL "Build benchmarks" FORCE)
+
+set(PA_BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
+set(PA_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+
+message(STATUS "Dependencies fetched successfully")

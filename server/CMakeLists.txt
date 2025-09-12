@@ -9,26 +9,18 @@ source_group("Source Files" FILES ${SOURCES})
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 set(OPUS_POSSIBLE_PATHS
-    "../vendor/opus-main/build/${CMAKE_BUILD_TYPE}"  
-    "../vendor/opus-main/build"
-    "../vendor/opus-main/lib"
+    "../vendor/opus/build/${CMAKE_BUILD_TYPE}"  
+    "../vendor/opus-main/build/${CMAKE_BUILD_TYPE}"
 )
 
 set(PORTAUDIO_POSSIBLE_PATHS
     "../vendor/portaudio/build/${CMAKE_BUILD_TYPE}"
-    "../vendor/portaudio/build"
-    "../vendor/portaudio/lib"
-    "../vendor/portaudio-master/build/${CMAKE_BUILD_TYPE}"  
-    "../vendor/portaudio-master/build"   
+    "../vendor/portaudio-master/build/${CMAKE_BUILD_TYPE}"   
 )
 
 set(CRYPTOPP_POSSIBLE_PATHS
     "../vendor/cryptopp/x64/Output/${CMAKE_BUILD_TYPE}"
-    "../vendor/cryptopp/build"
-    "../vendor/cryptopp/lib"
-    "../vendor/cryptopp-master/Output/${CMAKE_BUILD_TYPE}"  
     "../vendor/cryptopp-master/x64/Output/${CMAKE_BUILD_TYPE}"  
-    "../vendor/cryptopp-master/build"   
 )
 
 find_library(OPUS_LIBRARY
@@ -50,7 +42,7 @@ find_library(CRYPTOPP_LIBRARY
 )
 
 if(NOT OPUS_LIBRARY)
-    set(OPUS_LIBRARY "C:/prj/C++/Calls/vendor/opus-main/build/Debug/opus.lib")  
+    set(OPUS_LIBRARY "C:/prj/C++/Calls/vendor/opus/build/Debug/opus.lib")  
     message(WARNING "Using hardcoded OPUS_LIBRARY path: ${OPUS_LIBRARY}")    
 endif()
 
@@ -80,10 +72,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ../vendor/opus-main/include     
+    ../vendor/opus/include     
     ../vendor/portaudio/include
     ../vendor/json/include                    
-    ../vendor/cryptopp-master                    
-    ../vendor/asio
+    ../vendor/cryptopp              
+    ../vendor/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )

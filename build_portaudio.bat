@@ -28,6 +28,9 @@ cmake .. ^
     -G "Visual Studio 17 2022" ^
     -A x64 ^
     -DCMAKE_BUILD_TYPE=Debug ^
+	-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING="MultiThreadedDebugDLL" ^
+    -DCMAKE_C_FLAGS:STRING="/MDd" ^
+    -DCMAKE_CXX_FLAGS:STRING="/MDd" ^
     -DPA_USE_DS=OFF ^
     -DPA_USE_WDMKS=OFF ^
     -DPA_USE_WASAPI=ON ^
@@ -55,6 +58,9 @@ cmake .. ^
     -G "Visual Studio 17 2022" ^
     -A x64 ^
     -DCMAKE_BUILD_TYPE=Release ^
+	-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING="MultiThreadedDLL" ^
+    -DCMAKE_C_FLAGS:STRING="/MD" ^
+    -DCMAKE_CXX_FLAGS:STRING="/MD" ^
     -DPA_USE_DS=OFF ^
     -DPA_USE_WDMKS=OFF ^
     -DPA_USE_WASAPI=ON ^
