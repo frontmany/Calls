@@ -3,13 +3,13 @@
 
 #include "json.hpp"
 
-CallsClient::CallsClient(std::function<void(AuthorizationResult)> authorizationResultCallback, std::function<void(CreateCallResult)> createCallResultCallback, std::function<void(const IncomingCallData&)> onIncomingCall, std::function<void()> onCallHangUpCallback, std::function<void()> onNetworkErrorCallback) :
+CallsClient::CallsClient(const std::string& host, std::function<void(AuthorizationResult)> authorizationResultCallback, std::function<void(CreateCallResult)> createCallResultCallback, std::function<void(const IncomingCallData&)> onIncomingCall, std::function<void()> onCallHangUpCallback, std::function<void()> onNetworkErrorCallback) :
     m_authorizationResultCallback(authorizationResultCallback),
     m_createCallResultCallback(createCallResultCallback),
     m_onNetworkErrorCallback(onNetworkErrorCallback),
     m_onIncomingCall(onIncomingCall),
     m_onCallHangUpCallback(onCallHangUpCallback),
-    m_networkController("192.168.1.45", "8080",
+    m_networkController(host, "8080",
         [this](const unsigned char* data, int length, PacketType type) {
             onReceiveCallback(data, length, type);
         },

@@ -13,10 +13,10 @@ public:
 	void createCallKey();
 	const CryptoPP::SecByteBlock& getCallKey() const;
 	const CryptoPP::RSA::PublicKey& getFriendPublicKey() const;
-	const std::string& getFriendNickname() const;
+	const std::string& getFriendNicknameHash() const;
 
 private:
-	std::string m_friendNickname{};
+	std::string m_friendNicknameHash{};
 	CryptoPP::RSA::PublicKey m_friendPublicKey;
 	CryptoPP::SecByteBlock m_callKey;
 };

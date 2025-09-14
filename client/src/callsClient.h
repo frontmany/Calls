@@ -27,7 +27,7 @@ private:
     };
 
 public:
-    CallsClient(std::function<void(AuthorizationResult)> authorizationResultCallback,
+    CallsClient(const std::string& host, std::function<void(AuthorizationResult)> authorizationResultCallback,
         std::function<void(CreateCallResult)> createCallResultCallback,
         std::function<void(const IncomingCallData&)> onIncomingCall,
         std::function<void()> onCallHangUpCallback,

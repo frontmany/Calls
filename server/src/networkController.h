@@ -36,7 +36,7 @@ private:
     asio::ip::udp::endpoint m_serverEndpoint;
     asio::ip::udp::endpoint m_receivedFromEndpoint;
 
-    std::array<unsigned char, 1024> m_receiveBuffer{};
+    std::array<unsigned char, 64000> m_receiveBuffer{};
     std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> m_onReceiveCallback;
     std::function<void()> m_onNetworkErrorCallback;
 

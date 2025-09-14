@@ -90,7 +90,7 @@ public:
             m_cv.notify_one();
         };
 
-        m_client = std::make_unique<CallsClient>(
+        m_client = std::make_unique<CallsClient>("192.168.1.45",
             authCallback,
             createCallCallback,
             incomingCallCallback,
@@ -112,7 +112,7 @@ public:
 
         std::string input;
         while (m_running) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            std::this_thread::sleep_for(std::chrono::milliseconds(600));
             std::cout << "> ";
             std::getline(std::cin, input);
             

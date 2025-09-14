@@ -1,13 +1,13 @@
 #include "call.h"
 #include "incomingCallData.h"
 
-Call::Call(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey)
-	: m_friendNickname(friendNickname), m_friendPublicKey(friendPublicKey)
+Call::Call(const std::string& friendNicknameHash, const CryptoPP::RSA::PublicKey& friendPublicKey)
+	: m_friendNicknameHash(friendNicknameHash), m_friendPublicKey(friendPublicKey)
 {
 }
 
 Call::Call(const IncomingCallData& incomingCallData) {
-	m_friendNickname = incomingCallData.friendNickname;
+	m_friendNicknameHash = crypto::calculateHash(incomingCallData.friendNickname);
 	m_friendPublicKey = incomingCallData.friendPublicKey;
 	m_callKey = incomingCallData.callKey;
 }
@@ -24,6 +24,6 @@ const CryptoPP::RSA::PublicKey& Call::getFriendPublicKey() const {
 	return m_friendPublicKey;
 }
 
-const std::string& Call::getFriendNickname() const {
-	return m_friendNickname;
+const std::string& Call::getFriendNicknameHash() const {
+	return m_friendNicknameHash;
 }
