@@ -1,6 +1,0 @@
-@echo off
-if not exist build mkdir build
-if not exist vendor mkdir vendor
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DDEPENDENCIES_FETCHED=TRUE 
-pause

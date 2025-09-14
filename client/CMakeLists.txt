@@ -8,67 +8,23 @@ source_group("Source Files" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-set(OPUS_POSSIBLE_PATHS
-    "../vendor/opus/build/${CMAKE_BUILD_TYPE}"  
-    "../vendor/opus-main/build/${CMAKE_BUILD_TYPE}"
-)
-
-set(PORTAUDIO_POSSIBLE_PATHS
-    "../vendor/portaudio/build/${CMAKE_BUILD_TYPE}"
-    "../vendor/portaudio-master/build/${CMAKE_BUILD_TYPE}"   
-)
-
-set(CRYPTOPP_POSSIBLE_PATHS
-    "../vendor/cryptopp/x64/Output/${CMAKE_BUILD_TYPE}"
-    "../vendor/cryptopp-master/x64/Output/${CMAKE_BUILD_TYPE}"  
-)
-
-find_library(OPUS_LIBRARY
-    NAMES opus opusd libopus  
-    PATHS ${OPUS_POSSIBLE_PATHS}
-    NO_DEFAULT_PATH
-)
-
-find_library(PORTAUDIO_LIBRARY
-    NAMES portaudio portaudio_static_x64  
-    PATHS ${PORTAUDIO_POSSIBLE_PATHS}
-    NO_DEFAULT_PATH
-)
-
-find_library(CRYPTOPP_LIBRARY
-    NAMES cryptlib cryptlib_x64  
-    PATHS ${CRYPTOPP_POSSIBLE_PATHS}
-    NO_DEFAULT_PATH
-)
-
-if(NOT OPUS_LIBRARY)
-    set(OPUS_LIBRARY "C:/prj/C++/Calls/vendor/opus/build/Debug/opus.lib")  
-    message(WARNING "Using hardcoded OPUS_LIBRARY path: ${OPUS_LIBRARY}")    
-endif()
-
-if(NOT PORTAUDIO_LIBRARY)
-    set(PORTAUDIO_LIBRARY "C:/prj/C++/Calls/vendor/portaudio/build/Debug/portaudio_static_x64.lib")
-    message(WARNING "Using hardcoded PORTAUDIO_LIBRARY path: ${PORTAUDIO_LIBRARY}")
-endif()
-
-if(NOT CRYPTOPP_LIBRARY)
-    set(CRYPTOPP_LIBRARY "C:/prj/C++/Calls/vendor/cryptopp/x64/Output/cryptlib.lib")
-    message(WARNING "Using hardcoded CRYPTOPP_LIBRARY path: ${CRYPTOPP_LIBRARY}")
-endif()
-
-get_filename_component(OPUS_LIB_DIR ${OPUS_LIBRARY} DIRECTORY)
-get_filename_component(PORTAUDIO_LIB_DIR ${PORTAUDIO_LIBRARY} DIRECTORY)
+set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
+set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
+set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
 
 target_link_directories(${PROJECT_NAME} PRIVATE
-    ${OPUS_LIB_DIR}
-    ${PORTAUDIO_LIB_DIR}
+    "${PORTAUDIO_DIR}"
+    "${OPUS_DIR}"
+    "${CRYPTOPP_DIR}"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${PORTAUDIO_LIBRARY}
-    ${OPUS_LIBRARY}
-    ${CRYPTOPP_LIBRARY}
-    ole32 winmm uuid
+    "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
+    "${OPUS_DIR}/$<CONFIG>/opus.lib"
+    "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
+    ole32 
+    winmm 
+    uuid
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
