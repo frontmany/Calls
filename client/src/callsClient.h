@@ -80,7 +80,6 @@ private:
     static constexpr const char* PUBLIC_KEY = "publicKey";
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* NICKNAME_HASH = "nicknameHash";
-    static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
     static constexpr const char* CALL_KEY = "callKey";
     static constexpr const char* PACKET_KEY = "packetKey";
 };

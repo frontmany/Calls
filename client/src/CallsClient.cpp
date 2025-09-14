@@ -323,14 +323,14 @@ void CallsClient::startCalling() {
         using namespace std::chrono_literals;
         m_timer.start(32s, [this]() {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_state = State::FREE;
-            m_call = std::nullopt;
 
             m_networkController.send(
-                PacketsFactory::getCallingEndPacket(m_myNickname),
+                PacketsFactory::getCallingEndPacket(m_myNickname, m_call.value().getFriendNicknameHash()),
                 PacketType::CALLING_END
             );
 
+            m_state = State::FREE;
+            m_call = std::nullopt;
             m_callbacksQueue.push([this]() {m_createCallResultCallback(CreateCallResult::TIMEOUT); });
         });
     }
