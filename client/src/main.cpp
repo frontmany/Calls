@@ -77,6 +77,11 @@ public:
             std::cout << "Type 'accept " << data.friendNickname << "' to accept or 'decline " << data.friendNickname << "' to decline" << std::endl;
         };
 
+        auto incomingCallingExpiredCallback = [this](const std::string& friendNickname) {
+            std::lock_guard<std::mutex> lock(m_consoleMutex);
+            std::cout << "Incoming call from " << friendNickname << " expired" << std::endl;
+        };
+
         auto hangUpCallback = [this]() {
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Call ended" << std::endl;
@@ -94,6 +99,7 @@ public:
             authCallback,
             createCallCallback,
             incomingCallCallback,
+            incomingCallingExpiredCallback,
             hangUpCallback,
             networkErrorCallback
         );

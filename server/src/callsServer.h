@@ -26,6 +26,7 @@ private:
 	void handleAuthorizationPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleGetFriendInfoPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCreateCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+	void handleCallingEndPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleEndCallPacket(const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallAcceptedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
@@ -40,4 +41,5 @@ private:
 
 	static constexpr const char* PUBLIC_KEY = "publicKey";
 	static constexpr const char* NICKNAME_HASH = "nicknameHash";
+	static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
 };

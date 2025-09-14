@@ -13,6 +13,7 @@ public:
     PacketsFactory() = default;
     static std::string getAuthorizationPacket(const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& myNickname);
     static std::string getCreateCallPacket(const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& myNickname, const Call& call);
+    static std::string getCallingEndPacket(const std::string& myNickname);
     static std::string getRequestFriendInfoPacket(const std::string& friendNickname);
     static std::string getDeclineCallPacket(const std::string& friendNickname);
     static std::string getAcceptCallPacket(const std::string& friendNickname);

@@ -32,6 +32,13 @@ std::string PacketsFactory::getRequestFriendInfoPacket(const std::string& friend
     return jsonObject.dump();
 }
 
+std::string PacketsFactory::getCallingEndPacket(const std::string& myNickname) {
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME_HASH] = crypto::calculateHash(myNickname);
+
+    return jsonObject.dump();
+}
+
 std::string PacketsFactory::getDeclineCallPacket(const std::string& friendNickname) {
     nlohmann::json jsonObject;
     jsonObject[NICKNAME_HASH] = crypto::calculateHash(friendNickname);

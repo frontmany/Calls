@@ -56,6 +56,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleCallDeclinedPacket(jsonObject, endpointFrom);
             break;
 
+        case PacketType::CALLING_END:
+            
+            break;
+
         case PacketType::LOGOUT:
             handleLogout(endpointFrom);
             break;
@@ -228,6 +232,25 @@ void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, con
 
             m_networkController.sendToClient(userInitiator->getEndpoint(),
                 PacketType::CALL_DECLINED
+            );
+        }
+        else return;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error in create call packet: " << e.what() << std::endl;
+    }
+}
+
+void CallsServer::handleCallingEndPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string responderNicknameHash = jsonObject[NICKNAME_HASH_TO].get<std::string>();
+
+        if (m_nicknameHashToUser.contains(responderNicknameHash)) {
+            auto userResponder = m_nicknameHashToUser.at(responderNicknameHash);
+
+            m_networkController.sendToClient(userResponder->getEndpoint(),
+                jsonObject.dump(),
+                PacketType::CALLING_END
             );
         }
         else return;

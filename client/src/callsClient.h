@@ -30,6 +30,7 @@ public:
     CallsClient(const std::string& host, std::function<void(AuthorizationResult)> authorizationResultCallback,
         std::function<void(CreateCallResult)> createCallResultCallback,
         std::function<void(const IncomingCallData&)> onIncomingCall,
+        std::function<void(std::string&& friendNickname)> onIncomingCallingExpired,
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
@@ -45,8 +46,10 @@ public:
     void logout();
 
 private:
+    void onCallingEnd(const unsigned char* data, int length);
     void onReceiveCallback(const unsigned char* data, int length, PacketType type);
-    bool parsePacket(const unsigned char* data, int length, PacketType type);
+    bool onFriendInfoSuccess(const unsigned char* data, int length);
+    bool onIncomingCall(const unsigned char* data, int length);
     void processQueue();
     void requestFriendInfo(const std::string& friendNickname);
     void startCalling();
@@ -70,12 +73,14 @@ private:
     std::function<void(AuthorizationResult)> m_authorizationResultCallback;
     std::function<void(CreateCallResult)> m_createCallResultCallback;
     std::function<void(const IncomingCallData&)> m_onIncomingCall;
+    std::function<void(std::string&& friendNickname)> m_onIncomingCallingExpired;
     std::function<void()> m_onNetworkErrorCallback;
     std::function<void()> m_onCallHangUpCallback;
 
     static constexpr const char* PUBLIC_KEY = "publicKey";
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* NICKNAME_HASH = "nicknameHash";
+    static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
     static constexpr const char* CALL_KEY = "callKey";
     static constexpr const char* PACKET_KEY = "packetKey";
 };
