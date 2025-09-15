@@ -1,7 +1,12 @@
 #include "networkController.h"
-#include <iostream>
 #include <thread>
 #include <cstring>
+#include <iostream>
+
+
+#ifdef DEBUG
+#define log(message) std::cout << message
+#endif
 
 NetworkController::NetworkController(const std::string& host,
     const std::string& port,
@@ -16,7 +21,7 @@ NetworkController::NetworkController(const std::string& host,
     asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), host, port);
 
     if (endpoints.empty()) {
-        throw std::runtime_error("No endpoints found for " + host + ":" + port);
+        log("No endpoints found for " + host + ":" + port);
     }
 
     m_serverEndpoint = *endpoints.begin();
@@ -38,14 +43,14 @@ bool NetworkController::connect() {
         return true;
     }
     catch (const std::exception& e) {
-        std::cerr << "Connection error: " << e.what() << std::endl;
+        log("Connection error: " << e.what() << std::endl);
         m_isConnected = false;
         return false;
     }
 }
 
 void NetworkController::disconnect() {
-    m_isConnected = false;
+     m_isConnected = false;
 
     if (m_socket.is_open()) {
         asio::error_code ec;
@@ -74,7 +79,7 @@ void NetworkController::send(std::vector<unsigned char>&& data, PacketType type)
 
             const size_t totalSize = shared_data->size() + sizeof(PacketType);
             if (totalSize > m_receiveBuffer.size()) {
-                std::cerr << "Voice Packet too large: " << totalSize << " bytes" << std::endl;
+                log("Voice Packet too large: " << totalSize << " bytes" << std::endl);
                 return;
             }
 
@@ -86,7 +91,7 @@ void NetworkController::send(std::vector<unsigned char>&& data, PacketType type)
             m_socket.async_send_to(buffers, m_serverEndpoint,
                 [](const asio::error_code& error, std::size_t bytesSent) {
                     if (error) {
-                        std::cerr << "Send error: " << error.message() << std::endl;
+                        log("Send error: " << error.message() << std::endl);
                     }
                 }
             );
@@ -105,7 +110,7 @@ void NetworkController::send(const std::string& data, PacketType type) {
 
             const size_t totalSize = sharedData->size() + sizeof(PacketType);
             if (totalSize > m_receiveBuffer.size()) {
-                std::cerr << "Packet too large" << std::endl;
+                log("Packet too large" << std::endl);
                 return;
             }
 
@@ -117,7 +122,7 @@ void NetworkController::send(const std::string& data, PacketType type) {
             m_socket.async_send_to(buffers, m_serverEndpoint,
                 [this](const asio::error_code& error, std::size_t bytesSent) {
                     if (error && error != asio::error::operation_aborted) {
-                        std::cerr << "Send error: " << error.message() << std::endl;
+                        log("Send error: " << error.message() << std::endl);
                         m_onNetworkErrorCallback();
                     }
                 }
@@ -140,7 +145,7 @@ void NetworkController::send(PacketType type) {
             m_socket.async_send_to(buffer, m_serverEndpoint,
                 [this](const asio::error_code& error, std::size_t bytesSent) {
                     if (error && error != asio::error::operation_aborted) {
-                        std::cerr << "Send error: " << error.message() << std::endl;
+                        log("Send error: " << error.message() << std::endl);
                         m_onNetworkErrorCallback();
                     }
                 }
@@ -154,7 +159,6 @@ void NetworkController::startReceive() {
         [this](const asio::error_code& ec, std::size_t bytesTransferred) {
             if (ec) {
                 if (ec != asio::error::operation_aborted) {
-                    std::cerr << "Receive error: " << ec.message() << std::endl;
                     m_onNetworkErrorCallback();
                 }
                 return;
@@ -167,7 +171,7 @@ void NetworkController::startReceive() {
 
 void NetworkController::handleReceive(std::size_t bytesTransferred) {
     if (bytesTransferred < sizeof(PacketType)) {
-        std::cerr << "Received packet too small: " << bytesTransferred << " bytes" << std::endl;
+        log("Received packet too small: " << bytesTransferred << " bytes" << std::endl);
 
         if (m_isConnected) {
             startReceive();

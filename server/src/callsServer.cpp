@@ -44,6 +44,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleEndCallPacket(endpointFrom);
             break;
 
+        case PacketType::PING:
+            m_networkController.sendToClient(endpointFrom, PacketType::PING_SUCCESS);
+            break;
+
         case PacketType::CALL_ACCEPTED:
             jsonStr = std::string(reinterpret_cast<const char*>(data), size);
             jsonObject = nlohmann::json::parse(jsonStr);

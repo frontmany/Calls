@@ -134,6 +134,10 @@ bool AudioEngine::startStream() {
 
     if (!m_isInitialized) return false;
 
+    if (m_stream == nullptr) {
+        return false;
+    }
+
     m_lastError = Pa_StartStream(m_stream);
     if (m_lastError != paNoError) {
         return false;
@@ -154,7 +158,6 @@ bool AudioEngine::stopStream() {
     }
 
     m_isStream = false;
-    m_stream = nullptr;
     return m_lastError == paNoError;
 }
 

@@ -40,12 +40,16 @@ public:
     bool isInCall() const;
     bool isRunning() const;
     const std::string& getNickname() const;
+    
+    void run();
+    void stop();
+
+    void mute(bool isMute);
     void authorize(const std::string& nickname);
     void createCall(const std::string& friendNickname);
-    void declineIncomingCall(const std::string& friendNickname);
-    void acceptIncomingCall(const std::string& friendNickname);
+    bool declineIncomingCall(const std::string& friendNickname);
+    bool acceptIncomingCall(const std::string& friendNickname);
     void endCall();
-    void logout();
 
 private:
     void onCallingEnd(const unsigned char* data, int length);
@@ -56,8 +60,11 @@ private:
     void requestFriendInfo(const std::string& friendNickname);
     void startCalling();
     void onInputVoice(const unsigned char* data, int length);
+    void checkConnection();
 
 private:
+    std::atomic_bool m_mute = false;
+    std::atomic_bool m_checkingConnection = false;
     bool m_running = true;
     std::optional<Call> m_call = std::nullopt;
     std::string m_myNickname{};
@@ -76,6 +83,7 @@ private:
     NetworkController m_networkController;
     AudioEngine m_audioEngine;
     Timer m_timer;
+    Timer m_checkConnectionTimer;
     State m_state = State::UNAUTHORIZED;
 
     std::function<void(AuthorizationResult)> m_authorizationResultCallback;

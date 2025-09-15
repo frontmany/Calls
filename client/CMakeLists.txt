@@ -35,3 +35,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE 
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:RelWithDebInfo>:DEBUG>  
+)

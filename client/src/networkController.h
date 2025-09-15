@@ -1,5 +1,4 @@
 #pragma once
-
 #include <functional>
 #include <memory>
 #include <string>
@@ -9,6 +8,7 @@
 #include "asio.hpp"
 #include "asio/ts/buffer.hpp"
 #include "asio/ts/internet.hpp"
+
 
 class NetworkController {
 public:
