@@ -15,12 +15,9 @@
 class ConsoleApp {
 private:
     std::unique_ptr<CallsClient> m_client;
-    std::atomic<bool> m_running{true};
     std::mutex m_consoleMutex;
     std::condition_variable m_cv;
     std::string m_currentFriendNickname;
-    bool m_isInCall = false;
-    bool m_networkError = false;
 
 public:
     ConsoleApp() {
@@ -45,27 +42,22 @@ public:
             switch (result) {
                 case CreateCallResult::CALL_ACCEPTED:
                     std::cout << "Call accepted by " << m_currentFriendNickname << "!" << std::endl;
-                    m_isInCall = true;
                     break;
                 case CreateCallResult::CALL_DECLINED:
                     std::cout << "Call declined by " << m_currentFriendNickname << std::endl;
                     m_currentFriendNickname.clear();
-                    m_isInCall = false;
                     break;
                 case CreateCallResult::WRONG_FRIEND_NICKNAME:
                     std::cout << "Friend not found: " << m_currentFriendNickname << std::endl;
                     m_currentFriendNickname.clear();
-                    m_isInCall = false;
                     break;
                 case CreateCallResult::TIMEOUT:
                     std::cout << "Call timeout!" << std::endl;
                     m_currentFriendNickname.clear();
-                    m_isInCall = false;
                     break;
                 case CreateCallResult::UNAUTHORIZED:
                     std::cout << "Not authorized!" << std::endl;
                     m_currentFriendNickname.clear();
-                    m_isInCall = false;
                     break;
             }
             m_cv.notify_one();
@@ -75,6 +67,7 @@ public:
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "\nIncoming call from: " << data.friendNickname << std::endl;
             std::cout << "Type 'accept " << data.friendNickname << "' to accept or 'decline " << data.friendNickname << "' to decline" << std::endl;
+            std::cout << "> ";
         };
 
         auto incomingCallingExpiredCallback = [this](const std::string& friendNickname) {
@@ -85,13 +78,13 @@ public:
         auto hangUpCallback = [this]() {
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Call ended" << std::endl;
-            m_isInCall = false;
+            std::cout << "> ";
         };
 
         auto networkErrorCallback = [this]() {
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Network error occurred!" << std::endl;
-            m_networkError = true;
+            m_client->logout();
             m_cv.notify_one();
         };
 
@@ -108,16 +101,16 @@ public:
     void run() {
         std::cout << "=== Calls Client Console Application ===" << std::endl;
         std::cout << std::endl;
-        std::cout << "auth        <nickname>  - Authorize with nickname" << std::endl;
-        std::cout << "createCall  <friend>    - Call a friend" << std::endl;
-        std::cout << "accept      <friend>    - Accept incoming call" << std::endl;
-        std::cout << "decline     <friend>    - Decline incoming call" << std::endl;
+        std::cout << "auth      <nickname>  - Authorize with nickname" << std::endl;
+        std::cout << "call      <friend>    - Call a friend" << std::endl;
+        std::cout << "accept    <friend>    - Accept incoming call" << std::endl;
+        std::cout << "decline   <friend>    - Decline incoming call" << std::endl;
         std::cout << "hangup                  - End current call" << std::endl;
         std::cout << "quit                    - Exit application" << std::endl;
         std::cout << std::endl;
 
         std::string input;
-        while (m_running) {
+        while (m_client->isRunning()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(600));
             std::cout << "> ";
             std::getline(std::cin, input);
@@ -137,7 +130,6 @@ private:
         if (command == "quit" || command == "exit") {
             m_client->logout();
             std::cout << "Goodbye!" << std::endl;
-            m_running = false;
             return;
         }
         else if (command == "auth") {
@@ -151,15 +143,15 @@ private:
                 std::cout << "Example:  authorize Alice123\n" << std::endl;
             }
         }
-        else if (command == "createCall") {
+        else if (command == "call") {
             std::string friendNickname;
             if (iss >> friendNickname) {
                 callFriend(friendNickname);
             }
             else {
-                std::cout << "\nIncorrect command usage: createCall <friend_nickname>" << std::endl;
+                std::cout << "\nIncorrect command usage: call <friend_nickname>" << std::endl;
                 std::cout << "Parameters:  <friend_nickname> - nickname of the user you want to call" << std::endl;
-                std::cout << "Example:  createCall Bob\n" << std::endl;
+                std::cout << "Example:  call Bob\n" << std::endl;
             }
         }
         else if (command == "accept") {
@@ -199,15 +191,10 @@ private:
         }
 
         std::cout << "Authorizing as: " << nickname << "..." << std::endl;
-        m_networkError = false;
         m_client->authorize(nickname);
 
         std::unique_lock<std::mutex> lock(m_consoleMutex);
-        m_cv.wait(lock, [this] { return !m_running || m_client->isAuthorized() || m_client->getNickname().empty() || m_networkError; });
-        
-        if (m_networkError) {
-            std::cout << "Authorization failed due to network error" << std::endl;
-        }
+        m_cv.wait(lock, [this] { return !m_client->isRunning() || m_client->isAuthorized() || m_client->getNickname().empty(); });
     }
 
     void callFriend(const std::string& friendNickname) {
@@ -221,23 +208,17 @@ private:
             return;
         }
 
-        if (m_isInCall) {
+        if (m_client->isInCall()) {
             std::cout << "Already in a call. Use 'hangup' to end current call first." << std::endl;
             return;
         }
 
         std::cout << "Calling " << friendNickname << "..." << std::endl;
         m_currentFriendNickname = friendNickname;
-        m_networkError = false;
         m_client->createCall(friendNickname);
 
         std::unique_lock<std::mutex> lock(m_consoleMutex);
-        m_cv.wait(lock, [this] { return !m_running || m_isInCall || m_currentFriendNickname.empty() || m_networkError; });
-        
-        if (m_networkError) {
-            std::cout << "Call failed due to network error" << std::endl;
-            m_currentFriendNickname.clear();
-        }
+        m_cv.wait(lock, [this] { return !m_client->isRunning() || m_client->isInCall() || m_currentFriendNickname.empty(); });
     }
 
     void acceptCall(const std::string& friendNickname) {
@@ -246,7 +227,7 @@ private:
             return;
         }
 
-        if (m_isInCall) {
+        if (m_client->isInCall()) {
             std::cout << "Already in a call. Use 'hangup' to end current call first." << std::endl;
             return;
         }
@@ -254,7 +235,6 @@ private:
         std::cout << "Accepting call from " << friendNickname << "..." << std::endl;
         m_currentFriendNickname = friendNickname;
         m_client->acceptIncomingCall(friendNickname);
-        m_isInCall = true;
     }
 
     void declineCall(const std::string& friendNickname) {
@@ -268,15 +248,16 @@ private:
     }
 
     void hangUp() {
-        if (!m_isInCall) {
+        if (!m_client->isInCall()) {
             std::cout << "Not in a call" << std::endl;
             return;
         }
 
-        std::cout << "Ending call..." << std::endl;
         m_client->endCall();
-        m_isInCall = false;
         m_currentFriendNickname.clear();
+
+        std::cout << "Call ended" << std::endl;
+        std::cout << "> ";
     }
 };
 

@@ -16,7 +16,17 @@ CallsClient::CallsClient(const std::string& host, std::function<void(Authorizati
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_queueCallbacksMutex);
-            m_callbacksQueue.push([this]() {if (m_timer.is_active()) m_timer.stop(); m_onNetworkErrorCallback(); });
+            m_callbacksQueue.push([this]() {
+                if (m_timer.is_active()) {
+                    m_timer.stop();
+                }
+
+                if (m_audioEngine.isStream()) {
+                    m_audioEngine.stopStream();
+                }
+
+                m_onNetworkErrorCallback(); 
+            });
         }),
     m_audioEngine(
         [this](const unsigned char* data, int length) {
@@ -113,8 +123,9 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
     case (PacketType::END_CALL):
         if (m_state == State::BUSY) {
             m_audioEngine.stopStream();
-            m_callbacksQueue.push([this]() {m_onCallHangUpCallback(); });
+            m_call = std::nullopt;
             m_state = State::FREE;
+            m_callbacksQueue.push([this]() {m_onCallHangUpCallback(); });
         }
         break;
 
@@ -134,6 +145,14 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
 
 bool CallsClient::isAuthorized() const {
     return m_state != State::UNAUTHORIZED;
+}
+
+bool CallsClient::isRunning() const {
+    return m_running;
+}
+
+bool CallsClient::isInCall() const {
+    return m_state == State::BUSY;
 }
 
 const std::string& CallsClient::getNickname() const {
@@ -193,10 +212,10 @@ void CallsClient::authorize(const std::string& nickname) {
 
 void CallsClient::endCall() {
     if (m_state == State::UNAUTHORIZED || !m_call) return;
-    m_state = State::FREE;
     m_audioEngine.stopStream();
-    m_networkController.send(PacketType::END_CALL);
     m_call = std::nullopt;
+    m_state = State::FREE;
+    m_networkController.send(PacketType::END_CALL);
 }
 
 void CallsClient::createCall(const std::string& friendNickname) {

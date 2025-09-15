@@ -37,6 +37,8 @@ public:
     ~CallsClient();
 
     bool isAuthorized() const;
+    bool isInCall() const;
+    bool isRunning() const;
     const std::string& getNickname() const;
     void authorize(const std::string& nickname);
     void createCall(const std::string& friendNickname);

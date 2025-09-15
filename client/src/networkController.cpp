@@ -88,9 +88,6 @@ void NetworkController::send(std::vector<unsigned char>&& data, PacketType type)
                     if (error) {
                         std::cerr << "Send error: " << error.message() << std::endl;
                     }
-                    else {
-                        std::cout << "Voice sent" << std::endl;
-                    }
                 }
             );
         }
