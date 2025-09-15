@@ -49,7 +49,8 @@ public:
     void stop() {
         m_shouldStop = true;
         m_active = false;
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        if (m_future.valid())
+            m_future.wait();
     }
 
     bool is_active() const {

@@ -30,13 +30,13 @@ public:
     CallsClient(const std::string& host, std::function<void(AuthorizationResult)> authorizationResultCallback,
         std::function<void(CreateCallResult)> createCallResultCallback,
         std::function<void(const IncomingCallData&)> onIncomingCall,
-        std::function<void(std::string&& friendNickname)> onIncomingCallingExpired,
+        std::function<void(const std::string& friendNickname)> onIncomingCallingExpired,
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
     ~CallsClient();
 
-    bool isAuthorized();
+    bool isAuthorized() const;
     const std::string& getNickname() const;
     void authorize(const std::string& nickname);
     void createCall(const std::string& friendNickname);
@@ -61,10 +61,16 @@ private:
     std::string m_myNickname{};
     CryptoPP::RSA::PublicKey m_myPublicKey;
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
+
+
+    std::mutex m_queueCallbacksMutex;
     std::thread m_queueProcessingThread;
     std::queue<std::function<void()>> m_callbacksQueue;
-    std::vector<IncomingCallData> m_incomingCalls;
-    std::mutex m_mutex;
+
+    std::mutex m_incomingCallsMutex;
+    std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
+
+
     NetworkController m_networkController;
     AudioEngine m_audioEngine;
     Timer m_timer;
@@ -73,7 +79,7 @@ private:
     std::function<void(AuthorizationResult)> m_authorizationResultCallback;
     std::function<void(CreateCallResult)> m_createCallResultCallback;
     std::function<void(const IncomingCallData&)> m_onIncomingCall;
-    std::function<void(std::string&& friendNickname)> m_onIncomingCallingExpired;
+    std::function<void(const std::string& friendNickname)> m_onIncomingCallingExpired;
     std::function<void()> m_onNetworkErrorCallback;
     std::function<void()> m_onCallHangUpCallback;
 

@@ -108,7 +108,7 @@ public:
     void run() {
         std::cout << "=== Calls Client Console Application ===" << std::endl;
         std::cout << std::endl;
-        std::cout << "authorize   <nickname>  - Authorize with nickname" << std::endl;
+        std::cout << "auth        <nickname>  - Authorize with nickname" << std::endl;
         std::cout << "createCall  <friend>    - Call a friend" << std::endl;
         std::cout << "accept      <friend>    - Accept incoming call" << std::endl;
         std::cout << "decline     <friend>    - Decline incoming call" << std::endl;
@@ -140,7 +140,7 @@ private:
             m_running = false;
             return;
         }
-        else if (command == "authorize") {
+        else if (command == "auth") {
             std::string nickname;
             if (iss >> nickname) {
                 authorize(nickname);
@@ -263,7 +263,7 @@ private:
             return;
         }
 
-        std::cout << "Declining call from " << friendNickname << "..." << std::endl;
+        std::cout << "Declined call from " << friendNickname  << std::endl;
         m_client->declineIncomingCall(friendNickname);
     }
 

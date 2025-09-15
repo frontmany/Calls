@@ -245,7 +245,7 @@ void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, con
 
 void CallsServer::handleCallingEndPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
-        std::string responderNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string responderNicknameHash = jsonObject[NICKNAME_HASH_TO].get<std::string>();
 
         if (m_nicknameHashToUser.contains(responderNicknameHash)) {
             auto userResponder = m_nicknameHashToUser.at(responderNicknameHash);

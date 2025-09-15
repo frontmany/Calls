@@ -104,8 +104,8 @@ namespace crypto {
         encryptor.ProcessData(out_ciphertext + CryptoPP::AES::BLOCKSIZE, data, length);
     }
 
-    void AESDecrypt(const CryptoPP::SecByteBlock& key, const unsigned char* data, int length, CryptoPP::byte* out_plaintext, size_t out_len) {
-        if (length < CryptoPP::AES::BLOCKSIZE || out_len < length - CryptoPP::AES::BLOCKSIZE) {
+    void AESDecrypt(const CryptoPP::SecByteBlock& key, const unsigned char* data, int length, CryptoPP::byte* out, size_t out_len) {
+        if (length < CryptoPP::AES::BLOCKSIZE || out_len < static_cast<size_t>(length) - CryptoPP::AES::BLOCKSIZE) {
             throw std::invalid_argument("Invalid input or output buffer size");
         }
 
@@ -113,7 +113,7 @@ namespace crypto {
         CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption decryptor;
         decryptor.SetKeyWithIV(key, key.size(), iv);
 
-        decryptor.ProcessData(out_plaintext, data + CryptoPP::AES::BLOCKSIZE, length - CryptoPP::AES::BLOCKSIZE);
+        decryptor.ProcessData(out, data + CryptoPP::AES::BLOCKSIZE, length - CryptoPP::AES::BLOCKSIZE);
     }
 
     std::string AESEncrypt(const CryptoPP::SecByteBlock& key, const std::string& plain) {
