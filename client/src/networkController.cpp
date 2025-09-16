@@ -6,6 +6,8 @@
 
 #ifdef DEBUG
 #define log(message) std::cout << message
+#else
+#define log(message) 
 #endif
 
 NetworkController::NetworkController(const std::string& host,
