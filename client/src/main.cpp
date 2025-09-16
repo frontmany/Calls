@@ -26,7 +26,7 @@ public:
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             switch (result) {
             case AuthorizationResult::SUCCESS:
-                std::cout << "Authorization successful!" << std::endl;
+                std::cout << "Authorization successfull!" << std::endl;
                 break;
             case AuthorizationResult::FAIL:
                 std::cout << "Authorization failed!" << std::endl;

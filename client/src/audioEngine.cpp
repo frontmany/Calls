@@ -117,6 +117,8 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
     if (output) {
         std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
 
+        std::fill_n(output, frameCount * m_outputChannels, 0.0f);
+
         if (!m_outputAudioQueue.empty()) {
             const auto& currentPacket = m_outputAudioQueue.front();
 

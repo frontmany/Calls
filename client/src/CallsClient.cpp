@@ -449,24 +449,10 @@ void CallsClient::startCalling() {
 }
 
 void CallsClient::onInputVoice(const unsigned char* data, int length) {
-    if (m_call) {
+    if (m_call && !m_mute) {
         size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
-        std::vector<CryptoPP::byte> plainData(length);
-
-        if (m_mute) {
-            std::fill(plainData.begin(), plainData.end(), 0);
-        }
-        else {
-            std::copy(data, data + length, plainData.begin());
-        }
-
         std::vector<CryptoPP::byte> cipherData(cipherDataLength);
-        crypto::AESEncrypt(m_call.value().getCallKey(),
-            plainData.data(),
-            length,
-            cipherData.data(),
-            cipherDataLength);
-
+        crypto::AESEncrypt(m_call.value().getCallKey(), data, length, cipherData.data(), cipherDataLength);
         m_networkController.send(std::move(cipherData), PacketType::VOICE);
     }
 }
