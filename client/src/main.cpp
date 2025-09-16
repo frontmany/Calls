@@ -19,8 +19,8 @@ private:
     std::condition_variable m_cv;
     std::string m_currentFriendNickname;
     bool m_isMuted = false;
-    int m_inputVolume = 100;  // значение по умолчанию
-    int m_outputVolume = 100; // значение по умолчанию
+    int m_inputVolume = 100;  
+    int m_outputVolume = 100;
 
 public:
     ConsoleApp() {
@@ -90,7 +90,7 @@ public:
             m_cv.notify_one();
             };
 
-        m_client = std::make_unique<CallsClient>("192.168.1.45",
+        m_client = std::make_unique<CallsClient>("92.255.165.77",
             authCallback,
             createCallCallback,
             incomingCallCallback,

@@ -4,7 +4,7 @@
 #include <cstring>
 #include <sstream>
 
-NetworkController::NetworkController(const std::string& port,
+NetworkController::NetworkController(const std::string& ip, const std::string& port,
     std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> onReceiveCallback,
     std::function<void()> onNetworkErrorCallback)
     : m_socket(m_context),
@@ -13,10 +13,10 @@ NetworkController::NetworkController(const std::string& port,
     m_onNetworkErrorCallback(onNetworkErrorCallback)
 {
     asio::ip::udp::resolver resolver(m_context);
-    asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), "0.0.0.0", port);
+    asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), ip, port);
 
     if (endpoints.empty()) {
-        throw std::runtime_error("No endpoints found for port " + port);
+        throw std::runtime_error("No endpoints found for " + ip + ":" + port);
     }
 
     m_serverEndpoint = *endpoints.begin();
