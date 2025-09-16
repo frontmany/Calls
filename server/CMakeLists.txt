@@ -8,28 +8,29 @@ source_group("Source Files" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
-set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
-set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
+
+if(WIN32)
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
+else()
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp")
+endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
-    "${PORTAUDIO_DIR}"
-    "${OPUS_DIR}"
     "${CRYPTOPP_DIR}"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
-    "${OPUS_DIR}/$<CONFIG>/opus.lib"
-    "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
-    ole32 
-    winmm 
-    uuid
-)
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        cryptopp
+    )
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ../vendor/opus/include     
-    ../vendor/portaudio/include
     ../vendor/json/include                    
     ../vendor/cryptopp              
     ../vendor/asio/asio/include
