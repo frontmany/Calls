@@ -15,7 +15,7 @@
 
 class NetworkController {
 public:
-    NetworkController(const std::string& ip, const std::string& port,
+    NetworkController(const std::string& port,
         std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> onReceiveCallback,
         std::function<void()> onNetworkErrorCallback);
     ~NetworkController();

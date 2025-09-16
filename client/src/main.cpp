@@ -90,7 +90,7 @@ public:
             m_cv.notify_one();
             };
 
-        m_client = std::make_unique<CallsClient>("92.255.165.77",
+        m_client = std::make_unique<CallsClient>("0.0.0.0",
             authCallback,
             createCallCallback,
             incomingCallCallback,

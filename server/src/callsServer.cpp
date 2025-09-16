@@ -4,7 +4,7 @@
 #include "crypto.h"
 
 CallsServer::CallsServer() 
-	:m_networkController("92.255.165.77", "8080",
+	:m_networkController("8080",
 		[this](const unsigned char* data, int size, PacketType type, const asio::ip::udp::endpoint& endpointFrom) { onReceive(data, size, type, endpointFrom); },
 		[this]() {onNetworkError(); })
 {
