@@ -148,6 +148,22 @@ const std::string& CallsClient::getNickname() const {
     return m_myNickname;
 }
 
+void CallsClient::setInputVolume(int volume) {
+    m_audioEngine.setInputVolume(volume);
+}
+
+void CallsClient::setOutputVolume(int volume) {
+    m_audioEngine.setOutputVolume(volume);
+}
+
+int CallsClient::getInputVolume() const {
+    return m_audioEngine.getInputVolume();
+}
+
+int CallsClient::getOutputVolume() const {
+    return m_audioEngine.getOutputVolume();
+}
+
 void CallsClient::stop() {
     if (m_call) {
         endCall();

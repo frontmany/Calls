@@ -19,6 +19,8 @@ private:
     std::condition_variable m_cv;
     std::string m_currentFriendNickname;
     bool m_isMuted = false;
+    int m_inputVolume = 100;  // значение по умолчанию
+    int m_outputVolume = 100; // значение по умолчанию
 
 public:
     ConsoleApp() {
@@ -26,7 +28,7 @@ public:
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             switch (result) {
             case AuthorizationResult::SUCCESS:
-                std::cout << "Authorization successfull!" << std::endl;
+                std::cout << "Authorization successful!" << std::endl;
                 break;
             case AuthorizationResult::FAIL:
                 std::cout << "Authorization failed!" << std::endl;
@@ -86,7 +88,7 @@ public:
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Network error occurred!" << std::endl;
             m_cv.notify_one();
-        };
+            };
 
         m_client = std::make_unique<CallsClient>("192.168.1.45",
             authCallback,
@@ -107,6 +109,8 @@ public:
         std::cout << "decline   <friend>    - Decline incoming call" << std::endl;
         std::cout << "hangup                - End current call" << std::endl;
         std::cout << "mute      <on/off>    - Mute/unmute microphone" << std::endl;
+        std::cout << "mic       <0-100>     - Set microphone volume" << std::endl;
+        std::cout << "headset   <0-100>     - Set headset volume" << std::endl;
         std::cout << "quit                  - Exit application" << std::endl;
         std::cout << std::endl;
 
@@ -190,6 +194,28 @@ private:
                 std::cout << "Parameters:  <on> - mute microphone" << std::endl;
                 std::cout << "            <off> - unmute microphone" << std::endl;
                 std::cout << "Example:  mute on\n" << std::endl;
+            }
+        }
+        else if (command == "mic") {
+            int volume;
+            if (iss >> volume) {
+                setInputVolume(volume);
+            }
+            else {
+                std::cout << "\nIncorrect command usage: mic <0-100>" << std::endl;
+                std::cout << "Parameters:  <0-100> - input volume level" << std::endl;
+                std::cout << "Example:  mic 80\n" << std::endl;
+            }
+        }
+        else if (command == "headset") {
+            int volume;
+            if (iss >> volume) {
+                setOutputVolume(volume);
+            }
+            else {
+                std::cout << "\nIncorrect command usage: headset <0-100>" << std::endl;
+                std::cout << "Parameters:  <0-100> - output volume level" << std::endl;
+                std::cout << "Example:  headset 90\n" << std::endl;
             }
         }
         else {
@@ -307,6 +333,28 @@ private:
         else {
             std::cout << "Invalid parameter. Use 'mute on' or 'mute off'" << std::endl;
         }
+    }
+
+    void setInputVolume(int volume) {
+        if (volume < 0 || volume > 100) {
+            std::cout << "Volume must be between 0 and 100" << std::endl;
+            return;
+        }
+
+        m_client->setInputVolume(volume);
+        m_inputVolume = volume;
+        std::cout << "Input volume set to: " << volume << std::endl;
+    }
+
+    void setOutputVolume(int volume) {
+        if (volume < 0 || volume > 100) {
+            std::cout << "Volume must be between 0 and 100" << std::endl;
+            return;
+        }
+
+        m_client->setOutputVolume(volume);
+        m_outputVolume = volume;
+        std::cout << "Output volume set to: " << volume << std::endl;
     }
 };
 

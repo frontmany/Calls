@@ -34,6 +34,11 @@ public:
     void playAudio(const unsigned char* data, int length);
     std::string getLastError() const;
 
+    void setInputVolume(int volume);  
+    void setOutputVolume(int volume);
+    int getInputVolume() const;
+    int getOutputVolume() const;
+
 private:
     void processInputAudio(const float* input, unsigned long frameCount);
     void processOutputAudio(float* output, unsigned long frameCount);
@@ -53,6 +58,10 @@ private:
     std::mutex m_outputAudioQueueMutex;
     std::mutex m_inputAudioMutex;
     std::function<void(const unsigned char* data, int length)> m_encodedInputCallback;
+
+    float m_inputVolume = 0.5f;
+    float m_outputVolume = 0.5f;
+    mutable std::mutex m_volumeMutex;
 
     int m_sampleRate = 48000;
     int m_framesPerBuffer = 960;

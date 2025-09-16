@@ -50,6 +50,10 @@ public:
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
     void endCall();
+    void setInputVolume(int volume);
+    void setOutputVolume(int volume);
+    int getInputVolume() const;
+    int getOutputVolume() const;
 
 private:
     void onCallingEnd(const unsigned char* data, int length);
@@ -70,7 +74,6 @@ private:
     std::string m_myNickname{};
     CryptoPP::RSA::PublicKey m_myPublicKey;
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
-
 
     std::mutex m_queueCallbacksMutex;
     std::thread m_queueProcessingThread;

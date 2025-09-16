@@ -85,6 +85,28 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
     return INITIALIZED;
 }
 
+void AudioEngine::setInputVolume(int volume) {
+    std::lock_guard<std::mutex> lock(m_volumeMutex);
+    volume = std::max(0, std::min(100, volume));
+    m_inputVolume = static_cast<float>(volume) / 100.0f;
+}
+
+void AudioEngine::setOutputVolume(int volume) {
+    std::lock_guard<std::mutex> lock(m_volumeMutex);
+    volume = std::max(0, std::min(100, volume));
+    m_outputVolume = static_cast<float>(volume) / 100.0f;
+}
+
+int AudioEngine::getInputVolume() const {
+    std::lock_guard<std::mutex> lock(m_volumeMutex);
+    return static_cast<int>(m_inputVolume * 100.0f);
+}
+
+int AudioEngine::getOutputVolume() const {
+    std::lock_guard<std::mutex> lock(m_volumeMutex);
+    return static_cast<int>(m_outputVolume * 100.0f);
+}
+
 void AudioEngine::playAudio(const unsigned char* data, int length) {
     AudioPacket packet;
 
@@ -104,9 +126,15 @@ void AudioEngine::playAudio(const unsigned char* data, int length) {
 
 void AudioEngine::processInputAudio(const float* input, unsigned long frameCount) {
     std::lock_guard<std::mutex> lock(m_inputAudioMutex);
+    std::lock_guard<std::mutex> volumeLock(m_volumeMutex);
     
     if (m_encoder && input) {
-        int encodedSize = m_encoder->encode(input, m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
+        std::vector<float> adjustedInput(frameCount * m_inputChannels);
+        for (unsigned long i = 0; i < frameCount * m_inputChannels; ++i) {
+            adjustedInput[i] = input[i] * m_inputVolume;
+        }
+        
+        int encodedSize = m_encoder->encode(adjustedInput.data(), m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
         if (encodedSize > 0 && m_encodedInputCallback) {
             m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
         }
@@ -114,16 +142,20 @@ void AudioEngine::processInputAudio(const float* input, unsigned long frameCount
 }
 
 void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
+    std::lock_guard<std::mutex> volumeLock(m_volumeMutex);
+
+    std::fill_n(output, frameCount * m_outputChannels, 0.0f);
+
     if (output) {
         std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
-
-        std::fill_n(output, frameCount * m_outputChannels, 0.0f);
 
         if (!m_outputAudioQueue.empty()) {
             const auto& currentPacket = m_outputAudioQueue.front();
 
             if (size_t samplesToCopy = currentPacket.audioData.size(); samplesToCopy > 0) {
-                std::copy_n(currentPacket.audioData.data(), samplesToCopy, output);
+                for (size_t i = 0; i < samplesToCopy; ++i) {
+                    output[i] = currentPacket.audioData[i] * m_outputVolume;
+                }
             }
 
             m_outputAudioQueue.pop();
