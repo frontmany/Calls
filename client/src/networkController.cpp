@@ -19,12 +19,14 @@ NetworkController::NetworkController(const std::string& host,
     m_onReceiveCallback(onReceiveCallback),
     m_onNetworkErrorCallback(onReceiveErrorCallback)
 {
-    unsigned short port_num = static_cast<unsigned short>(std::stoi(port));
-    m_serverEndpoint = asio::ip::udp::endpoint(asio::ip::udp::v4(), port_num);
+    asio::ip::udp::resolver resolver(m_context);
+    asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), host, port);
 
-    m_socket.open(asio::ip::udp::v4());
-    m_socket.bind(m_serverEndpoint);
-    m_socket.set_option(asio::socket_base::reuse_address(true));
+    if (endpoints.empty()) {
+        log("No endpoints found for " + host + ":" + port);
+    }
+
+    m_serverEndpoint = *endpoints.begin();
 }
 
 NetworkController::~NetworkController() {
@@ -33,6 +35,9 @@ NetworkController::~NetworkController() {
 
 bool NetworkController::connect() {
     try {
+        m_socket.open(asio::ip::udp::v4());
+        m_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
+
         m_asioThread = std::thread([this]() { m_context.run(); });
         m_isConnected = true;
         startReceive();
