@@ -10,7 +10,7 @@ CallsClient::CallsClient(const std::string& host, std::function<void(Authorizati
     m_onIncomingCallingExpired(onIncomingCallingExpired),
     m_onIncomingCall(onIncomingCall),
     m_onCallHangUpCallback(onCallHangUpCallback),
-    m_networkController(host, "8080",
+    m_networkController(host, "8081",
         [this](const unsigned char* data, int length, PacketType type) {
             onReceiveCallback(data, length, type);
         },
@@ -335,13 +335,18 @@ void CallsClient::processQueue() {
 
 
 void CallsClient::checkConnection() {
+    if (m_pingsFailCount >= 5) {
+        m_callbacksQueue.push([this]() {m_onNetworkErrorCallback(); });
+        return;
+    }
+
     m_networkController.send(
         PacketType::PING
     );
 
     using namespace std::chrono_literals;
     m_checkConnectionTimer.start(8s, [this]() {
-        m_callbacksQueue.push([this]() {m_onNetworkErrorCallback(); });
+        m_callbacksQueue.push([this]() {m_pingsFailCount++; });
     });
 }
 
