@@ -89,8 +89,9 @@ public:
             std::cout << "Network error occurred!" << std::endl;
             m_cv.notify_one();
             };
-
-        m_client = std::make_unique<CallsClient>("0.0.0.0",
+        // 92.255.165.77
+        //192.168.1.45
+        m_client = std::make_unique<CallsClient>("192.168.1.45",
             authCallback,
             createCallCallback,
             incomingCallCallback,
