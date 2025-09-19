@@ -22,20 +22,11 @@ public:
         INITIALIZED
     };
 
-    struct InputDevice {
-        std::atomic<bool> isDevice = true;
-        const char* name;
-    };
-
-    struct OutputDevice {
-        std::atomic<bool> isDevice = true;
-        const char* name;
-    };
-
     AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> returnInputEncodedAudioCallback, Encoder::Config encoderConfig = Encoder::Config(), Decoder::Config decoderConfig = Decoder::Config());
     AudioEngine(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
     ~AudioEngine();
     InitializationStatus initialize();
+    void refreshAudioDevices();
     bool isInitialized();
     bool isStream();
     bool startStream();
@@ -49,9 +40,6 @@ public:
     int getOutputVolume() const;
 
 private:
-    void restart();
-    void startDevicesAvailabilityChecker();
-    InitializationStatus initialize(bool restarting);
     void processInputAudio(const float* input, unsigned long frameCount);
     void processOutputAudio(float* output, unsigned long frameCount);
 
@@ -62,9 +50,6 @@ private:
 private:
     std::thread m_devicesCheckerThread;
     std::atomic<bool> m_devicesCheckerRunning = false;
-    InputDevice m_inputDevice;
-    OutputDevice m_outputDevice;
-
 
     int m_previousInputDevice = -1;
     int m_previousOutputDevice = -1;

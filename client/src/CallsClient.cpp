@@ -143,6 +143,10 @@ bool CallsClient::isInCall() const {
     return m_state == State::BUSY;
 }
 
+void CallsClient::refreshAudioDevices() {
+    m_audioEngine.refreshAudioDevices();
+}
+
 const std::string& CallsClient::getNickname() const {
     if (m_state == State::UNAUTHORIZED) return "";
     return m_myNickname;

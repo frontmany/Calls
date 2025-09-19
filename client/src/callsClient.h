@@ -44,6 +44,7 @@ public:
     void run();
     void stop();
 
+    void refreshAudioDevices();
     void mute(bool isMute);
     void authorize(const std::string& nickname);
     void createCall(const std::string& friendNickname);

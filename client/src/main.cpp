@@ -19,7 +19,7 @@ private:
     std::condition_variable m_cv;
     std::string m_currentFriendNickname;
     bool m_isMuted = false;
-    int m_inputVolume = 100;  
+    int m_inputVolume = 100;
     int m_outputVolume = 100;
 
 public:
@@ -70,7 +70,6 @@ public:
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "\nIncoming call from: " << data.friendNickname << std::endl;
             std::cout << "Type 'accept " << data.friendNickname << "' to accept or 'decline " << data.friendNickname << "' to decline" << std::endl;
-            std::cout << "> ";
             };
 
         auto incomingCallingExpiredCallback = [this](const std::string& friendNickname) {
@@ -81,14 +80,13 @@ public:
         auto hangUpCallback = [this]() {
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Call ended" << std::endl;
-            std::cout << "> ";
             };
 
         auto networkErrorCallback = [this]() {
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Network error occurred!" << std::endl;
             m_cv.notify_one();
-        };
+            };
 
         // 92.255.165.77
         // 192.168.1.45 
@@ -114,6 +112,7 @@ public:
         std::cout << "mute      <on/off>    - Mute/unmute microphone" << std::endl;
         std::cout << "mic       <0-100>     - Set microphone volume" << std::endl;
         std::cout << "headset   <0-100>     - Set headset volume" << std::endl;
+        std::cout << "refresh               - Refresh audio devices (if changed)" << std::endl;
         std::cout << "quit                  - Exit application" << std::endl;
         std::cout << std::endl;
 
@@ -221,6 +220,9 @@ private:
                 std::cout << "Example:  headset 90\n" << std::endl;
             }
         }
+        else if (command == "refresh") {
+            refreshAudioDevices();
+        }
         else {
             std::cout << "\nUnknown command: " << command << "\n" << std::endl;
         }
@@ -309,7 +311,6 @@ private:
         m_currentFriendNickname.clear();
 
         std::cout << "Call ended" << std::endl;
-        std::cout << "> ";
     }
 
     void setMute(const std::string& state) {
@@ -358,6 +359,15 @@ private:
         m_client->setOutputVolume(volume);
         m_outputVolume = volume;
         std::cout << "Output volume set to: " << volume << std::endl;
+    }
+
+    void refreshAudioDevices() {
+        if (!m_client->isAuthorized()) {
+            std::cout << "Please authorize first using 'auth <nickname>'" << std::endl;
+            return;
+        }
+
+        m_client->refreshAudioDevices();
     }
 };
 
