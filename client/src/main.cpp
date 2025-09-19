@@ -88,11 +88,12 @@ public:
             std::lock_guard<std::mutex> lock(m_consoleMutex);
             std::cout << "Network error occurred!" << std::endl;
             m_cv.notify_one();
-            };
+        };
+
         // 92.255.165.77
-        // 192.168.1.45
+        // 192.168.1.45 
         // 192.168.1.48
-        m_client = std::make_unique<CallsClient>("92.255.165.77",
+        m_client = std::make_unique<CallsClient>("192.168.1.48",
             authCallback,
             createCallCallback,
             incomingCallCallback,

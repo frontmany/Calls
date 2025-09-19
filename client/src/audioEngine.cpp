@@ -10,7 +10,6 @@ AudioEngine::AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels,
     m_encoder(std::make_unique<Encoder>(encoderConfig)),
     m_decoder(std::make_unique<Decoder>(decoderConfig))
 {
-
     m_encodedInputBuffer.resize(4000);
     m_decodedOutputBuffer.resize(4096);
     m_encodedInputCallback = encodedInputCallback;
@@ -26,13 +25,63 @@ AudioEngine::AudioEngine(std::function<void(const unsigned char* data, int lengt
 }
 
 AudioEngine::~AudioEngine() {
+    m_devicesCheckerRunning = false;
+    if (m_devicesCheckerThread.joinable()) {
+        m_devicesCheckerThread.join();
+    }
     stopStream();
     if (m_stream) {
         Pa_CloseStream(m_stream);
+        m_stream = nullptr;
     }
     if (m_isInitialized) {
         Pa_Terminate();
+        m_isInitialized = false;
     }
+}
+
+void AudioEngine::startDevicesAvailabilityChecker() {
+    m_devicesCheckerRunning = true;
+    m_devicesCheckerThread = std::thread([this]() {
+        while (m_devicesCheckerRunning) {
+            std::this_thread::sleep_for(std::chrono::seconds(2)); 
+            bool isInputDevice = true;
+            bool isOutputDevice = true;
+
+            int defaultInput = -1;
+            if (m_inputChannels > 0) {
+                defaultInput = Pa_GetDefaultInputDevice();
+                if (defaultInput == paNoDevice) {
+                    isInputDevice = false;
+                }
+            }
+
+            int defaultOutput = -1;
+            if (m_outputChannels > 0) {
+                defaultOutput = Pa_GetDefaultOutputDevice();
+                if (defaultOutput == paNoDevice) {
+                    isOutputDevice = false;
+                }
+            }
+
+            if (m_inputDevice.isDevice && !isInputDevice) {
+                m_inputDevice.isDevice = false;
+            }
+            else if (m_outputDevice.isDevice && !isOutputDevice) {
+                m_outputDevice.isDevice = false;
+            }
+            else if ((!m_outputDevice.isDevice && isOutputDevice) ||
+                (!m_inputDevice.isDevice && isInputDevice) ||
+                (m_inputDevice.device != defaultInput) ||
+                (m_outputDevice.device != defaultOutput)) 
+            {
+                stopStream();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                startStream();
+            }
+            else continue;
+        }
+    });
 }
 
 AudioEngine::InitializationStatus AudioEngine::initialize() {
@@ -48,9 +97,14 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
     if (m_inputChannels > 0) {
         inputParameters.device = Pa_GetDefaultInputDevice();
         if (inputParameters.device == paNoDevice) {
+            m_inputDevice.isDevice = false;
             Pa_Terminate();
             return NO_INPUT_DEVICE;
         }
+
+        m_inputDevice.isDevice = true;
+        m_inputDevice.device = inputParameters.device;
+
         inputParameters.channelCount = m_inputChannels;
         inputParameters.sampleFormat = paFloat32;
         inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
@@ -60,9 +114,14 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
     if (m_outputChannels > 0) {
         outputParameters.device = Pa_GetDefaultOutputDevice();
         if (outputParameters.device == paNoDevice) {
+            m_outputDevice.isDevice = false;
             Pa_Terminate();
             return NO_OUTPUT_DEVICE;
         }
+
+        m_outputDevice.isDevice = true;
+        m_outputDevice.device = inputParameters.device;
+
         outputParameters.channelCount = m_outputChannels;
         outputParameters.sampleFormat = paFloat32;
         outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
@@ -82,6 +141,8 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
     }
 
     m_isInitialized = true;
+    startDevicesAvailabilityChecker();
+
     return INITIALIZED;
 }
 
@@ -166,7 +227,11 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
 bool AudioEngine::startStream() {
     std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 
-    if (!m_isInitialized) return false;
+    if (!m_isInitialized) {
+        if (initialize() != INITIALIZED) {
+            return false;
+        }
+    }
 
     if (m_stream == nullptr) {
         return false;
@@ -174,10 +239,26 @@ bool AudioEngine::startStream() {
 
     m_lastError = Pa_StartStream(m_stream);
     if (m_lastError != paNoError) {
-        return false;
+        Pa_CloseStream(m_stream);
+        m_stream = nullptr;
+
+        if (initialize() == INITIALIZED) {
+            m_lastError = Pa_StartStream(m_stream);
+            if (m_lastError != paNoError) {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
     }
 
     m_isStream = true;
+
+    if (!m_devicesCheckerRunning) {
+        startDevicesAvailabilityChecker();
+    }
+
     return true;
 }
 
