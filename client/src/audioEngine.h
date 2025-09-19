@@ -24,18 +24,17 @@ public:
 
     struct InputDevice {
         std::atomic<bool> isDevice = true;
-        int device = -1;
+        const char* name;
     };
 
     struct OutputDevice {
         std::atomic<bool> isDevice = true;
-        int device = -1;
+        const char* name;
     };
 
     AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> returnInputEncodedAudioCallback, Encoder::Config encoderConfig = Encoder::Config(), Decoder::Config decoderConfig = Decoder::Config());
     AudioEngine(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
     ~AudioEngine();
-
     InitializationStatus initialize();
     bool isInitialized();
     bool isStream();
@@ -50,7 +49,9 @@ public:
     int getOutputVolume() const;
 
 private:
+    void restart();
     void startDevicesAvailabilityChecker();
+    InitializationStatus initialize(bool restarting);
     void processInputAudio(const float* input, unsigned long frameCount);
     void processOutputAudio(float* output, unsigned long frameCount);
 
@@ -71,8 +72,9 @@ private:
 
 
     PaStream* m_stream = nullptr;
-    bool m_isInitialized = false;
-    bool m_isStream = false;
+    std::atomic<bool> m_isInitialized = false;
+    std::atomic<bool> m_isStream = false;
+
     PaError m_lastError = paNoError;
     std::unique_ptr<Encoder> m_encoder;
     std::unique_ptr<Decoder> m_decoder;

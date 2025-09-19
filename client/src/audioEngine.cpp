@@ -1,6 +1,7 @@
 #include "audioEngine.h"
 #include <iostream>
 #include <cstring>
+#include <string>
 
 AudioEngine::AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> encodedInputCallback, Encoder::Config encoderConfig, Decoder::Config decoderConfig)
     : m_sampleRate(sampleRate),
@@ -44,47 +45,35 @@ void AudioEngine::startDevicesAvailabilityChecker() {
     m_devicesCheckerRunning = true;
     m_devicesCheckerThread = std::thread([this]() {
         while (m_devicesCheckerRunning) {
-            std::this_thread::sleep_for(std::chrono::seconds(2)); 
-            bool isInputDevice = true;
-            bool isOutputDevice = true;
-
-            int defaultInput = -1;
-            if (m_inputChannels > 0) {
-                defaultInput = Pa_GetDefaultInputDevice();
-                if (defaultInput == paNoDevice) {
-                    isInputDevice = false;
-                }
-            }
-
-            int defaultOutput = -1;
-            if (m_outputChannels > 0) {
-                defaultOutput = Pa_GetDefaultOutputDevice();
-                if (defaultOutput == paNoDevice) {
-                    isOutputDevice = false;
-                }
-            }
-
-            if (m_inputDevice.isDevice && !isInputDevice) {
-                m_inputDevice.isDevice = false;
-            }
-            else if (m_outputDevice.isDevice && !isOutputDevice) {
-                m_outputDevice.isDevice = false;
-            }
-            else if ((!m_outputDevice.isDevice && isOutputDevice) ||
-                (!m_inputDevice.isDevice && isInputDevice) ||
-                (m_inputDevice.device != defaultInput) ||
-                (m_outputDevice.device != defaultOutput)) 
-            {
-                stopStream();
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                startStream();
-            }
-            else continue;
+            std::this_thread::sleep_for(std::chrono::seconds(4));
+            restart();
         }
     });
 }
 
+void AudioEngine::restart() {
+    bool wasStreaming = m_isStream;
+    if (wasStreaming) {
+        stopStream();
+    }
+
+    if (m_isInitialized) {
+        Pa_Terminate();
+        m_isInitialized = false;
+    }
+
+    initialize(true);
+
+    if (wasStreaming) {
+        startStream();
+    }
+}
+
 AudioEngine::InitializationStatus AudioEngine::initialize() {
+    return initialize(false);
+}
+
+AudioEngine::InitializationStatus AudioEngine::initialize(bool forRestart) {
     m_lastError = Pa_Initialize();
     if (m_lastError != paNoError) {
         return OTHER_ERROR;
@@ -102,9 +91,11 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
             return NO_INPUT_DEVICE;
         }
 
-        m_inputDevice.isDevice = true;
-        m_inputDevice.device = inputParameters.device;
-
+        if (!forRestart) {
+            m_inputDevice.isDevice = true;
+            m_inputDevice.name = Pa_GetDeviceInfo(inputParameters.device)->name;
+        }
+        
         inputParameters.channelCount = m_inputChannels;
         inputParameters.sampleFormat = paFloat32;
         inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
@@ -119,8 +110,10 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
             return NO_OUTPUT_DEVICE;
         }
 
-        m_outputDevice.isDevice = true;
-        m_outputDevice.device = inputParameters.device;
+        if (!forRestart) {
+            m_outputDevice.isDevice = true;
+            m_outputDevice.name = Pa_GetDeviceInfo(outputParameters.device)->name;
+        }
 
         outputParameters.channelCount = m_outputChannels;
         outputParameters.sampleFormat = paFloat32;
@@ -140,9 +133,11 @@ AudioEngine::InitializationStatus AudioEngine::initialize() {
         return OTHER_ERROR;
     }
 
-    m_isInitialized = true;
-    startDevicesAvailabilityChecker();
+    if (!forRestart) {
+        startDevicesAvailabilityChecker();
+    }
 
+    m_isInitialized = true;
     return INITIALIZED;
 }
 
@@ -169,6 +164,8 @@ int AudioEngine::getOutputVolume() const {
 }
 
 void AudioEngine::playAudio(const unsigned char* data, int length) {
+    if (!m_isInitialized || !m_isStream) return;
+
     AudioPacket packet;
 
     if (m_decoder && data && length > 0) {
