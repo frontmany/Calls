@@ -16,7 +16,7 @@ CallsClient::CallsClient(const std::string& host, std::function<void(Authorizati
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_queueCallbacksMutex);
-            m_callbacksQueue.push([this]() {m_onNetworkErrorCallback(); });
+            m_callbacksQueue.push([this]() {m_running = false; m_onNetworkErrorCallback(); });
         }),
     m_audioEngine(
         [this](const unsigned char* data, int length) {
@@ -26,6 +26,7 @@ CallsClient::CallsClient(const std::string& host, std::function<void(Authorizati
 }
 
 void CallsClient::run() {
+    m_running = true;
     crypto::generateRSAKeyPair(m_myPrivateKey, m_myPublicKey);
     m_queueProcessingThread = std::thread(&CallsClient::processQueue, this);
 
@@ -339,14 +340,13 @@ void CallsClient::processQueue() {
     }
 }
 
-// here
 void CallsClient::checkConnection() {
     m_networkController.send(
         PacketType::PING
     );
 
     using namespace std::chrono_literals;
-    m_checkConnectionTimer.start(3600ms, [this]() {m_onNetworkErrorCallback(); });
+    m_checkConnectionTimer.start(3600ms, [this]() {if (m_running) m_onNetworkErrorCallback(); });
 }
 
 void CallsClient::requestFriendInfo(const std::string& friendNickname) {

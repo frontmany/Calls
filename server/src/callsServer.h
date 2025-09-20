@@ -23,7 +23,7 @@ public:
 	void run();
 
 private:
-	enum class PingStatus {
+	enum class PingResult {
 		PING_SUCCESS,
 		PING_FAIL,
 		PING_LOSS_1,
@@ -36,6 +36,7 @@ private:
 	void onUserDisconnected(const asio::ip::udp::endpoint& endpointFrom);
 
 	void ping();
+	void checkPingResults();
 	void handleAuthorizationPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleGetFriendInfoPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCreateCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
@@ -48,6 +49,7 @@ private:
 	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
 
 private:
+	std::unordered_map<asio::ip::udp::endpoint, PingResult> m_pingResults;
 	std::atomic_bool m_running = false;
 	std::mutex m_mutex;
 

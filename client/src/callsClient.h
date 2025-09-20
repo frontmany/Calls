@@ -69,7 +69,7 @@ private:
 
 private:
     std::atomic_bool m_mute = false;
-    bool m_running = true;
+    std::atomic_bool m_running = false;
     std::optional<Call> m_call = std::nullopt;
     std::string m_myNickname{};
     CryptoPP::RSA::PublicKey m_myPublicKey;

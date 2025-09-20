@@ -48,6 +48,7 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             break;
 
         case PacketType::PING_SUCCESS:
+            handlePingSuccess(endpointFrom);
             break;
 
         case PacketType::CALL_ACCEPTED:
@@ -88,12 +89,14 @@ void CallsServer::run() {
     m_networkController.start();
 
     using namespace std::chrono_literals;
-    std::chrono::duration gap(16s);
+    std::chrono::duration gap(1s);
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
     while (m_running) {
         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        
         if (now - start >= gap) {
+            checkPingResults();
             ping();
             start = now;
         }
@@ -108,6 +111,69 @@ void CallsServer::ping() {
     std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& [endpoint, _] : m_endpointToUser) {
         m_networkController.sendToClient(endpoint, PacketType::PING);
+        if (!m_pingResults.contains(endpoint)) {
+            m_pingResults.emplace(endpoint, PingResult::PING_FAIL);
+        }
+    }
+}
+
+void CallsServer::checkPingResults() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    std::vector<asio::ip::udp::endpoint> endpointsToRemove;
+    bool needToIterate = false;
+
+    for (auto& [endpoint, pingResult] : m_pingResults) {
+        if (pingResult == PingResult::PING_FAIL) {
+            pingResult = PingResult::PING_LOSS_1;
+        }
+        else if (pingResult == PingResult::PING_LOSS_1) {
+            pingResult = PingResult::PING_LOSS_2;
+        }
+        else if (pingResult == PingResult::PING_LOSS_2) {
+            pingResult = PingResult::PING_LOSS_3;
+        }
+        else if (pingResult == PingResult::PING_LOSS_3) {
+            if (m_endpointToUser.contains(endpoint)) {
+                auto user = m_endpointToUser.at(endpoint);
+
+                if (user->inCall()) {
+                    auto call = user->getCall();
+
+                    const std::string& nicknameHashInCallWith = user->inCallWith();
+                    if (m_nicknameHashToUser.contains(nicknameHashInCallWith)) {
+                        auto userInCallWith = m_nicknameHashToUser.at(nicknameHashInCallWith);
+                        m_networkController.sendToClient(userInCallWith->getEndpoint(),
+                            PacketType::END_CALL
+                        );
+                    }
+
+                    m_calls.erase(call);
+                    needToIterate = true;
+                }
+
+                const std::string& nicknameHash = user->getNicknameHash();
+                m_endpointToUser.erase(endpoint);
+                m_nicknameHashToUser.erase(nicknameHash);
+                std::cout << "erased force disconnected client\n";
+            }
+        }
+        else
+            pingResult = PingResult::PING_FAIL;
+            continue;
+    }
+
+    if (needToIterate) {
+        for (auto& endpointToRemove : endpointsToRemove) {
+            m_pingResults.erase(endpointToRemove);
+        }
+    }
+}
+
+void CallsServer::handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom) {
+    if (m_pingResults.contains(endpointFrom)) {
+        auto& result = m_pingResults.at(endpointFrom);
+        result = PingResult::PING_SUCCESS;
     }
 }
 
