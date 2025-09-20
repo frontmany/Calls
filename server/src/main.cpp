@@ -4,8 +4,5 @@
 
 int main() {
     CallsServer server;
-
-    while (true) {
-        std::this_thread::yield();
-    }
+    server.run();
 }

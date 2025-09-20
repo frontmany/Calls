@@ -69,8 +69,6 @@ private:
 
 private:
     std::atomic_bool m_mute = false;
-    int m_pingsFailCount = 0;
-    std::atomic_bool m_checkingConnection = false;
     bool m_running = true;
     std::optional<Call> m_call = std::nullopt;
     std::string m_myNickname{};

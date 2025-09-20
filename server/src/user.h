@@ -24,7 +24,7 @@ public:
 
 
 	void setCall(std::shared_ptr<Call> callPtr, CallRole role);
-	bool isCall() const;
+	bool inCall() const;
 	std::shared_ptr<Call> getCall();
 	void resetCall();
 	void setCallAccepted(bool accepted);

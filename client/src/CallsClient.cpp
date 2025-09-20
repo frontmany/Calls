@@ -105,7 +105,10 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
 
     case (PacketType::PING_SUCCESS):
         m_checkConnectionTimer.stop();
-        m_checkingConnection = false;
+        break;
+
+    case (PacketType::PING):
+        m_networkController.send(PacketType::PING_SUCCESS);
         break;
 
     case (PacketType::END_CALL):
@@ -314,7 +317,7 @@ void CallsClient::processQueue() {
     using namespace std::chrono_literals;
 
     auto lastCheckTime = std::chrono::steady_clock::now();
-    constexpr auto checkInterval = 5s;
+    constexpr auto checkInterval = 4s;
 
     while (m_running) {
         {
@@ -327,31 +330,23 @@ void CallsClient::processQueue() {
         }
 
         auto now = std::chrono::steady_clock::now();
-        if (!m_checkingConnection && (now - lastCheckTime >= checkInterval)) {
+        if (now - lastCheckTime >= checkInterval) {
             checkConnection();
             lastCheckTime = now;
-            m_checkingConnection = true;
         }
 
         std::this_thread::sleep_for(10ms);
     }
 }
 
-
+// here
 void CallsClient::checkConnection() {
-    if (m_pingsFailCount >= 5) {
-        m_callbacksQueue.push([this]() {m_onNetworkErrorCallback(); });
-        return;
-    }
-
     m_networkController.send(
         PacketType::PING
     );
 
     using namespace std::chrono_literals;
-    m_checkConnectionTimer.start(8s, [this]() {
-        m_callbacksQueue.push([this]() {m_pingsFailCount++; });
-    });
+    m_checkConnectionTimer.start(3600ms, [this]() {m_onNetworkErrorCallback(); });
 }
 
 void CallsClient::requestFriendInfo(const std::string& friendNickname) {
