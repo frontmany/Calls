@@ -1,4 +1,4 @@
-# Build for Windows and VS
+# Build for msvc
 * clone the repository
 
 
