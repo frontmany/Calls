@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+namespace calls {
+
 enum class PacketType : uint32_t {
 	AUTHORIZE,
 	LOGOUT,
@@ -20,3 +22,5 @@ enum class PacketType : uint32_t {
 	FRIEND_INFO_FAIL,
 	INCOMING_CALL
 };
+
+}

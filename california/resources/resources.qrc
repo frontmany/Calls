@@ -1,0 +1,19 @@
+<RCC>
+    <qresource prefix="/resources">
+	<file>background.jpg</file>
+	 <file>Pacifico-Regular.ttf</file>
+	 <file>Outfit-VariableFont_wght.ttf</file>
+	 <file>Outfit-VariableFont_wght.ttf</file>
+	 <file>lightLoginBackground.jpg</file>
+	 <file>acceptCall.png</file>
+	 <file>acceptCallHover.png</file>
+	 <file>declineCall.png</file>
+	 <file>declineCallHover.png</file>
+	 <file>reloadHover.png</file>
+	 <file>reload.png</file>
+	 <file>speaker.png</file>
+	 <file>arrowDown.png</file>
+	 <file>microphone.png</file>
+	 <file>mute-microphone.png</file>
+    </qresource>
+</RCC>

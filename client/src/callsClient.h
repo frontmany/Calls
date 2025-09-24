@@ -13,50 +13,46 @@
 #include "packetTypes.h"
 #include "incomingCallData.h"
 #include "result.h"
+#include "clientStatus.h"
 #include "timer.h"
 #include "call.h"
 
+namespace calls {
 class CallsClient {
-private:
-    enum class State : uint32_t 
-    {
-        UNAUTHORIZED,
-        FREE,
-        CALLING,
-        BUSY
-    };
-
 public:
-    CallsClient(const std::string& host, std::function<void(AuthorizationResult)> authorizationResultCallback,
-        std::function<void(CreateCallResult)> createCallResultCallback,
-        std::function<void(const IncomingCallData&)> onIncomingCall,
-        std::function<void(const std::string& friendNickname)> onIncomingCallingExpired,
+    static CallsClient& get();
+
+    void init(
+        const std::string& host,
+        std::function<void(Result)> authorizationResultCallback,
+        std::function<void(Result)> createCallResultCallback,
+        std::function<void(const std::string&)> onIncomingCall,
+        std::function<void(const std::string&)> onIncomingCallExpired,
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
-    ~CallsClient();
-
-    bool isAuthorized() const;
-    bool isInCall() const;
     bool isRunning() const;
     const std::string& getNickname() const;
+    ClientStatus getStatus() const;
     
     void run();
     void stop();
 
     void refreshAudioDevices();
     void mute(bool isMute);
-    void authorize(const std::string& nickname);
-    void createCall(const std::string& friendNickname);
+    bool authorize(const std::string& nickname);
+    bool createCall(const std::string& friendNickname);
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
-    void endCall();
+    bool endCall();
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
     int getInputVolume() const;
     int getOutputVolume() const;
 
 private:
+    CallsClient();
+    ~CallsClient();
     void onCallingEnd(const unsigned char* data, int length);
     void onReceiveCallback(const unsigned char* data, int length, PacketType type);
     bool onFriendInfoSuccess(const unsigned char* data, int length);
@@ -65,7 +61,7 @@ private:
     void requestFriendInfo(const std::string& friendNickname);
     void startCalling();
     void onInputVoice(const unsigned char* data, int length);
-    void checkConnection();
+    void logout();
 
 private:
     std::atomic_bool m_mute = false;
@@ -74,6 +70,7 @@ private:
     std::string m_myNickname{};
     CryptoPP::RSA::PublicKey m_myPublicKey;
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
+    std::future<void> m_keysFuture;
 
     std::mutex m_queueCallbacksMutex;
     std::thread m_queueProcessingThread;
@@ -83,16 +80,16 @@ private:
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
 
 
-    NetworkController m_networkController;
-    AudioEngine m_audioEngine;
+    std::unique_ptr<NetworkController> m_networkController;
+    std::unique_ptr<AudioEngine> m_audioEngine;
     Timer m_timer;
     Timer m_checkConnectionTimer;
-    State m_state = State::UNAUTHORIZED;
+    ClientStatus m_status = ClientStatus::UNAUTHORIZED;
 
-    std::function<void(AuthorizationResult)> m_authorizationResultCallback;
-    std::function<void(CreateCallResult)> m_createCallResultCallback;
-    std::function<void(const IncomingCallData&)> m_onIncomingCall;
-    std::function<void(const std::string& friendNickname)> m_onIncomingCallingExpired;
+    std::function<void(Result)> m_authorizationResultCallback;
+    std::function<void(Result)> m_createCallResultCallback;
+    std::function<void(const std::string&)> m_onIncomingCall;
+    std::function<void(const std::string& friendNickname)> m_onIncomingCallExpired;
     std::function<void()> m_onNetworkErrorCallback;
     std::function<void()> m_onCallHangUpCallback;
 
@@ -102,3 +99,5 @@ private:
     static constexpr const char* CALL_KEY = "callKey";
     static constexpr const char* PACKET_KEY = "packetKey";
 };
+
+}

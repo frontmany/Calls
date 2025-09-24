@@ -1,6 +1,8 @@
 #include "call.h"
 #include "incomingCallData.h"
 
+using namespace calls;
+
 Call::Call(const std::string& friendNicknameHash, const CryptoPP::RSA::PublicKey& friendPublicKey)
 	: m_friendNicknameHash(friendNicknameHash), m_friendPublicKey(friendPublicKey)
 {

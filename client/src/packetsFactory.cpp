@@ -3,6 +3,8 @@
 
 #include "json.hpp"
 
+using namespace calls;
+
 std::string PacketsFactory::getAuthorizationPacket(const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& myNickname) {
     nlohmann::json jsonObject;
     jsonObject[NICKNAME_HASH] = crypto::calculateHash(myNickname);

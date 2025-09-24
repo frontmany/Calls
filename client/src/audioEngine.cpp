@@ -3,6 +3,8 @@
 #include <cstring>
 #include <string>
 
+using namespace calls;
+
 AudioEngine::AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> encodedInputCallback, Encoder::Config encoderConfig, Decoder::Config decoderConfig)
     : m_sampleRate(sampleRate),
     m_framesPerBuffer(framesPerBuffer),
@@ -26,10 +28,6 @@ AudioEngine::AudioEngine(std::function<void(const unsigned char* data, int lengt
 }
 
 AudioEngine::~AudioEngine() {
-    m_devicesCheckerRunning = false;
-    if (m_devicesCheckerThread.joinable()) {
-        m_devicesCheckerThread.join();
-    }
     stopStream();
     if (m_stream) {
         Pa_CloseStream(m_stream);
@@ -118,6 +116,10 @@ void AudioEngine::setInputVolume(int volume) {
     std::lock_guard<std::mutex> lock(m_volumeMutex);
     volume = std::max(0, std::min(100, volume));
     m_inputVolume = static_cast<float>(volume) / 100.0f;
+}
+
+void AudioEngine::mute(bool isMute) {
+    m_muted = isMute;
 }
 
 void AudioEngine::setOutputVolume(int volume) {
@@ -261,7 +263,7 @@ int AudioEngine::paInputAudioCallback(const void* input, void* output, unsigned 
         return paContinue;
     }
 
-    if (input) {
+    if (input && !engine->m_muted) {
         const float* in = static_cast<const float*>(input);
         engine->processInputAudio(in, frameCount);
     }

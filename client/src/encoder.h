@@ -5,6 +5,8 @@
 #include <mutex>
 #include <cstdint>
 
+namespace calls {
+
 class Encoder {
 public:
     enum class EncoderMode {
@@ -37,3 +39,5 @@ private:
     bool m_initialized = false;
     mutable std::mutex m_mutex;
 };
+
+}

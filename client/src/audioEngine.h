@@ -13,6 +13,8 @@
 
 #include <portaudio.h>
 
+namespace calls {
+
 class AudioEngine {
 public:
     enum InitializationStatus {
@@ -33,7 +35,7 @@ public:
     bool stopStream();
     void playAudio(const unsigned char* data, int length);
     std::string getLastError() const;
-
+    void mute(bool isMute);
     void setInputVolume(int volume);  
     void setOutputVolume(int volume);
     int getInputVolume() const;
@@ -48,17 +50,10 @@ private:
         PaStreamCallbackFlags statusFlags, void* userData);
 
 private:
-    std::thread m_devicesCheckerThread;
-    std::atomic<bool> m_devicesCheckerRunning = false;
-
-    int m_previousInputDevice = -1;
-    int m_previousOutputDevice = -1;
-    std::chrono::steady_clock::time_point m_lastDeviceCheckTime;
-
-
     PaStream* m_stream = nullptr;
     std::atomic<bool> m_isInitialized = false;
     std::atomic<bool> m_isStream = false;
+    std::atomic<bool> m_muted = false;
 
     PaError m_lastError = paNoError;
     std::unique_ptr<Encoder> m_encoder;
@@ -80,3 +75,5 @@ private:
     std::vector<unsigned char> m_encodedInputBuffer;
     std::vector<float> m_decodedOutputBuffer;
 };
+
+}

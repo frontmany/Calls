@@ -9,6 +9,7 @@
 #include "asio/ts/buffer.hpp"
 #include "asio/ts/internet.hpp"
 
+namespace calls {
 
 class NetworkController {
 public:
@@ -42,3 +43,5 @@ private:
     asio::executor_work_guard<asio::io_context::executor_type> m_workGuard;
     std::thread m_asioThread;
 };
+
+}

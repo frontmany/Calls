@@ -7,6 +7,8 @@
 #include <memory>
 #include <thread>
 
+namespace calls {
+
 class Timer {
 public:
     Timer()
@@ -63,3 +65,5 @@ private:
     std::future<void> m_future;
     std::function<void()> m_onExpired;
 };
+
+}

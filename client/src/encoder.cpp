@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstring>
 
+using namespace calls;
+
 Encoder::Encoder(const Config& config) 
     : m_config(config)
 {

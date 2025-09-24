@@ -8,7 +8,7 @@
 #include "osrng.h"
 #include "base64.h"  
 
-namespace crypto {
+namespace calls { namespace crypto {
     void generateRSAKeyPair(CryptoPP::RSA::PrivateKey& privateKey, CryptoPP::RSA::PublicKey& publicKey);
     std::string RSAEncryptAESKey(const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& data);
     CryptoPP::SecByteBlock RSADecryptAESKey(const CryptoPP::RSA::PrivateKey& privateKey, const std::string& base64Cipher);
@@ -25,4 +25,4 @@ namespace crypto {
     CryptoPP::SecByteBlock deserializeAESKey(const std::string& keyStr);
 
     std::string calculateHash(const std::string& text);
-}
+}}

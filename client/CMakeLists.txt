@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 source_group("Source Files" FILES ${SOURCES})
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_library(${PROJECT_NAME} ${SOURCES})
 
 set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
 set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")

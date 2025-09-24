@@ -10,6 +10,8 @@
 #define log(message) 
 #endif
 
+using namespace calls;
+
 NetworkController::NetworkController(const std::string& host,
     const std::string& port,
     std::function<void(const unsigned char*, int, PacketType type)> onReceiveCallback,

@@ -5,8 +5,9 @@
 #include "rsa.h"
 
 #include "crypto.h"
+#include "call.h"
 
-class Call;
+namespace calls {
 
 class PacketsFactory {
 public:
@@ -26,3 +27,5 @@ private:
     static constexpr const char* NICKNAME_HASH = "nicknameHash";
     static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
 };
+
+}

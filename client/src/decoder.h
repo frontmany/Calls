@@ -6,6 +6,8 @@
 #include <mutex>
 #include <cstdint>
 
+namespace calls {
+
 class Decoder {
 public:
     struct Config {
@@ -28,3 +30,5 @@ private:
     bool m_initialized = false;
     mutable std::mutex m_mutex;
 };
+
+}

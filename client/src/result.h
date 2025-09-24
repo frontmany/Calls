@@ -1,15 +1,14 @@
 #pragma once
 
-enum class CreateCallResult {
+namespace calls {
+
+enum class Result {
 	WRONG_FRIEND_NICKNAME,
 	TIMEOUT,
 	UNAUTHORIZED,
 	CALL_ACCEPTED,
-	CALL_DECLINED
-};
-
-enum class AuthorizationResult {
+	CALL_DECLINED,
 	SUCCESS,
-	FAIL,
-	TIMEOUT
+	FAIL
 };
+}

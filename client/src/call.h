@@ -3,8 +3,9 @@
 #include <optional>
 
 #include "crypto.h"
+#include "incomingCallData.h"
 
-struct IncomingCallData;
+namespace calls {
 
 class Call {
 public:
@@ -20,3 +21,5 @@ private:
 	CryptoPP::RSA::PublicKey m_friendPublicKey;
 	CryptoPP::SecByteBlock m_callKey;
 };
+
+}

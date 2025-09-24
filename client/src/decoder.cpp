@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstring>
 
+using namespace calls;
+
 Decoder::Decoder(const Config& config)
     : m_config(config)
 {

@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <cstring>
 
-namespace crypto {
+namespace calls { namespace crypto {
     void generateRSAKeyPair(CryptoPP::RSA::PrivateKey& privateKey, CryptoPP::RSA::PublicKey& publicKey) {
         CryptoPP::AutoSeededRandomPool rng;
         privateKey.Initialize(rng, 3072);
@@ -268,4 +268,4 @@ namespace crypto {
 
         return digest;
     }
-}
+}}
