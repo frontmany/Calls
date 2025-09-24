@@ -59,7 +59,7 @@ QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
 QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
     return QString(
         "QPushButton {"
-        "   background-color: #f0f0f0;"
+        "   background-color: #e0e0e0;"
         "   color: #333333;"
         "   border: 0px solid #d0d0d0;"
         "   border-radius: 8px;"
@@ -67,11 +67,11 @@ QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
         "   margin: 10px 0px 8px 0px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: #e0e0e0;"
+        "   background-color: #d9d9d9;"
         "   border-color: #c0c0c0;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: #d0d0d0;"
+        "   background-color: #d9d9d9;"
         "}"
         "QPushButton:focus {"
         "   outline: none;"
@@ -127,8 +127,12 @@ void SettingsPanel::setupUI() {
     m_refreshButton->setIcon(QIcon(":/resources/reload.png"));
     m_refreshButton->setIconSize(QSize(32, 28));
     m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
-    QFont refreshButtonFont("Outfit", 12, QFont::Medium);
+    QFont refreshButtonFont("Outfit", 13, QFont::Medium);
     m_refreshButton->setFont(refreshButtonFont);
+
+    m_refreshCooldownTimer = new QTimer(this);
+    m_refreshCooldownTimer->setSingleShot(true);
+    m_refreshEnabled = true;
 
 
     // Toggle кнопка mute
@@ -253,7 +257,30 @@ void SettingsPanel::setupUI() {
     connect(m_micSlider, &QSlider::valueChanged, this, &SettingsPanel::onMicVolumeChanged);
     connect(m_speakerSlider, &QSlider::valueChanged, this, &SettingsPanel::onSpeakerVolumeChanged);
     connect(m_muteButton, &QPushButton::toggled, this, &SettingsPanel::onMicMuteClicked);
-    connect(m_refreshButton, &QPushButton::clicked, []() {calls::refreshAudioDevices(); });
+    connect(m_refreshButton, &QPushButton::clicked, this, [this]() {
+        if (m_refreshEnabled) {
+            calls::refreshAudioDevices();
+
+            m_refreshEnabled = false;
+            m_refreshButton->setEnabled(false);
+            m_refreshButton->setText("  Wait...");
+
+            m_refreshButton->setStyleSheet(
+                StyleSettingsPanel::refreshButtonStyle() +
+                "QPushButton { color: #999; }"
+            );
+
+            m_refreshCooldownTimer->start(2000);
+        }
+    });
+
+    connect(m_refreshCooldownTimer, &QTimer::timeout, this, [this]() {
+        m_refreshEnabled = true;
+        m_refreshButton->setEnabled(true);
+        m_refreshButton->setText("  Refresh");
+        m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
+    });
+
     setStyleSheet(StyleSettingsPanel::settingsPanelStyle());
 }
 

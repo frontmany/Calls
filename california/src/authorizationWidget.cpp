@@ -190,8 +190,8 @@ void AuthorizationWidget::clearErrorMessage() {
 }
 
 // Style definitions
-const QColor StyleAuthorizationWidget::m_primaryColor = QColor(224, 168, 0);
-const QColor StyleAuthorizationWidget::m_hoverColor = QColor(219, 164, 0);
+const QColor StyleAuthorizationWidget::m_primaryColor = QColor(21, 119, 232);
+const QColor StyleAuthorizationWidget::m_hoverColor = QColor(18, 113, 222);
 const QColor StyleAuthorizationWidget::m_errorColor = QColor(220, 80, 80, 200);
 const QColor StyleAuthorizationWidget::m_successColor = QColor(100, 200, 100, 200);
 const QColor StyleAuthorizationWidget::m_textColor = QColor(1, 11, 19);

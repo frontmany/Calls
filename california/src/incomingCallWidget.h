@@ -27,6 +27,7 @@ private:
     void setupUI();
     void setupTimer();
     void paintEvent(QPaintEvent* event) override;
+    QColor generateRandomColor(const QString& seed);
 
     QString m_friendNickname;
     QTimer* m_timer;

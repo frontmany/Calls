@@ -23,22 +23,17 @@ struct StyleMainMenuWidget {
     static const QColor m_hoverColor;
     static const QColor m_backgroundColor;
     static const QColor m_textColor;
-    static const QColor m_containerColor;
     static const QColor m_onlineColor;
     static const QColor m_offlineColor;
-    static const QColor m_settingsButtonColor;
 
-    static QString nicknameStyle();
-    static QString scrollAreaStyle();
-    static QString settingsButtonStyle();
     static QString containerStyle();
     static QString titleStyle();
+    static QString nicknameStyle();
     static QString buttonStyle();
-    static QString buttonHoverStyle();
-    static QString volumeValueStyle();
-    static QString volumeLabelStyle();
+    static QString settingsButtonStyle();
     static QString lineEditStyle();
     static QString avatarStyle(const QColor& color);
+    static QString scrollAreaStyle();
     static QString incomingCallWidgetStyle();
     static QString settingsPanelStyle();
 };
@@ -58,25 +53,18 @@ signals:
     void callRequested(const QString& friendNickname);
     void callAccepted(const QString& friendNickname);
     void callDeclined(const QString& friendNickname);
-    void logoutRequested();
-    void inputVolumeChanged(int volume);
-    void outputVolumeChanged(int volume);
 
 private slots:
-    void onRefreshAudioDevicesClicked();
     void onCallButtonClicked();
     void onSettingsButtonClicked();
     void onIncomingCallAccepted(const QString& friendNickname);
     void onIncomingCallDeclined(const QString& friendNickname);
-    //void onCallWidgetAnimationFinished(); // Новый слот
 
 private:
-    void setupAudioControlsUI();
     void showIncomingCallsArea();
     void hideIncomingCallsArea();
     void setupUI();
     void setupAnimations();
-    void setupContainerShadow();
     void paintEvent(QPaintEvent* event) override;
     QColor generateRandomColor(const QString& seed);
 
@@ -84,6 +72,7 @@ private:
     QVBoxLayout* m_mainLayout;
     QWidget* m_mainContainer;
     QVBoxLayout* m_containerLayout;
+    QPixmap m_backgroundTexture;
 
     // Header section
     QLabel* m_titleLabel;
@@ -110,7 +99,6 @@ private:
     // Animations
     QPropertyAnimation* m_settingsAnimation;
     QPropertyAnimation* m_incomingCallsAnimation;
-    QGraphicsBlurEffect* m_blurEffect;
 
     QString m_currentNickname;
 };

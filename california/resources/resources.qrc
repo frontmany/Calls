@@ -1,10 +1,9 @@
 <RCC>
     <qresource prefix="/resources">
-	<file>background.jpg</file>
 	 <file>Pacifico-Regular.ttf</file>
 	 <file>Outfit-VariableFont_wght.ttf</file>
-	 <file>Outfit-VariableFont_wght.ttf</file>
-	 <file>lightLoginBackground.jpg</file>
+	 <file>background.jpg</file>
+	 <file>blur.png</file>
 	 <file>acceptCall.png</file>
 	 <file>acceptCallHover.png</file>
 	 <file>declineCall.png</file>

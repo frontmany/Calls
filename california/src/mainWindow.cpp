@@ -5,19 +5,46 @@
 
 #include "AuthorizationWidget.h"
 #include "MainMenuWidget.h"
+#include "CallWidget.h"
 
 MainWindow::MainWindow(QWidget* parent, const std::string& host)
     : QMainWindow(parent) {
 
     calls::init(host,
-        [this](calls::Result authorizationResult) { onAuthorizationResult(authorizationResult); },
-        [this](calls::Result createCallResult) { onCreateCallResult(createCallResult); },
-        [this](const std::string& friendNickName) { onIncomingCall(friendNickName); },
-        [this](const std::string& friendNickName) { onIncomingCallExpired(friendNickName); },
-        [this]() { onCallHangUp(); },
-        [this]() { onNetworkError(); }
+        [this](calls::Result authorizationResult) {
+            QMetaObject::invokeMethod(this, "onAuthorizationResult", Qt::QueuedConnection,
+                Q_ARG(calls::Result, authorizationResult));
+        },
+        [this](calls::Result createCallResult) {
+            QMetaObject::invokeMethod(this, "onCreateCallResult", Qt::QueuedConnection,
+                Q_ARG(calls::Result, createCallResult));
+        },
+        [this](const std::string& friendNickName) {
+            QMetaObject::invokeMethod(this, "onIncomingCall", Qt::QueuedConnection,
+                Q_ARG(std::string, friendNickName));
+        },
+        [this](const std::string& friendNickName) {
+            QMetaObject::invokeMethod(this, "onIncomingCallExpired", Qt::QueuedConnection,
+                Q_ARG(std::string, friendNickName));
+        },
+        [this]() {
+            QMetaObject::invokeMethod(this, "onCallHangUp", Qt::QueuedConnection);
+        },
+        [this]() {
+            QMetaObject::invokeMethod(this, "onNetworkError", Qt::QueuedConnection);
+        }
     );
 
+    loadFonts();
+    setupUI();
+
+    m_mainMenuWidget->setNickname("feder");
+
+    // TESTING: Uncomment the line below to test CallWidget immediately
+    switchToCallWidget("TestFriend");
+}
+
+void MainWindow::loadFonts() {
     if (QFontDatabase::addApplicationFont(":/resources/Pacifico-Regular.ttf") == -1) {
         qWarning() << "Font load error:";
     }
@@ -25,68 +52,40 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host)
     if (QFontDatabase::addApplicationFont(":/resources/Outfit-VariableFont_wght.ttf") == -1) {
         qWarning() << "Font load error:";
     }
-
-    setupUI();
-
-
-
-    switchToMainMenuWidget();
-    m_mainMenuWidget->setNickname("feder");
-    m_mainMenuWidget->setStatus(calls::ClientStatus::FREE);
-
-    /*
-    // Создаем таймер для добавления тестовых звонков
-    QTimer* testTimer = new QTimer(this);
-    int callCounter = 0;
-
-    connect(testTimer, &QTimer::timeout, this, [this, callCounter]() mutable {
-        // mutable позволяет изменять захваченную копию
-        int currentCounter = callCounter + 1;
-        QString testNickname = QString("test_user_%1").arg(currentCounter);
-        m_mainMenuWidget->addIncomingCall(testNickname);
-
-        qDebug() << "Added test call from:" << testNickname;
-
-        // Увеличиваем локальную копию (не оригинал)
-        callCounter++;
-    });
-
-    // Или лучше сделать callCounter членом класса
-
-    // Запускаем таймер: добавляем звонок каждые 5 секунд
-    testTimer->start(5000);
-    */
-
-
-
-    // Также можно сразу добавить первый звонок
-    //m_mainMenuWidget->addIncomingCall("qwerty");
-    //m_mainMenuWidget->addIncomingCall("asdf");
 }
 
 void MainWindow::setupUI() {
-    // Создаем центральный виджет
+    // Create central widget
     m_centralWidget = new QWidget(this);
     setCentralWidget(m_centralWidget);
 
-    // Создаем главный layout
+    // Create main layout
     m_mainLayout = new QHBoxLayout(m_centralWidget);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
 
-    // Создаем stacked layout для переключения между виджетами
+    // Create stacked layout for switching between widgets
     m_stackedLayout = new QStackedLayout();
     m_mainLayout->addLayout(m_stackedLayout);
 
-    // Создаем виджет авторизации
+    // Create authorization widget
     m_authorizationWidget = new AuthorizationWidget(this);
     m_stackedLayout->addWidget(m_authorizationWidget);
 
-    // Создаем виджет главного меню
+    // Create main menu widget
     m_mainMenuWidget = new MainMenuWidget(this);
+    connect(m_mainMenuWidget, &MainMenuWidget::callAccepted, this, &MainWindow::onIncomingCallAccepted);
+    connect(m_mainMenuWidget, &MainMenuWidget::callDeclined, this, &MainWindow::onIncomingCallDeclined);
     m_stackedLayout->addWidget(m_mainMenuWidget);
 
-    // Устанавливаем виджет авторизации по умолчанию
+    // Create call widget
+    m_callWidget = new CallWidget(this);
+    connect(m_callWidget, &CallWidget::hangupClicked, this, &MainWindow::onHangupClicked);
+    connect(m_callWidget, &CallWidget::muteMicClicked, this, &MainWindow::onMuteMicClicked);
+    connect(m_callWidget, &CallWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerClicked);
+    m_stackedLayout->addWidget(m_callWidget);
+
+    // Set authorization widget as default
     switchToAuthorizationWidget();
 }
 
@@ -99,23 +98,56 @@ void MainWindow::switchToMainMenuWidget() {
     m_stackedLayout->setCurrentWidget(m_mainMenuWidget);
     setWindowTitle("Callifornia");
 
-    // Устанавливаем никнейм (пока заглушка)
-    m_mainMenuWidget->setNickname("TestUser");
+    // Set nickname from calls client
+    std::string nickname = calls::getNickname();
+    if (!nickname.empty()) {
+        m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
+    }
+}
+
+void MainWindow::switchToCallWidget(const QString& friendNickname) {
+    m_stackedLayout->setCurrentWidget(m_callWidget);
+    setWindowTitle("Call in Progress - Callifornia");
+    m_callWidget->setCallInfo(friendNickname);
+}
+
+void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
+    calls::acceptCall(friendNickname.toStdString());
+    switchToCallWidget(friendNickname);
+}
+
+void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
+    calls::declineCall(friendNickname.toStdString());
+}
+
+void MainWindow::onHangupClicked() {
+    calls::endCall();
+    switchToMainMenuWidget();
+    m_mainMenuWidget->clearIncomingCalls();
+}
+
+void MainWindow::onMuteMicClicked() {
+    // Implement microphone mute/unmute logic
+    qDebug() << "Microphone mute toggled";
+}
+
+void MainWindow::onMuteSpeakerClicked() {
+    // Implement speaker mute/unmute logic
+    qDebug() << "Speaker mute toggled";
 }
 
 void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
     if (authorizationResult == calls::Result::SUCCESS) {
-        m_mainMenuWidget->setNickname(QString::fromStdString(calls::getNickname()));
         switchToMainMenuWidget();
 
-        // Устанавливаем реальный никнейм из calls клиента
+        // Set real nickname from calls client
         std::string nickname = calls::getNickname();
         if (!nickname.empty()) {
             m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
         }
     }
     else {
-        // Показываем ошибку в виджете авторизации
+        // Show error in authorization widget
         QString errorMessage;
         switch (authorizationResult) {
         case calls::Result::FAIL:
@@ -129,36 +161,51 @@ void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
             break;
         }
         m_authorizationWidget->setErrorMessage(errorMessage);
-        m_authorizationWidget->reset(); // Разблокируем кнопку для повторной попытки
+        m_authorizationWidget->reset(); // Unlock button for retry
     }
 }
 
 void MainWindow::onCreateCallResult(calls::Result createCallResult) {
-    // Обработка результата создания звонка
-    // Можно показывать уведомления в главном меню
+    // Handle call creation result
+    if (createCallResult != calls::Result::SUCCESS) {
+        // If call failed, switch back to main menu
+        switchToMainMenuWidget();
+
+        QString errorMessage;
+        switch (createCallResult) {
+        case calls::Result::FAIL:
+            errorMessage = "Call failed";
+            break;
+        case calls::Result::TIMEOUT:
+            errorMessage = "Call timeout";
+            break;
+        default:
+            errorMessage = "Call error";
+            break;
+        }
+        // You might want to show this error in the main menu
+        qDebug() << "Call creation failed:" << errorMessage;
+    }
 }
 
 void MainWindow::onIncomingCall(const std::string& friendNickName) {
-    // Обработка входящего звонка
-    // Добавляем входящий вызов в главное меню
+    // Handle incoming call - add to main menu
     m_mainMenuWidget->addIncomingCall(QString::fromStdString(friendNickName));
 }
 
 void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
-    // Обработка истечения времени входящего звонка
-    // Удаляем из списка входящих вызовов
+    // Handle expired incoming call - remove from main menu
     m_mainMenuWidget->removeIncomingCall(QString::fromStdString(friendNickName));
 }
 
 void MainWindow::onCallHangUp() {
-    // Обработка завершения звонка
-    // Очищаем список входящих вызовов
+    // Handle call hang up from remote side
+    switchToMainMenuWidget();
     m_mainMenuWidget->clearIncomingCalls();
 }
 
 void MainWindow::onNetworkError() {
-    // Обработка сетевой ошибки
-    // Можно показать сообщение об ошибке и переключиться на авторизацию
+    // Handle network error
     switchToAuthorizationWidget();
     m_authorizationWidget->setErrorMessage("Network error occurred");
 }

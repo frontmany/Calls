@@ -3,28 +3,24 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QFontDatabase>
-#include <QScrollBar>
-#include <QSlider>
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <QRegularExpressionValidator>
 
 // Style definitions
-const QColor StyleMainMenuWidget::m_primaryColor = QColor(224, 168, 0);
-const QColor StyleMainMenuWidget::m_hoverColor = QColor(219, 164, 0);
+const QColor StyleMainMenuWidget::m_primaryColor = QColor(21, 119, 232);
+const QColor StyleMainMenuWidget::m_hoverColor = QColor(18, 113, 222);
 const QColor StyleMainMenuWidget::m_backgroundColor = QColor(230, 230, 230);
 const QColor StyleMainMenuWidget::m_textColor = QColor(1, 11, 19);
-const QColor StyleMainMenuWidget::m_containerColor = QColor(255, 255, 255, 200);
 const QColor StyleMainMenuWidget::m_onlineColor = QColor(100, 200, 100);
 const QColor StyleMainMenuWidget::m_offlineColor = QColor(150, 150, 150);
-const QColor StyleMainMenuWidget::m_settingsButtonColor = QColor(150, 150, 150, 150);
 
 QString StyleMainMenuWidget::containerStyle() {
     return QString("QWidget {"
-        "   background-color: %1;"
+        "   background-color: transparent;"
         "   border-radius: 20px;"
         "   padding: 0px;"
-        "}").arg(m_containerColor.name());
+        "}");
 }
 
 QString StyleMainMenuWidget::titleStyle() {
@@ -79,7 +75,7 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
 
 QString StyleMainMenuWidget::lineEditStyle() {
     return QString("QLineEdit {"
-        "   background-color: rgba(235, 235, 235, 190);"
+        "   background-color: rgba(245, 245, 245, 190);"
         "   border: 0px solid %1;"
         "   border-radius: 15px;"
         "   padding: 12px 15px;"
@@ -89,7 +85,7 @@ QString StyleMainMenuWidget::lineEditStyle() {
         "}"
         "QLineEdit:focus {"
         "   border: 0px solid %3;"
-        "   background-color: rgba(235, 235, 235, 110);"
+        "   background-color: rgba(255, 255, 255, 190);"
         "}"
         "QLineEdit::placeholder {"
         "   color: rgba(240, 240, 240, 180);"
@@ -158,35 +154,14 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
     );
 }
 
-QString StyleMainMenuWidget::volumeLabelStyle() {
-    return QString(
-        "QLabel {"
-        "   color: #333333;"
-        "   font-size: 13px;"
-        "   font-weight: bold;"
-        "   margin: 5px 0px;"
-        "}"
-    );
-}
-
-QString StyleMainMenuWidget::volumeValueStyle() {
-    return QString(
-        "QLabel {"
-        "   color: #666666;"
-        "   font-size: 12px;"
-        "   margin: 5px 0px;"
-        "   min-width: 30px;"
-        "}"
-    );
-}
-
 MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
-    setupContainerShadow();
 }
 
 void MainMenuWidget::setupUI() {
+    m_backgroundTexture = QPixmap(":/resources/blur.png");
+
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(40, 40, 40, 40);
 
@@ -228,7 +203,6 @@ void MainMenuWidget::setupUI() {
     QFont statusFont("Outfit", 11, QFont::Light);
     m_statusLabel->setFont(statusFont);
 
-    // Apply nickname style
     m_nicknameLabel->setStyleSheet(StyleMainMenuWidget::nicknameStyle());
 
     m_userTextLayout->addWidget(m_nicknameLabel);
@@ -249,7 +223,6 @@ void MainMenuWidget::setupUI() {
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
         QRegularExpression("^[a-zA-Z0-9_]+$"), this);
     m_friendNicknameEdit->setValidator(validator);
-
 
     m_callButton = new QPushButton("Make Call", m_mainContainer);
     m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
@@ -321,16 +294,8 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
 }
 
-void MainMenuWidget::setupContainerShadow() {
-    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect(this);
-    shadowEffect->setBlurRadius(20);
-    shadowEffect->setColor(QColor(0, 0, 0, 80));
-    shadowEffect->setOffset(0, 5);
-    m_mainContainer->setGraphicsEffect(shadowEffect);
-}
-
 void MainMenuWidget::setupAnimations() {
-    // Анимация для панели настроек
+    // Settings panel animation
     m_settingsAnimation = new QPropertyAnimation(m_settingsPanel, "maximumHeight", this);
     m_settingsAnimation->setDuration(200);
     m_settingsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
@@ -341,9 +306,9 @@ void MainMenuWidget::setupAnimations() {
         if (m_settingsAnimation->direction() == QAbstractAnimation::Backward) {
             m_settingsPanel->hide();
         }
-    });
+        });
 
-    // Анимация для области входящих звонков
+    // Incoming calls area animation
     m_incomingCallsAnimation = new QPropertyAnimation(m_incomingCallsScrollArea, "maximumHeight", this);
     m_incomingCallsAnimation->setDuration(250);
     m_incomingCallsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
@@ -357,19 +322,31 @@ void MainMenuWidget::setupAnimations() {
         else {
             m_incomingCallsScrollArea->setMinimumHeight(100);
         }
-    });
+        });
 }
 
 void MainMenuWidget::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
+    // Draw background gradient
     QLinearGradient gradient(0, 90, width(), height());
     gradient.setColorAt(0.0, QColor(230, 230, 230));
     gradient.setColorAt(0.5, QColor(220, 230, 240));
     gradient.setColorAt(1.0, QColor(240, 240, 240));
-
     painter.fillRect(rect(), gradient);
+
+    // Draw the main container background with texture if loaded
+    if (!m_backgroundTexture.isNull()) {
+        QPainterPath path;
+        QRect containerRect = m_mainContainer->geometry();
+        path.addRoundedRect(containerRect, 20, 20);
+
+        painter.setClipPath(path);
+        painter.drawPixmap(containerRect, m_backgroundTexture);
+        painter.setClipping(false);
+    }
+
     QWidget::paintEvent(event);
 }
 
@@ -387,7 +364,6 @@ void MainMenuWidget::setNickname(const QString& nickname) {
 }
 
 void MainMenuWidget::setStatus(calls::ClientStatus status) {
-    // Update status
     if (status == calls::ClientStatus::FREE) {
         m_statusLabel->setText("Online");
         m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_onlineColor.name()));
@@ -428,12 +404,6 @@ void MainMenuWidget::onSettingsButtonClicked() {
     }
 }
 
-void MainMenuWidget::onRefreshAudioDevicesClicked() {
-    // Реализация обновления аудио устройств
-    //emit refreshAudioDevices();
-}
-
-// Остальные методы без изменений...
 void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
     if (m_incomingCallsLayout->count() == 0) {
         showIncomingCallsArea();
@@ -496,6 +466,6 @@ void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
 }
 
 void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
-    emit callDeclined(friendNickname);
     removeIncomingCall(friendNickname);
+    emit callDeclined(friendNickname);
 }

@@ -7,7 +7,8 @@
 #include "calls.h"
 
 class AuthorizationWidget;
-class MainMenuWidget; 
+class MainMenuWidget;
+class CallWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -24,14 +25,24 @@ public slots:
     void onCallHangUp();
     void onNetworkError();
 
+private slots:
+    void onIncomingCallAccepted(const QString& friendNickname);
+    void onIncomingCallDeclined(const QString& friendNickname);
+    void onHangupClicked();
+    void onMuteMicClicked();
+    void onMuteSpeakerClicked();
+
 private:
     void setupUI();
     void switchToAuthorizationWidget();
-    void switchToMainMenuWidget(); 
+    void switchToMainMenuWidget();
+    void switchToCallWidget(const QString& friendNickname);
+    void loadFonts();
 
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;
     QStackedLayout* m_stackedLayout;
     AuthorizationWidget* m_authorizationWidget;
-    MainMenuWidget* m_mainMenuWidget; 
+    MainMenuWidget* m_mainMenuWidget;
+    CallWidget* m_callWidget;
 };

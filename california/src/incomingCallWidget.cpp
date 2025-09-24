@@ -34,14 +34,16 @@ void IncomingCallWidget::setupUI() {
     m_avatarLabel = new QLabel(leftWidget);
     m_avatarLabel->setFixedSize(50, 50);
     m_avatarLabel->setAlignment(Qt::AlignCenter);
+  
+    QColor avatarColor = generateRandomColor(m_friendNickname);
     m_avatarLabel->setStyleSheet(
-        "QLabel {"
-        "   background-color: #E0A800;"
-        "   border-radius: 25px;"
-        "   color: white;"
-        "   font-size: 18px;"
-        "   font-weight: bold;"
-        "}"
+        QString("QLabel {"
+            "   background-color: %1;"
+            "   border-radius: 25px;"
+            "   color: white;"
+            "   font-size: 18px;"
+            "   font-weight: bold;"
+            "}").arg(avatarColor.name())
     );
 
     // Generate avatar letter
@@ -60,21 +62,25 @@ void IncomingCallWidget::setupUI() {
     m_nicknameLabel->setStyleSheet(
         "QLabel {"
         "   color: #010B13;"
-        "   font-size: 14px;"
-        "   font-weight: bold;"
         "}"
     );
+    QFont nicknameLabelFont("Outfit", 13, QFont::Bold);
+    m_nicknameLabel->setFont(nicknameLabelFont);
+
 
     m_callTypeLabel = new QLabel("incoming call", textWidget);
     m_callTypeLabel->setAttribute(Qt::WA_TranslucentBackground);
     m_callTypeLabel->setStyleSheet(
         "QLabel {"
         "   color: #666666;"
-        "   font-size: 12px;"
         "}"
     );
+    QFont callTypeFont("Outfit", 12, QFont::Light);
+    m_callTypeLabel->setFont(callTypeFont);
+
 
     textLayout->addWidget(m_nicknameLabel);
+    textLayout->addSpacing(-7);
     textLayout->addWidget(m_callTypeLabel);
 
     leftLayout->addWidget(m_avatarLabel);
@@ -146,6 +152,11 @@ void IncomingCallWidget::setupUI() {
         "   border: 1px solid rgba(200, 200, 200, 100);"
         "}"
     );
+}
+
+QColor IncomingCallWidget::generateRandomColor(const QString& seed) {
+    int hash = qHash(seed);
+    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
 }
 
 const QString& IncomingCallWidget::getFriendNickname() {

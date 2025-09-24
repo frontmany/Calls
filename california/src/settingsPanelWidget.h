@@ -4,6 +4,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QPushButton>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
@@ -26,9 +27,11 @@ private:
     QLabel* m_micValueLabel;
     QLabel* m_speakerValueLabel;
     QPushButton* m_refreshButton;
+    QTimer* m_refreshCooldownTimer = nullptr;
     ButtonIcon* m_micMuteButton = nullptr;
     QPushButton* m_muteButton = nullptr;
     bool m_isMicMuted = false;
+    bool m_refreshEnabled = false;
     int m_micVolume = 50;
 
     struct StyleSettingsPanel {
