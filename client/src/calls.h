@@ -72,9 +72,19 @@ namespace calls {
         CallsClient::get().mute(isMute);
     }
 
+    inline void logout()
+    {
+        CallsClient::get().logout();
+    }
+
     inline bool isMuted()
     {
        return CallsClient::get().isMuted();
+    }
+
+    inline bool isInitialized()
+    {
+        return CallsClient::get().isRunning();
     }
 
     inline void endCall()

@@ -32,7 +32,7 @@ void CallsClient::init(
     m_onSimultaneousCalling = onSimultaneousCalling;
     m_onIncomingCall = onIncomingCall;
     m_onCallHangUpCallback = onCallHangUpCallback;
-
+    m_running = true;
 
     m_keysFuture = std::async(std::launch::async, [this]() {
         crypto::generateRSAKeyPair(m_myPrivateKey, m_myPublicKey);
@@ -100,7 +100,7 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
     case (PacketType::AUTHORIZATION_SUCCESS):
         m_timer.stop();
         m_status = ClientStatus::FREE;
-            m_callbacksQueue.push([this]() {m_createCallResultCallback(Result::SUCCESS); });
+            m_callbacksQueue.push([this]() {m_authorizationResultCallback(Result::SUCCESS); });
         break;
 
     case (PacketType::AUTHORIZATION_FAIL):
@@ -222,6 +222,14 @@ void CallsClient::logout() {
         m_timer.stop();
     }
     
+    if (m_status == ClientStatus::CALLING) {
+        stopCalling();
+    }
+
+    if (m_status == ClientStatus::BUSY) {
+        endCall();
+    }
+
     if (m_audioEngine && m_audioEngine->isStream()) {
         m_audioEngine->stopStream();
     }
@@ -254,9 +262,9 @@ bool CallsClient::authorize(const std::string& nickname) {
     );
 
     using namespace std::chrono_literals;
-    m_timer.start(4s, [this]() {
+    m_timer.start(2s, [this]() {
         std::lock_guard<std::mutex> lock(m_queueCallbacksMutex);
-        m_callbacksQueue.push([this]() {m_myNickname = "";  m_createCallResultCallback(Result::TIMEOUT); });
+        m_callbacksQueue.push([this]() {m_myNickname = "";  m_authorizationResultCallback(Result::TIMEOUT); });
     });
 
     return true;

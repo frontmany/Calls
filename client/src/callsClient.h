@@ -32,12 +32,11 @@ public:
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
+    void logout();
     bool isRunning() const;
     const std::string& getNickname() const;
     ClientStatus getStatus() const;
-    
-    void run();
-    void stop();
+
 
     void refreshAudioDevices();
     void mute(bool isMute);
@@ -64,7 +63,6 @@ private:
     void requestFriendInfo(const std::string& friendNickname);
     void startCalling();
     void onInputVoice(const unsigned char* data, int length);
-    void logout();
 
 private:
     std::atomic_bool m_mute = false;

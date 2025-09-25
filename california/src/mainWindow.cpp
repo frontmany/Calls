@@ -41,12 +41,6 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host)
 
     loadFonts();
     setupUI();
-
-    m_mainMenuWidget->setNickname("feder");
-    //switchToMainMenuWidget();
-
-    // TESTING: Uncomment the line below to test CallWidget immediately
-    switchToCallWidget("TestFriend");
 }
 
 void MainWindow::loadFonts() {
@@ -145,6 +139,9 @@ void MainWindow::onMuteSpeakerClicked() {
     qDebug() << "Speaker mute toggled";
 }
 
+
+
+
 void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
     if (authorizationResult == calls::Result::SUCCESS) {
         switchToMainMenuWidget();
@@ -169,8 +166,9 @@ void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
             errorMessage = "Unknown error";
             break;
         }
-        m_authorizationWidget->setErrorMessage(errorMessage);
+
         m_authorizationWidget->reset(); // Unlock button for retry
+        m_authorizationWidget->setErrorMessage(errorMessage);
     }
 }
 
@@ -206,7 +204,8 @@ void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
 }
 
 void MainWindow::onSimultaneousCalling(const std::string& friendNickName) {
-
+    calls::acceptCall(friendNickName);
+    switchToCallWidget(QString::fromStdString(friendNickName));
 }
 
 void MainWindow::onCallHangUp() {
@@ -218,5 +217,6 @@ void MainWindow::onCallHangUp() {
 void MainWindow::onNetworkError() {
     // Handle network error
     switchToAuthorizationWidget();
+    m_authorizationWidget->reset();
     m_authorizationWidget->setErrorMessage("Network error occurred");
 }

@@ -57,6 +57,7 @@ private slots:
     void updateCallTimer();
     void showMicSlider();
     void showSpeakerSlider();
+    void onRefreshCooldownFinished();
 
 private:
     void setupUI();
@@ -102,6 +103,10 @@ private:
     QTimer* m_callTimer;
     QTime m_callDuration;
     QString m_friendNickname;
+
+    // refresh button cooldown 
+    QTimer* m_refreshCooldownTimer;
+    bool m_refreshEnabled;
 
     // States
     bool m_muted = false;

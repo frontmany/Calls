@@ -118,6 +118,12 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_callTimer = new QTimer(this);
     m_callDuration = QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &CallWidget::updateCallTimer);
+
+    // Initialize refresh cooldown timer
+    m_refreshCooldownTimer = new QTimer(this);
+    m_refreshCooldownTimer->setSingleShot(true);
+    m_refreshEnabled = true;
+    connect(m_refreshCooldownTimer, &QTimer::timeout, this, &CallWidget::onRefreshCooldownFinished);
 }
 
 void CallWidget::setupUI() {
@@ -171,6 +177,7 @@ void CallWidget::setupUI() {
     // Refresh button
     m_refreshButton = new ButtonIcon(m_buttonsPanel, QIcon(":/resources/reload.png"), QIcon(":/resources/reloadHover.png"), 40, 40);
     m_refreshButton->setSize(52, 34);
+    m_refreshButton->setToolTip("Refresh audio devices if changed");
 
     // Mute button
     m_muteButton = new ToggleButtonIcon(m_buttonsPanel, QIcon(":/resources/mute-microphone.png"), QIcon(":/resources/mute-microphoneHover.png"), QIcon(":/resources/mute-enabled-microphone.png"), QIcon(":/resources/mute-enabled-microphoneHover.png"), 40, 40);
@@ -323,7 +330,21 @@ void CallWidget::setupUI() {
     connect(m_muteButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteClicked);
     connect(m_speakerButton, &ButtonIcon::clicked, this, &CallWidget::showSpeakerSlider);
     connect(m_hangupButton, &QPushButton::clicked, this, &CallWidget::onHangupClicked);
-    connect(m_refreshButton, &ButtonIcon::clicked, this, &CallWidget::onRefreshAudioDevicesClicked);
+    connect(m_refreshButton, &ButtonIcon::clicked, this, [this]() {
+        if (m_refreshEnabled) {
+            calls::refreshAudioDevices();
+
+            // Start cooldown
+            m_refreshEnabled = false;
+            m_refreshButton->setEnabled(false);
+
+            // Visual feedback for cooldown
+            m_refreshButton->setIcons(QIcon(":/resources/reloadDisabled.png"), QIcon(":/resources/reloadDisabled.png")); // Optional: different icon
+            m_refreshButton->setToolTip("Refresh cooldown: 2s");
+
+            m_refreshCooldownTimer->start(2000); // 2 seconds cooldown
+        }
+        });
 
     // Connect label buttons to show/hide sliders (optional functionality)
     connect(m_micLabel, &ButtonIcon::clicked, this, &CallWidget::showMicSlider);
@@ -338,6 +359,13 @@ void CallWidget::setupUI() {
     shadowEffect->setColor(QColor(0, 0, 0, 80));
     shadowEffect->setOffset(0, 5);
     m_mainContainer->setGraphicsEffect(shadowEffect);
+}
+
+void CallWidget::onRefreshCooldownFinished() {
+    m_refreshEnabled = true;
+    m_refreshButton->setEnabled(true);
+    m_refreshButton->setIcons(QIcon(":/resources/reload.png"), QIcon(":/resources/reloadHover.png"));
+    m_refreshButton->setToolTip("Refresh audio devices");
 }
 
 void CallWidget::paintEvent(QPaintEvent* event) {

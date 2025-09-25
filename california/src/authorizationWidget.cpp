@@ -153,6 +153,8 @@ void AuthorizationWidget::onAuthorizeClicked() {
         m_authorizeButton->setDisabled(true);
 
         clearErrorMessage();
+
+        
         calls::authorize(nickname.toStdString());
     }
     else {

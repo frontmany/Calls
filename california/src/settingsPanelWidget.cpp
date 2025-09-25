@@ -129,6 +129,7 @@ void SettingsPanel::setupUI() {
     m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
     QFont refreshButtonFont("Outfit", 13, QFont::Medium);
     m_refreshButton->setFont(refreshButtonFont);
+    m_refreshButton->setToolTip("Refresh audio devices if changed");
 
     m_refreshCooldownTimer = new QTimer(this);
     m_refreshCooldownTimer->setSingleShot(true);
