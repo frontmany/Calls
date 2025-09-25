@@ -27,6 +27,10 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host)
             QMetaObject::invokeMethod(this, "onIncomingCallExpired", Qt::QueuedConnection,
                 Q_ARG(std::string, friendNickName));
         },
+        [this](const std::string& friendNickName) {
+            QMetaObject::invokeMethod(this, "onSimultaneousCalling", Qt::QueuedConnection,
+                Q_ARG(std::string, friendNickName));
+        },
         [this]() {
             QMetaObject::invokeMethod(this, "onCallHangUp", Qt::QueuedConnection);
         },
@@ -39,6 +43,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host)
     setupUI();
 
     m_mainMenuWidget->setNickname("feder");
+    //switchToMainMenuWidget();
 
     // TESTING: Uncomment the line below to test CallWidget immediately
     switchToCallWidget("TestFriend");
@@ -75,14 +80,11 @@ void MainWindow::setupUI() {
     // Create main menu widget
     m_mainMenuWidget = new MainMenuWidget(this);
     connect(m_mainMenuWidget, &MainMenuWidget::callAccepted, this, &MainWindow::onIncomingCallAccepted);
-    connect(m_mainMenuWidget, &MainMenuWidget::callDeclined, this, &MainWindow::onIncomingCallDeclined);
     m_stackedLayout->addWidget(m_mainMenuWidget);
 
     // Create call widget
     m_callWidget = new CallWidget(this);
     connect(m_callWidget, &CallWidget::hangupClicked, this, &MainWindow::onHangupClicked);
-    connect(m_callWidget, &CallWidget::muteMicClicked, this, &MainWindow::onMuteMicClicked);
-    connect(m_callWidget, &CallWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerClicked);
     m_stackedLayout->addWidget(m_callWidget);
 
     // Set authorization widget as default
@@ -96,6 +98,12 @@ void MainWindow::switchToAuthorizationWidget() {
 
 void MainWindow::switchToMainMenuWidget() {
     m_stackedLayout->setCurrentWidget(m_mainMenuWidget);
+
+    m_mainMenuWidget->setInputVolume(calls::getInputVolume());
+    m_mainMenuWidget->setOutputVolume(calls::getOutputVolume());
+    m_mainMenuWidget->setMuted(calls::isMuted());
+
+
     setWindowTitle("Callifornia");
 
     // Set nickname from calls client
@@ -107,17 +115,18 @@ void MainWindow::switchToMainMenuWidget() {
 
 void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_stackedLayout->setCurrentWidget(m_callWidget);
-    setWindowTitle("Call in Progress - Callifornia");
+
+    m_callWidget->setInputVolume(calls::getInputVolume());
+    m_callWidget->setOutputVolume(calls::getOutputVolume());
+    m_callWidget->setMuted(calls::isMuted());
+
+    setWindowTitle("Call In Progress - Callifornia");
     m_callWidget->setCallInfo(friendNickname);
 }
 
 void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
     calls::acceptCall(friendNickname.toStdString());
     switchToCallWidget(friendNickname);
-}
-
-void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
-    calls::declineCall(friendNickname.toStdString());
 }
 
 void MainWindow::onHangupClicked() {
@@ -166,18 +175,16 @@ void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
 }
 
 void MainWindow::onCreateCallResult(calls::Result createCallResult) {
-    // Handle call creation result
     if (createCallResult != calls::Result::SUCCESS) {
-        // If call failed, switch back to main menu
-        switchToMainMenuWidget();
-
         QString errorMessage;
         switch (createCallResult) {
         case calls::Result::FAIL:
             errorMessage = "Call failed";
+            m_mainMenuWidget->clearCallingInfo();
             break;
         case calls::Result::TIMEOUT:
             errorMessage = "Call timeout";
+            m_mainMenuWidget->clearCallingInfo();
             break;
         default:
             errorMessage = "Call error";
@@ -196,6 +203,10 @@ void MainWindow::onIncomingCall(const std::string& friendNickName) {
 void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
     // Handle expired incoming call - remove from main menu
     m_mainMenuWidget->removeIncomingCall(QString::fromStdString(friendNickName));
+}
+
+void MainWindow::onSimultaneousCalling(const std::string& friendNickName) {
+
 }
 
 void MainWindow::onCallHangUp() {

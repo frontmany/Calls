@@ -28,6 +28,7 @@ public:
         std::function<void(Result)> createCallResultCallback,
         std::function<void(const std::string&)> onIncomingCall,
         std::function<void(const std::string&)> onIncomingCallExpired,
+        std::function<void(const std::string&)> onSimultaneousCalling,
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
@@ -40,8 +41,10 @@ public:
 
     void refreshAudioDevices();
     void mute(bool isMute);
+    bool isMuted();
     bool authorize(const std::string& nickname);
     bool createCall(const std::string& friendNickname);
+    bool stopCalling();
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
     bool endCall();
@@ -53,7 +56,7 @@ public:
 private:
     CallsClient();
     ~CallsClient();
-    void onCallingEnd(const unsigned char* data, int length);
+    void onIncomingCallingEnd(const unsigned char* data, int length);
     void onReceiveCallback(const unsigned char* data, int length, PacketType type);
     bool onFriendInfoSuccess(const unsigned char* data, int length);
     bool onIncomingCall(const unsigned char* data, int length);
@@ -90,6 +93,7 @@ private:
     std::function<void(Result)> m_createCallResultCallback;
     std::function<void(const std::string&)> m_onIncomingCall;
     std::function<void(const std::string& friendNickname)> m_onIncomingCallExpired;
+    std::function<void(const std::string& friendNickname)> m_onSimultaneousCalling;
     std::function<void()> m_onNetworkErrorCallback;
     std::function<void()> m_onCallHangUpCallback;
 

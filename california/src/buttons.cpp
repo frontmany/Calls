@@ -405,6 +405,146 @@ void ButtonIcon::hoverMove(QHoverEvent* event)
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ToggleButtonIcon::ToggleButtonIcon(QWidget* parent, int width, int height)
+    : QWidget(parent)
+{
+    setSize(width, height);
+    setMouseTracking(true);
+    setAttribute(Qt::WA_Hover);
+}
+
+ToggleButtonIcon::ToggleButtonIcon(QWidget* parent, const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover, int width, int height)
+    : QWidget(parent),
+    m_icon(icon),
+    m_iconHover(iconHover),
+    m_iconToggled(iconToggled),
+    m_iconToggledHover(iconToggledHover)
+{
+    setSize(width, height);
+    setMouseTracking(true);
+    setAttribute(Qt::WA_Hover);
+    updateIcon();
+}
+
+void ToggleButtonIcon::setIcons(const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover)
+{
+    m_icon = icon;
+    m_iconHover = iconHover;
+    m_iconToggled = iconToggled;
+    m_iconToggledHover = iconToggledHover;
+    updateIcon();
+}
+
+void ToggleButtonIcon::setSize(int width, int height)
+{
+    setFixedSize(width, height);
+    m_iconSize = QSize(width, height);
+    update();
+}
+
+void ToggleButtonIcon::setToggled(bool isToggled)
+{
+    if (m_toggled != isToggled) {
+        m_toggled = isToggled;
+        updateIcon();
+        update();
+        emit toggled(m_toggled);
+    }
+}
+
+void ToggleButtonIcon::paintEvent(QPaintEvent* event)
+{
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    if (m_currentIcon && !m_currentIcon->isNull())
+    {
+        int x = (width() - m_iconSize.width()) / 2;
+        int y = (height() - m_iconSize.height()) / 2;
+        painter.drawPixmap(x, y, m_currentIcon->pixmap(m_iconSize));
+    }
+}
+
+bool ToggleButtonIcon::event(QEvent* event)
+{
+    switch (event->type())
+    {
+    case QEvent::HoverEnter:
+        hoverEnter(static_cast<QHoverEvent*>(event));
+        return true;
+    case QEvent::HoverLeave:
+        hoverLeave(static_cast<QHoverEvent*>(event));
+        return true;
+    case QEvent::HoverMove:
+        hoverMove(static_cast<QHoverEvent*>(event));
+        return true;
+    default:
+        return QWidget::event(event);
+    }
+}
+
+void ToggleButtonIcon::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton && rect().contains(event->pos())) {
+        setToggled(!m_toggled);
+        emit clicked();
+    }
+}
+
+void ToggleButtonIcon::updateIcon() {
+    if (m_toggled) {
+        m_currentIcon = m_hovered ? &m_iconToggledHover : &m_iconToggled;
+    }
+    else {
+        m_currentIcon = m_hovered ? &m_iconHover : &m_icon;
+    }
+}
+
+void ToggleButtonIcon::hoverEnter(QHoverEvent* event)
+{
+    m_hovered = true;
+    updateIcon();
+    update();
+}
+
+void ToggleButtonIcon::hoverLeave(QHoverEvent* event)
+{
+    m_hovered = false;
+    updateIcon();
+    update();
+}
+
+void ToggleButtonIcon::hoverMove(QHoverEvent* event)
+{
+    update();
+}
+
 /*
 void RoundIconButton::setTheme(Theme theme) {
     if (theme == DARK) {

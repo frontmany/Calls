@@ -122,6 +122,10 @@ void AudioEngine::mute(bool isMute) {
     m_muted = isMute;
 }
 
+bool AudioEngine::isMuted() {
+    return m_muted;
+}
+
 void AudioEngine::setOutputVolume(int volume) {
     std::lock_guard<std::mutex> lock(m_volumeMutex);
     volume = std::max(0, std::min(100, volume));

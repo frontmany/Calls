@@ -14,6 +14,9 @@ class SettingsPanel : public QWidget {
     Q_OBJECT
 public:
     SettingsPanel(QWidget* parent = nullptr);
+    void setInputVolume(int volume);
+    void setOutputVolume(int volume);
+    void setMuted(bool muted);
 
 private slots:
     void onMicVolumeChanged(int volume);
@@ -32,7 +35,6 @@ private:
     QPushButton* m_muteButton = nullptr;
     bool m_isMicMuted = false;
     bool m_refreshEnabled = false;
-    int m_micVolume = 50;
 
     struct StyleSettingsPanel {
         static const QColor primaryColor;

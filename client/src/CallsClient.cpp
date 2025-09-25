@@ -21,6 +21,7 @@ void CallsClient::init(
     std::function<void(Result)> createCallResultCallback,
     std::function<void(const std::string&)> onIncomingCall,
     std::function<void(const std::string&)> onIncomingCallExpired,
+    std::function<void(const std::string&)> onSimultaneousCalling,
     std::function<void()> onCallHangUpCallback,
     std::function<void()> onNetworkErrorCallback)
 {
@@ -28,11 +29,11 @@ void CallsClient::init(
     m_createCallResultCallback = createCallResultCallback;
     m_onNetworkErrorCallback = onNetworkErrorCallback;
     m_onIncomingCallExpired = onIncomingCallExpired;
+    m_onSimultaneousCalling = onSimultaneousCalling;
     m_onIncomingCall = onIncomingCall;
     m_onCallHangUpCallback = onCallHangUpCallback;
 
 
-    // here
     m_keysFuture = std::async(std::launch::async, [this]() {
         crypto::generateRSAKeyPair(m_myPrivateKey, m_myPublicKey);
     });
@@ -122,6 +123,8 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
         break;
 
     case (PacketType::CALL_ACCEPTED):
+        if (m_status == ClientStatus::BUSY) break;
+
         m_timer.stop();
         m_status = ClientStatus::BUSY;
         if (m_call && m_audioEngine) {
@@ -137,7 +140,7 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
         break;
 
     case (PacketType::CALLING_END):
-        onCallingEnd(data, length);
+        onIncomingCallingEnd(data, length);
         break;
 
     case (PacketType::END_CALL):
@@ -167,8 +170,20 @@ void CallsClient::mute(bool isMute) {
     m_audioEngine->mute(isMute);
 }
 
+bool CallsClient::isMuted() {
+    return m_audioEngine->isMuted();
+}
+
 void CallsClient::refreshAudioDevices() {
     m_audioEngine->refreshAudioDevices();
+}
+
+int CallsClient::getInputVolume() const {
+    return m_audioEngine->getInputVolume();
+}
+
+int CallsClient::getOutputVolume() const {
+    return m_audioEngine->getOutputVolume();
 }
 
 void CallsClient::setInputVolume(int volume) {
@@ -259,10 +274,36 @@ bool CallsClient::endCall() {
 
 bool CallsClient::createCall(const std::string& friendNickname) {
     if (m_status == ClientStatus::UNAUTHORIZED || m_call) return false;
-    m_status = ClientStatus::CALLING;
+
+    {
+        std::lock_guard<std::mutex> lock(m_incomingCallsMutex);
+        for (auto& [timer, incomingCall] : m_incomingCalls) {
+            if (crypto::calculateHash(incomingCall.friendNickname) == crypto::calculateHash(friendNickname)) {
+                m_callbacksQueue.push([this, friendNickname]() {m_onSimultaneousCalling(friendNickname); });
+                return false;
+            }
+        }
+    }
+
     requestFriendInfo(friendNickname);
 
     return true;
+}
+
+bool CallsClient::stopCalling() {
+    if (m_status != ClientStatus::CALLING) return false;
+    
+    m_timer.stop();
+    m_status = ClientStatus::FREE;
+
+    if (m_call) {
+        m_networkController->send(
+            PacketsFactory::getCallingEndPacket(m_myNickname, m_call.value().getFriendNicknameHash()),
+            PacketType::CALLING_END
+        );
+
+        m_call = std::nullopt;
+    }
 }
 
 bool CallsClient::declineIncomingCall(const std::string& friendNickname) {
@@ -353,11 +394,13 @@ void CallsClient::requestFriendInfo(const std::string& friendNickname) {
 bool CallsClient::onFriendInfoSuccess(const unsigned char* data, int length) {
     try {
         nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
-
+        m_status = ClientStatus::CALLING;
+        
         m_call = Call(
             jsonObject[NICKNAME_HASH],
             crypto::deserializePublicKey(jsonObject[PUBLIC_KEY])
         );
+
         return true;
     }
     catch (const std::exception& e) {
@@ -373,6 +416,12 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
         auto packetAesKey = crypto::RSADecryptAESKey(m_myPrivateKey, jsonObject[PACKET_KEY]);
         std::string nickname = crypto::AESDecrypt(packetAesKey, jsonObject[NICKNAME]);
         auto callKey = crypto::RSADecryptAESKey(m_myPrivateKey, jsonObject[CALL_KEY]);
+
+        if (m_call && m_status == ClientStatus::CALLING) {
+            if (m_call.value().getFriendNicknameHash() == crypto::calculateHash(nickname)) {
+                declineIncomingCall(nickname);
+            }
+        }
 
         auto timer = std::make_unique<Timer>();
         timer->start(std::chrono::seconds(32), [this, nickname]() {
@@ -406,12 +455,10 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
     }
 }
 
-void CallsClient::onCallingEnd(const unsigned char* data, int length) {
+void CallsClient::onIncomingCallingEnd(const unsigned char* data, int length) {
     try {
         nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
         std::string friendNicknameHash = jsonObject[NICKNAME_HASH];
-
-        std::lock_guard<std::mutex> lock(m_incomingCallsMutex);
 
         auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(),
             [&friendNicknameHash](const auto& pair) {

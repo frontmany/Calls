@@ -14,6 +14,7 @@ namespace calls {
         std::function<void(Result)> createCallResultCallback,
         std::function<void(const std::string& friendNickName)> onIncomingCall,
         std::function<void(const std::string&)> onIncomingCallExpired,
+        std::function<void(const std::string&)> onSimultaneousCalling,
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback)
     {
@@ -22,6 +23,7 @@ namespace calls {
             std::move(createCallResultCallback),
             std::move(onIncomingCall),
             std::move(onIncomingCallExpired),
+            std::move(onSimultaneousCalling),
             std::move(onCallHangUpCallback),
             std::move(onNetworkErrorCallback));
     }
@@ -41,9 +43,14 @@ namespace calls {
         CallsClient::get().authorize(nickname);
     }
 
-    inline void createCall(const std::string& friendNickname)
+    inline void startCalling(const std::string& friendNickname)
     {
         CallsClient::get().createCall(friendNickname);
+    }
+
+    inline void stopCalling()
+    {
+        CallsClient::get().stopCalling();
     }
 
     inline void acceptCall(const std::string& friendNickname)
@@ -63,6 +70,11 @@ namespace calls {
     inline void mute(bool isMute)
     {
         CallsClient::get().mute(isMute);
+    }
+
+    inline bool isMuted()
+    {
+       return CallsClient::get().isMuted();
     }
 
     inline void endCall()

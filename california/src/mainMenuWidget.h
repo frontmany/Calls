@@ -25,6 +25,8 @@ struct StyleMainMenuWidget {
     static const QColor m_textColor;
     static const QColor m_onlineColor;
     static const QColor m_offlineColor;
+    static const QColor m_callingColor;
+    static const QColor m_errorColor;
 
     static QString containerStyle();
     static QString titleStyle();
@@ -36,6 +38,9 @@ struct StyleMainMenuWidget {
     static QString scrollAreaStyle();
     static QString incomingCallWidgetStyle();
     static QString settingsPanelStyle();
+    static QString callingSectionStyle();
+    static QString callingTextStyle();
+    static QString errorLabelStyle();
 };
 
 class MainMenuWidget : public QWidget {
@@ -48,6 +53,12 @@ public:
     void addIncomingCall(const QString& friendNickname);
     void removeIncomingCall(const QString& friendNickname);
     void clearIncomingCalls();
+    void setCallingInfo(const QString& friendNickname);
+    void clearCallingInfo();
+
+    void setInputVolume(int volume);
+    void setOutputVolume(int volume);
+    void setMuted(bool muted);
 
 signals:
     void callRequested(const QString& friendNickname);
@@ -59,6 +70,7 @@ private slots:
     void onSettingsButtonClicked();
     void onIncomingCallAccepted(const QString& friendNickname);
     void onIncomingCallDeclined(const QString& friendNickname);
+    void onCancelCallClicked();
 
 private:
     void showIncomingCallsArea();
@@ -67,6 +79,9 @@ private:
     void setupAnimations();
     void paintEvent(QPaintEvent* event) override;
     QColor generateRandomColor(const QString& seed);
+    void updateCallingState(bool calling);
+    void setErrorMessage(const QString& errorText);
+    void clearErrorMessage();
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
@@ -83,7 +98,14 @@ private:
     QLabel* m_nicknameLabel;
     QLabel* m_statusLabel;
 
+    // Calling section (new)
+    QWidget* m_callingSection;
+    QHBoxLayout* m_callingLayout;
+    QLabel* m_callingText;
+    QPushButton* m_cancelCallButton;
+
     // Call section
+    QLabel* m_errorLabel;
     QLineEdit* m_friendNicknameEdit;
     QPushButton* m_callButton;
 
@@ -99,6 +121,8 @@ private:
     // Animations
     QPropertyAnimation* m_settingsAnimation;
     QPropertyAnimation* m_incomingCallsAnimation;
+    QPropertyAnimation* m_callingAnimation;
 
     QString m_currentNickname;
+    QString m_callingFriend;
 };

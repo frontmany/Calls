@@ -36,6 +36,7 @@ public:
     void playAudio(const unsigned char* data, int length);
     std::string getLastError() const;
     void mute(bool isMute);
+    bool isMuted();
     void setInputVolume(int volume);  
     void setOutputVolume(int volume);
     int getInputVolume() const;

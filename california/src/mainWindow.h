@@ -22,12 +22,12 @@ public slots:
     void onCreateCallResult(calls::Result createCallResult);
     void onIncomingCall(const std::string& friendNickName);
     void onIncomingCallExpired(const std::string& friendNickName);
+    void onSimultaneousCalling(const std::string& friendNickName);
     void onCallHangUp();
     void onNetworkError();
 
 private slots:
     void onIncomingCallAccepted(const QString& friendNickname);
-    void onIncomingCallDeclined(const QString& friendNickname);
     void onHangupClicked();
     void onMuteMicClicked();
     void onMuteSpeakerClicked();

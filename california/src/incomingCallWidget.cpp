@@ -5,7 +5,7 @@
 #include <QFontDatabase>
 
 IncomingCallWidget::IncomingCallWidget(const QString& friendNickname, QWidget* parent)
-    : QWidget(parent), m_friendNickname(friendNickname), m_remainingSeconds(30) {
+    : QWidget(parent), m_friendNickname(friendNickname), m_remainingSeconds(32) {
 
     setupUI();
     setupTimer();
@@ -174,7 +174,6 @@ void IncomingCallWidget::updateTimer() {
 
     if (m_remainingSeconds <= 0) {
         m_timer->stop();
-        emit callDeclined(m_friendNickname); // Auto decline when time runs out
         return;
     }
 

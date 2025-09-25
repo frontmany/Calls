@@ -87,6 +87,42 @@ private:
     bool m_hovered = false;
 };
 
+class ToggleButtonIcon : public QWidget
+{
+    Q_OBJECT
+
+public:
+    ToggleButtonIcon(QWidget* parent, const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover, int width = 32, int height = 32);
+    ToggleButtonIcon(QWidget* parent, int width = 32, int height = 32);
+    void setIcons(const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover);
+    void setSize(int width, int height);
+    void setToggled(bool toggled);
+    bool isToggled() const { return m_toggled; }
+
+signals:
+    void clicked();
+    void toggled(bool state);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+    bool event(QEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+
+private:
+    void updateIcon();
+    void hoverEnter(QHoverEvent* event);
+    void hoverLeave(QHoverEvent* event);
+    void hoverMove(QHoverEvent* event);
+
+    QIcon m_icon;
+    QIcon m_iconToggled;
+    QIcon m_iconHover;
+    QIcon m_iconToggledHover;
+    QIcon* m_currentIcon = nullptr;
+    QSize m_iconSize{ 32, 32 };
+    bool m_hovered = false;
+    bool m_toggled = false;
+};
 
 /*
 class ButtonCursor : public QWidget

@@ -14,6 +14,8 @@ const QColor StyleMainMenuWidget::m_backgroundColor = QColor(230, 230, 230);
 const QColor StyleMainMenuWidget::m_textColor = QColor(1, 11, 19);
 const QColor StyleMainMenuWidget::m_onlineColor = QColor(100, 200, 100);
 const QColor StyleMainMenuWidget::m_offlineColor = QColor(150, 150, 150);
+const QColor StyleMainMenuWidget::m_callingColor = QColor(255, 165, 0);
+const QColor StyleMainMenuWidget::m_errorColor = QColor(220, 80, 80, 200);
 
 QString StyleMainMenuWidget::containerStyle() {
     return QString("QWidget {"
@@ -53,6 +55,17 @@ QString StyleMainMenuWidget::buttonStyle() {
         "}").arg(m_primaryColor.name()).arg(m_hoverColor.name());
 }
 
+
+QString StyleMainMenuWidget::errorLabelStyle() {
+    return QString("QLabel {"
+        "   color: %1;"
+        "   margin: 2px 2px;"
+        "   padding: 5px;"
+        "   background: transparent;"
+        "   border-radius: 5px;"
+        "}").arg(m_errorColor.name());
+}
+
 QString StyleMainMenuWidget::settingsButtonStyle() {
     return QString("QPushButton {"
         "   background-color: rgba(235, 235, 235, 190);"
@@ -65,7 +78,7 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
         "   margin: 0px;"
         "}"
         "QPushButton:hover {"
-        "   background-color:rgba(235, 235, 235, 110);"
+        "   background-color: rgba(235, 235, 235, 110);"
         "}"
         "QPushButton::menu-indicator {"
         "   image: none;"
@@ -154,6 +167,24 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
     );
 }
 
+QString StyleMainMenuWidget::callingSectionStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(255, 245, 235, 180);"
+        "   border-radius: 15px;"
+        "   padding: 12px 15px;"
+        "   margin: 5px 0px;"
+        "}");
+}
+
+QString StyleMainMenuWidget::callingTextStyle() {
+    return QString("QLabel {"
+        "   color: %1;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "   font-size: 14px;"
+        "}").arg(m_callingColor.name());
+}
+
 MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
@@ -212,7 +243,54 @@ void MainMenuWidget::setupUI() {
     m_userInfoLayout->addWidget(m_avatarLabel);
     m_userInfoLayout->addLayout(m_userTextLayout);
 
+    // Calling section (initially hidden)
+    m_callingSection = new QWidget(m_mainContainer);
+    m_callingSection->setStyleSheet(StyleMainMenuWidget::callingSectionStyle());
+    m_callingSection->setMinimumHeight(50);
+    m_callingSection->hide();
+
+    m_callingLayout = new QHBoxLayout(m_callingSection);
+    m_callingLayout->setSpacing(10);
+    m_callingLayout->setContentsMargins(0, 0, 0, 0);
+    m_callingLayout->setAlignment(Qt::AlignCenter);
+
+    // Calling text
+    m_callingText = new QLabel("Calling...", m_callingSection);
+    m_callingText->setStyleSheet(StyleMainMenuWidget::callingTextStyle());
+    QFont callingFont("Outfit", 12, QFont::Normal);
+    m_callingText->setFont(callingFont);
+
+    // Cancel call button
+    m_cancelCallButton = new QPushButton("Cancel", m_callingSection);
+    m_cancelCallButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(232, 53, 53, 180);"
+        "   color: white;"
+        "   border: none;"
+        "   border-radius: 11px;"
+        "   padding: 6px 12px;"
+        "   font-size: 11px;"
+        "   margin: 8px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(232, 53, 53, 220);"
+        "}"
+    );
+    m_cancelCallButton->setCursor(Qt::PointingHandCursor);
+
+    m_callingLayout->addSpacing(15);
+    m_callingLayout->addWidget(m_callingText);
+    m_callingLayout->addStretch();
+    m_callingLayout->addWidget(m_cancelCallButton);
+
     // Call section
+    m_errorLabel = new QLabel("field cannot be empty", m_mainContainer);
+    m_errorLabel->setStyleSheet(StyleMainMenuWidget::errorLabelStyle());
+    m_errorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+    m_errorLabel->hide();
+    QFont errorLabelFont("Outfit", 10, QFont::ExtraLight);
+    m_errorLabel->setFont(errorLabelFont);
+
     m_friendNicknameEdit = new QLineEdit(m_mainContainer);
     m_friendNicknameEdit->setPlaceholderText("Enter friend's nickname");
     m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
@@ -279,7 +357,9 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_titleLabel);
     m_containerLayout->addSpacing(-4);
     m_containerLayout->addWidget(m_userInfoWidget);
-    m_containerLayout->addSpacing(18);
+    m_containerLayout->addSpacing(12);
+    m_containerLayout->addWidget(m_callingSection);
+    m_containerLayout->addWidget(m_errorLabel);
     m_containerLayout->addWidget(m_friendNicknameEdit);
     m_containerLayout->addWidget(m_callButton);
     m_containerLayout->addWidget(m_incomingCallsScrollArea);
@@ -292,6 +372,9 @@ void MainMenuWidget::setupUI() {
     // Connect signals
     connect(m_callButton, &QPushButton::clicked, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
+    connect(m_cancelCallButton, &QPushButton::clicked, this, &MainMenuWidget::onCancelCallClicked);
+    connect(m_friendNicknameEdit, &QLineEdit::textChanged, this, &MainMenuWidget::clearErrorMessage);
+    connect(m_friendNicknameEdit, &QLineEdit::returnPressed, this, &MainMenuWidget::onCallButtonClicked);
 }
 
 void MainMenuWidget::setupAnimations() {
@@ -323,6 +406,19 @@ void MainMenuWidget::setupAnimations() {
             m_incomingCallsScrollArea->setMinimumHeight(100);
         }
         });
+
+    // Calling section animation
+    m_callingAnimation = new QPropertyAnimation(m_callingSection, "maximumHeight", this);
+    m_callingAnimation->setDuration(200);
+    m_callingAnimation->setEasingCurve(QEasingCurve::InOutQuad);
+    m_callingAnimation->setStartValue(0);
+    m_callingAnimation->setEndValue(50);
+
+    connect(m_callingAnimation, &QPropertyAnimation::finished, this, [this]() {
+        if (m_callingAnimation->direction() == QAbstractAnimation::Backward) {
+            m_callingSection->hide();
+        }
+    });
 }
 
 void MainMenuWidget::paintEvent(QPaintEvent* event) {
@@ -367,40 +463,19 @@ void MainMenuWidget::setStatus(calls::ClientStatus status) {
     if (status == calls::ClientStatus::FREE) {
         m_statusLabel->setText("Online");
         m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_onlineColor.name()));
+        clearCallingInfo(); // Clear calling state when free
     }
     else if (status == calls::ClientStatus::CALLING) {
-        // Implementation for calling status
+        m_statusLabel->setText("Calling...");
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
     }
     else if (status == calls::ClientStatus::BUSY) {
-        // Implementation for busy status
+        m_statusLabel->setText("Busy");
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
     }
     else if (status == calls::ClientStatus::UNAUTHORIZED) {
-        // Implementation for unauthorized status
-    }
-}
-
-QColor MainMenuWidget::generateRandomColor(const QString& seed) {
-    int hash = qHash(seed);
-    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
-}
-
-void MainMenuWidget::onCallButtonClicked() {
-    QString friendNickname = m_friendNicknameEdit->text().trimmed();
-    if (!friendNickname.isEmpty()) {
-        emit callRequested(friendNickname);
-    }
-}
-
-void MainMenuWidget::onSettingsButtonClicked() {
-    if (m_settingsPanel->isHidden()) {
-        m_settingsPanel->setMaximumHeight(0);
-        m_settingsPanel->show();
-        m_settingsAnimation->setDirection(QAbstractAnimation::Forward);
-        m_settingsAnimation->start();
-    }
-    else {
-        m_settingsAnimation->setDirection(QAbstractAnimation::Backward);
-        m_settingsAnimation->start();
+        m_statusLabel->setText("Offline");
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_offlineColor.name()));
     }
 }
 
@@ -444,6 +519,74 @@ void MainMenuWidget::clearIncomingCalls() {
     }
 }
 
+void MainMenuWidget::setCallingInfo(const QString& friendNickname) {
+    m_callingFriend = friendNickname;
+    m_callingText->setText("Calling " + friendNickname + "...");
+    updateCallingState(true);
+
+    // Show calling section with animation
+    if (m_callingSection->isHidden()) {
+        m_callingSection->setMaximumHeight(0);
+        m_callingSection->show();
+        m_callingAnimation->setDirection(QAbstractAnimation::Forward);
+        m_callingAnimation->start();
+    }
+
+    // Update status to calling
+    setStatus(calls::ClientStatus::CALLING);
+}
+
+void MainMenuWidget::clearCallingInfo() {
+    m_callingFriend.clear();
+    updateCallingState(false);
+
+    // Hide calling section with animation
+    if (!m_callingSection->isHidden()) {
+        m_callingAnimation->setDirection(QAbstractAnimation::Backward);
+        m_callingAnimation->start();
+    }
+
+    // Reset status if not in another state
+    if (m_statusLabel->text() == "Calling...") {
+        setStatus(calls::ClientStatus::FREE);
+    }
+}
+
+void MainMenuWidget::updateCallingState(bool calling) {
+    // Block/unblock input and call button
+    m_friendNicknameEdit->setEnabled(!calling);
+    m_callButton->setEnabled(!calling);
+
+    // Visual feedback for disabled state
+    if (calling) {
+        m_friendNicknameEdit->setStyleSheet(
+            "QLineEdit {"
+            "   background-color: rgba(235, 235, 235, 120);"
+            "   border: 0px solid #010B13;"
+            "   border-radius: 15px;"
+            "   padding: 12px 15px;"
+            "   margin: 0px;"
+            "   color: #888888;"
+            "}"
+        );
+        m_callButton->setStyleSheet(
+            "QPushButton {"
+            "   background-color: rgba(21, 119, 232, 120);"
+            "   color: rgba(255, 255, 255, 150);"
+            "   border: none;"
+            "   border-radius: 15px;"
+            "   padding: 12px 24px;"
+            "   margin: 0px;"
+            "}"
+        );
+    }
+    else {
+        m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
+        m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
+        m_friendNicknameEdit->clearFocus();
+    }
+}
+
 void MainMenuWidget::showIncomingCallsArea() {
     if (m_incomingCallsScrollArea->isHidden()) {
         m_incomingCallsScrollArea->show();
@@ -461,11 +604,89 @@ void MainMenuWidget::hideIncomingCallsArea() {
     }
 }
 
+void MainMenuWidget::onCallButtonClicked() {
+    QString friendNickname = m_friendNicknameEdit->text().trimmed();
+    if (!friendNickname.isEmpty() && friendNickname.toStdString() != calls::getNickname()) {
+        setCallingInfo(friendNickname);
+        calls::startCalling(friendNickname.toStdString());
+    }
+    else {
+        if (friendNickname.isEmpty()) {
+            setErrorMessage("cannot be empty");
+        }
+        else if (friendNickname.toStdString() == calls::getNickname()) {
+            setErrorMessage("cannot call yourself");
+        }
+    }
+}
+
+void MainMenuWidget::setErrorMessage(const QString& errorText) {
+    m_errorLabel->setText(errorText);
+    m_errorLabel->show();
+
+    m_friendNicknameEdit->setFocus();
+
+    // Shake animation
+    QPropertyAnimation* shakeAnimation = new QPropertyAnimation(m_errorLabel, "pos", this);
+    shakeAnimation->setDuration(100);
+    shakeAnimation->setLoopCount(3);
+    shakeAnimation->setKeyValueAt(0, m_errorLabel->pos());
+    shakeAnimation->setKeyValueAt(0.25, m_errorLabel->pos() + QPoint(8, 0));
+    shakeAnimation->setKeyValueAt(0.5, m_errorLabel->pos() + QPoint(-8, 0));
+    shakeAnimation->setKeyValueAt(0.75, m_errorLabel->pos() + QPoint(8, 0));
+    shakeAnimation->setKeyValueAt(1, m_errorLabel->pos());
+    shakeAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void MainMenuWidget::clearErrorMessage() {
+    m_errorLabel->hide();
+}
+
+void MainMenuWidget::onSettingsButtonClicked() {
+    if (m_settingsPanel->isHidden()) {
+        m_settingsPanel->setMaximumHeight(0);
+        m_settingsPanel->show();
+        m_settingsAnimation->setDirection(QAbstractAnimation::Forward);
+        m_settingsAnimation->start();
+    }
+    else {
+        m_settingsAnimation->setDirection(QAbstractAnimation::Backward);
+        m_settingsAnimation->start();
+    }
+}
+
+void MainMenuWidget::onCancelCallClicked() {
+    clearCallingInfo();
+    calls::stopCalling();
+}
+
 void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
+    if (m_callingSection->isVisible()) {
+        clearCallingInfo();
+        calls::stopCalling();
+    }
+
     emit callAccepted(friendNickname);
+}
+
+void MainMenuWidget::setInputVolume(int volume) {
+    m_settingsPanel->setInputVolume(volume);
+}
+
+void MainMenuWidget::setOutputVolume(int volume) {
+    m_settingsPanel->setOutputVolume(volume);
+}
+
+void MainMenuWidget::setMuted(bool muted) {
+    m_settingsPanel->setMuted(muted);
 }
 
 void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
     removeIncomingCall(friendNickname);
-    emit callDeclined(friendNickname);
+    calls::declineCall(friendNickname.toStdString());
+}
+
+QColor MainMenuWidget::generateRandomColor(const QString& seed) {
+    int hash = qHash(seed);
+    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
 }
