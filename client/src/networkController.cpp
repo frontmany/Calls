@@ -165,7 +165,6 @@ void NetworkController::startReceive() {
                 if (ec != asio::error::operation_aborted) {
                     m_onNetworkErrorCallback();
                 }
-                return;
             }
 
             handleReceive(bytesTransferred);

@@ -28,8 +28,6 @@ struct StyleAuthorizationWidget {
 
     // Style methods
     static QString glassButtonStyle();
-    static QString glassButtonHoverStyle();
-    static QString glassButtonDisabledStyle();
     static QString glassLineEditStyle();
     static QString glassLabelStyle();
     static QString glassErrorLabelStyle();
@@ -44,11 +42,15 @@ public:
     AuthorizationWidget(QWidget* parent = nullptr);
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
+    void startBlurAnimation();
     void reset();
 
 private slots:
     void onAuthorizeClicked();
     void onTextChanged(const QString& text);
+
+signals:
+    void animationFinished();
 
 private:
     void setupUI();

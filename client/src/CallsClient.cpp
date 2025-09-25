@@ -17,6 +17,7 @@ CallsClient::CallsClient()
 
 void CallsClient::init(
     const std::string& host,
+    const std::string& port,
     std::function<void(Result)> authorizationResultCallback,
     std::function<void(Result)> createCallResultCallback,
     std::function<void(const std::string&)> onIncomingCall,
@@ -38,13 +39,13 @@ void CallsClient::init(
         crypto::generateRSAKeyPair(m_myPrivateKey, m_myPublicKey);
     });
 
-    m_networkController = std::make_unique<NetworkController>(host, "8080",
+    m_networkController = std::make_unique<NetworkController>(host, port,
         [this](const unsigned char* data, int length, PacketType type) {
             onReceiveCallback(data, length, type);
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_queueCallbacksMutex);
-            m_callbacksQueue.push([this]() { if (m_timer.is_active()) m_timer.stop(); m_onNetworkErrorCallback(); });
+            m_callbacksQueue.push([this]() {m_timer.stop(); m_onNetworkErrorCallback(); });
         }
     );
 
@@ -106,7 +107,7 @@ void CallsClient::onReceiveCallback(const unsigned char* data, int length, Packe
     case (PacketType::AUTHORIZATION_FAIL):
         m_timer.stop();
         m_myNickname = "";
-        m_callbacksQueue.push([this]() { m_createCallResultCallback(Result::FAIL); });
+        m_callbacksQueue.push([this]() {m_authorizationResultCallback(Result::FAIL); });
         break;
 
     case (PacketType::FRIEND_INFO_SUCCESS):
@@ -204,31 +205,16 @@ const std::string& CallsClient::getNickname() const {
     return m_myNickname;
 }
 
-void CallsClient::logout() {
-    if (m_networkController)
-        m_networkController->send(
-        PacketType::LOGOUT
-    );
+void CallsClient::stop() {
+    logout();
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     m_myNickname.clear();
-    m_status = ClientStatus::UNAUTHORIZED;
     m_myPublicKey = CryptoPP::RSA::PublicKey();
     m_myPrivateKey = CryptoPP::RSA::PrivateKey();
     m_call = std::nullopt;
     m_incomingCalls.clear();
-
-    if (m_timer.is_active()) {
-        m_timer.stop();
-    }
-    
-    if (m_status == ClientStatus::CALLING) {
-        stopCalling();
-    }
-
-    if (m_status == ClientStatus::BUSY) {
-        endCall();
-    }
 
     if (m_audioEngine && m_audioEngine->isStream()) {
         m_audioEngine->stopStream();
@@ -246,6 +232,28 @@ void CallsClient::logout() {
     std::lock_guard<std::mutex> lock(m_queueCallbacksMutex);
     std::queue<std::function<void()>> empty;
     std::swap(m_callbacksQueue, empty);
+    m_status = ClientStatus::UNAUTHORIZED;
+}
+
+void CallsClient::logout() {
+    if (m_networkController)
+        m_networkController->send(
+        PacketType::LOGOUT
+    );
+
+    if (m_timer.is_active()) {
+        m_timer.stop();
+    }
+
+    if (m_status == ClientStatus::CALLING) {
+        stopCalling();
+    }
+
+    if (m_status == ClientStatus::BUSY) {
+        endCall();
+    }
+
+    m_status = ClientStatus::UNAUTHORIZED;
 }
 
 bool CallsClient::authorize(const std::string& nickname) {
@@ -262,7 +270,7 @@ bool CallsClient::authorize(const std::string& nickname) {
     );
 
     using namespace std::chrono_literals;
-    m_timer.start(2s, [this]() {
+    m_timer.start(4s, [this]() {
         std::lock_guard<std::mutex> lock(m_queueCallbacksMutex);
         m_callbacksQueue.push([this]() {m_myNickname = "";  m_authorizationResultCallback(Result::TIMEOUT); });
     });

@@ -73,8 +73,7 @@ void AuthorizationWidget::setupUI() {
     // Authorize button
     m_authorizeButton = new QPushButton("Authorize", m_container);
     m_authorizeButton->setStyleSheet(
-        StyleAuthorizationWidget::glassButtonStyle() +
-        StyleAuthorizationWidget::glassButtonHoverStyle()
+        StyleAuthorizationWidget::glassButtonStyle()
     );
     m_authorizeButton->setCursor(Qt::PointingHandCursor);
     m_authorizeButton->setMinimumHeight(45);
@@ -97,6 +96,7 @@ void AuthorizationWidget::setupUI() {
         this, &AuthorizationWidget::onAuthorizeClicked);
     connect(m_nicknameEdit, &QLineEdit::textChanged,
         this, &AuthorizationWidget::onTextChanged);
+    connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizeClicked);
 }
 
 void AuthorizationWidget::reset() {
@@ -115,6 +115,8 @@ void AuthorizationWidget::setupAnimations() {
     m_blurAnimation = new QPropertyAnimation(m_backgroundBlurEffect, "blurRadius", this);
     m_blurAnimation->setDuration(1200);
     m_blurAnimation->setEasingCurve(QEasingCurve::OutCubic);
+
+    connect(m_blurAnimation, &QPropertyAnimation::finished, [this]() {emit animationFinished(); });
 }
 
 void AuthorizationWidget::paintEvent(QPaintEvent* event) {
@@ -139,23 +141,22 @@ bool AuthorizationWidget::validateNickname(const QString& nickname) {
     return regex.match(nickname).hasMatch();
 }
 
+void AuthorizationWidget::startBlurAnimation() {
+    // Success animation with blur
+    setGraphicsEffect(m_backgroundBlurEffect);
+    m_blurAnimation->setStartValue(0);
+    m_blurAnimation->setEndValue(10);
+    m_blurAnimation->start();
+}
+
 void AuthorizationWidget::onAuthorizeClicked() {
     QString nickname = m_nicknameEdit->text().trimmed();
 
     if (validateNickname(nickname)) {
-        // Success animation with blur
-        setGraphicsEffect(m_backgroundBlurEffect);
-        m_blurAnimation->setStartValue(0);
-        m_blurAnimation->setEndValue(10);
-        m_blurAnimation->start();
-
         m_nicknameEdit->setDisabled(true);
         m_authorizeButton->setDisabled(true);
-
-        clearErrorMessage();
-
-        
         calls::authorize(nickname.toStdString());
+        clearErrorMessage();
     }
     else {
         setErrorMessage("field cannot be empty");
@@ -213,19 +214,17 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
         "   font-size: 14px;"
         "   font-weight: bold;"
         "   margin: 0px;"
-        "}").arg(m_primaryColor.name()).arg(m_glassBorderColor.name()).arg(m_glassBorderColor.name());
-}
-
-QString StyleAuthorizationWidget::glassButtonHoverStyle() {
-    return QString("QPushButton:hover {"
-        "   background-color: %1;"
-        "}").arg(m_hoverColor.name());
-}
-
-QString StyleAuthorizationWidget::glassButtonDisabledStyle() {
-    return QString("QPushButton:disabled {"
-        "   background-color: %1;"
-        "}").arg(m_disabledColor.name());
+        "}"
+        "QPushButton:hover {"
+        "   background-color: %4;"
+        "}"
+        "QPushButton:disabled {"
+        "   background-color: rgba(21, 119, 232, 150);"
+        "   opacity: 0.6;"
+        "}").arg(m_primaryColor.name())
+        .arg(m_glassBorderColor.name())
+        .arg(m_glassBorderColor.name())
+        .arg(m_primaryColor.darker(110).name());
 }
 
 QString StyleAuthorizationWidget::glassLineEditStyle() {
@@ -242,9 +241,16 @@ QString StyleAuthorizationWidget::glassLineEditStyle() {
         "   border: 0px solid %3;"
         "   background-color: rgba(255, 255, 255, 235);"
         "}"
+        "QLineEdit:disabled {"
+        "   background-color: rgba(245, 245, 245, 150);"
+        "   border: 0px solid %1;"
+        "   opacity: 0.7;"
+        "}"
         "QLineEdit::placeholder {"
         "   color: rgba(240, 240, 240, 180);"
-        "}").arg(m_glassBorderColor.name()).arg(m_textColor.name()).arg(m_primaryColor.name());
+        "}").arg(m_glassBorderColor.name())
+        .arg(m_textColor.name())
+        .arg(m_primaryColor.name());
 }
 
 QString StyleAuthorizationWidget::glassLabelStyle() {

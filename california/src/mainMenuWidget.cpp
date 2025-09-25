@@ -405,7 +405,7 @@ void MainMenuWidget::setupAnimations() {
         else {
             m_incomingCallsScrollArea->setMinimumHeight(100);
         }
-        });
+    });
 
     // Calling section animation
     m_callingAnimation = new QPropertyAnimation(m_callingSection, "maximumHeight", this);
@@ -419,6 +419,10 @@ void MainMenuWidget::setupAnimations() {
             m_callingSection->hide();
         }
     });
+}
+
+void MainMenuWidget::setFocusToLineEdit() {
+    m_friendNicknameEdit->setFocus();
 }
 
 void MainMenuWidget::paintEvent(QPaintEvent* event) {
@@ -550,6 +554,8 @@ void MainMenuWidget::clearCallingInfo() {
     if (m_statusLabel->text() == "Calling...") {
         setStatus(calls::ClientStatus::FREE);
     }
+
+    m_friendNicknameEdit->clear();
 }
 
 void MainMenuWidget::updateCallingState(bool calling) {

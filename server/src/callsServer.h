@@ -49,7 +49,6 @@ private:
 	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
 
 private:
-	std::unordered_map<asio::ip::udp::endpoint, PingResult> m_pingResults;
 	std::atomic_bool m_running = false;
 	std::mutex m_mutex;
 

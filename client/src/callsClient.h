@@ -23,7 +23,8 @@ public:
     static CallsClient& get();
 
     void init(
-        const std::string& host,
+        const std::string& host, 
+        const std::string& port,
         std::function<void(Result)> authorizationResultCallback,
         std::function<void(Result)> createCallResultCallback,
         std::function<void(const std::string&)> onIncomingCall,
@@ -32,6 +33,8 @@ public:
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback
     );
+
+    void stop();
     void logout();
     bool isRunning() const;
     const std::string& getNickname() const;
@@ -79,7 +82,6 @@ private:
 
     std::mutex m_incomingCallsMutex;
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
-
 
     std::unique_ptr<NetworkController> m_networkController;
     std::unique_ptr<AudioEngine> m_audioEngine;

@@ -7,11 +7,14 @@
 #include "MainMenuWidget.h"
 #include "CallWidget.h"
 
-MainWindow::MainWindow(QWidget* parent, const std::string& host)
+MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::string& port)
     : QMainWindow(parent) {
 
-    calls::init(host,
+    calls::init(host, port,
         [this](calls::Result authorizationResult) {
+            if (authorizationResult == calls::Result::SUCCESS) {
+                m_authorized = true;
+            }
             QMetaObject::invokeMethod(this, "onAuthorizationResult", Qt::QueuedConnection,
                 Q_ARG(calls::Result, authorizationResult));
         },
@@ -69,6 +72,20 @@ void MainWindow::setupUI() {
 
     // Create authorization widget
     m_authorizationWidget = new AuthorizationWidget(this);
+    connect(m_authorizationWidget, &AuthorizationWidget::animationFinished, [this]() {
+        switchToMainMenuWidget(); 
+        m_mainMenuWidget->setStatus(calls::ClientStatus::FREE);
+
+         
+        // Set real nickname from calls client
+        std::string nickname = calls::getNickname();
+        if (!nickname.empty()) {
+            m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
+        }
+
+        m_mainMenuWidget->setFocusToLineEdit();
+    });
+
     m_stackedLayout->addWidget(m_authorizationWidget);
 
     // Create main menu widget
@@ -85,6 +102,11 @@ void MainWindow::setupUI() {
     switchToAuthorizationWidget();
 }
 
+void MainWindow::closeEvent(QCloseEvent* event) {
+    m_authorized = false;
+    calls::stop();
+}
+
 void MainWindow::switchToAuthorizationWidget() {
     m_stackedLayout->setCurrentWidget(m_authorizationWidget);
     setWindowTitle("Authorization - Callifornia");
@@ -92,11 +114,9 @@ void MainWindow::switchToAuthorizationWidget() {
 
 void MainWindow::switchToMainMenuWidget() {
     m_stackedLayout->setCurrentWidget(m_mainMenuWidget);
-
     m_mainMenuWidget->setInputVolume(calls::getInputVolume());
     m_mainMenuWidget->setOutputVolume(calls::getOutputVolume());
     m_mainMenuWidget->setMuted(calls::isMuted());
-
 
     setWindowTitle("Callifornia");
 
@@ -144,13 +164,8 @@ void MainWindow::onMuteSpeakerClicked() {
 
 void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
     if (authorizationResult == calls::Result::SUCCESS) {
-        switchToMainMenuWidget();
-
-        // Set real nickname from calls client
-        std::string nickname = calls::getNickname();
-        if (!nickname.empty()) {
-            m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
-        }
+        m_authorizationWidget->startBlurAnimation();
+        m_authorized = true;
     }
     else {
         // Show error in authorization widget
@@ -167,8 +182,10 @@ void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
             break;
         }
 
-        m_authorizationWidget->reset(); // Unlock button for retry
-        m_authorizationWidget->setErrorMessage(errorMessage);
+        if (!m_authorized) {
+            m_authorizationWidget->reset();
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
     }
 }
 
@@ -178,18 +195,22 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
         switch (createCallResult) {
         case calls::Result::FAIL:
             errorMessage = "Call failed";
-            m_mainMenuWidget->clearCallingInfo();
             break;
         case calls::Result::TIMEOUT:
-            errorMessage = "Call timeout";
-            m_mainMenuWidget->clearCallingInfo();
+            errorMessage = "Call timeout error";
+            break;
+        case calls::Result::WRONG_FRIEND_NICKNAME:
+            errorMessage = "unexisting user nickname";
             break;
         default:
             errorMessage = "Call error";
             break;
         }
-        // You might want to show this error in the main menu
-        qDebug() << "Call creation failed:" << errorMessage;
+        
+        m_mainMenuWidget->clearCallingInfo();
+        QTimer::singleShot(400, this, [this, errorMessage]() {
+            m_mainMenuWidget->setErrorMessage(errorMessage);
+        });
     }
 }
 
@@ -216,6 +237,8 @@ void MainWindow::onCallHangUp() {
 
 void MainWindow::onNetworkError() {
     // Handle network error
+    m_authorized = false;
+    calls::logout();
     switchToAuthorizationWidget();
     m_authorizationWidget->reset();
     m_authorizationWidget->setErrorMessage("Network error occurred");

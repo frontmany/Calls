@@ -10,6 +10,7 @@ namespace calls {
     // facade functions
     inline void init(
         const std::string& host,
+        const std::string& port,
         std::function<void(Result)> authorizationResultCallback,
         std::function<void(Result)> createCallResultCallback,
         std::function<void(const std::string& friendNickName)> onIncomingCall,
@@ -18,7 +19,9 @@ namespace calls {
         std::function<void()> onCallHangUpCallback,
         std::function<void()> onNetworkErrorCallback)
     {
-        CallsClient::get().init(host,
+        CallsClient::get().init(
+            host,
+            port,
             std::move(authorizationResultCallback),
             std::move(createCallResultCallback),
             std::move(onIncomingCall),
@@ -75,6 +78,11 @@ namespace calls {
     inline void logout()
     {
         CallsClient::get().logout();
+    }
+
+    inline void stop()
+    {
+        CallsClient::get().stop();
     }
 
     inline bool isMuted()

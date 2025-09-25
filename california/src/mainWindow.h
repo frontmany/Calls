@@ -14,7 +14,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget* parent = nullptr, const std::string& host = "192.168.1.45");
+    MainWindow(QWidget* parent = nullptr, const std::string& host = "192.168.1.45", const std::string& port = "8081");
     ~MainWindow() = default;
 
 public slots:
@@ -39,6 +39,10 @@ private:
     void switchToCallWidget(const QString& friendNickname);
     void loadFonts();
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+
+    bool m_authorized = false;
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;
     QStackedLayout* m_stackedLayout;

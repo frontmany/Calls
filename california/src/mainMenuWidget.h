@@ -55,6 +55,9 @@ public:
     void clearIncomingCalls();
     void setCallingInfo(const QString& friendNickname);
     void clearCallingInfo();
+    void setErrorMessage(const QString& errorText);
+    void clearErrorMessage();
+    void setFocusToLineEdit();
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
@@ -80,8 +83,7 @@ private:
     void paintEvent(QPaintEvent* event) override;
     QColor generateRandomColor(const QString& seed);
     void updateCallingState(bool calling);
-    void setErrorMessage(const QString& errorText);
-    void clearErrorMessage();
+
 
     // Main layouts
     QVBoxLayout* m_mainLayout;

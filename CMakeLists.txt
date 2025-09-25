@@ -67,7 +67,8 @@ if(NOT DEPENDENCIES_FETCHED)
 
 else()
     message(STATUS "Dependencies already fetched")
+    add_subdirectory(california)
     add_subdirectory(server)
     add_subdirectory(client)
-    add_subdirectory(california)
+    
 endif()
