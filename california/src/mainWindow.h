@@ -28,7 +28,11 @@ public slots:
 
 private slots:
     void onIncomingCallAccepted(const QString& friendNickname);
+    void onIncomingCallDeclined(const QString& friendNickname);
+    void onCallButtonClicked(const QString& friendNickname);
+    void onStopCallingButtonClicked();
     void onHangupClicked();
+    void onAuthorizationButtonClicked(const QString& friendNickname);
     void onMuteMicClicked();
     void onMuteSpeakerClicked();
 
@@ -42,7 +46,7 @@ private:
 protected:
     void closeEvent(QCloseEvent* event) override;
 
-    bool m_authorized = false;
+    calls::Result m_authorizationResult = calls::Result::EMPTY;
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;
     QStackedLayout* m_stackedLayout;

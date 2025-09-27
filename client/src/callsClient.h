@@ -13,7 +13,7 @@
 #include "packetTypes.h"
 #include "incomingCallData.h"
 #include "result.h"
-#include "clientStatus.h"
+#include "state.h"
 #include "timer.h"
 #include "call.h"
 
@@ -22,44 +22,49 @@ class CallsClient {
 public:
     static CallsClient& get();
 
-    void init(
+    bool init(
         const std::string& host, 
         const std::string& port,
-        std::function<void(Result)> authorizationResultCallback,
-        std::function<void(Result)> createCallResultCallback,
+        std::function<void(Result)> authorizationResult,
+        std::function<void(Result)> createCallResult,
         std::function<void(const std::string&)> onIncomingCall,
         std::function<void(const std::string&)> onIncomingCallExpired,
-        std::function<void(const std::string&)> onSimultaneousCalling,
-        std::function<void()> onCallHangUpCallback,
-        std::function<void()> onNetworkErrorCallback
+        std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
+        std::function<void()> onCallHangUp,
+        std::function<void()> onNetworkError
     );
 
+    void run();
     void stop();
     void logout();
     bool isRunning() const;
     const std::string& getNickname() const;
-    ClientStatus getStatus() const;
+    State getStatus() const;
 
 
     void refreshAudioDevices();
     void mute(bool isMute);
     bool isMuted();
+    void setInputVolume(int volume);
+    void setOutputVolume(int volume);
+    int getInputVolume() const;
+    int getOutputVolume() const;
+    const std::string& getNicknameWhomCalling() const;
+
+
     bool authorize(const std::string& nickname);
     bool createCall(const std::string& friendNickname);
     bool stopCalling();
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
     bool endCall();
-    void setInputVolume(int volume);
-    void setOutputVolume(int volume);
-    int getInputVolume() const;
-    int getOutputVolume() const;
 
 private:
     CallsClient();
     ~CallsClient();
+
     void onIncomingCallingEnd(const unsigned char* data, int length);
-    void onReceiveCallback(const unsigned char* data, int length, PacketType type);
+    void onReceive(const unsigned char* data, int length, PacketType type);
     bool onFriendInfoSuccess(const unsigned char* data, int length);
     bool onIncomingCall(const unsigned char* data, int length);
     void processQueue();
@@ -68,34 +73,34 @@ private:
     void onInputVoice(const unsigned char* data, int length);
 
 private:
-    std::atomic_bool m_mute = false;
     std::atomic_bool m_running = false;
     std::optional<Call> m_call = std::nullopt;
+
     std::string m_myNickname{};
+    std::string m_nicknameWhomCalling{};
+
     CryptoPP::RSA::PublicKey m_myPublicKey;
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
     std::future<void> m_keysFuture;
 
-    std::mutex m_queueCallbacksMutex;
-    std::thread m_queueProcessingThread;
-    std::queue<std::function<void()>> m_callbacksQueue;
-
-    std::mutex m_incomingCallsMutex;
+    std::mutex m_mutex;
+    std::thread m_thread;
+    std::queue<std::function<void()>> m_queue;
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
 
     std::unique_ptr<NetworkController> m_networkController;
     std::unique_ptr<AudioEngine> m_audioEngine;
-    Timer m_timer;
-    Timer m_checkConnectionTimer;
-    ClientStatus m_status = ClientStatus::UNAUTHORIZED;
 
-    std::function<void(Result)> m_authorizationResultCallback;
-    std::function<void(Result)> m_createCallResultCallback;
+    Timer m_timer;
+    State m_state = State::UNAUTHORIZED;
+
+    std::function<void(Result)> m_authorizationResult;
+    std::function<void(Result)> m_createCallResult;
     std::function<void(const std::string&)> m_onIncomingCall;
     std::function<void(const std::string& friendNickname)> m_onIncomingCallExpired;
-    std::function<void(const std::string& friendNickname)> m_onSimultaneousCalling;
-    std::function<void()> m_onNetworkErrorCallback;
-    std::function<void()> m_onCallHangUpCallback;
+    std::function<void(const std::string& friendNickname)> m_onCallingSomeoneWhoAlreadyCallingYou;
+    std::function<void()> m_onNetworkError;
+    std::function<void()> m_onCallHangUp;
 
     static constexpr const char* PUBLIC_KEY = "publicKey";
     static constexpr const char* NICKNAME = "nickname";

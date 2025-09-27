@@ -261,8 +261,8 @@ void MainMenuWidget::setupUI() {
     m_callingText->setFont(callingFont);
 
     // Cancel call button
-    m_cancelCallButton = new QPushButton("Cancel", m_callingSection);
-    m_cancelCallButton->setStyleSheet(
+    m_stopCallingButton = new QPushButton("Cancel", m_callingSection);
+    m_stopCallingButton->setStyleSheet(
         "QPushButton {"
         "   background-color: rgba(232, 53, 53, 180);"
         "   color: white;"
@@ -276,12 +276,12 @@ void MainMenuWidget::setupUI() {
         "   background-color: rgba(232, 53, 53, 220);"
         "}"
     );
-    m_cancelCallButton->setCursor(Qt::PointingHandCursor);
+    m_stopCallingButton->setCursor(Qt::PointingHandCursor);
 
     m_callingLayout->addSpacing(15);
     m_callingLayout->addWidget(m_callingText);
     m_callingLayout->addStretch();
-    m_callingLayout->addWidget(m_cancelCallButton);
+    m_callingLayout->addWidget(m_stopCallingButton);
 
     // Call section
     m_errorLabel = new QLabel("field cannot be empty", m_mainContainer);
@@ -372,7 +372,7 @@ void MainMenuWidget::setupUI() {
     // Connect signals
     connect(m_callButton, &QPushButton::clicked, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
-    connect(m_cancelCallButton, &QPushButton::clicked, this, &MainMenuWidget::onCancelCallClicked);
+    connect(m_stopCallingButton, &QPushButton::clicked, this, &MainMenuWidget::onStopCallingButtonClicked);
     connect(m_friendNicknameEdit, &QLineEdit::textChanged, this, &MainMenuWidget::clearErrorMessage);
     connect(m_friendNicknameEdit, &QLineEdit::returnPressed, this, &MainMenuWidget::onCallButtonClicked);
 }
@@ -463,21 +463,20 @@ void MainMenuWidget::setNickname(const QString& nickname) {
     m_avatarLabel->setStyleSheet(StyleMainMenuWidget::avatarStyle(avatarColor));
 }
 
-void MainMenuWidget::setStatus(calls::ClientStatus status) {
-    if (status == calls::ClientStatus::FREE) {
+void MainMenuWidget::setState(calls::State state) {
+    if (state == calls::State::FREE) {
         m_statusLabel->setText("Online");
         m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_onlineColor.name()));
-        clearCallingInfo(); // Clear calling state when free
     }
-    else if (status == calls::ClientStatus::CALLING) {
+    else if (state == calls::State::CALLING) {
         m_statusLabel->setText("Calling...");
         m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
     }
-    else if (status == calls::ClientStatus::BUSY) {
+    else if (state == calls::State::BUSY) {
         m_statusLabel->setText("Busy");
         m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
     }
-    else if (status == calls::ClientStatus::UNAUTHORIZED) {
+    else if (state == calls::State::UNAUTHORIZED) {
         m_statusLabel->setText("Offline");
         m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_offlineColor.name()));
     }
@@ -502,8 +501,11 @@ void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {
         QWidget* widget = m_incomingCallsLayout->itemAt(i)->widget();
         if (IncomingCallWidget* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
             if (callWidget->getFriendNickname() == friendNickname) {
+                // Disconnect signals first to prevent callbacks during deletion
+                disconnect(callWidget, nullptr, this, nullptr);
+
                 m_incomingCallsLayout->removeWidget(widget);
-                widget->deleteLater();
+                widget->deleteLater(); // Schedule for deletion
                 break;
             }
         }
@@ -517,13 +519,16 @@ void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {
 void MainMenuWidget::clearIncomingCalls() {
     while (m_incomingCallsLayout->count() > 0) {
         QWidget* widget = m_incomingCallsLayout->itemAt(0)->widget();
-        m_incomingCallsLayout->removeWidget(widget);
-        widget->deleteLater();
-        hideIncomingCallsArea();
+        if (widget) {
+            disconnect(widget, nullptr, this, nullptr);
+            m_incomingCallsLayout->removeWidget(widget);
+            widget->deleteLater();
+        }
     }
+    hideIncomingCallsArea();
 }
 
-void MainMenuWidget::setCallingInfo(const QString& friendNickname) {
+void MainMenuWidget::showCallingPanel(const QString& friendNickname) {
     m_callingFriend = friendNickname;
     m_callingText->setText("Calling " + friendNickname + "...");
     updateCallingState(true);
@@ -535,12 +540,9 @@ void MainMenuWidget::setCallingInfo(const QString& friendNickname) {
         m_callingAnimation->setDirection(QAbstractAnimation::Forward);
         m_callingAnimation->start();
     }
-
-    // Update status to calling
-    setStatus(calls::ClientStatus::CALLING);
 }
 
-void MainMenuWidget::clearCallingInfo() {
+void MainMenuWidget::removeCallingPanel() {
     m_callingFriend.clear();
     updateCallingState(false);
 
@@ -548,11 +550,6 @@ void MainMenuWidget::clearCallingInfo() {
     if (!m_callingSection->isHidden()) {
         m_callingAnimation->setDirection(QAbstractAnimation::Backward);
         m_callingAnimation->start();
-    }
-
-    // Reset status if not in another state
-    if (m_statusLabel->text() == "Calling...") {
-        setStatus(calls::ClientStatus::FREE);
     }
 
     m_friendNicknameEdit->clear();
@@ -589,7 +586,6 @@ void MainMenuWidget::updateCallingState(bool calling) {
     else {
         m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
         m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
-        m_friendNicknameEdit->clearFocus();
     }
 }
 
@@ -612,36 +608,13 @@ void MainMenuWidget::hideIncomingCallsArea() {
 
 void MainMenuWidget::onCallButtonClicked() {
     QString friendNickname = m_friendNicknameEdit->text().trimmed();
-    if (!friendNickname.isEmpty() && friendNickname.toStdString() != calls::getNickname()) {
-        setCallingInfo(friendNickname);
-        calls::startCalling(friendNickname.toStdString());
-    }
-    else {
-        if (friendNickname.isEmpty()) {
-            setErrorMessage("cannot be empty");
-        }
-        else if (friendNickname.toStdString() == calls::getNickname()) {
-            setErrorMessage("cannot call yourself");
-        }
-    }
+    emit createCallButtonClicked(friendNickname);
 }
 
 void MainMenuWidget::setErrorMessage(const QString& errorText) {
     m_errorLabel->setText(errorText);
     m_errorLabel->show();
-
     m_friendNicknameEdit->setFocus();
-
-    // Shake animation
-    QPropertyAnimation* shakeAnimation = new QPropertyAnimation(m_errorLabel, "pos", this);
-    shakeAnimation->setDuration(100);
-    shakeAnimation->setLoopCount(3);
-    shakeAnimation->setKeyValueAt(0, m_errorLabel->pos());
-    shakeAnimation->setKeyValueAt(0.25, m_errorLabel->pos() + QPoint(8, 0));
-    shakeAnimation->setKeyValueAt(0.5, m_errorLabel->pos() + QPoint(-8, 0));
-    shakeAnimation->setKeyValueAt(0.75, m_errorLabel->pos() + QPoint(8, 0));
-    shakeAnimation->setKeyValueAt(1, m_errorLabel->pos());
-    shakeAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void MainMenuWidget::clearErrorMessage() {
@@ -661,18 +634,8 @@ void MainMenuWidget::onSettingsButtonClicked() {
     }
 }
 
-void MainMenuWidget::onCancelCallClicked() {
-    clearCallingInfo();
-    calls::stopCalling();
-}
-
-void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
-    if (m_callingSection->isVisible()) {
-        clearCallingInfo();
-        calls::stopCalling();
-    }
-
-    emit callAccepted(friendNickname);
+void MainMenuWidget::onStopCallingButtonClicked() {
+    emit stopCallingButtonClicked();
 }
 
 void MainMenuWidget::setInputVolume(int volume) {
@@ -687,9 +650,13 @@ void MainMenuWidget::setMuted(bool muted) {
     m_settingsPanel->setMuted(muted);
 }
 
+void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
+    emit acceptCallButtonClicked(friendNickname);
+}
+
 void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
     removeIncomingCall(friendNickname);
-    calls::declineCall(friendNickname.toStdString());
+    emit declineCallButtonClicked(friendNickname);
 }
 
 QColor MainMenuWidget::generateRandomColor(const QString& seed) {

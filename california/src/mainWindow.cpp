@@ -9,12 +9,10 @@
 
 MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::string& port)
     : QMainWindow(parent) {
+    setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
     calls::init(host, port,
         [this](calls::Result authorizationResult) {
-            if (authorizationResult == calls::Result::SUCCESS) {
-                m_authorized = true;
-            }
             QMetaObject::invokeMethod(this, "onAuthorizationResult", Qt::QueuedConnection,
                 Q_ARG(calls::Result, authorizationResult));
         },
@@ -41,6 +39,8 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
             QMetaObject::invokeMethod(this, "onNetworkError", Qt::QueuedConnection);
         }
     );
+
+    calls::run();
 
     loadFonts();
     setupUI();
@@ -72,25 +72,51 @@ void MainWindow::setupUI() {
 
     // Create authorization widget
     m_authorizationWidget = new AuthorizationWidget(this);
-    connect(m_authorizationWidget, &AuthorizationWidget::animationFinished, [this]() {
-        switchToMainMenuWidget(); 
-        m_mainMenuWidget->setStatus(calls::ClientStatus::FREE);
-
-         
-        // Set real nickname from calls client
-        std::string nickname = calls::getNickname();
-        if (!nickname.empty()) {
-            m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
+    connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, this, &MainWindow::onAuthorizationButtonClicked);
+    connect(m_authorizationWidget, &AuthorizationWidget::blurAnimationFinished, [this]() {
+        if (m_authorizationResult == calls::Result::EMPTY) {
+            return;
         }
+        
+        if (m_authorizationResult == calls::Result::SUCCESS) {
+            switchToMainMenuWidget();
+            m_mainMenuWidget->setState(calls::State::FREE);
 
-        m_mainMenuWidget->setFocusToLineEdit();
+            // Set real nickname from calls client
+            std::string nickname = calls::getNickname();
+            if (!nickname.empty()) {
+                m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
+            }
+
+            m_mainMenuWidget->setFocusToLineEdit();
+        }
+        else {
+            // Show error in authorization widget
+            QString errorMessage;
+            switch (m_authorizationResult) {
+            case calls::Result::FAIL:
+                errorMessage = "Authorization failed";
+                break;
+            case calls::Result::TIMEOUT:
+                errorMessage = "Authorization timeout";
+                break;
+            default:
+                errorMessage = "Unknown error";
+                break;
+            }
+
+            m_authorizationWidget->resetBlur();
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
     });
-
     m_stackedLayout->addWidget(m_authorizationWidget);
 
     // Create main menu widget
     m_mainMenuWidget = new MainMenuWidget(this);
-    connect(m_mainMenuWidget, &MainMenuWidget::callAccepted, this, &MainWindow::onIncomingCallAccepted);
+    connect(m_mainMenuWidget, &MainMenuWidget::acceptCallButtonClicked, this, &MainWindow::onIncomingCallAccepted);
+    connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, this, &MainWindow::onIncomingCallDeclined);
+    connect(m_mainMenuWidget, &MainMenuWidget::createCallButtonClicked, this, &MainWindow::onCallButtonClicked);
+    connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, this, &MainWindow::onStopCallingButtonClicked);
     m_stackedLayout->addWidget(m_mainMenuWidget);
 
     // Create call widget
@@ -102,9 +128,14 @@ void MainWindow::setupUI() {
     switchToAuthorizationWidget();
 }
 
+void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
+    calls::authorize(friendNickname.toStdString());
+    m_authorizationWidget->startBlurAnimation();
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
-    m_authorized = false;
-    calls::stop();
+    calls::logout();
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
 }
 
 void MainWindow::switchToAuthorizationWidget() {
@@ -143,6 +174,10 @@ void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
     switchToCallWidget(friendNickname);
 }
 
+void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
+    calls::declineCall(friendNickname.toStdString());
+}
+
 void MainWindow::onHangupClicked() {
     calls::endCall();
     switchToMainMenuWidget();
@@ -163,54 +198,39 @@ void MainWindow::onMuteSpeakerClicked() {
 
 
 void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
-    if (authorizationResult == calls::Result::SUCCESS) {
-        m_authorizationWidget->startBlurAnimation();
-        m_authorized = true;
-    }
-    else {
-        // Show error in authorization widget
-        QString errorMessage;
-        switch (authorizationResult) {
-        case calls::Result::FAIL:
-            errorMessage = "Authorization failed";
-            break;
-        case calls::Result::TIMEOUT:
-            errorMessage = "Authorization timeout";
-            break;
-        default:
-            errorMessage = "Unknown error";
-            break;
-        }
-
-        if (!m_authorized) {
-            m_authorizationWidget->reset();
-            m_authorizationWidget->setErrorMessage(errorMessage);
-        }
-    }
+    m_authorizationResult = authorizationResult;
 }
 
 void MainWindow::onCreateCallResult(calls::Result createCallResult) {
-    if (createCallResult != calls::Result::SUCCESS) {
-        QString errorMessage;
-        switch (createCallResult) {
-        case calls::Result::FAIL:
-            errorMessage = "Call failed";
-            break;
-        case calls::Result::TIMEOUT:
-            errorMessage = "Call timeout error";
-            break;
-        case calls::Result::WRONG_FRIEND_NICKNAME:
-            errorMessage = "unexisting user nickname";
-            break;
-        default:
-            errorMessage = "Call error";
-            break;
-        }
-        
-        m_mainMenuWidget->clearCallingInfo();
-        QTimer::singleShot(400, this, [this, errorMessage]() {
-            m_mainMenuWidget->setErrorMessage(errorMessage);
-        });
+    QString errorMessage;
+
+    if (createCallResult == calls::Result::CALL_ACCEPTED) {
+        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->setState(calls::State::BUSY);
+        switchToCallWidget(QString::fromStdString(calls::getNicknameWhomCalling()));
+    }
+    else if (createCallResult == calls::Result::CALLING) {
+        m_mainMenuWidget->showCallingPanel(QString::fromStdString(calls::getNicknameWhomCalling()));
+        m_mainMenuWidget->setState(calls::State::CALLING);
+    }
+    else if (createCallResult == calls::Result::CALL_DECLINED) {
+        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->setState(calls::State::FREE);
+    }
+    else if (createCallResult == calls::Result::TIMEOUT) {
+        errorMessage = "Call timeout error";
+    }
+    else if (createCallResult == calls::Result::WRONG_FRIEND_NICKNAME) {
+        errorMessage = "Unexisting user nickname";
+    }
+    else {
+        errorMessage = "Call error";
+    }
+
+    if (!errorMessage.isEmpty()) {
+        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->setState(calls::State::FREE);
+        m_mainMenuWidget->setErrorMessage(errorMessage);
     }
 }
 
@@ -218,6 +238,27 @@ void MainWindow::onIncomingCall(const std::string& friendNickName) {
     // Handle incoming call - add to main menu
     m_mainMenuWidget->addIncomingCall(QString::fromStdString(friendNickName));
 }
+
+void MainWindow::onCallButtonClicked(const QString& friendNickname) {
+    if (!friendNickname.isEmpty() && friendNickname.toStdString() != calls::getNickname()) {
+        calls::createCall(friendNickname.toStdString());
+    }
+    else {
+        if (friendNickname.isEmpty()) {
+            m_mainMenuWidget->setErrorMessage("cannot be empty");
+        }
+        else if (friendNickname.toStdString() == calls::getNickname()) {
+            m_mainMenuWidget->setErrorMessage("cannot call yourself");
+        }
+    }
+}
+
+void MainWindow::onStopCallingButtonClicked() {
+    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->setState(calls::State::FREE);
+    calls::stopCalling();
+}
+
 
 void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
     // Handle expired incoming call - remove from main menu
@@ -237,9 +278,8 @@ void MainWindow::onCallHangUp() {
 
 void MainWindow::onNetworkError() {
     // Handle network error
-    m_authorized = false;
     calls::logout();
     switchToAuthorizationWidget();
-    m_authorizationWidget->reset();
+    m_authorizationWidget->resetBlur();
     m_authorizationWidget->setErrorMessage("Network error occurred");
 }

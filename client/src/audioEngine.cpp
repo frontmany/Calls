@@ -18,13 +18,12 @@ AudioEngine::AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels,
     m_encodedInputCallback = encodedInputCallback;
 }
 
-AudioEngine::AudioEngine(std::function<void(const unsigned char* data, int length)> encodedInputCallback)
+AudioEngine::AudioEngine()
     : m_encoder(std::make_unique<Encoder>()),
     m_decoder(std::make_unique<Decoder>()) 
 {
     m_encodedInputBuffer.resize(4000);
     m_decodedOutputBuffer.resize(4096);
-    m_encodedInputCallback = encodedInputCallback;
 }
 
 AudioEngine::~AudioEngine() {
@@ -39,7 +38,61 @@ AudioEngine::~AudioEngine() {
     }
 }
 
-AudioEngine::InitializationStatus AudioEngine::initialize() {
+AudioEngine::InitializationStatus AudioEngine::init() {
+    m_lastError = Pa_Initialize();
+    if (m_lastError != paNoError) {
+        return OTHER_ERROR;
+    }
+
+    PaStreamParameters inputParameters, outputParameters;
+    memset(&inputParameters, 0, sizeof(inputParameters));
+    memset(&outputParameters, 0, sizeof(outputParameters));
+
+    if (m_inputChannels > 0) {
+        inputParameters.device = Pa_GetDefaultInputDevice();
+        if (inputParameters.device == paNoDevice) {
+            Pa_Terminate();
+            return NO_INPUT_DEVICE;
+        }
+
+        inputParameters.channelCount = m_inputChannels;
+        inputParameters.sampleFormat = paFloat32;
+        inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+        inputParameters.hostApiSpecificStreamInfo = nullptr;
+    }
+
+    if (m_outputChannels > 0) {
+        outputParameters.device = Pa_GetDefaultOutputDevice();
+        if (outputParameters.device == paNoDevice) {
+            Pa_Terminate();
+            return NO_OUTPUT_DEVICE;
+        }
+
+        outputParameters.channelCount = m_outputChannels;
+        outputParameters.sampleFormat = paFloat32;
+        outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+        outputParameters.hostApiSpecificStreamInfo = nullptr;
+    }
+
+    m_lastError = Pa_OpenStream(&m_stream,
+        (m_inputChannels > 0) ? &inputParameters : nullptr,
+        (m_outputChannels > 0) ? &outputParameters : nullptr,
+        m_sampleRate, m_framesPerBuffer,
+        paNoFlag,
+        &AudioEngine::paInputAudioCallback, this);
+
+    if (m_lastError != paNoError) {
+        Pa_Terminate();
+        return OTHER_ERROR;
+    }
+
+    m_isInitialized = true;
+    return INITIALIZED;
+}
+
+AudioEngine::InitializationStatus AudioEngine::init(std::function<void(const unsigned char* data, int length)> encodedInputCallback) {
+    m_encodedInputCallback = encodedInputCallback;
+    
     m_lastError = Pa_Initialize();
     if (m_lastError != paNoError) {
         return OTHER_ERROR;
@@ -104,7 +157,7 @@ void AudioEngine::refreshAudioDevices() {
         m_isInitialized = false;
     }
 
-    initialize();
+    init();
 
     if (wasStreaming) {
         startStream();
@@ -204,7 +257,7 @@ bool AudioEngine::startStream() {
     std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 
     if (!m_isInitialized) {
-        if (initialize() != INITIALIZED) {
+        if (init() != INITIALIZED) {
             return false;
         }
     }
@@ -218,7 +271,7 @@ bool AudioEngine::startStream() {
         Pa_CloseStream(m_stream);
         m_stream = nullptr;
 
-        if (initialize() == INITIALIZED) {
+        if (init() == INITIALIZED) {
             m_lastError = Pa_StartStream(m_stream);
             if (m_lastError != paNoError) {
                 return false;
@@ -280,7 +333,7 @@ int AudioEngine::paInputAudioCallback(const void* input, void* output, unsigned 
     return paContinue;
 }
 
-bool AudioEngine::isInitialized() {
+bool AudioEngine::initialized() {
     return m_isInitialized;
 }
 

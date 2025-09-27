@@ -1,7 +1,7 @@
 #pragma once
 
 namespace calls {
-    enum class ClientStatus
+    enum class State
     {
         UNAUTHORIZED,
         FREE,

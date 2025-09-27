@@ -4,66 +4,73 @@
 #include <future>
 #include <atomic>
 #include <functional>
+#include <stdexcept>
 #include <memory>
 #include <thread>
 
 namespace calls {
 
-class Timer {
-public:
-    Timer()
-        : m_active(false),
-        m_shouldStop(false)
-    {
-    }
+    class Timer {
+    public:
+        Timer() = default;
 
-    ~Timer() {
-        stop();
-    }
+        Timer(const Timer&) = delete;
+        Timer& operator=(const Timer&) = delete;
+        Timer(Timer&&) = delete;
+        Timer& operator=(Timer&&) = delete;
 
-    template <class _Rep, class _Period>
-    void start(std::chrono::duration<_Rep, _Period> duration, std::function<void()> onExpired) {
-        if (duration < std::chrono::milliseconds(5)) {
-            throw std::runtime_error("The timer cannot be set to less than 5 milliseconds");
+        ~Timer() {
+            stop();
         }
 
-        stop();
-
-        m_onExpired = onExpired;
-        m_active = true;
-        m_shouldStop = false;
-
-        m_future = std::async(std::launch::async, [this, duration]() {
-            auto start = std::chrono::steady_clock::now();
-            auto end = start + duration;
-
-            while (std::chrono::steady_clock::now() < end && !m_shouldStop) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                if (m_shouldStop) return;
+        template <class Rep, class Period>
+        void start(std::chrono::duration<Rep, Period> duration, std::function<void()> onExpired) {
+            if (duration < std::chrono::milliseconds(1)) {
+                throw std::runtime_error("Timer duration too short");
             }
 
-            if (!m_shouldStop && m_active.load()) {
-                m_onExpired();
+            stop();
+
+            m_active = true;
+
+            m_future = std::async(std::launch::async,
+                [duration, onExpired = std::move(onExpired), this]() {
+                    auto start = std::chrono::steady_clock::now();
+                    auto end = start + duration;
+
+                    while (std::chrono::steady_clock::now() < end && m_active) {
+                        auto remaining = end - std::chrono::steady_clock::now();
+                        if (remaining <= std::chrono::milliseconds(0)) break;
+
+                        auto remaining_ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining);
+                        auto sleep_duration = std::chrono::milliseconds(100);
+
+                        auto sleep_time = remaining_ms < sleep_duration ? remaining_ms : sleep_duration;
+
+                        if (sleep_time > std::chrono::milliseconds(0)) {
+                            std::this_thread::sleep_for(sleep_time);
+                        }
+                    }
+
+                    if (m_active.exchange(false)) {
+                        onExpired();
+                    }
+                });
+        }
+
+        void stop() {
+            if (m_future.valid()) {
+                m_active = false;
+                m_future.wait();
             }
-        });
-    }
+        }
 
-    void stop() {
-        m_shouldStop = true;
-        m_active = false;
-        if (m_future.valid())
-            m_future.wait();
-    }
+        bool is_active() const {
+            return m_active.load();
+        }
 
-    bool is_active() const {
-        return m_active.load() && !m_shouldStop;
-    }
-
-private:
-    std::atomic<bool> m_active;
-    std::atomic<bool> m_shouldStop;
-    std::future<void> m_future;
-    std::function<void()> m_onExpired;
-};
-
+    private:
+        std::atomic<bool> m_active{ false };
+        std::future<void> m_future;
+    };
 }

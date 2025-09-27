@@ -14,7 +14,7 @@
 #include <QGraphicsBlurEffect>
 #include <QSpacerItem>
 
-#include "calls.h"
+#include "state.h"
 #include "incomingCallWidget.h"
 #include "settingsPanelWidget.h"
 
@@ -49,12 +49,12 @@ class MainMenuWidget : public QWidget {
 public:
     MainMenuWidget(QWidget* parent = nullptr);
     void setNickname(const QString& nickname);
-    void setStatus(calls::ClientStatus status);
+    void setState(calls::State state);
     void addIncomingCall(const QString& friendNickname);
     void removeIncomingCall(const QString& friendNickname);
     void clearIncomingCalls();
-    void setCallingInfo(const QString& friendNickname);
-    void clearCallingInfo();
+    void showCallingPanel(const QString& friendNickname);
+    void removeCallingPanel();
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
@@ -64,16 +64,17 @@ public:
     void setMuted(bool muted);
 
 signals:
-    void callRequested(const QString& friendNickname);
-    void callAccepted(const QString& friendNickname);
-    void callDeclined(const QString& friendNickname);
+    void createCallButtonClicked(const QString& friendNickname);
+    void declineCallButtonClicked(const QString& friendNickname);
+    void acceptCallButtonClicked(const QString& friendNickname);
+    void stopCallingButtonClicked();
 
 private slots:
     void onCallButtonClicked();
     void onSettingsButtonClicked();
     void onIncomingCallAccepted(const QString& friendNickname);
     void onIncomingCallDeclined(const QString& friendNickname);
-    void onCancelCallClicked();
+    void onStopCallingButtonClicked();
 
 private:
     void showIncomingCallsArea();
@@ -104,7 +105,7 @@ private:
     QWidget* m_callingSection;
     QHBoxLayout* m_callingLayout;
     QLabel* m_callingText;
-    QPushButton* m_cancelCallButton;
+    QPushButton* m_stopCallingButton;
 
     // Call section
     QLabel* m_errorLabel;

@@ -3,8 +3,10 @@
 namespace calls {
 
 enum class Result {
+	EMPTY,
 	WRONG_FRIEND_NICKNAME,
 	TIMEOUT,
+	CALLING,
 	UNAUTHORIZED,
 	CALL_ACCEPTED,
 	CALL_DECLINED,

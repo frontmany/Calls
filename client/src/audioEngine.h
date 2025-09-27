@@ -25,11 +25,12 @@ public:
     };
 
     AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> returnInputEncodedAudioCallback, Encoder::Config encoderConfig = Encoder::Config(), Decoder::Config decoderConfig = Decoder::Config());
-    AudioEngine(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
+    AudioEngine();
     ~AudioEngine();
-    InitializationStatus initialize();
+
+    InitializationStatus init(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
     void refreshAudioDevices();
-    bool isInitialized();
+    bool initialized();
     bool isStream();
     bool startStream();
     bool stopStream();
@@ -43,6 +44,7 @@ public:
     int getOutputVolume() const;
 
 private:
+    AudioEngine::InitializationStatus init();
     void processInputAudio(const float* input, unsigned long frameCount);
     void processOutputAudio(float* output, unsigned long frameCount);
 

@@ -14,7 +14,12 @@ set(CMAKE_AUTOMOC ON)
 
 qt6_add_resources(QRC_FILES resources/resources.qrc)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES})
+
+qt6_add_resources(QRC_FILES resources/resources.qrc)
+
+set(RC_FILE resources/app_icon.rc)
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES} ${RC_FILE})
 target_link_libraries(${PROJECT_NAME} Qt6::Widgets Qt6::Core calls_client)
 
 target_include_directories(${PROJECT_NAME} PRIVATE 

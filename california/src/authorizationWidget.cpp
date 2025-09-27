@@ -5,8 +5,6 @@
 #include <QApplication>
 #include <QFontDatabase>
 
-#include "calls.h"
-
 // AuthorizationWidget implementation
 AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent) 
 {
@@ -92,14 +90,12 @@ void AuthorizationWidget::setupUI() {
     m_mainLayout->addWidget(m_container);
 
     // Connect signals
-    connect(m_authorizeButton, &QPushButton::clicked,
-        this, &AuthorizationWidget::onAuthorizeClicked);
-    connect(m_nicknameEdit, &QLineEdit::textChanged,
-        this, &AuthorizationWidget::onTextChanged);
-    connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizeClicked);
+    connect(m_authorizeButton, &QPushButton::clicked, this, &AuthorizationWidget::onAuthorizationClicked);
+    connect(m_nicknameEdit, &QLineEdit::textChanged, this, &AuthorizationWidget::onTextChanged);
+    connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizationClicked);
 }
 
-void AuthorizationWidget::reset() {
+void AuthorizationWidget::resetBlur() {
     m_backgroundBlurEffect->setBlurRadius(0);
     m_nicknameEdit->setDisabled(false);
     m_authorizeButton->setDisabled(false);
@@ -115,8 +111,7 @@ void AuthorizationWidget::setupAnimations() {
     m_blurAnimation = new QPropertyAnimation(m_backgroundBlurEffect, "blurRadius", this);
     m_blurAnimation->setDuration(1200);
     m_blurAnimation->setEasingCurve(QEasingCurve::OutCubic);
-
-    connect(m_blurAnimation, &QPropertyAnimation::finished, [this]() {emit animationFinished(); });
+    connect(m_blurAnimation, &QPropertyAnimation::finished, [this]() {emit blurAnimationFinished(); });
 }
 
 void AuthorizationWidget::paintEvent(QPaintEvent* event) {
@@ -149,14 +144,14 @@ void AuthorizationWidget::startBlurAnimation() {
     m_blurAnimation->start();
 }
 
-void AuthorizationWidget::onAuthorizeClicked() {
+void AuthorizationWidget::onAuthorizationClicked() {
     QString nickname = m_nicknameEdit->text().trimmed();
 
     if (validateNickname(nickname)) {
         m_nicknameEdit->setDisabled(true);
         m_authorizeButton->setDisabled(true);
-        calls::authorize(nickname.toStdString());
         clearErrorMessage();
+        emit authorizationButtonClicked(nickname);
     }
     else {
         setErrorMessage("field cannot be empty");
@@ -172,19 +167,7 @@ void AuthorizationWidget::onTextChanged(const QString& text) {
 void AuthorizationWidget::setErrorMessage(const QString& errorText) {
     m_errorLabel->setText(errorText);
     m_errorLabel->show();
-
     m_nicknameEdit->setFocus();
-
-    // Shake animation
-    QPropertyAnimation* shakeAnimation = new QPropertyAnimation(m_errorLabel, "pos", this);
-    shakeAnimation->setDuration(100);
-    shakeAnimation->setLoopCount(3);
-    shakeAnimation->setKeyValueAt(0, m_errorLabel->pos());
-    shakeAnimation->setKeyValueAt(0.25, m_errorLabel->pos() + QPoint(8, 0));
-    shakeAnimation->setKeyValueAt(0.5, m_errorLabel->pos() + QPoint(-8, 0));
-    shakeAnimation->setKeyValueAt(0.75, m_errorLabel->pos() + QPoint(8, 0));
-    shakeAnimation->setKeyValueAt(1, m_errorLabel->pos());
-    shakeAnimation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void AuthorizationWidget::clearErrorMessage() {

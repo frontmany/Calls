@@ -4,9 +4,9 @@
 #include <functional>
 
 #include "callsClient.h"
+#include "state.h"
 
 namespace calls {
-
     // facade functions
     inline void init(
         const std::string& host,
@@ -31,7 +31,12 @@ namespace calls {
             std::move(onNetworkErrorCallback));
     }
 
-    inline ClientStatus getStatus()
+    inline void run()
+    {
+        CallsClient::get().run();
+    }
+
+    inline State getStatus()
     {
         return CallsClient::get().getStatus();
     }
@@ -41,29 +46,34 @@ namespace calls {
         return CallsClient::get().getNickname();
     }
 
-    inline void authorize(const std::string& nickname)
+    inline bool authorize(const std::string& nickname)
     {
-        CallsClient::get().authorize(nickname);
+        return CallsClient::get().authorize(nickname);
     }
 
-    inline void startCalling(const std::string& friendNickname)
+    inline bool createCall(const std::string& friendNickname)
     {
-        CallsClient::get().createCall(friendNickname);
+        return CallsClient::get().createCall(friendNickname);
     }
 
-    inline void stopCalling()
+    inline bool stopCalling()
     {
-        CallsClient::get().stopCalling();
+        return CallsClient::get().stopCalling();
     }
 
-    inline void acceptCall(const std::string& friendNickname)
+    inline bool acceptCall(const std::string& friendNickname)
     {
-        CallsClient::get().acceptIncomingCall(friendNickname);
+        return CallsClient::get().acceptIncomingCall(friendNickname);
     }
 
-    inline void declineCall(const std::string& friendNickname)
+    inline bool declineCall(const std::string& friendNickname)
     {
-        CallsClient::get().declineIncomingCall(friendNickname);
+        return CallsClient::get().declineIncomingCall(friendNickname);
+    }
+
+    inline bool endCall()
+    {
+        return CallsClient::get().endCall();
     }
 
     inline void refreshAudioDevices() {
@@ -75,29 +85,9 @@ namespace calls {
         CallsClient::get().mute(isMute);
     }
 
-    inline void logout()
-    {
-        CallsClient::get().logout();
-    }
-
-    inline void stop()
-    {
-        CallsClient::get().stop();
-    }
-
     inline bool isMuted()
     {
-       return CallsClient::get().isMuted();
-    }
-
-    inline bool isInitialized()
-    {
-        return CallsClient::get().isRunning();
-    }
-
-    inline void endCall()
-    {
-        CallsClient::get().endCall();
+        return CallsClient::get().isMuted();
     }
 
     inline void setInputVolume(int volume)
@@ -118,5 +108,24 @@ namespace calls {
     inline int getOutputVolume()
     {
         return CallsClient::get().getOutputVolume();
+    }
+
+    inline void logout()
+    {
+        CallsClient::get().logout();
+    }
+
+    inline void stop()
+    {
+        CallsClient::get().stop();
+    }
+
+    inline bool isRunning()
+    {
+        return CallsClient::get().isRunning();
+    }
+
+    inline const std::string& getNicknameWhomCalling() {
+        return CallsClient::get().getNicknameWhomCalling();
     }
 }

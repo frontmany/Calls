@@ -43,14 +43,15 @@ public:
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void startBlurAnimation();
-    void reset();
+    void resetBlur();
 
 private slots:
-    void onAuthorizeClicked();
+    void onAuthorizationClicked();
     void onTextChanged(const QString& text);
 
 signals:
-    void animationFinished();
+    void authorizationButtonClicked(const QString& friendNickname);
+    void blurAnimationFinished();
 
 private:
     void setupUI();
