@@ -12,13 +12,12 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 if(WIN32)
     set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
 else()
-    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp")
+    set(CRYPTOPP_DIR "../vendor/cryptopp")
 endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${CRYPTOPP_DIR}"
 )
-
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -26,7 +25,7 @@ if(WIN32)
     )
 else()
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        cryptopp
+        libcryptopp.a
     )
 endif()
 
