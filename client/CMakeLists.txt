@@ -18,6 +18,10 @@ target_link_directories(${PROJECT_NAME} PRIVATE
     "${CRYPTOPP_DIR}"
 )
 
+if(WIN32)
+    add_compile_definitions(_WIN32_WINNT=0x0A00)
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
     "${OPUS_DIR}/$<CONFIG>/opus.lib"

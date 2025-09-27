@@ -119,7 +119,6 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     case (PacketType::FRIEND_INFO_SUCCESS):
         m_timer.stop();
         if (bool parsed = onFriendInfoSuccess(data, length); parsed) {
-            m_call.value().createCallKey();
             startCalling();
         }
         break;
@@ -132,8 +131,8 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
 
     case (PacketType::CALL_ACCEPTED):
         if (m_state == State::BUSY) break;
-
         m_timer.stop();
+        m_nicknameWhomCalling.clear();
         m_state = State::BUSY;
         if (m_call && m_audioEngine) {
             m_queue.push([this]() {m_createCallResult(Result::CALL_ACCEPTED); m_audioEngine->startStream(); });
@@ -155,6 +154,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     case (PacketType::END_CALL):
         if (m_state == State::BUSY && m_audioEngine) {
             m_audioEngine->stopStream();
+            m_call = std::nullopt;
             m_queue.push([this]() {m_onRemoteUserEndedCall(); });
             m_state = State::FREE;
         }
@@ -219,10 +219,16 @@ const std::string& CallsClient::getNicknameWhomCalling() const {
     return m_nicknameWhomCalling;
 }
 
+const std::string& CallsClient::getNicknameInCallWith() const {
+    static const std::string emptyNickname;
+    if (m_state == State::UNAUTHORIZED || m_state != State::BUSY || !m_call) return emptyNickname;
+    return m_call.value().getFriendNickname();
+}
+
 void CallsClient::stop() {
     logout();
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     m_myNickname.clear();
     m_myPublicKey = CryptoPP::RSA::PublicKey();
@@ -250,6 +256,8 @@ void CallsClient::stop() {
 }
 
 void CallsClient::logout() {
+    if (m_state == State::UNAUTHORIZED) return;
+
     if (m_networkController)
         m_networkController->send(
         PacketType::LOGOUT
@@ -437,8 +445,10 @@ bool CallsClient::onFriendInfoSuccess(const unsigned char* data, int length) {
 
         m_call = Call(
             jsonObject[NICKNAME_HASH],
+            m_nicknameWhomCalling,
             crypto::deserializePublicKey(jsonObject[PUBLIC_KEY])
         );
+        m_call.value().createCallKey();
 
         return true;
     }
@@ -462,6 +472,11 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
             }
         }
 
+        IncomingCallData data(
+            nickname,
+            crypto::deserializePublicKey(jsonObject[PUBLIC_KEY]),
+            callKey);
+
         auto timer = std::make_unique<Timer>();
         timer->start(std::chrono::seconds(32), [this, nickname]() {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -474,15 +489,10 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
             if (it != m_incomingCalls.end()) {
                 m_queue.push([this, nickname]() {
                     m_onIncomingCallExpired(nickname);
-                });
+                    });
                 m_incomingCalls.erase(it);
             }
-        });
-
-        IncomingCallData data(
-            nickname,
-            crypto::deserializePublicKey(jsonObject[PUBLIC_KEY]),
-            callKey);
+            });
 
         m_incomingCalls.emplace_back(std::move(timer), std::move(data));
 
@@ -511,7 +521,7 @@ void CallsClient::onIncomingCallingEnd(const unsigned char* data, int length) {
 
             m_queue.push([this, nickname = std::move(nickname)]() {
                 m_onIncomingCallExpired(nickname);
-                });
+            });
         }
     }
     catch (const std::exception& e) {

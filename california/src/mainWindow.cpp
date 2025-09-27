@@ -2,6 +2,7 @@
 #include <QStackedLayout>
 #include <QHBoxLayout>
 #include <QFontDatabase>
+#include <QApplication>
 
 #include "AuthorizationWidget.h"
 #include "MainMenuWidget.h"
@@ -115,7 +116,7 @@ void MainWindow::setupUI() {
     m_mainMenuWidget = new MainMenuWidget(this);
     connect(m_mainMenuWidget, &MainMenuWidget::acceptCallButtonClicked, this, &MainWindow::onIncomingCallAccepted);
     connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, this, &MainWindow::onIncomingCallDeclined);
-    connect(m_mainMenuWidget, &MainMenuWidget::createCallButtonClicked, this, &MainWindow::onCallButtonClicked);
+    connect(m_mainMenuWidget, &MainMenuWidget::createCallButtonClicked, this, &MainWindow::onCreateCallButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, this, &MainWindow::onStopCallingButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::refreshAudioDevicesButtonClicked, this, &MainWindow::onRefreshAudioDevicesButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, this, &MainWindow::onInputVolumeChanged);
@@ -142,8 +143,8 @@ void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    calls::logout();
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    calls::stop();
+    event->accept();
 }
 
 void MainWindow::switchToAuthorizationWidget() {
@@ -219,7 +220,7 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
     if (createCallResult == calls::Result::CALL_ACCEPTED) {
         m_mainMenuWidget->removeCallingPanel();
         m_mainMenuWidget->setState(calls::State::BUSY);
-        switchToCallWidget(QString::fromStdString(calls::getNicknameWhomCalling()));
+        switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
     }
     else if (createCallResult == calls::Result::CALLING) {
         m_mainMenuWidget->showCallingPanel(QString::fromStdString(calls::getNicknameWhomCalling()));
@@ -251,7 +252,7 @@ void MainWindow::onIncomingCall(const std::string& friendNickName) {
     m_mainMenuWidget->addIncomingCall(QString::fromStdString(friendNickName));
 }
 
-void MainWindow::onCallButtonClicked(const QString& friendNickname) {
+void MainWindow::onCreateCallButtonClicked(const QString& friendNickname) {
     if (!friendNickname.isEmpty() && friendNickname.toStdString() != calls::getNickname()) {
         calls::createCall(friendNickname.toStdString());
     }

@@ -50,6 +50,7 @@ public:
     int getInputVolume() const;
     int getOutputVolume() const;
     const std::string& getNicknameWhomCalling() const;
+    const std::string& getNicknameInCallWith() const;
 
 
     bool authorize(const std::string& nickname);

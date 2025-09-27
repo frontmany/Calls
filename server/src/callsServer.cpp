@@ -82,7 +82,7 @@ void CallsServer::run() {
     m_networkController.start();
 
     while (m_running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Smaller sleep for better responsiveness
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     m_networkController.stop();

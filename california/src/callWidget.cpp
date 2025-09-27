@@ -21,10 +21,10 @@ QString StyleCallWidget::containerStyle() {
 
 QString StyleCallWidget::longTimerStyle() {
     return QString("QLabel {"
-        "   color: %1;"
+        "   color: rgb(255, 255, 255);"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(m_textColor.name());
+        "}");
 }
 
 QString StyleCallWidget::titleStyle() {

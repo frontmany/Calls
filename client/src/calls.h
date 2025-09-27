@@ -128,4 +128,8 @@ namespace calls {
     inline const std::string& getNicknameWhomCalling() {
         return CallsClient::get().getNicknameWhomCalling();
     }
+
+    inline const std::string& getNicknameInCallWith() {
+        return CallsClient::get().getNicknameInCallWith();
+    }
 }

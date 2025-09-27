@@ -14,13 +14,11 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    // 192.168.1.40 local machine 
-    // 192.168.1.48 server internal ip
-    // 92.255.165.77 server global ip
     MainWindow(QWidget* parent = nullptr, const std::string& host = "92.255.165.77", const std::string& port = "8081");
     ~MainWindow() = default;
 
-public slots:
+
+private slots:
     void onAuthorizationResult(calls::Result authorizationResult);
     void onCreateCallResult(calls::Result createCallResult);
     void onIncomingCall(const std::string& friendNickName);
@@ -29,10 +27,9 @@ public slots:
     void onRemoteUserEndedCall();
     void onNetworkError();
 
-private slots:
     void onIncomingCallAccepted(const QString& friendNickname);
     void onIncomingCallDeclined(const QString& friendNickname);
-    void onCallButtonClicked(const QString& friendNickname);
+    void onCreateCallButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
     void onHangupClicked();
     void onAuthorizationButtonClicked(const QString& friendNickname);
