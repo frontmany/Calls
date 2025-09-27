@@ -23,6 +23,12 @@ private slots:
     void onSpeakerVolumeChanged(int volume);
     void onMicMuteClicked();
 
+signals:
+    void refreshAudioDevicesButtonClicked();
+    void inputVolumeChanged(int newVolume);
+    void outputVolumeChanged(int newVolume);
+    void muteButtonClicked(bool mute);
+
 private:
     void setupUI();
     QSlider* m_micSlider;

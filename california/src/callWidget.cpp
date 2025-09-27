@@ -332,8 +332,6 @@ void CallWidget::setupUI() {
     connect(m_hangupButton, &QPushButton::clicked, this, &CallWidget::onHangupClicked);
     connect(m_refreshButton, &ButtonIcon::clicked, this, [this]() {
         if (m_refreshEnabled) {
-            calls::refreshAudioDevices();
-
             // Start cooldown
             m_refreshEnabled = false;
             m_refreshButton->setEnabled(false);
@@ -343,6 +341,7 @@ void CallWidget::setupUI() {
             m_refreshButton->setToolTip("Refresh cooldown: 2s");
 
             m_refreshCooldownTimer->start(2000); // 2 seconds cooldown
+            emit refreshAudioDevicesButtonClicked();
         }
         });
 
@@ -464,8 +463,7 @@ void CallWidget::onMuteClicked()
         if (m_micVolumeSlider)
         {
             m_micVolumeSlider->setEnabled(false);
-            m_micVolumeSlider->setValue(0);
-            calls::mute(true);
+            emit muteButtonClicked(true);
         }
     }
     else
@@ -473,24 +471,21 @@ void CallWidget::onMuteClicked()
         if (m_micVolumeSlider)
         {
             m_micVolumeSlider->setEnabled(true);
-            m_micVolumeSlider->setValue(calls::getInputVolume());
-            calls::mute(false);
+            emit muteButtonClicked(false);
         }
     }
 }
 
 void CallWidget::onRefreshAudioDevicesClicked() {
-    calls::refreshAudioDevices();
+    emit refreshAudioDevicesButtonClicked();
 }
 
 void CallWidget::onInputVolumeChanged(int volume) {
-    if (!m_muted) {
-        calls::setInputVolume(volume);
-    }
+    emit inputVolumeChanged(volume);
 }
 
 void CallWidget::onOutputVolumeChanged(int volume) {
-    calls::setOutputVolume(volume);
+    emit outputVolumeChanged(volume);
 }
 
 void CallWidget::onHangupClicked() {

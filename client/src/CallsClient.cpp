@@ -24,7 +24,7 @@ bool CallsClient::init(
     std::function<void(const std::string&)> onIncomingCall,
     std::function<void(const std::string&)> onIncomingCallExpired,
     std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
-    std::function<void()> onCallHangUp,
+    std::function<void()> onRemoteUserEndedCall,
     std::function<void()> onNetworkError)
 {
     m_authorizationResult = authorizationResult;
@@ -33,7 +33,7 @@ bool CallsClient::init(
     m_onIncomingCallExpired = onIncomingCallExpired;
     m_onCallingSomeoneWhoAlreadyCallingYou = onCallingSomeoneWhoAlreadyCallingYou;
     m_onIncomingCall = onIncomingCall;
-    m_onCallHangUp = onCallHangUp;
+    m_onRemoteUserEndedCall = onRemoteUserEndedCall;
     m_running = true;
 
     m_keysFuture = std::async(std::launch::async, [this]() {
@@ -155,7 +155,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     case (PacketType::END_CALL):
         if (m_state == State::BUSY && m_audioEngine) {
             m_audioEngine->stopStream();
-            m_queue.push([this]() {m_onCallHangUp(); });
+            m_queue.push([this]() {m_onRemoteUserEndedCall(); });
             m_state = State::FREE;
         }
         break;

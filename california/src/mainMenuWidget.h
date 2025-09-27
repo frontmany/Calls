@@ -68,6 +68,10 @@ signals:
     void declineCallButtonClicked(const QString& friendNickname);
     void acceptCallButtonClicked(const QString& friendNickname);
     void stopCallingButtonClicked();
+    void refreshAudioDevicesButtonClicked();
+    void inputVolumeChanged(int newVolume);
+    void outputVolumeChanged(int newVolume);
+    void muteButtonClicked(bool mute);
 
 private slots:
     void onCallButtonClicked();

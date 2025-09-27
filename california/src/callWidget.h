@@ -9,7 +9,6 @@
 #include <QSlider>
 
 #include "buttons.h"
-#include "calls.h"
 
 struct StyleCallWidget {
     static const QColor m_primaryColor;
@@ -44,6 +43,10 @@ public:
 
 signals:
     void hangupClicked();
+    void refreshAudioDevicesButtonClicked();
+    void inputVolumeChanged(int newVolume);
+    void outputVolumeChanged(int newVolume);
+    void muteButtonClicked(bool mute);
 
 protected:
     void paintEvent(QPaintEvent* event) override;

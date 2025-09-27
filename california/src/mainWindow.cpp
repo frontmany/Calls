@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
                 Q_ARG(std::string, friendNickName));
         },
         [this]() {
-            QMetaObject::invokeMethod(this, "onCallHangUp", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(this, "onRemoteUserEndedCall", Qt::QueuedConnection);
         },
         [this]() {
             QMetaObject::invokeMethod(this, "onNetworkError", Qt::QueuedConnection);
@@ -117,11 +117,19 @@ void MainWindow::setupUI() {
     connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, this, &MainWindow::onIncomingCallDeclined);
     connect(m_mainMenuWidget, &MainMenuWidget::createCallButtonClicked, this, &MainWindow::onCallButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, this, &MainWindow::onStopCallingButtonClicked);
+    connect(m_mainMenuWidget, &MainMenuWidget::refreshAudioDevicesButtonClicked, this, &MainWindow::onRefreshAudioDevicesButtonClicked);
+    connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, this, &MainWindow::onInputVolumeChanged);
+    connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
+    connect(m_mainMenuWidget, &MainMenuWidget::muteButtonClicked, this, &MainWindow::onMuteButtonClicked);
     m_stackedLayout->addWidget(m_mainMenuWidget);
 
     // Create call widget
     m_callWidget = new CallWidget(this);
     connect(m_callWidget, &CallWidget::hangupClicked, this, &MainWindow::onHangupClicked);
+    connect(m_callWidget, &CallWidget::refreshAudioDevicesButtonClicked, this, &MainWindow::onRefreshAudioDevicesButtonClicked);
+    connect(m_callWidget, &CallWidget::inputVolumeChanged, this, &MainWindow::onInputVolumeChanged);
+    connect(m_callWidget, &CallWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
+    connect(m_callWidget, &CallWidget::muteButtonClicked, this, &MainWindow::onMuteButtonClicked);
     m_stackedLayout->addWidget(m_callWidget);
 
     // Set authorization widget as default
@@ -184,18 +192,21 @@ void MainWindow::onHangupClicked() {
     m_mainMenuWidget->clearIncomingCalls();
 }
 
-void MainWindow::onMuteMicClicked() {
-    // Implement microphone mute/unmute logic
-    qDebug() << "Microphone mute toggled";
+void MainWindow::onRefreshAudioDevicesButtonClicked() {
+    calls::refreshAudioDevices();
 }
 
-void MainWindow::onMuteSpeakerClicked() {
-    // Implement speaker mute/unmute logic
-    qDebug() << "Speaker mute toggled";
+void MainWindow::onInputVolumeChanged(int newVolume) {
+    calls::setOutputVolume(newVolume);
 }
 
+void MainWindow::onOutputVolumeChanged(int newVolume) {
+    calls::setInputVolume(newVolume);
+}
 
-
+void MainWindow::onMuteButtonClicked(bool mute) {
+    calls::mute(mute);
+}
 
 void MainWindow::onAuthorizationResult(calls::Result authorizationResult) {
     m_authorizationResult = authorizationResult;
@@ -270,10 +281,9 @@ void MainWindow::onSimultaneousCalling(const std::string& friendNickName) {
     switchToCallWidget(QString::fromStdString(friendNickName));
 }
 
-void MainWindow::onCallHangUp() {
-    // Handle call hang up from remote side
+void MainWindow::onRemoteUserEndedCall() {
     switchToMainMenuWidget();
-    m_mainMenuWidget->clearIncomingCalls();
+    m_mainMenuWidget->setState(calls::State::FREE);
 }
 
 void MainWindow::onNetworkError() {

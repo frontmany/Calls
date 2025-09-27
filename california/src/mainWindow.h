@@ -23,7 +23,7 @@ public slots:
     void onIncomingCall(const std::string& friendNickName);
     void onIncomingCallExpired(const std::string& friendNickName);
     void onSimultaneousCalling(const std::string& friendNickName);
-    void onCallHangUp();
+    void onRemoteUserEndedCall();
     void onNetworkError();
 
 private slots:
@@ -33,8 +33,11 @@ private slots:
     void onStopCallingButtonClicked();
     void onHangupClicked();
     void onAuthorizationButtonClicked(const QString& friendNickname);
-    void onMuteMicClicked();
-    void onMuteSpeakerClicked();
+    void onRefreshAudioDevicesButtonClicked();
+    void onInputVolumeChanged(int newVolume);
+    void onOutputVolumeChanged(int newVolume);
+    void onMuteButtonClicked(bool mute);
+
 
 private:
     void setupUI();

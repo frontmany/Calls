@@ -2,8 +2,6 @@
 #include "buttons.h"
 #include <QIcon>
 
-#include "calls.h"
-
 const QColor SettingsPanel::StyleSettingsPanel::primaryColor = QColor(224, 168, 0);
 const QColor SettingsPanel::StyleSettingsPanel::hoverColor = QColor(219, 164, 0);
 const QColor SettingsPanel::StyleSettingsPanel::backgroundColor = QColor(230, 230, 230);
@@ -260,8 +258,6 @@ void SettingsPanel::setupUI() {
     connect(m_muteButton, &QPushButton::toggled, this, &SettingsPanel::onMicMuteClicked);
     connect(m_refreshButton, &QPushButton::clicked, this, [this]() {
         if (m_refreshEnabled) {
-            calls::refreshAudioDevices();
-
             m_refreshEnabled = false;
             m_refreshButton->setEnabled(false);
             m_refreshButton->setText("  Wait...");
@@ -272,6 +268,7 @@ void SettingsPanel::setupUI() {
             );
 
             m_refreshCooldownTimer->start(2000);
+            emit refreshAudioDevicesButtonClicked();
         }
     });
 
@@ -287,12 +284,12 @@ void SettingsPanel::setupUI() {
 
 void SettingsPanel::onMicVolumeChanged(int volume) {
     if (!m_isMicMuted) {
-        calls::setInputVolume(volume);
+        emit inputVolumeChanged(volume);
     }
 }
 
 void SettingsPanel::onSpeakerVolumeChanged(int volume) {
-    calls::setOutputVolume(volume);
+    emit outputVolumeChanged(volume);
 }
 
 void SettingsPanel::setInputVolume(int volume) {
@@ -310,13 +307,11 @@ void SettingsPanel::setMuted(bool muted) {
 
     if (muted) {
         m_micSlider->setEnabled(false);
-        m_micSlider->setValue(0);
-        calls::mute(true);
+        emit muteButtonClicked(true);
     }
     else {
         m_micSlider->setEnabled(true);
-        m_micSlider->setValue(calls::getInputVolume());
-        calls::mute(false);
+        emit muteButtonClicked(false);
     }
 }
 
@@ -329,8 +324,7 @@ void SettingsPanel::onMicMuteClicked()
         if (m_micSlider)
         {
             m_micSlider->setEnabled(false);
-            m_micSlider->setValue(0);
-            calls::mute(true);
+            emit muteButtonClicked(true);
         }
     }
     else
@@ -338,8 +332,7 @@ void SettingsPanel::onMicMuteClicked()
         if (m_micSlider)
         {
             m_micSlider->setEnabled(true);
-            m_micSlider->setValue(calls::getInputVolume());
-            calls::mute(false);
+            emit muteButtonClicked(false);
         }
     }
 }

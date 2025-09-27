@@ -30,7 +30,7 @@ public:
         std::function<void(const std::string&)> onIncomingCall,
         std::function<void(const std::string&)> onIncomingCallExpired,
         std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
-        std::function<void()> onCallHangUp,
+        std::function<void()> onRemoteUserEndedCall,
         std::function<void()> onNetworkError
     );
 
@@ -100,7 +100,7 @@ private:
     std::function<void(const std::string& friendNickname)> m_onIncomingCallExpired;
     std::function<void(const std::string& friendNickname)> m_onCallingSomeoneWhoAlreadyCallingYou;
     std::function<void()> m_onNetworkError;
-    std::function<void()> m_onCallHangUp;
+    std::function<void()> m_onRemoteUserEndedCall;
 
     static constexpr const char* PUBLIC_KEY = "publicKey";
     static constexpr const char* NICKNAME = "nickname";

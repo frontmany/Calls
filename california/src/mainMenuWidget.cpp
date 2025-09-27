@@ -375,6 +375,11 @@ void MainMenuWidget::setupUI() {
     connect(m_stopCallingButton, &QPushButton::clicked, this, &MainMenuWidget::onStopCallingButtonClicked);
     connect(m_friendNicknameEdit, &QLineEdit::textChanged, this, &MainMenuWidget::clearErrorMessage);
     connect(m_friendNicknameEdit, &QLineEdit::returnPressed, this, &MainMenuWidget::onCallButtonClicked);
+    connect(m_settingsPanel, &SettingsPanel::refreshAudioDevicesButtonClicked, [this]() {emit refreshAudioDevicesButtonClicked(); });
+    connect(m_settingsPanel, &SettingsPanel::inputVolumeChanged, [this](int newVolume) {emit inputVolumeChanged(newVolume); });
+    connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
+    connect(m_settingsPanel, &SettingsPanel::muteButtonClicked, [this](bool mute) {emit muteButtonClicked(mute); });
+
 }
 
 void MainMenuWidget::setupAnimations() {
