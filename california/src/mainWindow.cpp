@@ -190,6 +190,7 @@ void MainWindow::onHangupClicked() {
     calls::endCall();
     switchToMainMenuWidget();
     m_mainMenuWidget->clearIncomingCalls();
+    m_mainMenuWidget->setState(calls::State::FREE);
 }
 
 void MainWindow::onRefreshAudioDevicesButtonClicked() {

@@ -14,7 +14,10 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget* parent = nullptr, const std::string& host = "192.168.1.45", const std::string& port = "8081");
+    // 192.168.1.40 local machine 
+    // 192.168.1.48 server internal ip
+    // 92.255.165.77 server global ip
+    MainWindow(QWidget* parent = nullptr, const std::string& host = "92.255.165.77", const std::string& port = "8081");
     ~MainWindow() = default;
 
 public slots:

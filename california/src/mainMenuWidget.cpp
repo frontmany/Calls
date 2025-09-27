@@ -398,10 +398,10 @@ void MainMenuWidget::setupAnimations() {
 
     // Incoming calls area animation
     m_incomingCallsAnimation = new QPropertyAnimation(m_incomingCallsScrollArea, "maximumHeight", this);
-    m_incomingCallsAnimation->setDuration(250);
+    m_incomingCallsAnimation->setDuration(60);
     m_incomingCallsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_incomingCallsAnimation->setStartValue(0);
-    m_incomingCallsAnimation->setEndValue(150);
+    m_incomingCallsAnimation->setEndValue(120);
 
     connect(m_incomingCallsAnimation, &QPropertyAnimation::finished, this, [this]() {
         if (m_incomingCallsAnimation->direction() == QAbstractAnimation::Backward) {
@@ -605,8 +605,8 @@ void MainMenuWidget::showIncomingCallsArea() {
 
 void MainMenuWidget::hideIncomingCallsArea() {
     if (!m_incomingCallsScrollArea->isHidden()) {
-        m_incomingCallsAnimation->setDirection(QAbstractAnimation::Backward);
         m_incomingCallsScrollArea->setMinimumHeight(0);
+        m_incomingCallsAnimation->setDirection(QAbstractAnimation::Backward);
         m_incomingCallsAnimation->start();
     }
 }
@@ -656,6 +656,7 @@ void MainMenuWidget::setMuted(bool muted) {
 }
 
 void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
+    removeIncomingCall(friendNickname);
     emit acceptCallButtonClicked(friendNickname);
 }
 
