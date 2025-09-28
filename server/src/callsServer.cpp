@@ -12,14 +12,6 @@ CallsServer::CallsServer()
 }
 
 void CallsServer::onReceive(const unsigned char* data, int size, PacketType type, const asio::ip::udp::endpoint& endpointFrom) {
-    static std::chrono::steady_clock::time_point lastReceiveTime;
-    auto now = std::chrono::steady_clock::now();
-
-    if (now - lastReceiveTime < std::chrono::microseconds(100)) {
-        DEBUG_LOG("High packet rate detected");
-    }
-    lastReceiveTime = now;
-    
     if (type == PacketType::VOICE) {
         handleVoicePacket(data, size, endpointFrom);
         return;

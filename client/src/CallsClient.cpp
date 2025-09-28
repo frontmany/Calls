@@ -161,7 +161,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         break;
 
     case (PacketType::INCOMING_CALL):
-        if (bool parsed = onIncomingCall(data, length); parsed && (m_state != State::BUSY || m_state == State::UNAUTHORIZED)) {
+        if (bool parsed = onIncomingCall(data, length); parsed && m_state != State::UNAUTHORIZED) {
             m_queue.push([this]() {
                 auto& [timer, incomingCallData] = m_incomingCalls.back();
                 m_onIncomingCall(incomingCallData.friendNickname); 
