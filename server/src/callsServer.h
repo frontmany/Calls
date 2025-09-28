@@ -39,8 +39,6 @@ private:
 
 private:
 	std::atomic_bool m_running = false;
-	std::mutex m_mutex;
-
 	std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;
 	std::unordered_map<std::string, UserPtr> m_nicknameHashToUser;
 	std::unordered_set<std::shared_ptr<Call>> m_calls;
