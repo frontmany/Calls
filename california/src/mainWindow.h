@@ -14,9 +14,8 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget* parent = nullptr, const std::string& host = "92.255.165.77", const std::string& port = "8081");
+    MainWindow(QWidget* parent, const std::string& host, const std::string& port);
     ~MainWindow() = default;
-
 
 private slots:
     void onAuthorizationResult(calls::Result authorizationResult);

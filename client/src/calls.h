@@ -36,7 +36,7 @@ namespace calls {
         CallsClient::get().run();
     }
 
-    inline State getStatus()
+    inline State getState()
     {
         return CallsClient::get().getStatus();
     }

@@ -161,7 +161,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         break;
 
     case (PacketType::INCOMING_CALL):
-        if (bool parsed = onIncomingCall(data, length); parsed && m_state == State::FREE) {
+        if (bool parsed = onIncomingCall(data, length); parsed && (m_state != State::BUSY || m_state == State::UNAUTHORIZED)) {
             m_queue.push([this]() {
                 auto& [timer, incomingCallData] = m_incomingCalls.back();
                 m_onIncomingCall(incomingCallData.friendNickname); 
@@ -376,6 +376,10 @@ bool CallsClient::acceptIncomingCall(const std::string& friendNickname) {
 
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    if (m_state == State::CALLING) {
+        stopCalling();
+    }
+
     auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(),
         [&friendNickname](const auto& pair) {
             return pair.second.friendNickname == friendNickname;
@@ -386,7 +390,6 @@ bool CallsClient::acceptIncomingCall(const std::string& friendNickname) {
     
 
     m_state = State::BUSY;
-
     it->first->stop();
     m_call = Call(it->second);
     m_incomingCalls.erase(it);
@@ -466,6 +469,7 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
         std::string nickname = crypto::AESDecrypt(packetAesKey, jsonObject[NICKNAME]);
         auto callKey = crypto::RSADecryptAESKey(m_myPrivateKey, jsonObject[CALL_KEY]);
 
+        // in case we are already calling this user (unlikely to happen)
         if (m_call && m_state == State::CALLING) {
             if (m_call.value().getFriendNicknameHash() == crypto::calculateHash(nickname)) {
                 declineIncomingCall(nickname);

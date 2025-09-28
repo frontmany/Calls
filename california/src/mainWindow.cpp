@@ -179,6 +179,10 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
 }
 
 void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
+    if (calls::getState() == calls::State::CALLING) {
+        m_mainMenuWidget->removeCallingPanel();
+    }
+
     calls::acceptCall(friendNickname.toStdString());
     switchToCallWidget(friendNickname);
 }
@@ -248,7 +252,6 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
 }
 
 void MainWindow::onIncomingCall(const std::string& friendNickName) {
-    // Handle incoming call - add to main menu
     m_mainMenuWidget->addIncomingCall(QString::fromStdString(friendNickName));
 }
 
