@@ -240,11 +240,11 @@ void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
 }
 
 void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
+    m_mainMenuWidget->removeIncomingCall(friendNickname);
+
     if (m_mainMenuWidget->getIncomingCallsCount() == 0) {
         stopRingtone();
     }
-
-    m_mainMenuWidget->removeIncomingCall(friendNickname);
 
     calls::declineCall(friendNickname.toStdString());
 }
@@ -252,7 +252,7 @@ void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
 void MainWindow::onHangupClicked() {
     calls::endCall();
     switchToMainMenuWidget();
-    m_mainMenuWidget->clearIncomingCalls();
+    m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
 }
 
