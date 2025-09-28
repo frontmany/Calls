@@ -185,7 +185,16 @@ QString StyleMainMenuWidget::callingTextStyle() {
         "}").arg(m_callingColor.name());
 }
 
-MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
+// Add this new style method
+QString StyleMainMenuWidget::incomingCallsHeaderStyle() {
+    return QString("QLabel {"
+        "   color: %1;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(m_textColor.name());
+}
+
+MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), m_incomingCallsCount(0) {
     setupUI();
     setupAnimations();
 }
@@ -308,9 +317,32 @@ void MainMenuWidget::setupUI() {
     QFont callButtonFont("Outfit", 14, QFont::Normal);
     m_callButton->setFont(callButtonFont);
 
+    // Incoming calls header
+    m_incomingCallsHeader = new QWidget();
+    m_incomingCallsHeaderLayout = new QHBoxLayout(m_incomingCallsHeader);
+    m_incomingCallsHeaderLayout->setContentsMargins(10, 2, 10, 5);
+    m_incomingCallsHeaderLayout->setSpacing(0);
+
+    m_incomingCallsTitle = new QLabel("Incoming Calls");
+    m_incomingCallsTitle->setStyleSheet(StyleMainMenuWidget::incomingCallsHeaderStyle());
+    QFont incomingCallsTitleFont("Outfit", 10, QFont::ExtraLight);
+    m_incomingCallsTitle->setFont(incomingCallsTitleFont);
+
+    m_incomingCallsCounter = new QLabel("0");
+    m_incomingCallsCounter->setStyleSheet(StyleMainMenuWidget::incomingCallsHeaderStyle());
+    QFont incomingCallsCounterFont("Outfit", 10, QFont::ExtraLight);
+    m_incomingCallsCounter->setFont(incomingCallsCounterFont);
+    m_incomingCallsCounter->setAlignment(Qt::AlignRight);
+
+    m_incomingCallsHeaderLayout->addWidget(m_incomingCallsTitle);
+    m_incomingCallsHeaderLayout->addStretch();
+    m_incomingCallsHeaderLayout->addWidget(m_incomingCallsCounter);
+
     m_incomingCallsContainer = new QWidget();
     m_incomingCallsLayout = new QVBoxLayout(m_incomingCallsContainer);
     m_incomingCallsLayout->setAlignment(Qt::AlignTop);
+    m_incomingCallsLayout->addWidget(m_incomingCallsHeader);
+    m_incomingCallsLayout->addSpacing(5);
 
     m_incomingCallsScrollArea = new QScrollArea(m_mainContainer);
     m_incomingCallsScrollArea->setWidget(m_incomingCallsContainer);
@@ -394,11 +426,11 @@ void MainMenuWidget::setupAnimations() {
         if (m_settingsAnimation->direction() == QAbstractAnimation::Backward) {
             m_settingsPanel->hide();
         }
-        });
+    });
 
     // Incoming calls area animation
     m_incomingCallsAnimation = new QPropertyAnimation(m_incomingCallsScrollArea, "maximumHeight", this);
-    m_incomingCallsAnimation->setDuration(60);
+    m_incomingCallsAnimation->setDuration(90);
     m_incomingCallsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_incomingCallsAnimation->setStartValue(0);
     m_incomingCallsAnimation->setEndValue(120);
@@ -408,7 +440,7 @@ void MainMenuWidget::setupAnimations() {
             m_incomingCallsScrollArea->hide();
         }
         else {
-            m_incomingCallsScrollArea->setMinimumHeight(100);
+            m_incomingCallsScrollArea->setMinimumHeight(140);
         }
     });
 
@@ -423,7 +455,7 @@ void MainMenuWidget::setupAnimations() {
         if (m_callingAnimation->direction() == QAbstractAnimation::Backward) {
             m_callingSection->hide();
         }
-    });
+        });
 }
 
 void MainMenuWidget::setFocusToLineEdit() {
@@ -488,7 +520,7 @@ void MainMenuWidget::setState(calls::State state) {
 }
 
 void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
-    if (m_incomingCallsLayout->count() == 0) {
+    if (m_incomingCallsLayout->count() == 2) { // Account for header widget
         showIncomingCallsArea();
     }
 
@@ -499,10 +531,12 @@ void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
         this, &MainMenuWidget::onIncomingCallDeclined);
 
     m_incomingCallsLayout->addWidget(callWidget);
+    m_incomingCallsCount++;
+    updateIncomingCallsCounter();
 }
 
 void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {
-    for (int i = 0; i < m_incomingCallsLayout->count(); ++i) {
+    for (int i = 2; i < m_incomingCallsLayout->count(); ++i) { // Start from 2 to skip header
         QWidget* widget = m_incomingCallsLayout->itemAt(i)->widget();
         if (IncomingCallWidget* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
             if (callWidget->getFriendNickname() == friendNickname) {
@@ -511,26 +545,35 @@ void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {
 
                 m_incomingCallsLayout->removeWidget(widget);
                 widget->deleteLater(); // Schedule for deletion
+                m_incomingCallsCount--;
+                updateIncomingCallsCounter();
                 break;
             }
         }
     }
 
-    if (m_incomingCallsLayout->count() == 0) {
+    if (m_incomingCallsLayout->count() == 2) { // Only header remains
         hideIncomingCallsArea();
     }
 }
 
 void MainMenuWidget::clearIncomingCalls() {
-    while (m_incomingCallsLayout->count() > 0) {
-        QWidget* widget = m_incomingCallsLayout->itemAt(0)->widget();
+    // Remove all widgets except the header (first two items: header and spacing)
+    while (m_incomingCallsLayout->count() > 2) {
+        QWidget* widget = m_incomingCallsLayout->itemAt(2)->widget();
         if (widget) {
             disconnect(widget, nullptr, this, nullptr);
             m_incomingCallsLayout->removeWidget(widget);
             widget->deleteLater();
         }
     }
+    m_incomingCallsCount = 0;
+    updateIncomingCallsCounter();
     hideIncomingCallsArea();
+}
+
+void MainMenuWidget::updateIncomingCallsCounter() {
+    m_incomingCallsCounter->setText(QString("%1").arg(m_incomingCallsCount));
 }
 
 void MainMenuWidget::showCallingPanel(const QString& friendNickname) {

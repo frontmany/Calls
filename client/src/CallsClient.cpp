@@ -256,12 +256,26 @@ void CallsClient::stop() {
 }
 
 void CallsClient::logout() {
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (auto& [timer, incomingCall] : m_incomingCalls) {
+            timer->stop();
+            m_networkController->send(
+                PacketsFactory::getDeclineCallPacket(incomingCall.friendNickname),
+                PacketType::CALL_DECLINED
+            );
+        }
+
+        m_incomingCalls.clear();
+    }
+
     if (m_state == State::UNAUTHORIZED) return;
 
     if (m_networkController)
         m_networkController->send(
         PacketType::LOGOUT
     );
+
 
     if (m_timer.is_active()) {
         m_timer.stop();

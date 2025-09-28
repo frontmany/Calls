@@ -41,6 +41,7 @@ struct StyleMainMenuWidget {
     static QString callingSectionStyle();
     static QString callingTextStyle();
     static QString errorLabelStyle();
+    static QString incomingCallsHeaderStyle(); // Add this line
 };
 
 class MainMenuWidget : public QWidget {
@@ -88,6 +89,7 @@ private:
     void paintEvent(QPaintEvent* event) override;
     QColor generateRandomColor(const QString& seed);
     void updateCallingState(bool calling);
+    void updateIncomingCallsCounter(); // Add this line
 
 
     // Main layouts
@@ -120,6 +122,10 @@ private:
     QScrollArea* m_incomingCallsScrollArea;
     QWidget* m_incomingCallsContainer;
     QVBoxLayout* m_incomingCallsLayout;
+    QWidget* m_incomingCallsHeader; // Add this line
+    QHBoxLayout* m_incomingCallsHeaderLayout; // Add this line
+    QLabel* m_incomingCallsTitle; // Add this line
+    QLabel* m_incomingCallsCounter; // Add this line
 
     // Settings section
     QPushButton* m_settingsButton;
@@ -132,4 +138,5 @@ private:
 
     QString m_currentNickname;
     QString m_callingFriend;
+    int m_incomingCallsCount; // Add this line
 };

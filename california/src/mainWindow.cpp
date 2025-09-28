@@ -235,7 +235,7 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
         m_mainMenuWidget->setState(calls::State::FREE);
     }
     else if (createCallResult == calls::Result::TIMEOUT) {
-        errorMessage = "Call timeout error";
+        errorMessage = "Call timeout";
     }
     else if (createCallResult == calls::Result::WRONG_FRIEND_NICKNAME) {
         errorMessage = "Unexisting user nickname";
