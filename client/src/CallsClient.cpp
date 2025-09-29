@@ -310,6 +310,8 @@ void CallsClient::stop() {
 }
 
 void CallsClient::logout() {
+    if (m_state == State::UNAUTHORIZED) return;
+
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         for (auto& [timer, incomingCall] : m_incomingCalls) {
@@ -322,8 +324,6 @@ void CallsClient::logout() {
 
         m_incomingCalls.clear();
     }
-
-    if (m_state == State::UNAUTHORIZED) return;
 
     if (m_networkController)
         m_networkController->send(

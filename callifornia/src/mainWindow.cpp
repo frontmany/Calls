@@ -111,10 +111,6 @@ void MainWindow::setupUI() {
     m_authorizationWidget = new AuthorizationWidget(this);
     connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, this, &MainWindow::onAuthorizationButtonClicked);
     connect(m_authorizationWidget, &AuthorizationWidget::blurAnimationFinished, [this]() {
-        if (m_authorizationResult == calls::Result::EMPTY) {
-            return;
-        }
-        
         if (m_authorizationResult == calls::Result::SUCCESS) {
             switchToMainMenuWidget();
             m_mainMenuWidget->setState(calls::State::FREE);
@@ -137,6 +133,9 @@ void MainWindow::setupUI() {
             case calls::Result::TIMEOUT:
                 errorMessage = "Authorization timeout";
                 break;
+            case calls::Result::EMPTY:
+                errorMessage = "Authorization timeout";
+                break;
             default:
                 errorMessage = "Unknown error";
                 break;
@@ -145,6 +144,8 @@ void MainWindow::setupUI() {
             m_authorizationWidget->resetBlur();
             m_authorizationWidget->setErrorMessage(errorMessage);
         }
+
+        m_authorizationResult = calls::Result::EMPTY;
     });
     m_stackedLayout->addWidget(m_authorizationWidget);
 
