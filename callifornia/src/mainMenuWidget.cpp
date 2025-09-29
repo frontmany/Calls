@@ -16,6 +16,20 @@ const QColor StyleMainMenuWidget::m_onlineColor = QColor(100, 200, 100);
 const QColor StyleMainMenuWidget::m_offlineColor = QColor(150, 150, 150);
 const QColor StyleMainMenuWidget::m_callingColor = QColor(255, 165, 0);
 const QColor StyleMainMenuWidget::m_errorColor = QColor(220, 80, 80, 200);
+const QColor StyleMainMenuWidget::m_disabledColor = QColor(120, 120, 120);
+const QColor StyleMainMenuWidget::m_settingsButtonColor = QColor(235, 235, 235, 190);
+const QColor StyleMainMenuWidget::m_settingsButtonHoverColor = QColor(235, 235, 235, 110);
+const QColor StyleMainMenuWidget::m_lineEditBackgroundColor = QColor(245, 245, 245, 190);
+const QColor StyleMainMenuWidget::m_lineEditFocusBackgroundColor = QColor(255, 255, 255, 190);
+const QColor StyleMainMenuWidget::m_placeholderColor = QColor(240, 240, 240, 180);
+const QColor StyleMainMenuWidget::m_callingSectionBackgroundColor = QColor(255, 245, 235, 180);
+const QColor StyleMainMenuWidget::m_stopCallingButtonColor = QColor(232, 53, 53, 180);
+const QColor StyleMainMenuWidget::m_stopCallingButtonHoverColor = QColor(232, 53, 53, 220);
+const QColor StyleMainMenuWidget::m_incomingCallBackgroundColor = QColor(245, 245, 245, 200);
+const QColor StyleMainMenuWidget::m_settingsPanelBackgroundColor = QColor(240, 240, 240, 200);
+const QColor StyleMainMenuWidget::m_scrollBarColor = QColor(208, 208, 208);
+const QColor StyleMainMenuWidget::m_scrollBarHoverColor = QColor(176, 176, 176);
+const QColor StyleMainMenuWidget::m_scrollBarPressedColor = QColor(144, 144, 144);
 
 QString StyleMainMenuWidget::containerStyle() {
     return QString("QWidget {"
@@ -55,6 +69,16 @@ QString StyleMainMenuWidget::buttonStyle() {
         "}").arg(m_primaryColor.name()).arg(m_hoverColor.name());
 }
 
+QString StyleMainMenuWidget::disabledButtonStyle() {
+    return QString("QPushButton {"
+        "   background-color: rgba(%1, %2, %3, 120);"
+        "   color: rgba(255, 255, 255, 150);"
+        "   border: none;"
+        "   border-radius: 15px;"
+        "   padding: 12px 24px;"
+        "   margin: 0px;"
+        "}").arg(m_primaryColor.red()).arg(m_primaryColor.green()).arg(m_primaryColor.blue());
+}
 
 QString StyleMainMenuWidget::errorLabelStyle() {
     return QString("QLabel {"
@@ -68,7 +92,7 @@ QString StyleMainMenuWidget::errorLabelStyle() {
 
 QString StyleMainMenuWidget::settingsButtonStyle() {
     return QString("QPushButton {"
-        "   background-color: rgba(235, 235, 235, 190);"
+        "   background-color: rgba(%1, %2, %3, %4);"
         "   color: white;"
         "   border: none;"
         "   border-radius: 15px;"
@@ -78,31 +102,52 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
         "   margin: 0px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(235, 235, 235, 110);"
+        "   background-color: rgba(%5, %6, %7, %8);"
         "}"
         "QPushButton::menu-indicator {"
         "   image: none;"
         "   width: 0px;"
-        "}");
+        "}").arg(m_settingsButtonColor.red()).arg(m_settingsButtonColor.green())
+        .arg(m_settingsButtonColor.blue()).arg(m_settingsButtonColor.alpha())
+        .arg(m_settingsButtonHoverColor.red()).arg(m_settingsButtonHoverColor.green())
+        .arg(m_settingsButtonHoverColor.blue()).arg(m_settingsButtonHoverColor.alpha());
 }
 
 QString StyleMainMenuWidget::lineEditStyle() {
     return QString("QLineEdit {"
-        "   background-color: rgba(245, 245, 245, 190);"
+        "   background-color: rgba(%1, %2, %3, %4);"
+        "   border: 0px solid %5;"
+        "   border-radius: 15px;"
+        "   padding: 12px 15px;"
+        "   margin: 0px;"
+        "   color: %6;"
+        "   selection-background-color: %7;"
+        "}"
+        "QLineEdit:focus {"
+        "   border: 0px solid %8;"
+        "   background-color: rgba(%9, %10, %11, %12);"
+        "}"
+        "QLineEdit::placeholder {"
+        "   color: rgba(%13, %14, %15, %16);"
+        "}").arg(m_lineEditBackgroundColor.red()).arg(m_lineEditBackgroundColor.green())
+        .arg(m_lineEditBackgroundColor.blue()).arg(m_lineEditBackgroundColor.alpha())
+        .arg(m_textColor.name()).arg(m_textColor.name()).arg(m_textColor.name())
+        .arg(m_textColor.name())
+        .arg(m_lineEditFocusBackgroundColor.red()).arg(m_lineEditFocusBackgroundColor.green())
+        .arg(m_lineEditFocusBackgroundColor.blue()).arg(m_lineEditFocusBackgroundColor.alpha())
+        .arg(m_placeholderColor.red()).arg(m_placeholderColor.green())
+        .arg(m_placeholderColor.blue()).arg(m_placeholderColor.alpha());
+}
+
+QString StyleMainMenuWidget::disabledLineEditStyle() {
+    return QString("QLineEdit {"
+        "   background-color: rgba(235, 235, 235, 120);"
         "   border: 0px solid %1;"
         "   border-radius: 15px;"
         "   padding: 12px 15px;"
         "   margin: 0px;"
-        "   color: %2;"
-        "   selection-background-color: %3;"
-        "}"
-        "QLineEdit:focus {"
-        "   border: 0px solid %3;"
-        "   background-color: rgba(255, 255, 255, 190);"
-        "}"
-        "QLineEdit::placeholder {"
-        "   color: rgba(240, 240, 240, 180);"
-        "}").arg(m_textColor.name()).arg(m_textColor.name()).arg(m_textColor.name());
+        "   color: #888888;"
+        "}").arg(m_textColor.name());
 }
 
 QString StyleMainMenuWidget::avatarStyle(const QColor& color) {
@@ -119,18 +164,20 @@ QString StyleMainMenuWidget::avatarStyle(const QColor& color) {
 
 QString StyleMainMenuWidget::incomingCallWidgetStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(245, 245, 245, 200);"
+        "   background-color: rgba(%1, %2, %3, %4);"
         "   border-radius: 10px;"
         "   margin: 2px;"
-        "}");
+        "}").arg(m_incomingCallBackgroundColor.red()).arg(m_incomingCallBackgroundColor.green())
+        .arg(m_incomingCallBackgroundColor.blue()).arg(m_incomingCallBackgroundColor.alpha());
 }
 
 QString StyleMainMenuWidget::settingsPanelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(240, 240, 240, 200);"
+        "   background-color: rgba(%1, %2, %3, %4);"
         "   border-radius: 10px;"
         "   padding: 15px;"
-        "}");
+        "}").arg(m_settingsPanelBackgroundColor.red()).arg(m_settingsPanelBackgroundColor.green())
+        .arg(m_settingsPanelBackgroundColor.blue()).arg(m_settingsPanelBackgroundColor.alpha());
 }
 
 QString StyleMainMenuWidget::scrollAreaStyle() {
@@ -146,15 +193,15 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
         "   border-radius: 3px;"
         "}"
         "QScrollBar::handle:vertical {"
-        "   background-color: #D0D0D0;"
+        "   background-color: %1;"
         "   border-radius: 3px;"
         "   min-height: 20px;"
         "}"
         "QScrollBar::handle:vertical:hover {"
-        "   background-color: #B0B0B0;"
+        "   background-color: %2;"
         "}"
         "QScrollBar::handle:vertical:pressed {"
-        "   background-color: #909090;"
+        "   background-color: %3;"
         "}"
         "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
         "   border: none;"
@@ -164,16 +211,17 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
         "   background: none;"
         "}"
-    );
+    ).arg(m_scrollBarColor.name()).arg(m_scrollBarHoverColor.name()).arg(m_scrollBarPressedColor.name());
 }
 
 QString StyleMainMenuWidget::callingSectionStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(255, 245, 235, 180);"
+        "   background-color: rgba(%1, %2, %3, %4);"
         "   border-radius: 15px;"
         "   padding: 12px 15px;"
         "   margin: 5px 0px;"
-        "}");
+        "}").arg(m_callingSectionBackgroundColor.red()).arg(m_callingSectionBackgroundColor.green())
+        .arg(m_callingSectionBackgroundColor.blue()).arg(m_callingSectionBackgroundColor.alpha());
 }
 
 QString StyleMainMenuWidget::callingTextStyle() {
@@ -185,7 +233,6 @@ QString StyleMainMenuWidget::callingTextStyle() {
         "}").arg(m_callingColor.name());
 }
 
-// Add this new style method
 QString StyleMainMenuWidget::incomingCallsHeaderStyle() {
     return QString("QLabel {"
         "   color: %1;"
@@ -194,7 +241,27 @@ QString StyleMainMenuWidget::incomingCallsHeaderStyle() {
         "}").arg(m_textColor.name());
 }
 
-MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), m_incomingCallsCount(0) {
+QString StyleMainMenuWidget::stopCallingButtonStyle() {
+    return QString("QPushButton {"
+        "   background-color: rgba(%1, %2, %3, %4);"
+        "   color: white;"
+        "   border: none;"
+        "   border-radius: 11px;"
+        "   padding: 6px 12px;"
+        "   font-size: 11px;"
+        "   margin: 8px;"
+        "}").arg(m_stopCallingButtonColor.red()).arg(m_stopCallingButtonColor.green())
+        .arg(m_stopCallingButtonColor.blue()).arg(m_stopCallingButtonColor.alpha());
+}
+
+QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
+    return QString("QPushButton:hover {"
+        "   background-color: rgba(%1, %2, %3, %4);"
+        "}").arg(m_stopCallingButtonHoverColor.red()).arg(m_stopCallingButtonHoverColor.green())
+        .arg(m_stopCallingButtonHoverColor.blue()).arg(m_stopCallingButtonHoverColor.alpha());
+}
+
+MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
 }
@@ -272,18 +339,8 @@ void MainMenuWidget::setupUI() {
     // Cancel call button
     m_stopCallingButton = new QPushButton("Cancel", m_callingSection);
     m_stopCallingButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: rgba(232, 53, 53, 180);"
-        "   color: white;"
-        "   border: none;"
-        "   border-radius: 11px;"
-        "   padding: 6px 12px;"
-        "   font-size: 11px;"
-        "   margin: 8px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(232, 53, 53, 220);"
-        "}"
+        StyleMainMenuWidget::stopCallingButtonStyle() +
+        StyleMainMenuWidget::stopCallingButtonHoverStyle()
     );
     m_stopCallingButton->setCursor(Qt::PointingHandCursor);
 
@@ -389,7 +446,6 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::inputVolumeChanged, [this](int newVolume) {emit inputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::muteButtonClicked, [this](bool mute) {emit muteButtonClicked(mute); });
-
 }
 
 void MainMenuWidget::setupAnimations() {
@@ -404,7 +460,7 @@ void MainMenuWidget::setupAnimations() {
         if (m_settingsAnimation->direction() == QAbstractAnimation::Backward) {
             m_settingsPanel->hide();
         }
-    });
+        });
 
     // Incoming calls area animation
     m_incomingCallsAnimation = new QPropertyAnimation(m_incomingCallsScrollArea, "maximumHeight", this);
@@ -420,7 +476,7 @@ void MainMenuWidget::setupAnimations() {
         else {
             m_incomingCallsScrollArea->setMinimumHeight(110);
         }
-    });
+        });
 
     // Calling section animation
     m_callingAnimation = new QPropertyAnimation(m_callingSection, "maximumHeight", this);
@@ -498,7 +554,7 @@ void MainMenuWidget::setState(calls::State state) {
 }
 
 void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
-    if (m_incomingCallsLayout->count() >= 0) { // Account for header widget
+    if (m_incomingCallsLayout->count() >= 0) {
         showIncomingCallsArea();
     }
 
@@ -509,29 +565,21 @@ void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
         this, &MainMenuWidget::onIncomingCallDeclined);
 
     m_incomingCallsLayout->addWidget(callWidget);
-    m_incomingCallsCount++;
-}
-
-int MainMenuWidget::getIncomingCallsCount() const {
-    return m_incomingCallsCount;
 }
 
 void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {
-    if (m_incomingCallsCount == 0) return;
-
-    for (int i = 0; i < m_incomingCallsLayout->count(); ++i) { 
+    for (int i = 1; i < m_incomingCallsLayout->count(); ++i) {
         QWidget* widget = m_incomingCallsLayout->itemAt(i)->widget();
         if (IncomingCallWidget* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
             if (callWidget->getFriendNickname() == friendNickname) {
                 m_incomingCallsLayout->removeWidget(widget);
                 widget->deleteLater();
-                m_incomingCallsCount--;
                 break;
             }
         }
     }
 
-    if (m_incomingCallsCount == 0) {
+    if (m_incomingCallsLayout->count() == 1) {
         hideIncomingCallsArea();
     }
 }
@@ -540,20 +588,13 @@ void MainMenuWidget::clearIncomingCalls() {
     QLayoutItem* item;
     while ((item = m_incomingCallsLayout->takeAt(0)) != nullptr) {
         if (QWidget* widget = item->widget()) {
-            // Disconnect signals first to prevent any callbacks during deletion
-            if (IncomingCallWidget* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
-                callWidget->disconnect();
-            }
             widget->deleteLater();
         }
-        delete item; // Important: delete the layout item itself
+
+        delete item;
     }
 
-    if (m_incomingCallsCount > 0) {
-        hideIncomingCallsArea();
-    }
-
-    m_incomingCallsCount = 0;
+    hideIncomingCallsArea();
 }
 
 void MainMenuWidget::showCallingPanel(const QString& friendNickname) {
@@ -590,26 +631,8 @@ void MainMenuWidget::updateCallingState(bool calling) {
 
     // Visual feedback for disabled state
     if (calling) {
-        m_friendNicknameEdit->setStyleSheet(
-            "QLineEdit {"
-            "   background-color: rgba(235, 235, 235, 120);"
-            "   border: 0px solid #010B13;"
-            "   border-radius: 15px;"
-            "   padding: 12px 15px;"
-            "   margin: 0px;"
-            "   color: #888888;"
-            "}"
-        );
-        m_callButton->setStyleSheet(
-            "QPushButton {"
-            "   background-color: rgba(21, 119, 232, 120);"
-            "   color: rgba(255, 255, 255, 150);"
-            "   border: none;"
-            "   border-radius: 15px;"
-            "   padding: 12px 24px;"
-            "   margin: 0px;"
-            "}"
-        );
+        m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::disabledLineEditStyle());
+        m_callButton->setStyleSheet(StyleMainMenuWidget::disabledButtonStyle());
     }
     else {
         m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());

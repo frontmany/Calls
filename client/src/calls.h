@@ -76,6 +76,10 @@ namespace calls {
         return CallsClient::get().endCall();
     }
 
+    inline int getIncomingCallsCount() {
+        return CallsClient::get().getIncomingCallsCount();
+    }
+
     inline void refreshAudioDevices() {
         CallsClient::get().refreshAudioDevices();
     }

@@ -19,16 +19,32 @@ struct StyleCallWidget {
     static const QColor m_backgroundColor;
     static const QColor m_textColor;
     static const QColor m_containerColor;
+    static const QColor m_whiteColor;
+    static const QColor m_controlButtonColor;
+    static const QColor m_controlButtonHoverColor;
+    static const QColor m_hangupButtonColor;
+    static const QColor m_hangupButtonHoverColor;
+    static const QColor m_sliderGrooveColor;
+    static const QColor m_sliderHandleColor;
+    static const QColor m_sliderSubPageColor;
+    static const QColor m_volumeLabelColor;
+    static const QColor m_scrollAreaBackgroundColor;
 
     static QString containerStyle();
     static QString titleStyle();
     static QString timerStyle();
+    static QString longTimerStyle();
     static QString controlButtonStyle();
     static QString hangupButtonStyle();
     static QString panelStyle();
     static QString sliderStyle();
     static QString volumeLabelStyle();
-    static QString longTimerStyle();
+    static QString scrollAreaStyle();
+    static QString sliderGrooveStyle();
+    static QString sliderHandleStyle();
+    static QString sliderAddPageStyle();
+    static QString sliderSubPageStyle();
+    static QString volumeSliderStyle();
 };
 
 class CallWidget : public QWidget {
@@ -43,12 +59,9 @@ public:
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
     void setMuted(bool muted);
-
-    // New methods for incoming calls
     void addIncomingCall(const QString& friendNickName);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
-    bool hasIncomingCalls() const;
 
 signals:
     void hangupClicked();
@@ -74,6 +87,7 @@ private slots:
     void onRefreshCooldownFinished();
     void onIncomingCallAccepted(const QString& callerName);
     void onIncomingCallDeclined(const QString& callerName);
+    void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
 
 private:
     void setupUI();
@@ -126,7 +140,7 @@ private:
 
     // Timer
     QTimer* m_callTimer;
-    QTime m_callDuration;
+    QTime* m_callDuration;
     QString m_friendNickname;
 
     // refresh button cooldown 

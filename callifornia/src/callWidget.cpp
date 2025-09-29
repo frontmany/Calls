@@ -11,6 +11,16 @@ const QColor StyleCallWidget::m_hoverColor = QColor(18, 113, 222);
 const QColor StyleCallWidget::m_backgroundColor = QColor(230, 230, 230);
 const QColor StyleCallWidget::m_textColor = QColor(1, 11, 19);
 const QColor StyleCallWidget::m_containerColor = QColor(255, 255, 255, 50);
+const QColor StyleCallWidget::m_whiteColor = QColor(255, 255, 255);
+const QColor StyleCallWidget::m_controlButtonColor = QColor(255, 255, 255, 180);
+const QColor StyleCallWidget::m_controlButtonHoverColor = QColor(255, 255, 255, 220);
+const QColor StyleCallWidget::m_hangupButtonColor = QColor(232, 53, 53);
+const QColor StyleCallWidget::m_hangupButtonHoverColor = QColor(212, 43, 43);
+const QColor StyleCallWidget::m_sliderGrooveColor = QColor(77, 77, 77);
+const QColor StyleCallWidget::m_sliderHandleColor = QColor(255, 255, 255);
+const QColor StyleCallWidget::m_sliderSubPageColor = QColor(21, 119, 232);
+const QColor StyleCallWidget::m_volumeLabelColor = QColor(51, 51, 51);
+const QColor StyleCallWidget::m_scrollAreaBackgroundColor = QColor(0, 0, 0, 0);
 
 QString StyleCallWidget::containerStyle() {
     return QString("QWidget {"
@@ -22,10 +32,10 @@ QString StyleCallWidget::containerStyle() {
 
 QString StyleCallWidget::longTimerStyle() {
     return QString("QLabel {"
-        "   color: rgb(255, 255, 255);"
+        "   color: %1;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}");
+        "}").arg(m_whiteColor.name());
 }
 
 QString StyleCallWidget::titleStyle() {
@@ -38,23 +48,26 @@ QString StyleCallWidget::titleStyle() {
 
 QString StyleCallWidget::timerStyle() {
     return QString("QLabel {"
-        "   color: rgb(255, 255, 255);"
+        "   color: %1;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}");
+        "}").arg(m_whiteColor.name());
 }
 
 QString StyleCallWidget::controlButtonStyle() {
     return QString("QPushButton {"
-        "   background-color: rgba(255, 255, 255, 180);"
+        "   background-color: rgba(%1, %2, %3, %4);"
         "   border: none;"
         "   border-radius: 25px;"
         "   padding: 15px;"
         "   margin: 5px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(255, 255, 255, 220);"
-        "}");
+        "   background-color: rgba(%5, %6, %7, %8);"
+        "}").arg(m_controlButtonColor.red()).arg(m_controlButtonColor.green())
+        .arg(m_controlButtonColor.blue()).arg(m_controlButtonColor.alpha())
+        .arg(m_controlButtonHoverColor.red()).arg(m_controlButtonHoverColor.green())
+        .arg(m_controlButtonHoverColor.blue()).arg(m_controlButtonHoverColor.alpha());
 }
 
 QString StyleCallWidget::hangupButtonStyle() {
@@ -67,7 +80,7 @@ QString StyleCallWidget::hangupButtonStyle() {
         "}"
         "QPushButton:hover {"
         "   background-color: %2;"
-        "}").arg(QColor(232, 53, 53).name()).arg(QColor(212, 43, 43).name());
+        "}").arg(m_hangupButtonColor.name()).arg(m_hangupButtonHoverColor.name());
 }
 
 QString StyleCallWidget::panelStyle() {
@@ -104,12 +117,96 @@ QString StyleCallWidget::sliderStyle() {
 QString StyleCallWidget::volumeLabelStyle() {
     return QString(
         "QLabel {"
-        "   color: #333333;"
+        "   color: %1;"
         "   font-size: 12px;"
         "   font-weight: bold;"
         "   margin: 2px 0px;"
         "}"
+    ).arg(m_volumeLabelColor.name());
+}
+
+QString StyleCallWidget::scrollAreaStyle() {
+    return QString(
+        "QScrollArea {"
+        "   background-color: transparent;"
+        "   border: none;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}"
+        "QScrollArea > QWidget > QWidget {"
+        "   background-color: transparent;"
+        "}"
     );
+}
+
+QString StyleCallWidget::sliderGrooveStyle() {
+    return QString(
+        "QSlider::groove:horizontal {"
+        "   background-color: %1;"
+        "   height: 8px;"
+        "   border-radius: 4px;"
+        "   margin: 0px 0px;"
+        "}"
+    ).arg(m_sliderGrooveColor.name());
+}
+
+QString StyleCallWidget::sliderHandleStyle() {
+    return QString(
+        "QSlider::handle:horizontal {"
+        "   background-color: %1;"
+        "   width: 16px;"
+        "   height: 16px;"
+        "   border-radius: 8px;"
+        "   margin: -4px 0;"
+        "}"
+    ).arg(m_sliderHandleColor.name());
+}
+
+QString StyleCallWidget::sliderAddPageStyle() {
+    return QString(
+        "QSlider::add-page:horizontal {"
+        "   background-color: %1;"
+        "   border-radius: 4px;"
+        "}"
+    ).arg(m_sliderGrooveColor.name());
+}
+
+QString StyleCallWidget::sliderSubPageStyle() {
+    return QString(
+        "QSlider::sub-page:horizontal {"
+        "   background-color: %1;"
+        "   border-radius: 4px;"
+        "}"
+    ).arg(m_sliderSubPageColor.name());
+}
+
+QString StyleCallWidget::volumeSliderStyle() {
+    return QString(
+        "QSlider::groove:horizontal {"
+        "   background-color: %1;"
+        "   height: 8px;"
+        "   border-radius: 4px;"
+        "   margin: 0px 0px;"
+        "}"
+        "QSlider::handle:horizontal {"
+        "   background-color: %2;"
+        "   width: 16px;"
+        "   height: 16px;"
+        "   border-radius: 8px;"
+        "   margin: -4px 0;"
+        "}"
+        "QSlider::add-page:horizontal {"
+        "   background-color: %3;"
+        "   border-radius: 4px;"
+        "}"
+        "QSlider::sub-page:horizontal {"
+        "   background-color: %4;"
+        "   border-radius: 4px;"
+        "}"
+    ).arg(m_sliderGrooveColor.name())
+        .arg(m_sliderHandleColor.name())
+        .arg(m_sliderGrooveColor.name())
+        .arg(m_sliderSubPageColor.name());
 }
 
 CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
@@ -118,7 +215,7 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
 
     // Initialize timer
     m_callTimer = new QTimer(this);
-    m_callDuration = QTime(0, 0, 0);
+    m_callDuration = new QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &CallWidget::updateCallTimer);
 
     // Initialize refresh cooldown timer
@@ -154,17 +251,7 @@ void CallWidget::setupUI() {
 
     // Scroll area for incoming calls
     m_incomingCallsScrollArea = new QScrollArea(m_incomingCallsContainer);
-    m_incomingCallsScrollArea->setStyleSheet(
-        "QScrollArea {"
-        "   background-color: transparent;"
-        "   border: none;"
-        "   margin: 0px;"
-        "   padding: 0px;"
-        "}"
-        "QScrollArea > QWidget > QWidget {"
-        "   background-color: transparent;"
-        "}"
-    );
+    m_incomingCallsScrollArea->setStyleSheet(StyleCallWidget::scrollAreaStyle());
     m_incomingCallsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_incomingCallsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_incomingCallsScrollArea->setWidgetResizable(true);
@@ -240,10 +327,6 @@ void CallWidget::setupUI() {
     m_buttonsLayout->addWidget(m_speakerButton);
     m_buttonsLayout->addWidget(m_hangupButton);
 
-
-
-
-
     // Sliders panel (initially hidden)
     m_slidersPanel = new QWidget(m_mainContainer);
     m_slidersPanel->setStyleSheet(StyleCallWidget::panelStyle());
@@ -276,29 +359,7 @@ void CallWidget::setupUI() {
     m_micVolumeSlider = new QSlider(Qt::Horizontal, m_micSliderWidget);
     m_micVolumeSlider->setRange(0, 100);
     m_micVolumeSlider->setValue(80);
-    m_micVolumeSlider->setStyleSheet(R"(
-        QSlider::groove:horizontal {
-            background-color: rgb(77, 77, 77); 
-            height: 8px; 
-            border-radius: 4px;
-            margin: 0px 0px; 
-        }
-        QSlider::handle:horizontal {
-            background-color: white;
-            width: 16px;
-            height: 16px; 
-            border-radius: 8px;
-            margin: -4px 0;
-        }
-        QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
-            border-radius: 4px;
-        }
-        QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
-            border-radius: 4px;
-        }
-    )");
+    m_micVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
 
     m_micLabelSliderLayout->addWidget(m_micLabel);
     m_micLabelSliderLayout->addWidget(m_micVolumeSlider);
@@ -326,29 +387,7 @@ void CallWidget::setupUI() {
     m_speakerVolumeSlider = new QSlider(Qt::Horizontal, m_speakerSliderWidget);
     m_speakerVolumeSlider->setRange(0, 100);
     m_speakerVolumeSlider->setValue(80);
-    m_speakerVolumeSlider->setStyleSheet(R"(
-        QSlider::groove:horizontal {
-            background-color: rgb(77, 77, 77); 
-            height: 8px; 
-            border-radius: 4px;
-            margin: 0px 0px; 
-        }
-        QSlider::handle:horizontal {
-            background-color: white;
-            width: 16px;
-            height: 16px; 
-            border-radius: 8px;
-            margin: -4px 0;
-        }
-        QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
-            border-radius: 4px;
-        }
-        QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
-            border-radius: 4px;
-        }
-    )");
+    m_speakerVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
 
     m_speakerLabelSliderLayout->addWidget(m_speakerLabel);
     m_speakerLabelSliderLayout->addWidget(m_speakerVolumeSlider);
@@ -398,11 +437,23 @@ void CallWidget::setupUI() {
 }
 
 void CallWidget::setupShadowEffect() {
+    setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
+    setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_micButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_speakerButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_refreshButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_muteButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 50));
+}
+
+void CallWidget::setupElementShadow(QWidget* widget, int blurRadius, const QColor& color) {
+    if (!widget) return;
+
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect(this);
-    shadowEffect->setBlurRadius(20);
-    shadowEffect->setColor(QColor(0, 0, 0, 80));
-    shadowEffect->setOffset(0, 5);
-    m_mainContainer->setGraphicsEffect(shadowEffect);
+    shadowEffect->setBlurRadius(blurRadius);
+    shadowEffect->setColor(color);
+    shadowEffect->setOffset(0, 3);
+    widget->setGraphicsEffect(shadowEffect);
 }
 
 void CallWidget::onRefreshCooldownFinished() {
@@ -431,7 +482,7 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
     m_friendNicknameLabel->setText(friendNickname);
 
     // Start the call timer
-    m_callDuration = QTime(0, 0, 0);
+    *m_callDuration = QTime(0, 0, 0);
     m_timerLabel->setText("00:00");
 
     // Ensure initial style is set
@@ -443,10 +494,10 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
 }
 
 void CallWidget::updateCallTimer() {
-    m_callDuration = m_callDuration.addSecs(1);
+    *m_callDuration = m_callDuration->addSecs(1);
 
     // Check if call duration exceeds 60 minutes
-    bool isLongCall = (m_callDuration.hour() > 0);
+    bool isLongCall = (m_callDuration->hour() > 0);
 
     // Update timer style if needed
     if (isLongCall && m_timerLabel->styleSheet() != StyleCallWidget::longTimerStyle()) {
@@ -457,14 +508,14 @@ void CallWidget::updateCallTimer() {
 
     // Format time based on duration
     QString timeFormat;
-    if (m_callDuration.hour() > 0) {
+    if (m_callDuration->hour() > 0) {
         timeFormat = "hh:mm:ss"; // Show hours when call exceeds 1 hour
     }
     else {
         timeFormat = "mm:ss"; // Show only minutes and seconds for calls under 1 hour
     }
 
-    m_timerLabel->setText(m_callDuration.toString(timeFormat));
+    m_timerLabel->setText(m_callDuration->toString(timeFormat));
 }
 
 void CallWidget::showMicSlider() {
@@ -571,6 +622,7 @@ void CallWidget::addIncomingCall(const QString& friendNickName) {
 
     // Create new incoming call widget
     IncomingCallWidget* callWidget = new IncomingCallWidget(friendNickName, m_incomingCallsScrollWidget);
+    setupElementShadow(callWidget, 10, QColor(0, 0, 3, 50));
     m_incomingCallsScrollLayout->addWidget(callWidget);
     m_incomingCallWidgets[friendNickName] = callWidget;
 
@@ -593,14 +645,8 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
     }
 }
 
-bool CallWidget::hasIncomingCalls() const {
-    return !m_incomingCallWidgets.isEmpty();
-}
-
 void CallWidget::updateIncomingCallsVisibility() {
-    bool hasCalls = hasIncomingCalls();
-
-    if (hasCalls) {
+    if (!m_incomingCallWidgets.isEmpty()) {
         // Calculate required height based on number of calls (max 3 visible)
         int callCount = m_incomingCallWidgets.size();
         int visibleCount = qMin(callCount, 3);

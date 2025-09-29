@@ -9,6 +9,21 @@
 
 class ButtonIcon;
 
+struct StyleIncomingCallWidget {
+    static const QColor m_backgroundColor;
+    static const QColor m_borderColor;
+    static const QColor m_nicknameTextColor;
+    static const QColor m_callTypeTextColor;
+    static const QColor m_timerTextColor;
+    static const QColor m_timerCircleColor;
+
+    static QString widgetStyle();
+    static QString nicknameStyle();
+    static QString callTypeStyle();
+    static QString timerStyle();
+    static QString avatarStyle(const QColor& color);
+};
+
 class IncomingCallWidget : public QWidget {
     Q_OBJECT
 public:

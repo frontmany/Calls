@@ -37,18 +37,17 @@ public:
     void run();
     void stop();
     void logout();
-    bool isRunning() const;
-    const std::string& getNickname() const;
-    State getStatus() const;
-
-
     void refreshAudioDevices();
     void mute(bool isMute);
     bool isMuted();
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
+    bool isRunning() const;
+    const std::string& getNickname() const;
+    State getStatus() const;
     int getInputVolume() const;
     int getOutputVolume() const;
+    int getIncomingCallsCount() const;
     const std::string& getNicknameWhomCalling() const;
     const std::string& getNicknameInCallWith() const;
 
@@ -88,7 +87,7 @@ private:
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
     std::future<void> m_keysFuture;
 
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     std::thread m_thread;
     std::thread m_pingerThread;
     std::queue<std::function<void()>> m_queue;

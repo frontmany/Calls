@@ -20,6 +20,9 @@ public:
     MainWindow(QWidget* parent, const std::string& host, const std::string& port);
     ~MainWindow();
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+
 private slots:
     void onAuthorizationResult(calls::Result authorizationResult);
     void onCreateCallResult(calls::Result createCallResult);
@@ -28,7 +31,6 @@ private slots:
     void onSimultaneousCalling(const std::string& friendNickName);
     void onRemoteUserEndedCall();
     void onNetworkError();
-
     void onIncomingCallAccepted(const QString& friendNickname);
     void onIncomingCallDeclined(const QString& friendNickname);
     void onCreateCallButtonClicked(const QString& friendNickname);
@@ -40,24 +42,20 @@ private slots:
     void onOutputVolumeChanged(int newVolume);
     void onMuteButtonClicked(bool mute);
 
-
 private:
-    void setupUI();
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
+
+    void setupUI();
     void loadFonts();
     void playRingtone();
     void stopRingtone();
 
-protected:
-    void closeEvent(QCloseEvent* event) override;
-
 private:
     QMediaPlayer* m_ringtonePlayer;
     QAudioOutput* m_audioOutput;
-
-    calls::Result m_authorizationResult = calls::Result::EMPTY;
+    calls::Result m_authorizationResult;
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;
     QStackedLayout* m_stackedLayout;

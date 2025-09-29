@@ -106,10 +106,10 @@ void CallsClient::checkPing() {
         DEBUG_LOG("ping success");
     }
     else {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_timer.stop();
-        m_queue.push([this]() {m_onNetworkError(); });
+        logout();
         DEBUG_LOG("ping fail");
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_queue.push([this]() {m_onNetworkError(); });
     }
 }
 
@@ -259,6 +259,11 @@ void CallsClient::setOutputVolume(int volume) {
 
 bool CallsClient::isRunning() const {
     return m_running;
+}
+
+int CallsClient::getIncomingCallsCount() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_incomingCalls.size();
 }
 
 const std::string& CallsClient::getNickname() const {

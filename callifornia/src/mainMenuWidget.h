@@ -27,13 +27,29 @@ struct StyleMainMenuWidget {
     static const QColor m_offlineColor;
     static const QColor m_callingColor;
     static const QColor m_errorColor;
+    static const QColor m_disabledColor;
+    static const QColor m_settingsButtonColor;
+    static const QColor m_settingsButtonHoverColor;
+    static const QColor m_lineEditBackgroundColor;
+    static const QColor m_lineEditFocusBackgroundColor;
+    static const QColor m_placeholderColor;
+    static const QColor m_callingSectionBackgroundColor;
+    static const QColor m_stopCallingButtonColor;
+    static const QColor m_stopCallingButtonHoverColor;
+    static const QColor m_incomingCallBackgroundColor;
+    static const QColor m_settingsPanelBackgroundColor;
+    static const QColor m_scrollBarColor;
+    static const QColor m_scrollBarHoverColor;
+    static const QColor m_scrollBarPressedColor;
 
     static QString containerStyle();
     static QString titleStyle();
     static QString nicknameStyle();
     static QString buttonStyle();
+    static QString disabledButtonStyle();
     static QString settingsButtonStyle();
     static QString lineEditStyle();
+    static QString disabledLineEditStyle();
     static QString avatarStyle(const QColor& color);
     static QString scrollAreaStyle();
     static QString incomingCallWidgetStyle();
@@ -41,7 +57,9 @@ struct StyleMainMenuWidget {
     static QString callingSectionStyle();
     static QString callingTextStyle();
     static QString errorLabelStyle();
-    static QString incomingCallsHeaderStyle(); // Add this line
+    static QString incomingCallsHeaderStyle();
+    static QString stopCallingButtonStyle();
+    static QString stopCallingButtonHoverStyle();
 };
 
 class MainMenuWidget : public QWidget {
@@ -59,7 +77,6 @@ public:
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
-    int getIncomingCallsCount() const;
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
@@ -91,7 +108,6 @@ private:
     QColor generateRandomColor(const QString& seed);
     void updateCallingState(bool calling);
 
-
     // Main layouts
     QVBoxLayout* m_mainLayout;
     QWidget* m_mainContainer;
@@ -107,7 +123,7 @@ private:
     QLabel* m_nicknameLabel;
     QLabel* m_statusLabel;
 
-    // Calling section (new)
+    // Calling section
     QWidget* m_callingSection;
     QHBoxLayout* m_callingLayout;
     QLabel* m_callingText;
@@ -134,5 +150,4 @@ private:
 
     QString m_currentNickname;
     QString m_callingFriend;
-    int m_incomingCallsCount; // Add this line
 };

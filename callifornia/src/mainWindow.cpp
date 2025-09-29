@@ -9,7 +9,8 @@
 #include "CallWidget.h"
 
 MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::string& port)
-    : QMainWindow(parent) {
+    : QMainWindow(parent), m_authorizationResult(calls::Result::EMPTY)
+{
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
     m_ringtonePlayer = new QMediaPlayer(this);
@@ -21,7 +22,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
     connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
         if (state == QMediaPlayer::StoppedState || state == QMediaPlayer::PausedState) {
             // Loop the ringtone if still in incoming call state
-            if (m_mainMenuWidget->getIncomingCallsCount() != 0) {
+            if (calls::getIncomingCallsCount() != 0) {
                 m_ringtonePlayer->play();
             }
         }
@@ -78,7 +79,9 @@ void MainWindow::playRingtone() {
 }
 
 void MainWindow::stopRingtone() {
-    if (m_ringtonePlayer) {
+    if (!m_ringtonePlayer) return;
+
+    if (m_ringtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
         m_ringtonePlayer->pause();
     }
 }
@@ -222,8 +225,6 @@ void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
         m_mainMenuWidget->removeCallingPanel();
     }
 
-    stopRingtone();
-
     if (calls::getState() == calls::State::BUSY) {
         calls::endCall();
         m_mainMenuWidget->clearIncomingCalls();
@@ -231,17 +232,20 @@ void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
     }
 
     calls::acceptCall(friendNickname.toStdString());
+    m_mainMenuWidget->clearIncomingCalls();
     switchToCallWidget(friendNickname);
+    stopRingtone();
 }
 
 void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
     m_mainMenuWidget->removeIncomingCall(friendNickname);
 
-    if (m_mainMenuWidget->getIncomingCallsCount() == 0) {
+    calls::declineCall(friendNickname.toStdString());
+
+    if (calls::getIncomingCallsCount() == 0) {
         stopRingtone();
     }
 
-    calls::declineCall(friendNickname.toStdString());
 }
 
 void MainWindow::onHangupClicked() {
@@ -305,9 +309,7 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
 }
 
 void MainWindow::onIncomingCall(const std::string& friendNickName) {
-    if (m_mainMenuWidget->getIncomingCallsCount() == 0) {
-        playRingtone();
-    }
+    playRingtone();
 
     m_mainMenuWidget->addIncomingCall(QString::fromStdString(friendNickName));
 
@@ -345,7 +347,7 @@ void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
         m_callWidget->removeIncomingCall(QString::fromStdString(friendNickName));
     }
 
-    if (m_mainMenuWidget->getIncomingCallsCount() == 0) {
+    if (calls::getIncomingCallsCount() == 0) {
         stopRingtone();
     }
 }
@@ -362,7 +364,6 @@ void MainWindow::onRemoteUserEndedCall() {
 
 void MainWindow::onNetworkError() {
     // Handle network error
-    calls::logout();
     switchToAuthorizationWidget();
     m_authorizationWidget->resetBlur();
     m_authorizationWidget->setErrorMessage("Network error occurred");
