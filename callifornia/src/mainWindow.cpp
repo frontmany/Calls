@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
     m_audioOutput = new QAudioOutput(this);
     m_ringtonePlayer->setAudioOutput(m_audioOutput);
     m_audioOutput->setVolume(0.4f); // 40% volume
-    m_ringtonePlayer->setSource(QUrl("qrc:/resources/void.mp3"));
+    m_ringtonePlayer->setSource(QUrl("qrc:/resources/ringtone.mp3"));
 
     connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
         if (state == QMediaPlayer::StoppedState || state == QMediaPlayer::PausedState) {
