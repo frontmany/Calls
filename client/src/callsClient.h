@@ -73,7 +73,11 @@ private:
     void startCalling();
     void onInputVoice(const unsigned char* data, int length);
 
+    void ping();
+    void checkPing();
+
 private:
+    std::atomic_bool m_pingResult = false;
     std::atomic_bool m_running = false;
     std::optional<Call> m_call = std::nullopt;
 
@@ -86,6 +90,7 @@ private:
 
     std::mutex m_mutex;
     std::thread m_thread;
+    std::thread m_pingerThread;
     std::queue<std::function<void()>> m_queue;
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
 

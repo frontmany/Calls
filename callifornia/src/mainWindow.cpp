@@ -15,18 +15,17 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
     m_ringtonePlayer->setAudioOutput(m_audioOutput);
-    m_audioOutput->setVolume(0.4f); // 70% volume
-
+    m_audioOutput->setVolume(0.4f); // 40% volume
+    m_ringtonePlayer->setSource(QUrl("qrc:/resources/void.mp3"));
 
     connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
-        if (state == QMediaPlayer::StoppedState) {
+        if (state == QMediaPlayer::StoppedState || state == QMediaPlayer::PausedState) {
             // Loop the ringtone if still in incoming call state
             if (m_mainMenuWidget->getIncomingCallsCount() != 0) {
                 m_ringtonePlayer->play();
             }
         }
     });
-
 
     calls::init(host, port,
         [this](calls::Result authorizationResult) {
@@ -72,20 +71,15 @@ MainWindow::~MainWindow() {
 void MainWindow::playRingtone() {
     if (!m_ringtonePlayer) return;
 
-    // Stop any currently playing ringtone
-    stopRingtone();
-    m_ringtonePlayer->setSource(QUrl("qrc:/resources/ringtone.mp3"));
-
-    // Set to loop until stopped
-    m_ringtonePlayer->setLoops(QMediaPlayer::Infinite);
-
-    // Play the ringtone
-    m_ringtonePlayer->play();
+    if (m_ringtonePlayer->playbackState() != QMediaPlayer::PlayingState) {
+        m_ringtonePlayer->setLoops(QMediaPlayer::Infinite);
+        m_ringtonePlayer->play();
+    }
 }
 
 void MainWindow::stopRingtone() {
     if (m_ringtonePlayer) {
-        m_ringtonePlayer->stop();
+        m_ringtonePlayer->pause();
     }
 }
 

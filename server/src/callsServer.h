@@ -36,9 +36,16 @@ private:
 	void handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleVoicePacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 	void handleLogout(const asio::ip::udp::endpoint& endpointFrom);
+	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
+
+	void broadcastPing();
+	void checkPing();
 
 private:
+	std::mutex m_endpointToUserMutex;
+	std::mutex m_pingResultsMutex;
 	std::atomic_bool m_running = false;
+	std::unordered_map<asio::ip::udp::endpoint, bool> m_pingResults;
 	std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;
 	std::unordered_map<std::string, UserPtr> m_nicknameHashToUser;
 	std::unordered_set<std::shared_ptr<Call>> m_calls;

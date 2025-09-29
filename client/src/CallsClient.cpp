@@ -64,7 +64,53 @@ bool CallsClient::init(
 
 void CallsClient::run() {
     m_thread = std::thread(&CallsClient::processQueue, this);
+    m_pingerThread = std::thread(&CallsClient::ping, this);
     m_networkController->run();
+}
+
+void CallsClient::ping() {
+    using namespace std::chrono_literals;
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::seconds pingGap = 2s;
+    std::chrono::seconds checkPingGap = 6s;
+
+    std::chrono::steady_clock::time_point lastPing = begin;
+    std::chrono::steady_clock::time_point lastCheck = begin;
+
+    while (m_running) {
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+        auto timeSinceLastCheck = now - lastCheck;
+        auto timeSinceLastPing = now - lastPing;
+
+        // Check ping takes priority over ping
+        if (timeSinceLastCheck >= checkPingGap) {
+            checkPing();
+            lastCheck = now;
+            // After check, also reset ping timer to avoid immediate ping
+            lastPing = now;
+        }
+        else if (timeSinceLastPing >= pingGap) {
+            m_networkController->send(PacketType::PING);
+            lastPing = now;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+
+void CallsClient::checkPing() {
+    if (m_pingResult) {
+        m_pingResult = false;
+        DEBUG_LOG("ping success");
+    }
+    else {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_timer.stop();
+        m_queue.push([this]() {m_onNetworkError(); });
+        DEBUG_LOG("ping fail");
+    }
 }
 
 CallsClient::~CallsClient() {
@@ -114,6 +160,14 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         m_timer.stop();
         m_myNickname = "";
         m_queue.push([this]() {m_authorizationResult(Result::FAIL); });
+        break;
+
+    case (PacketType::PING):
+        m_networkController->send(PacketType::PING_SUCCESS);
+        break;
+
+    case (PacketType::PING_SUCCESS):
+        m_pingResult = true;
         break;
 
     case (PacketType::FRIEND_INFO_SUCCESS):
