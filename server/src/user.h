@@ -1,9 +1,12 @@
 #pragma once
 #include <optional>
 #include <memory>
+#include <unordered_set>
 #include <chrono>
 
 #include "callRole.h"
+#include "groupCallRole.h"
+
 #include "crypto.h"
 #include "asio.hpp"
 
@@ -20,18 +23,19 @@ public:
 	const std::string& getNicknameHash() const;
 	const asio::ip::udp::endpoint& getEndpoint() const;
 
-	void setCall(CallPtr callPtr);
+	void setCall(CallPtr callPtr, CallRole role);
 	bool inCall() const;
 	CallPtr getCall();
+	CallRole getCallRole();
 	void resetCall();
-	void setCallAccepted(bool accepted);
 	const std::string& inCallWith() const;
 
-	void setGroupCall(GroupCallPtr groupCall);
+	void setGroupCall(GroupCallPtr groupCall, GroupCallRole role);
 	bool inGroupCall() const;
 	GroupCallPtr getGroupCall();
+	GroupCallRole getGroupCallRole();
 	void resetGroupCall();
-	const std::vector<std::string>& inGroupCallWith() const;
+	std::unordered_set<std::string> inGroupCallWith() const;
 
 private:
 	std::string m_nicknameHash;
@@ -39,5 +43,8 @@ private:
 	asio::ip::udp::endpoint m_endpoint;
 
 	CallPtr m_call;
+	CallRole m_callRole;
+
 	GroupCallPtr m_groupCall;
+	GroupCallRole m_groupCallRole;
 };

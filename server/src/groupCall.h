@@ -1,23 +1,20 @@
 #pragma once 
-#include<vector>
+#include<unordered_set>
 #include<string>
 
 
-class GropupCall {
+class GroupCall {
 public:
-	enum class Status {
-		ACTIVE,
-		ENDED
-	};
-
-	GropupCall();
-	~GropupCall();
-	Status status() const;
-	const std::vector<std::string> getParticipants() const;
+	GroupCall(const std::string& initiatorNicknameHash, const std::string& groupCallNameHash);
+	~GroupCall() = default;
+	const std::unordered_set<std::string>& getParticipants() const;
+	const std::string& getGroupCallNameHash() const;
+	const std::string& getInitiatorNicknameHash() const;
 	void addParticipant(const std::string& userNicknameHash);
 	void removeParticipant(const std::string& userNicknameHash);
 
 private:
-	Status m_state = Status::ACTIVE;
-	std::vector<std::string> m_participants;
+	std::unordered_set<std::string> m_participants;
+	std::string m_groupCallNameHash;
+	std::string m_initiatorNicknameHash;
 };

@@ -6,18 +6,6 @@ Call::Call(const std::string& initiatorNicknameHash, const std::string& responde
 {
 }
 
-void Call::setActive() {
-	m_state = Status::ACTIVE;
-}
-
-void Call::setEnded() {
-	m_state = Status::ENDED;
-}
-
-Call::Status Call::status() const{
-	return m_state;
-}
-
 const std::string& Call::getInitiatorNicknameHash() const {
 	return m_initiatorNicknameHash;
 }

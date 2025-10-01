@@ -10,3 +10,11 @@ std::string PacketsFactory::getFriendInfoSuccessPacket(const CryptoPP::RSA::Publ
 
     return jsonObject.dump();
 }
+
+std::string PacketsFactory::getParticipantLeavePacket(const std::string& participantNicknameHash, const std::string& groupCallNameHash) {
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME_HASH] = participantNicknameHash;
+    jsonObject[GROUP_CALL_NAME_HASH] = groupCallNameHash;
+
+    return jsonObject.dump();
+}

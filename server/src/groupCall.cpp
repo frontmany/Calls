@@ -1,26 +1,30 @@
 #include "groupCall.h"
 
 
-GropupCall::GropupCall() {
-
+GroupCall::GroupCall(const std::string& initiatorNicknameHash, const std::string& groupCallNameHash) 
+	: m_initiatorNicknameHash(initiatorNicknameHash), m_groupCallNameHash(groupCallNameHash) 
+{
+	m_participants.insert(initiatorNicknameHash);
 }
 
-GropupCall::~GropupCall() {
-
+void GroupCall::addParticipant(const std::string& userNicknameHash) {
+	m_participants.insert(userNicknameHash);
 }
 
-void GropupCall::addParticipant(const std::string& userNicknameHash) {
-
+void GroupCall::removeParticipant(const std::string& userNicknameHashToRemove) {
+	if (m_participants.contains(userNicknameHashToRemove)) {
+		m_participants.erase(userNicknameHashToRemove);
+	}
 }
 
-void GropupCall::removeParticipant(const std::string& userNicknameHash) {
-
-}
-
-const std::vector<std::string> GropupCall::getParticipants() const {
+const std::unordered_set<std::string>& GroupCall::getParticipants() const {
 	return m_participants;
 }
 
-GropupCall::Status GropupCall::status() const {
-	return m_state;
+const std::string& GroupCall::getGroupCallNameHash() const {
+	return m_groupCallNameHash;
+}
+
+const std::string& GroupCall::getInitiatorNicknameHash() const {
+	return m_initiatorNicknameHash;
 }
