@@ -54,6 +54,12 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleCreateGroupCallPacket(jsonObject, endpointFrom);
             break;
 
+        case PacketType::GROUP_CALL_CHECK:
+            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
+            jsonObject = nlohmann::json::parse(jsonStr);
+            handleGroupCallCheckPacket(jsonObject, endpointFrom);
+            break;
+
         case PacketType::JOIN_REQUEST:
             jsonStr = std::string(reinterpret_cast<const char*>(data), size);
             jsonObject = nlohmann::json::parse(jsonStr);
@@ -64,6 +70,13 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             jsonStr = std::string(reinterpret_cast<const char*>(data), size);
             jsonObject = nlohmann::json::parse(jsonStr);
             handleJoinAllowedPacket(jsonObject, endpointFrom);
+            break;
+
+
+        case PacketType::GROUP_CALL_NEW_PARTICIPANT:
+            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
+            jsonObject = nlohmann::json::parse(jsonStr);
+            handleGroupCallNewParticipantPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::JOIN_DECLINED:
@@ -414,7 +427,7 @@ void CallsServer::handleCreateGroupCallPacket(const nlohmann::json& jsonObject, 
     }
 }
 
-void CallsServer::handleJoinRequestPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+void CallsServer::handleGroupCallCheckPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     bool isError = false;
 
     {
@@ -437,9 +450,11 @@ void CallsServer::handleJoinRequestPacket(const nlohmann::json& jsonObject, cons
         const std::string& initiatorNicknameHash = groupCall->getInitiatorNicknameHash();
 
         if (m_nicknameHashToUser.contains(initiatorNicknameHash)) {
-            m_networkController.sendToClient(m_nicknameHashToUser.at(initiatorNicknameHash)->getEndpoint(),
-                jsonObject.dump(),
-                PacketType::JOIN_REQUEST);
+            auto initiatorUser = m_nicknameHashToUser.at(initiatorNicknameHash);
+
+            m_networkController.sendToClient(endpointFrom,
+                PacketsFactory::getJoinRequestSuccessPacket(initiatorUser->getPublicKey(), initiatorNicknameHash),
+                PacketType::GROUP_CALL_CHECK_SUCESS);
         }
         else {
             isError = true;
@@ -450,38 +465,29 @@ void CallsServer::handleJoinRequestPacket(const nlohmann::json& jsonObject, cons
     }
 
     if (isError) {
-        m_networkController.sendToClient(endpointFrom, PacketType::GROUP_CALL_NOT_EXIST);
+        m_networkController.sendToClient(endpointFrom, PacketType::GROUP_CALL_CHECK_FAIL);
+    }
+}
+
+void CallsServer::handleJoinRequestPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    std::string nicknameHashTo = jsonObject[NICKNAME_HASH_TO].get<std::string>();
+    if (m_nicknameHashToUser.contains(nicknameHashTo)) {
+        auto userTo = m_nicknameHashToUser.at(nicknameHashTo);
+        m_networkController.sendToClient(userTo->getEndpoint(), jsonObject.dump(), PacketType::JOIN_REQUEST);
     }
 }
 
 void CallsServer::handleJoinAllowedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     std::string nicknameHashTo = jsonObject[NICKNAME_HASH_TO].get<std::string>();
     std::string groupCallNameHash = jsonObject[GROUP_CALL_NAME_HASH].get<std::string>();
-
+    
     if (m_groupCalls.contains(groupCallNameHash)) {
         if (m_nicknameHashToUser.contains(nicknameHashTo)) {
             auto userTo = m_nicknameHashToUser.at(nicknameHashTo);
-
             auto groupCall = m_groupCalls.at(groupCallNameHash);
             groupCall->addParticipant(nicknameHashTo);
             userTo->setGroupCall(groupCall, GroupCallRole::PARTICIPANT);
             m_networkController.sendToClient(userTo->getEndpoint(), jsonObject.dump(), PacketType::JOIN_ALLOWED);
-
-            auto participants = userTo->inGroupCallWith();
-            for (auto& nicknameHash : participants) {
-                std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-                
-                if (m_endpointToUser.contains(endpointFrom)) {
-                    auto& initiatorNicknameHash = m_endpointToUser.at(endpointFrom)->getNicknameHash();
-                    
-                    if (nicknameHash != initiatorNicknameHash) {
-                        if (m_nicknameHashToUser.contains(nicknameHash)) {
-                            auto user = m_nicknameHashToUser.at(nicknameHash);
-                            m_networkController.sendToClient(user->getEndpoint(), jsonObject.dump(), PacketType::GROUP_CALL_NEW_PARTICIPANT);
-                        }
-                    }
-                }
-            }
         }
         else {
             m_networkController.sendToClient(endpointFrom, PacketsFactory::getParticipantLeavePacket(nicknameHashTo, groupCallNameHash), PacketType::GROUP_CALL_PARTICIPANT_QUIT);
@@ -492,6 +498,14 @@ void CallsServer::handleJoinAllowedPacket(const nlohmann::json& jsonObject, cons
             auto userTo = m_nicknameHashToUser.at(nicknameHashTo);
             m_networkController.sendToClient(userTo->getEndpoint(), jsonObject.dump(), PacketType::JOIN_DECLINED);
         }
+    }
+}
+
+void CallsServer::handleGroupCallNewParticipantPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    std::string nicknameHashTo = jsonObject[NICKNAME_HASH_TO].get<std::string>();
+    if (m_nicknameHashToUser.contains(nicknameHashTo)) {
+        auto userTo = m_nicknameHashToUser.at(nicknameHashTo);
+        m_networkController.sendToClient(userTo->getEndpoint(), jsonObject.dump(), PacketType::GROUP_CALL_NEW_PARTICIPANT);
     }
 }
 
@@ -522,20 +536,19 @@ void CallsServer::handleLeaveGroupCallPacket(const nlohmann::json& jsonObject, c
 
     if (m_groupCalls.contains(groupCallNameHash)) {
         if (m_nicknameHashToUser.contains(nicknameHash)) {
+            auto user = m_nicknameHashToUser.at(nicknameHash);
+            auto participants = user->inGroupCallWith();
+            
             auto groupCall = m_groupCalls.at(groupCallNameHash);
             groupCall->removeParticipant(nicknameHash);
+            user->resetGroupCall();
 
-            auto user = m_nicknameHashToUser.at(nicknameHash);
-
-            auto participants = user->inGroupCallWith();
             for (auto& currentNicknameHash : participants) {
                 if (m_nicknameHashToUser.contains(currentNicknameHash)) {
                     auto currentUser = m_nicknameHashToUser.at(currentNicknameHash);
                     m_networkController.sendToClient(currentUser->getEndpoint(), jsonObject.dump(), PacketType::GROUP_CALL_PARTICIPANT_QUIT);
                 }
             }
-
-            user->resetGroupCall();
         }
     }
 }

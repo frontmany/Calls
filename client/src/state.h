@@ -6,6 +6,7 @@ namespace calls {
         UNAUTHORIZED,
         FREE,
         CALLING,
-        BUSY
+        BUSY,
+        IN_GROUP_CALL
     };
 }

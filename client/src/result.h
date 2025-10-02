@@ -11,6 +11,7 @@ enum class Result {
 	CALL_ACCEPTED,
 	CALL_DECLINED,
 	SUCCESS,
-	FAIL
+	FAIL,
+	TAKEN_GROUP_CALL_NAME
 };
 }

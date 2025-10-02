@@ -13,6 +13,7 @@ public:
     PacketsFactory() = default;
     static std::string getFriendInfoSuccessPacket(const CryptoPP::RSA::PublicKey& publicKey, const std::string& nicknameHash);
     static std::string getParticipantLeavePacket(const std::string& participantNicknameHash, const std::string& groupCallNameHash);
+    static std::string getJoinRequestSuccessPacket(const CryptoPP::RSA::PublicKey& initiatorPublicKey, const std::string& initiatorNicknameHash);
 
 private:
     static constexpr const char* PUBLIC_KEY = "publicKey";

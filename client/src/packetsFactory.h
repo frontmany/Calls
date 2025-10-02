@@ -1,6 +1,7 @@
 #pragma once 
 
 #include <string>
+#include <unordered_map>
 
 #include "rsa.h"
 
@@ -19,6 +20,10 @@ public:
     static std::string getDeclineCallPacket(const std::string& friendNickname);
     static std::string getAcceptCallPacket(const std::string& friendNickname);
 
+    static std::string getCreateGroupCallPacket(const std::string& myNickname, const std::string& groupCallName);
+    static std::string getJoinAllowedPacket(const CryptoPP::SecByteBlock& groupCallKey, const std::unordered_map<std::string, CryptoPP::RSA::PublicKey>& participants, const std::string& groupCallName, const std::string& nicnameTo, const CryptoPP::RSA::PublicKey& publicKeyTo);
+    static std::string getGroupCallNewParticipantPacket(const std::string& nicknameTo, const CryptoPP::RSA::PublicKey& publicKeyTo, const std::string newParticipantNickname);
+
 private:
     static constexpr const char* CALL_KEY = "callKey";
     static constexpr const char* PACKET_KEY = "packetKey";
@@ -26,6 +31,10 @@ private:
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* NICKNAME_HASH = "nicknameHash";
     static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
+    static constexpr const char* GROUP_CALL_NAME_HASH = "groupCallNameHash";
+    static constexpr const char* GROUP_CALL_NAME = "groupCallName";
+    static constexpr const char* GROUP_CALL_KEY = "groupCallKey";
+    static constexpr const char* PARTICIPANTS_ARRAY = "participantsArray";
 };
 
 }

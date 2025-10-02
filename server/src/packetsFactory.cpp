@@ -18,3 +18,11 @@ std::string PacketsFactory::getParticipantLeavePacket(const std::string& partici
 
     return jsonObject.dump();
 }
+
+std::string PacketsFactory::getJoinRequestSuccessPacket(const CryptoPP::RSA::PublicKey& initiatorPublicKey, const std::string& initiatorNicknameHash) {
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME_HASH] = initiatorNicknameHash;
+    jsonObject[PUBLIC_KEY] = crypto::serializePublicKey(initiatorPublicKey);
+
+    return jsonObject.dump();
+}

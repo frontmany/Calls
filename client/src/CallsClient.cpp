@@ -21,6 +21,9 @@ bool CallsClient::init(
     const std::string& port,
     std::function<void(Result)> authorizationResult,
     std::function<void(Result)> createCallResult,
+    std::function<void(Result)> createGroupCallResult,
+    std::function<void(const std::string&)> onJoinRequest,
+    std::function<void(const std::string&)> onJoinRequestExpired,
     std::function<void(const std::string&)> onIncomingCall,
     std::function<void(const std::string&)> onIncomingCallExpired,
     std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
@@ -29,6 +32,9 @@ bool CallsClient::init(
 {
     m_authorizationResult = authorizationResult;
     m_createCallResult = createCallResult;
+    m_createGroupCallResult = createGroupCallResult;
+    m_onJoinRequest = onJoinRequest;
+    m_onJoinRequestExpired = onJoinRequestExpired;
     m_onNetworkError = onNetworkError;
     m_onIncomingCallExpired = onIncomingCallExpired;
     m_onCallingSomeoneWhoAlreadyCallingYou = onCallingSomeoneWhoAlreadyCallingYou;
@@ -183,6 +189,26 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         m_queue.push([this]() {m_createCallResult(Result::WRONG_FRIEND_NICKNAME); });
         break;
 
+    case (PacketType::CREATE_GROUP_CALL_SUCCESS):
+        m_timer.stop();
+        onCreateGroupCallSuccess();
+        m_queue.push([this]() {m_createGroupCallResult(Result::SUCCESS); });
+        break;
+
+    case (PacketType::CREATE_GROUP_CALL_FAIL):
+        m_timer.stop();
+        m_groupCallName.clear();
+        m_queue.push([this]() {m_createGroupCallResult(Result::TAKEN_GROUP_CALL_NAME); });
+        break;
+
+    case (PacketType::JOIN_REQUEST):
+        onJoinRequest(data, length);
+        m_queue.push([this]() {
+            auto& [_, incomingCallData] = m_joinRequests.back();
+            m_onJoinRequest(incomingCallData.friendNickname);
+        });
+        break;
+        
     case (PacketType::CALL_ACCEPTED):
         if (m_state == State::BUSY) break;
         m_timer.stop();
@@ -217,7 +243,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     case (PacketType::INCOMING_CALL):
         if (bool parsed = onIncomingCall(data, length); parsed && m_state != State::UNAUTHORIZED) {
             m_queue.push([this]() {
-                auto& [timer, incomingCallData] = m_incomingCalls.back();
+                auto& [_, incomingCallData] = m_incomingCalls.back();
                 m_onIncomingCall(incomingCallData.friendNickname); 
             });
         }
@@ -376,7 +402,7 @@ bool CallsClient::authorize(const std::string& nickname) {
 }
 
 bool CallsClient::endCall() {
-    if (m_state == State::UNAUTHORIZED || !m_call) return false;
+    if (m_state == State::UNAUTHORIZED || m_groupCall || !m_call) return false;
     m_state = State::FREE;
     if (m_audioEngine) m_audioEngine->stopStream();
     m_networkController->send(PacketType::END_CALL);
@@ -386,7 +412,7 @@ bool CallsClient::endCall() {
 }
 
 bool CallsClient::createCall(const std::string& friendNickname) {
-    if (m_state == State::UNAUTHORIZED || m_call) return false;
+    if (m_state == State::UNAUTHORIZED || m_call || m_groupCall) return false;
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -402,6 +428,22 @@ bool CallsClient::createCall(const std::string& friendNickname) {
     m_nicknameWhomCalling = friendNickname;
 
     return true;
+}
+
+void CallsClient::createGroupCall(const std::string& groupCallName) {
+    if (m_state == State::UNAUTHORIZED || m_state == State::CALLING || m_call || m_groupCall) return;
+
+    m_networkController->send(
+        PacketsFactory::getCreateGroupCallPacket(m_myNickname, groupCallName),
+        PacketType::CREATE_GROUP_CALL
+    );
+
+    using namespace std::chrono_literals;
+    m_timer.start(4s, [this]() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_groupCallName.clear();
+        m_queue.push([this]() {m_createGroupCallResult(Result::TIMEOUT); });
+    });
 }
 
 bool CallsClient::stopCalling() {
@@ -534,6 +576,98 @@ bool CallsClient::onFriendInfoSuccess(const unsigned char* data, int length) {
     }
 }
 
+void CallsClient::onCreateGroupCallSuccess() {
+    m_state = State::IN_GROUP_CALL;
+    m_groupCall = GroupCall(m_myNickname, m_myPublicKey, m_groupCallName);
+    m_groupCall.value().createGroupCallKey();
+}
+
+void CallsClient::onJoinRequest(const unsigned char* data, int length) {
+    nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
+    auto packetAesKey = crypto::RSADecryptAESKey(m_myPrivateKey, jsonObject[PACKET_KEY]);
+    std::string requesterNickname = crypto::AESDecrypt(packetAesKey, jsonObject[NICKNAME]);
+    std::string requesterPublicKeyStr = jsonObject[PUBLIC_KEY].get<std::string>();
+    CryptoPP::RSA::PublicKey requesterPublicKey = crypto::deserializePublicKey(requesterPublicKeyStr);
+    
+    auto timer = std::make_unique<Timer>();
+    timer->start(std::chrono::seconds(32), [this, requesterNickname]() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        auto it = std::find_if(m_joinRequests.begin(), m_joinRequests.end(),
+            [&requesterNickname](const auto& pair) {
+                return pair.second.friendNickname == requesterNickname;
+            });
+
+        if (it != m_joinRequests.end()) {
+            m_queue.push([this, requesterNickname]() {
+                m_onJoinRequestExpired(requesterNickname);
+            });
+            m_joinRequests.erase(it);
+        }
+    });
+
+    JoinRequestData joinRequestData{ requesterNickname, requesterPublicKey };
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_joinRequests.emplace_back(std::move(timer), std::move(joinRequestData));
+}
+
+void CallsClient::allowJoin(const std::string& friendNickname) {
+    if (m_state == State::UNAUTHORIZED || !m_groupCall || m_joinRequests.empty()) return;
+
+    
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto it = std::find_if(m_joinRequests.begin(), m_joinRequests.end(),
+        [&friendNickname](const auto& pair) {
+            return pair.second.friendNickname == friendNickname;
+        });
+
+    if (it != m_joinRequests.end()) {
+        auto& [timer, data] = *it;
+        timer->stop();
+        m_groupCall.value().addParticipant(data.friendNickname, data.friendPublicKey);
+        
+        m_networkController->send(PacketsFactory::getJoinAllowedPacket(m_groupCall.value().getGroupCallKey(),
+            m_groupCall.value().getParticipants(),
+            m_groupCall.value().getGroupCallName(),
+            data.friendNickname,
+            data.friendPublicKey),
+            PacketType::JOIN_ALLOWED
+        );
+
+        if (m_groupCall.value().getParticipants().size() >= 2) {
+            auto& participants = m_groupCall.value().getParticipants();
+            for (auto& [nickname, publicKey] : participants) {
+                if (nickname != friendNickname && nickname != m_myNickname) {
+                    m_networkController->send(PacketsFactory::getGroupCallNewParticipantPacket(nickname, publicKey, data.friendNickname), PacketType::GROUP_CALL_NEW_PARTICIPANT);
+                }
+            }
+        }
+
+        m_joinRequests.erase(it);
+    }
+    else {
+        return;
+    }
+}
+
+void CallsClient::declineJoin(const std::string& friendNickname) {
+    if (m_state == State::UNAUTHORIZED || !m_groupCall || m_joinRequests.empty()) return;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto it = std::find_if(m_joinRequests.begin(), m_joinRequests.end(),
+        [&friendNickname](const auto& pair) {
+            return pair.second.friendNickname == friendNickname;
+        });
+
+    if (it != m_joinRequests.end()) {
+        auto& [timer, data] = *it;
+        timer->stop();
+        m_networkController->send(PacketsFactory::getJoinDeclinedPacket(), PacketType::JOIN_DECLINED);
+        m_joinRequests.erase(it);
+    }
+}
+
 bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
     try {
         nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
@@ -549,7 +683,7 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
             }
         }
 
-        IncomingCallData data(
+        IncomingCallData incomingCallData(
             nickname,
             crypto::deserializePublicKey(jsonObject[PUBLIC_KEY]),
             callKey);
@@ -571,7 +705,7 @@ bool CallsClient::onIncomingCall(const unsigned char* data, int length) {
             }
             });
 
-        m_incomingCalls.emplace_back(std::move(timer), std::move(data));
+        m_incomingCalls.emplace_back(std::move(timer), std::move(incomingCallData));
 
         return true;
     }
