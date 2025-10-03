@@ -50,7 +50,7 @@ private:
     void setupUI();
     void loadFonts();
     void playRingtone();
-    void stopRingtone();
+    void pauseRingtone();
 
 private:
     QMediaPlayer* m_ringtonePlayer;

@@ -381,6 +381,7 @@ bool CallsClient::endCall() {
     if (m_audioEngine) m_audioEngine->stopStream();
     m_networkController->send(PacketType::END_CALL);
     m_call = std::nullopt;
+    m_audioEngine->refreshAudioDevices();
 
     return true;
 }
@@ -444,6 +445,24 @@ bool CallsClient::declineIncomingCall(const std::string& friendNickname) {
     return true;
 }
 
+bool CallsClient::declineAllIncomingCalls() {
+    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty()) return false;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    for (auto& [timer, incomingCallData] : m_incomingCalls) {
+        timer->stop();
+        m_networkController->send(
+            PacketsFactory::getDeclineCallPacket(incomingCallData.friendNickname),
+            PacketType::CALL_DECLINED
+        );
+    }
+
+    m_incomingCalls.clear();
+
+    return true;
+}
+
 bool CallsClient::acceptIncomingCall(const std::string& friendNickname) {
     if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty()) return false;
 
@@ -481,7 +500,8 @@ bool CallsClient::acceptIncomingCall(const std::string& friendNickname) {
         PacketType::CALL_ACCEPTED
     );
 
-    if (m_audioEngine) m_audioEngine->startStream();
+    m_audioEngine->refreshAudioDevices();
+    if (m_audioEngine) m_audioEngine->startStream(); 
     return true;
 }
 

@@ -71,6 +71,11 @@ namespace calls {
         return CallsClient::get().declineIncomingCall(friendNickname);
     }
 
+    inline bool declineAllCalls()
+    {
+        return CallsClient::get().declineAllIncomingCalls();
+    }
+
     inline bool endCall()
     {
         return CallsClient::get().endCall();

@@ -217,16 +217,24 @@ void AudioEngine::playAudio(const unsigned char* data, int length) {
 void AudioEngine::processInputAudio(const float* input, unsigned long frameCount) {
     std::lock_guard<std::mutex> lock(m_inputAudioMutex);
     std::lock_guard<std::mutex> volumeLock(m_volumeMutex);
-    
+
     if (m_encoder && input) {
-        std::vector<float> adjustedInput(frameCount * m_inputChannels);
-        for (unsigned long i = 0; i < frameCount * m_inputChannels; ++i) {
-            adjustedInput[i] = input[i] * m_inputVolume;
+        if (m_inputVolume != 1.0f) {
+            std::vector<float> adjustedInput(frameCount * m_inputChannels);
+            for (unsigned long i = 0; i < frameCount * m_inputChannels; ++i) {
+                adjustedInput[i] = input[i] * m_inputVolume;
+            }
+
+            int encodedSize = m_encoder->encode(adjustedInput.data(), m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
+            if (encodedSize > 0 && m_encodedInputCallback) {
+                m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
+            }
         }
-        
-        int encodedSize = m_encoder->encode(adjustedInput.data(), m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
-        if (encodedSize > 0 && m_encodedInputCallback) {
-            m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
+        else {
+            int encodedSize = m_encoder->encode(input, m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
+            if (encodedSize > 0 && m_encodedInputCallback) {
+                m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
+            }
         }
     }
 }

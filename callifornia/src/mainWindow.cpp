@@ -78,7 +78,7 @@ void MainWindow::playRingtone() {
     }
 }
 
-void MainWindow::stopRingtone() {
+void MainWindow::pauseRingtone() {
     if (!m_ringtonePlayer) return;
 
     if (m_ringtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
@@ -234,7 +234,7 @@ void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
     calls::acceptCall(friendNickname.toStdString());
     m_mainMenuWidget->clearIncomingCalls();
     switchToCallWidget(friendNickname);
-    stopRingtone();
+    pauseRingtone();
 }
 
 void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
@@ -243,9 +243,8 @@ void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
     calls::declineCall(friendNickname.toStdString());
 
     if (calls::getIncomingCallsCount() == 0) {
-        stopRingtone();
+        pauseRingtone();
     }
-
 }
 
 void MainWindow::onHangupClicked() {
@@ -279,6 +278,9 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
     QString errorMessage;
 
     if (createCallResult == calls::Result::CALL_ACCEPTED) {
+        m_mainMenuWidget->clearIncomingCalls();
+        calls::declineAllCalls();
+        pauseRingtone();
         m_mainMenuWidget->removeCallingPanel();
         m_mainMenuWidget->setState(calls::State::BUSY);
         switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
@@ -348,7 +350,7 @@ void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
     }
 
     if (calls::getIncomingCallsCount() == 0) {
-        stopRingtone();
+        pauseRingtone();
     }
 }
 
