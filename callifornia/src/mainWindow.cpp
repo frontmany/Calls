@@ -366,6 +366,12 @@ void MainWindow::onRemoteUserEndedCall() {
 
 void MainWindow::onNetworkError() {
     // Handle network error
+    calls::logout();
+    
+    pauseRingtone();
+    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->clearIncomingCalls();
+
     switchToAuthorizationWidget();
     m_authorizationWidget->resetBlur();
     m_authorizationWidget->setErrorMessage("Network error occurred");
