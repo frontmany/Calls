@@ -1,10 +1,15 @@
 #include "groupCall.h"
 
 namespace calls {
-	GroupCall::GroupCall(const std::string& initiatorNickname, const CryptoPP::RSA::PublicKey& initiatorPublicKey, const std::string& groupCallName)
-		: m_groupCallName(groupCallName), m_initiatorNickname(initiatorNickname), m_initiatorPublicKey(initiatorPublicKey)
+	GroupCall::GroupCall(const std::string& initiatorNickname, const CryptoPP::RSA::PublicKey& initiatorPublicKey, const std::string& groupCallName, GroupCallRole role)
+		: m_groupCallName(groupCallName), m_initiatorNickname(initiatorNickname), m_initiatorPublicKey(initiatorPublicKey), m_role(role)
 	{
 		m_participants.emplace(initiatorNickname, initiatorPublicKey);
+	}
+
+	GroupCall::GroupCall(const std::unordered_map<std::string, CryptoPP::RSA::PublicKey>& participants, const CryptoPP::SecByteBlock& groupCallKey, const std::string& initiatorNickname, const CryptoPP::RSA::PublicKey& initiatorPublicKey, const std::string& groupCallName, GroupCallRole role) 
+		: m_participants(participants), m_groupCallKey(groupCallKey), m_groupCallName(groupCallName), m_initiatorNickname(initiatorNickname), m_initiatorPublicKey(initiatorPublicKey), m_role(role)
+	{
 	}
 
 	void GroupCall::createGroupCallKey() {
@@ -37,5 +42,9 @@ namespace calls {
 
 	void GroupCall::removeParticipant(const std::string& nickname) {
 		m_participants.erase(nickname);
+	}
+
+	GroupCall::GroupCallRole GroupCall::getGroupCallRole() const {
+		return m_role;
 	}
 }

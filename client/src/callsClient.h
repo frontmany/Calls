@@ -30,8 +30,10 @@ public:
         std::function<void(Result)> authorizationResult,
         std::function<void(Result)> createCallResult,
         std::function<void(Result)> createGroupCallResult,
+        std::function<void(Result)> joinGroupCallResult,
         std::function<void(const std::string&)> onJoinRequest,
         std::function<void(const std::string&)> onJoinRequestExpired,
+        std::function<void(const std::string&)> onParticipantLeft,
         std::function<void(const std::string&)> onIncomingCall,
         std::function<void(const std::string&)> onIncomingCallExpired,
         std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
@@ -65,6 +67,9 @@ public:
     bool endCall();
     
     void createGroupCall(const std::string& groupCallName);
+    void joinGroupCall(const std::string& groupCallName);
+    bool endGroupCall(const std::string& groupCallName);
+    bool leaveGroupCall(const std::string& groupCallName);
     void allowJoin(const std::string& friendNickname);
     void declineJoin(const std::string& friendNickname);
     
@@ -76,8 +81,11 @@ private:
     void onReceive(const unsigned char* data, int length, PacketType type);
     bool onFriendInfoSuccess(const unsigned char* data, int length);
     void onCreateGroupCallSuccess();
+    void onGroupCallExistenceCheckSuccess(const unsigned char* data, int length);
+    void onJoinAllowed(const unsigned char* data, int length);
     void onJoinRequest(const unsigned char* data, int length);
     bool onIncomingCall(const unsigned char* data, int length);
+    const std::string& onParticipantLeft(const unsigned char* data, int length) const;
     void processQueue();
     void requestFriendInfo(const std::string& friendNickname);
     void startCalling();
@@ -94,7 +102,6 @@ private:
 
     std::string m_myNickname{};
     std::string m_nicknameWhomCalling{};
-    std::string m_groupCallName{};
 
     CryptoPP::RSA::PublicKey m_myPublicKey;
     CryptoPP::RSA::PrivateKey m_myPrivateKey;
@@ -116,8 +123,10 @@ private:
     std::function<void(Result)> m_authorizationResult;
     std::function<void(Result)> m_createCallResult;
     std::function<void(Result)> m_createGroupCallResult;
+    std::function<void(Result)> m_joinGroupCallResult;
     std::function<void(const std::string&)> m_onJoinRequest;
     std::function<void(const std::string&)> m_onJoinRequestExpired;
+    std::function<void(const std::string&)> m_onParticipantLeft;
     std::function<void(const std::string&)> m_onIncomingCall;
     std::function<void(const std::string& friendNickname)> m_onIncomingCallExpired;
     std::function<void(const std::string& friendNickname)> m_onCallingSomeoneWhoAlreadyCallingYou;
@@ -127,8 +136,13 @@ private:
     static constexpr const char* PUBLIC_KEY = "publicKey";
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* NICKNAME_HASH = "nicknameHash";
+    static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
     static constexpr const char* CALL_KEY = "callKey";
     static constexpr const char* PACKET_KEY = "packetKey";
+    static constexpr const char* GROUP_CALL_NAME = "groupCallName";
+    static constexpr const char* GROUP_CALL_KEY = "groupCallKey";
+    static constexpr const char* PARTICIPANTS_ARRAY = "participantsArray";
+    static constexpr const char* INITIATOR_NICKNAME = "initiatorNickname";
 };
 
 }

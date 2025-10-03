@@ -54,7 +54,7 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleCreateGroupCallPacket(jsonObject, endpointFrom);
             break;
 
-        case PacketType::GROUP_CALL_CHECK:
+        case PacketType::GROUP_CALL_EXISTENCE_CHECK:
             jsonStr = std::string(reinterpret_cast<const char*>(data), size);
             jsonObject = nlohmann::json::parse(jsonStr);
             handleGroupCallCheckPacket(jsonObject, endpointFrom);
@@ -454,7 +454,7 @@ void CallsServer::handleGroupCallCheckPacket(const nlohmann::json& jsonObject, c
 
             m_networkController.sendToClient(endpointFrom,
                 PacketsFactory::getJoinRequestSuccessPacket(initiatorUser->getPublicKey(), initiatorNicknameHash),
-                PacketType::GROUP_CALL_CHECK_SUCESS);
+                PacketType::GROUP_CALL_EXISTENCE_CHECK_SUCESS);
         }
         else {
             isError = true;
@@ -465,7 +465,7 @@ void CallsServer::handleGroupCallCheckPacket(const nlohmann::json& jsonObject, c
     }
 
     if (isError) {
-        m_networkController.sendToClient(endpointFrom, PacketType::GROUP_CALL_CHECK_FAIL);
+        m_networkController.sendToClient(endpointFrom, PacketType::GROUP_CALL_EXISTENCE_CHECK_FAIL);
     }
 }
 

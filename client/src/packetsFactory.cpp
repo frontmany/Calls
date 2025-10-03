@@ -55,15 +55,17 @@ std::string PacketsFactory::getAcceptCallPacket(const std::string& friendNicknam
 }
 
 // new 
-std::string PacketsFactory::getCreateGroupCallPacket(const std::string& nicknameHash, const std::string& groupCallName) {
+std::string PacketsFactory::getCreateGroupCallPacket(const std::string& myNickname, const std::string& groupCallName) {
     nlohmann::json jsonObject;
-    jsonObject[NICKNAME_HASH] = crypto::calculateHash(nicknameHash);
+    jsonObject[NICKNAME_HASH] = crypto::calculateHash(myNickname);
     jsonObject[GROUP_CALL_NAME_HASH] = crypto::calculateHash(groupCallName);
     return jsonObject.dump();
 }
 
 std::string PacketsFactory::getJoinAllowedPacket(const CryptoPP::SecByteBlock& groupCallKey,
     const std::unordered_map<std::string, CryptoPP::RSA::PublicKey>& participants,
+    const std::string& myNickname,
+    const CryptoPP::RSA::PublicKey& myPublicKey,
     const std::string& groupCallName,
     const std::string& nicknameTo,
     const CryptoPP::RSA::PublicKey& publicKeyTo) {
@@ -86,8 +88,10 @@ std::string PacketsFactory::getJoinAllowedPacket(const CryptoPP::SecByteBlock& g
     jsonObject[PARTICIPANTS_ARRAY] = participantsArray;
     jsonObject[NICKNAME_HASH_TO] = crypto::calculateHash(nicknameTo);
     jsonObject[GROUP_CALL_NAME] = crypto::AESEncrypt(thisPacketKey, groupCallName);
+    jsonObject[INITIATOR_NICKNAME] = crypto::AESEncrypt(thisPacketKey, myNickname);
     jsonObject[GROUP_CALL_KEY] = crypto::RSAEncryptAESKey(publicKeyTo, groupCallKey);
     jsonObject[PACKET_KEY] = crypto::RSAEncryptAESKey(publicKeyTo, thisPacketKey);
+    jsonObject[PUBLIC_KEY] = crypto::serializePublicKey(myPublicKey);
 
     return jsonObject.dump();
 }
@@ -98,8 +102,53 @@ std::string PacketsFactory::getGroupCallNewParticipantPacket(const std::string& 
     
     nlohmann::json jsonObject;
     jsonObject[NICKNAME_HASH_TO] = crypto::calculateHash(nicknameTo);
-    jsonObject[GROUP_CALL_NAME] = crypto::AESEncrypt(thisPacketKey, newParticipantNickname);
+    jsonObject[NICKNAME] = crypto::AESEncrypt(thisPacketKey, newParticipantNickname);
     jsonObject[PACKET_KEY] = crypto::RSAEncryptAESKey(publicKeyTo, thisPacketKey);
     
+    return jsonObject.dump();
+}
+
+std::string PacketsFactory::getJoinDeclinedPacket(const std::string& nicknameTo, const CryptoPP::RSA::PublicKey& publicKeyTo, const std::string groupCallName) {
+    CryptoPP::SecByteBlock thisPacketKey;
+    crypto::generateAESKey(thisPacketKey);
+
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME_HASH_TO] = crypto::calculateHash(nicknameTo);
+    jsonObject[GROUP_CALL_NAME] = crypto::AESEncrypt(thisPacketKey, groupCallName);
+    jsonObject[PACKET_KEY] = crypto::RSAEncryptAESKey(publicKeyTo, thisPacketKey);
+
+    return jsonObject.dump();
+}
+
+std::string PacketsFactory::getEndGroupCallPacket(const std::string& myNickname, const std::string groupCallName) {
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME_HASH] = crypto::calculateHash(myNickname);
+    jsonObject[GROUP_CALL_NAME_HASH] = crypto::calculateHash(groupCallName);
+    return jsonObject.dump();
+}
+
+std::string PacketsFactory::getLeaveGroupCallPacket(const std::string& myNickname, const std::string groupCallName) {
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME_HASH] = crypto::calculateHash(myNickname);
+    jsonObject[GROUP_CALL_NAME_HASH] = crypto::calculateHash(groupCallName);
+    return jsonObject.dump();
+}
+
+std::string PacketsFactory::getJoinGroupCallPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& nicknameHashTo, const CryptoPP::RSA::PublicKey& publicKeyTo) {
+    CryptoPP::SecByteBlock thisPacketKey;
+    crypto::generateAESKey(thisPacketKey);
+    
+    nlohmann::json jsonObject;
+    jsonObject[NICKNAME] = crypto::AESEncrypt(thisPacketKey, myNickname);
+    jsonObject[NICKNAME_HASH_TO] = crypto::calculateHash(nicknameHashTo);
+    jsonObject[PUBLIC_KEY] = crypto::serializePublicKey(myPublicKey);
+    jsonObject[PACKET_KEY] = crypto::RSAEncryptAESKey(publicKeyTo, thisPacketKey);
+    
+    return jsonObject.dump();
+}
+
+std::string PacketsFactory::getCheckGroupCallExistencePacket(const std::string& groupCallName) {
+    nlohmann::json jsonObject;
+    jsonObject[GROUP_CALL_NAME_HASH] = crypto::calculateHash(groupCallName);
     return jsonObject.dump();
 }
