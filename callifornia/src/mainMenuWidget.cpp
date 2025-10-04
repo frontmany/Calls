@@ -6,6 +6,8 @@
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <QRegularExpressionValidator>
+#include "buttons.h"
+#include "scaleFactor.h"
 
 // Style definitions
 const QColor StyleMainMenuWidget::m_primaryColor = QColor(21, 119, 232);
@@ -117,8 +119,8 @@ QString StyleMainMenuWidget::lineEditStyle() {
     return QString("QLineEdit {"
         "   background-color: rgba(%1, %2, %3, %4);"
         "   border: 0px solid %5;"
-        "   border-radius: 15px;"
-        "   padding: 12px 15px;"
+        "   border-radius: %17px;"
+        "   padding: %18px %19px;"
         "   margin: 0px;"
         "   color: %6;"
         "   selection-background-color: %7;"
@@ -136,30 +138,38 @@ QString StyleMainMenuWidget::lineEditStyle() {
         .arg(m_lineEditFocusBackgroundColor.red()).arg(m_lineEditFocusBackgroundColor.green())
         .arg(m_lineEditFocusBackgroundColor.blue()).arg(m_lineEditFocusBackgroundColor.alpha())
         .arg(m_placeholderColor.red()).arg(m_placeholderColor.green())
-        .arg(m_placeholderColor.blue()).arg(m_placeholderColor.alpha());
+        .arg(m_placeholderColor.blue()).arg(m_placeholderColor.alpha())
+        .arg(QString::fromStdString(std::to_string(scale(15))))  // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding vertical
+        .arg(QString::fromStdString(std::to_string(scale(15)))); // padding horizontal
 }
 
 QString StyleMainMenuWidget::disabledLineEditStyle() {
     return QString("QLineEdit {"
         "   background-color: rgba(235, 235, 235, 120);"
         "   border: 0px solid %1;"
-        "   border-radius: 15px;"
-        "   padding: 12px 15px;"
+        "   border-radius: %2px;"
+        "   padding: %3px %4px;"
         "   margin: 0px;"
         "   color: #888888;"
-        "}").arg(m_textColor.name());
+        "}").arg(m_textColor.name())
+        .arg(QString::fromStdString(std::to_string(scale(15))))  // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding vertical
+        .arg(QString::fromStdString(std::to_string(scale(15)))); // padding horizontal
 }
 
 QString StyleMainMenuWidget::avatarStyle(const QColor& color) {
     return QString("QLabel {"
         "   background-color: %1;"
-        "   border-radius: 25px;"
+        "   border-radius: %2;"
         "   color: white;"
-        "   font-size: 18px;"
+        "   font-size: %3;"
         "   font-weight: bold;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(color.name());
+        "}").arg(color.name())
+        .arg(QString::fromStdString(std::to_string(scale(25))) + "px")
+        .arg(QString::fromStdString(std::to_string(scale(18))) + "px");
 }
 
 QString StyleMainMenuWidget::incomingCallWidgetStyle() {
@@ -217,11 +227,16 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
 QString StyleMainMenuWidget::callingSectionStyle() {
     return QString("QWidget {"
         "   background-color: rgba(%1, %2, %3, %4);"
-        "   border-radius: 15px;"
-        "   padding: 12px 15px;"
-        "   margin: 5px 0px;"
+        "   border-radius: %5px;"
+        "   padding: %6px %7px;"
+        "   margin: %8px %9px;"
         "}").arg(m_callingSectionBackgroundColor.red()).arg(m_callingSectionBackgroundColor.green())
-        .arg(m_callingSectionBackgroundColor.blue()).arg(m_callingSectionBackgroundColor.alpha());
+        .arg(m_callingSectionBackgroundColor.blue()).arg(m_callingSectionBackgroundColor.alpha())
+        .arg(QString::fromStdString(std::to_string(scale(15))))  // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding vertical
+        .arg(QString::fromStdString(std::to_string(scale(15))))  // padding horizontal
+        .arg(QString::fromStdString(std::to_string(scale(5))))   // margin vertical
+        .arg(QString::fromStdString(std::to_string(scale(0))));  // margin horizontal
 }
 
 QString StyleMainMenuWidget::callingTextStyle() {
@@ -229,7 +244,6 @@ QString StyleMainMenuWidget::callingTextStyle() {
         "   color: %1;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "   font-size: 14px;"
         "}").arg(m_callingColor.name());
 }
 
@@ -246,12 +260,17 @@ QString StyleMainMenuWidget::stopCallingButtonStyle() {
         "   background-color: rgba(%1, %2, %3, %4);"
         "   color: white;"
         "   border: none;"
-        "   border-radius: 11px;"
-        "   padding: 6px 12px;"
-        "   font-size: 11px;"
-        "   margin: 8px;"
+        "   border-radius: %5px;"
+        "   padding: %6px %7px;"
+        "   font-size: %8px;"
+        "   margin: %9px;"
         "}").arg(m_stopCallingButtonColor.red()).arg(m_stopCallingButtonColor.green())
-        .arg(m_stopCallingButtonColor.blue()).arg(m_stopCallingButtonColor.alpha());
+        .arg(m_stopCallingButtonColor.blue()).arg(m_stopCallingButtonColor.alpha())
+        .arg(QString::fromStdString(std::to_string(scale(11))))  // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(6))))   // padding vertical
+        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding horizontal
+        .arg(QString::fromStdString(std::to_string(scale(11))))  // font-size
+        .arg(QString::fromStdString(std::to_string(scale(8))));  // margin
 }
 
 QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
@@ -270,50 +289,50 @@ void MainMenuWidget::setupUI() {
     m_backgroundTexture = QPixmap(":/resources/blur.png");
 
     m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setContentsMargins(40, 40, 40, 40);
+    m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
 
     // Main container
     m_mainContainer = new QWidget(this);
-    m_mainContainer->setFixedWidth(500);
+    m_mainContainer->setFixedWidth(scale(500));
     m_mainContainer->setStyleSheet(StyleMainMenuWidget::containerStyle());
 
     m_containerLayout = new QVBoxLayout(m_mainContainer);
-    m_containerLayout->setSpacing(20);
-    m_containerLayout->setContentsMargins(30, 30, 30, 30);
+    m_containerLayout->setSpacing(scale(20));
+    m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
 
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
     m_titleLabel->setAlignment(Qt::AlignCenter);
     m_titleLabel->setStyleSheet(StyleMainMenuWidget::titleStyle());
     m_titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    m_titleLabel->setMinimumHeight(70);
-    QFont titleFont("Pacifico", 32);
+    m_titleLabel->setMinimumHeight(scale(70));
+    QFont titleFont("Pacifico", scale(32));
     m_titleLabel->setFont(titleFont);
 
     // User info section
     m_userInfoWidget = new QWidget(m_mainContainer);
     m_userInfoLayout = new QHBoxLayout(m_userInfoWidget);
-    m_userInfoLayout->setSpacing(15);
+    m_userInfoLayout->setSpacing(scale(15));
     m_userInfoLayout->setContentsMargins(0, 0, 0, 0);
     m_userInfoLayout->setAlignment(Qt::AlignCenter);
-
+    
     m_avatarLabel = new QLabel("", m_userInfoWidget);
-    m_avatarLabel->setFixedSize(50, 50);
+    m_avatarLabel->setFixedSize(scale(50), scale(50));
     m_avatarLabel->setAlignment(Qt::AlignCenter);
 
     m_userTextLayout = new QVBoxLayout();
     m_nicknameLabel = new QLabel("Guest", m_userInfoWidget);
-    QFont nicknameFont("Outfit", 18, QFont::Normal);
+    QFont nicknameFont("Outfit", scale(18), QFont::Normal);
     m_nicknameLabel->setFont(nicknameFont);
 
     m_statusLabel = new QLabel("Offline", m_userInfoWidget);
-    QFont statusFont("Outfit", 11, QFont::Light);
+    QFont statusFont("Outfit", scale(11), QFont::Light);
     m_statusLabel->setFont(statusFont);
 
     m_nicknameLabel->setStyleSheet(StyleMainMenuWidget::nicknameStyle());
 
     m_userTextLayout->addWidget(m_nicknameLabel);
-    m_userTextLayout->addSpacing(-15);
+    m_userTextLayout->addSpacing(scale(-15));
     m_userTextLayout->addWidget(m_statusLabel);
 
     m_userInfoLayout->addWidget(m_avatarLabel);
@@ -322,18 +341,18 @@ void MainMenuWidget::setupUI() {
     // Calling section (initially hidden)
     m_callingSection = new QWidget(m_mainContainer);
     m_callingSection->setStyleSheet(StyleMainMenuWidget::callingSectionStyle());
-    m_callingSection->setMinimumHeight(50);
+    m_callingSection->setFixedHeight(scale(50));
     m_callingSection->hide();
 
     m_callingLayout = new QHBoxLayout(m_callingSection);
-    m_callingLayout->setSpacing(10);
+    m_callingLayout->setSpacing(scale(10));
     m_callingLayout->setContentsMargins(0, 0, 0, 0);
     m_callingLayout->setAlignment(Qt::AlignCenter);
 
     // Calling text
     m_callingText = new QLabel("Calling...", m_callingSection);
     m_callingText->setStyleSheet(StyleMainMenuWidget::callingTextStyle());
-    QFont callingFont("Outfit", 12, QFont::Normal);
+    QFont callingFont("Outfit", scale(12), QFont::Normal);
     m_callingText->setFont(callingFont);
 
     // Cancel call button
@@ -344,7 +363,7 @@ void MainMenuWidget::setupUI() {
     );
     m_stopCallingButton->setCursor(Qt::PointingHandCursor);
 
-    m_callingLayout->addSpacing(15);
+    m_callingLayout->addSpacing(scale(15));
     m_callingLayout->addWidget(m_callingText);
     m_callingLayout->addStretch();
     m_callingLayout->addWidget(m_stopCallingButton);
@@ -354,13 +373,14 @@ void MainMenuWidget::setupUI() {
     m_errorLabel->setStyleSheet(StyleMainMenuWidget::errorLabelStyle());
     m_errorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_errorLabel->hide();
-    QFont errorLabelFont("Outfit", 10, QFont::ExtraLight);
+    QFont errorLabelFont("Outfit", scale(10), QFont::ExtraLight);
     m_errorLabel->setFont(errorLabelFont);
 
     m_friendNicknameEdit = new QLineEdit(m_mainContainer);
+    m_friendNicknameEdit->setFixedHeight(scale(50));
     m_friendNicknameEdit->setPlaceholderText("Enter friend's nickname");
     m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
-    QFont friendNicknameFont("Outfit", 12, QFont::Light);
+    QFont friendNicknameFont("Outfit", scale(12), QFont::Light);
     m_friendNicknameEdit->setFont(friendNicknameFont);
 
     // Set validator for nickname
@@ -369,15 +389,16 @@ void MainMenuWidget::setupUI() {
     m_friendNicknameEdit->setValidator(validator);
 
     m_callButton = new QPushButton("Make Call", m_mainContainer);
+    m_callButton->setFixedHeight(scale(50));
     m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
     m_callButton->setCursor(Qt::PointingHandCursor);
-    QFont callButtonFont("Outfit", 14, QFont::Normal);
+    QFont callButtonFont("Outfit", scale(14), QFont::Normal);
     m_callButton->setFont(callButtonFont);
 
     m_incomingCallsContainer = new QWidget();
     m_incomingCallsLayout = new QVBoxLayout(m_incomingCallsContainer);
     m_incomingCallsLayout->setAlignment(Qt::AlignTop);
-    m_incomingCallsLayout->addSpacing(5);
+    m_incomingCallsLayout->addSpacing(scale(5));
 
     m_incomingCallsScrollArea = new QScrollArea(m_mainContainer);
     m_incomingCallsScrollArea->setWidget(m_incomingCallsContainer);
@@ -390,21 +411,26 @@ void MainMenuWidget::setupUI() {
     // Settings button with icon
     QWidget* buttonWidget = new QWidget();
     QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
-    buttonLayout->setContentsMargins(15, 5, 15, 5);
-    buttonLayout->setSpacing(10);
+    buttonLayout->setContentsMargins(scale(15), scale(5), scale(15), scale(5));
+    buttonLayout->setSpacing(scale(10));
 
-    QLabel* leftIcon = new QLabel();
-    leftIcon->setPixmap(QPixmap(":/resources/speaker.png").scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    leftIcon->setStyleSheet("color: inherit; background: transparent;");
+
+    ButtonIcon* leftIcon = new ButtonIcon(this,
+        QIcon(":/resources/speaker.png"),
+        QIcon(":/resources/speaker.png"),
+        scale(20), scale(20));
+    leftIcon->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
     QLabel* textLabel = new QLabel("Audio Controls");
     textLabel->setStyleSheet("color: inherit; background: transparent;");
-    QFont textLabelFont("Outfit", 12, QFont::Light);
+    QFont textLabelFont("Outfit", scale(12), QFont::Light);
     textLabel->setFont(textLabelFont);
 
-    QLabel* rightIcon = new QLabel();
-    rightIcon->setPixmap(QPixmap(":/resources/arrowDown.png").scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    rightIcon->setStyleSheet("color: inherit; background: transparent;");
+    ButtonIcon* rightIcon = new ButtonIcon(this,
+        QIcon(":/resources/arrowDown.png"),
+        QIcon(":/resources/arrowDown.png"),
+        scale(16), scale(16));
+    rightIcon->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
     buttonLayout->addWidget(leftIcon);
     buttonLayout->addWidget(textLabel);
@@ -412,6 +438,7 @@ void MainMenuWidget::setupUI() {
     buttonLayout->addWidget(rightIcon);
 
     m_settingsButton = new QPushButton(m_mainContainer);
+    m_settingsButton->setFixedHeight(scale(50));
     m_settingsButton->setLayout(buttonLayout);
     m_settingsButton->setStyleSheet(StyleMainMenuWidget::settingsButtonStyle());
     m_settingsButton->setCursor(Qt::PointingHandCursor);
@@ -422,9 +449,9 @@ void MainMenuWidget::setupUI() {
 
     // Add widgets to layout
     m_containerLayout->addWidget(m_titleLabel);
-    m_containerLayout->addSpacing(-4);
+    m_containerLayout->addSpacing(scale(-4));
     m_containerLayout->addWidget(m_userInfoWidget);
-    m_containerLayout->addSpacing(12);
+    m_containerLayout->addSpacing(scale(12));
     m_containerLayout->addWidget(m_callingSection);
     m_containerLayout->addWidget(m_errorLabel);
     m_containerLayout->addWidget(m_friendNicknameEdit);
@@ -432,7 +459,7 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_incomingCallsScrollArea);
     m_containerLayout->addWidget(m_settingsButton);
     m_containerLayout->addWidget(m_settingsPanel);
-    m_containerLayout->addSpacing(10);
+    m_containerLayout->addSpacing(scale(10));
 
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
@@ -454,7 +481,7 @@ void MainMenuWidget::setupAnimations() {
     m_settingsAnimation->setDuration(200);
     m_settingsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_settingsAnimation->setStartValue(0);
-    m_settingsAnimation->setEndValue(170);
+    m_settingsAnimation->setEndValue(scale(170));
 
     connect(m_settingsAnimation, &QPropertyAnimation::finished, this, [this]() {
         if (m_settingsAnimation->direction() == QAbstractAnimation::Backward) {
@@ -467,14 +494,14 @@ void MainMenuWidget::setupAnimations() {
     m_incomingCallsAnimation->setDuration(90);
     m_incomingCallsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_incomingCallsAnimation->setStartValue(0);
-    m_incomingCallsAnimation->setEndValue(120);
+    m_incomingCallsAnimation->setEndValue(scale(120));
 
     connect(m_incomingCallsAnimation, &QPropertyAnimation::finished, this, [this]() {
         if (m_incomingCallsAnimation->direction() == QAbstractAnimation::Backward) {
             m_incomingCallsScrollArea->hide();
         }
         else {
-            m_incomingCallsScrollArea->setMinimumHeight(110);
+            m_incomingCallsScrollArea->setMinimumHeight(scale(110));
         }
         });
 
@@ -483,13 +510,13 @@ void MainMenuWidget::setupAnimations() {
     m_callingAnimation->setDuration(200);
     m_callingAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_callingAnimation->setStartValue(0);
-    m_callingAnimation->setEndValue(50);
+    m_callingAnimation->setEndValue(scale(50));
 
     connect(m_callingAnimation, &QPropertyAnimation::finished, this, [this]() {
         if (m_callingAnimation->direction() == QAbstractAnimation::Backward) {
             m_callingSection->hide();
         }
-        });
+    });
 }
 
 void MainMenuWidget::setFocusToLineEdit() {
@@ -554,10 +581,6 @@ void MainMenuWidget::setState(calls::State state) {
 }
 
 void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
-    if (m_incomingCallsLayout->count() >= 0) {
-        showIncomingCallsArea();
-    }
-
     IncomingCallWidget* callWidget = new IncomingCallWidget(friendNickname, this);
     connect(callWidget, &IncomingCallWidget::callAccepted,
         this, &MainMenuWidget::onIncomingCallAccepted);
@@ -565,6 +588,7 @@ void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
         this, &MainMenuWidget::onIncomingCallDeclined);
 
     m_incomingCallsLayout->addWidget(callWidget);
+    showIncomingCallsArea();
 }
 
 void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {

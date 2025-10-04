@@ -3,6 +3,7 @@
 
 #include <QPainter>
 #include <QFontDatabase>
+#include "scaleFactor.h"
 
 // Style definitions
 const QColor StyleIncomingCallWidget::m_backgroundColor = QColor(235, 235, 235, 110);
@@ -15,12 +16,13 @@ const QColor StyleIncomingCallWidget::m_timerCircleColor = QColor(224, 168, 0);
 QString StyleIncomingCallWidget::widgetStyle() {
     return QString("IncomingCallWidget {"
         "   background-color: rgba(%1, %2, %3, %4);"
-        "   border-radius: 15px;"
+        "   border-radius: %9px;"
         "   border: 1px solid rgba(%5, %6, %7, %8);"
         "}").arg(m_backgroundColor.red()).arg(m_backgroundColor.green())
         .arg(m_backgroundColor.blue()).arg(m_backgroundColor.alpha())
         .arg(m_borderColor.red()).arg(m_borderColor.green())
-        .arg(m_borderColor.blue()).arg(m_borderColor.alpha());
+        .arg(m_borderColor.blue()).arg(m_borderColor.alpha())
+        .arg(QString::fromStdString(std::to_string(scale(15))));  // border-radius
 }
 
 QString StyleIncomingCallWidget::nicknameStyle() {
@@ -38,28 +40,30 @@ QString StyleIncomingCallWidget::callTypeStyle() {
 QString StyleIncomingCallWidget::timerStyle() {
     return QString("QLabel {"
         "   color: %1;"
-        "   font-size: 16px;"
+        "   font-size: %2px;"
         "   font-weight: bold;"
         "   background-color: transparent;"
-        "}").arg(m_timerTextColor.name());
+        "}").arg(m_timerTextColor.name())
+        .arg(QString::fromStdString(std::to_string(scale(16))));  // font-size
 }
 
 QString StyleIncomingCallWidget::avatarStyle(const QColor& color) {
     return QString("QLabel {"
         "   background-color: %1;"
-        "   border-radius: 25px;"
+        "   border-radius: %2px;"
         "   color: white;"
-        "   font-size: 18px;"
+        "   font-size: %3px;"
         "   font-weight: bold;"
-        "}").arg(color.name());
+        "}").arg(color.name())
+        .arg(QString::fromStdString(std::to_string(scale(25))))  // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(18)))); // font-size
 }
-
 IncomingCallWidget::IncomingCallWidget(const QString& friendNickname, QWidget* parent)
     : QWidget(parent), m_friendNickname(friendNickname), m_remainingSeconds(32) {
 
     setupUI();
     setupTimer();
-    setFixedHeight(80);
+    setFixedHeight(scale(80));
 }
 
 IncomingCallWidget::~IncomingCallWidget() {
@@ -70,19 +74,19 @@ IncomingCallWidget::~IncomingCallWidget() {
 
 void IncomingCallWidget::setupUI() {
     QHBoxLayout* mainLayout = new QHBoxLayout(this);
-    mainLayout->setContentsMargins(15, 10, 15, 10);
-    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(scale(15), scale(10), scale(15), scale(10));
+    mainLayout->setSpacing(scale(15));
 
     // Left side - Avatar and text info
     QWidget* leftWidget = new QWidget(this);
     leftWidget->setAttribute(Qt::WA_TranslucentBackground);
     QHBoxLayout* leftLayout = new QHBoxLayout(leftWidget);
     leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->setSpacing(12);
+    leftLayout->setSpacing(scale(12));
 
     // Avatar
     m_avatarLabel = new QLabel(leftWidget);
-    m_avatarLabel->setFixedSize(50, 50);
+    m_avatarLabel->setFixedSize(scale(50), scale(50));
     m_avatarLabel->setAlignment(Qt::AlignCenter);
 
     QColor avatarColor = generateRandomColor(m_friendNickname);
@@ -97,22 +101,22 @@ void IncomingCallWidget::setupUI() {
     textWidget->setAttribute(Qt::WA_TranslucentBackground);
     QVBoxLayout* textLayout = new QVBoxLayout(textWidget);
     textLayout->setContentsMargins(0, 0, 0, 0);
-    textLayout->setSpacing(4);
+    textLayout->setSpacing(scale(4));
 
     m_nicknameLabel = new QLabel(m_friendNickname, textWidget);
     m_nicknameLabel->setAttribute(Qt::WA_TranslucentBackground);
     m_nicknameLabel->setStyleSheet(StyleIncomingCallWidget::nicknameStyle());
-    QFont nicknameLabelFont("Outfit", 13, QFont::Bold);
+    QFont nicknameLabelFont("Outfit", scale(13), QFont::Bold);
     m_nicknameLabel->setFont(nicknameLabelFont);
 
     m_callTypeLabel = new QLabel("incoming call", textWidget);
     m_callTypeLabel->setAttribute(Qt::WA_TranslucentBackground);
     m_callTypeLabel->setStyleSheet(StyleIncomingCallWidget::callTypeStyle());
-    QFont callTypeFont("Outfit", 12, QFont::Light);
+    QFont callTypeFont("Outfit", scale(12), QFont::Light);
     m_callTypeLabel->setFont(callTypeFont);
 
     textLayout->addWidget(m_nicknameLabel);
-    textLayout->addSpacing(-7);
+    textLayout->addSpacing(scale(-7));
     textLayout->addWidget(m_callTypeLabel);
 
     leftLayout->addWidget(m_avatarLabel);
@@ -123,11 +127,11 @@ void IncomingCallWidget::setupUI() {
     rightWidget->setAttribute(Qt::WA_TranslucentBackground);
     QHBoxLayout* rightLayout = new QHBoxLayout(rightWidget);
     rightLayout->setContentsMargins(0, 0, 0, 0);
-    rightLayout->setSpacing(10);
+    rightLayout->setSpacing(scale(10));
 
     // Timer circle
     QWidget* timerWidget = new QWidget(rightWidget);
-    timerWidget->setFixedSize(50, 50);
+    timerWidget->setFixedSize(scale(50), scale(50));
     timerWidget->setAttribute(Qt::WA_TranslucentBackground);
     QVBoxLayout* timerLayout = new QVBoxLayout(timerWidget);
     timerLayout->setContentsMargins(0, 0, 0, 0);
@@ -140,11 +144,11 @@ void IncomingCallWidget::setupUI() {
     // Buttons
     QIcon acceptIcon(":/resources/acceptCall.png");
     QIcon acceptIconHover(":/resources/acceptCallHover.png");
-    m_acceptButton = new ButtonIcon(this, acceptIcon, acceptIconHover, 34, 34);
+    m_acceptButton = new ButtonIcon(this, acceptIcon, acceptIconHover, scale(34), scale(34));
 
     QIcon declineIcon(":/resources/declineCall.png");
     QIcon declineIconHover(":/resources/declineCallHover.png");
-    m_declineButton = new ButtonIcon(this, declineIcon, declineIconHover, 34, 34);
+    m_declineButton = new ButtonIcon(this, declineIcon, declineIconHover, scale(34), scale(34));
 
     // Connect buttons
     connect(m_acceptButton, &ButtonIcon::clicked, [this]() {

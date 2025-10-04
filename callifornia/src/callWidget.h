@@ -40,10 +40,6 @@ struct StyleCallWidget {
     static QString sliderStyle();
     static QString volumeLabelStyle();
     static QString scrollAreaStyle();
-    static QString sliderGrooveStyle();
-    static QString sliderHandleStyle();
-    static QString sliderAddPageStyle();
-    static QString sliderSubPageStyle();
     static QString volumeSliderStyle();
 };
 

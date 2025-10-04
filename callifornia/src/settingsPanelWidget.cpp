@@ -1,6 +1,7 @@
 #include "settingsPanelWidget.h"
 #include "buttons.h"
 #include <QIcon>
+#include "scaleFactor.h"
 
 const QColor SettingsPanel::StyleSettingsPanel::primaryColor = QColor(224, 168, 0);
 const QColor SettingsPanel::StyleSettingsPanel::hoverColor = QColor(219, 164, 0);
@@ -27,55 +28,71 @@ QString SettingsPanel::StyleSettingsPanel::titleStyle() {
 }
 
 QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
-    return QString(
-        "QSlider::groove:horizontal {"
-        "   background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
-        "       stop:0 #E0E0E0, stop:1 #F0F0F0);"
-        "   height: 4px;"
-        "   border-radius: 2px;"
-        "}"
-        "QSlider::handle:horizontal {"
-        "   background: %1;"
-        "   border: 2px solid %2;"
-        "   width: 16px;"
-        "   height: 16px;"
-        "   border-radius: 8px;"
-        "   margin: -6px 0;"
-        "}"
-        "QSlider::handle:horizontal:hover {"
-        "   background: %2;"
-        "   border: 2px solid %1;"
-        "}"
-        "QSlider::sub-page:horizontal {"
-        "   background: %1;"
-        "   height: 4px;"
-        "   border-radius: 2px;"
-        "}"
-    ).arg(primaryColor.name()).arg(hoverColor.name());
+    return QString(R"(
+        QSlider::groove:horizontal {
+            background-color: rgb(77, 77, 77); 
+            height: %1px; 
+            border-radius: %2px;
+            margin: 0px 0px; 
+        }
+        QSlider::handle:horizontal {
+            background-color: white;
+            width: %3px;
+            height: %4px; 
+            border-radius: %5px;
+            margin: -4px 0;
+        }
+        QSlider::add-page:horizontal {
+            background-color: rgb(77, 77, 77);
+            border-radius: %6px;
+        }
+        QSlider::sub-page:horizontal {
+            background-color: rgb(21, 119, 232);
+            border-radius: %6px;
+        }
+    )")
+        .arg(QString::fromStdString(std::to_string(scale(8))))
+        .arg(QString::fromStdString(std::to_string(scale(4))))
+        .arg(QString::fromStdString(std::to_string(scale(16))))
+        .arg(QString::fromStdString(std::to_string(scale(16))))
+        .arg(QString::fromStdString(std::to_string(scale(8))))  
+        .arg(QString::fromStdString(std::to_string(scale(4))));
 }
 
 QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
     return QString(
         "QPushButton {"
-        "   background-color: rgba(235, 235, 235, 190);"
-        "   color: #333333;"
+        "   background-color: rgba(235, 235, 235, %1);"
+        "   color: %2;"
         "   border: 0px solid #d0d0d0;"
-        "   border-radius: 8px;"
-        "   padding: 8px 16px;"
-        "   margin: 10px 0px 8px 0px;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
+        "   margin: %6px %7px %8px %9px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(235, 235, 235, 110);"
+        "   background-color: rgba(235, 235, 235, %10);"
         "   border-color: #c0c0c0;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgba(235, 235, 235, 110);"
+        "   background-color: rgba(235, 235, 235, %11);"
         "}"
         "QPushButton:focus {"
         "   outline: none;"
-        "   border-color: rgba(235, 235, 235, 110);"
+        "   border-color: rgba(235, 235, 235, %12);"
         "}"
-    );
+    )
+        .arg(QString::fromStdString(std::to_string(190)))    // background-color alpha
+        .arg("#333333") // color
+        .arg(QString::fromStdString(std::to_string(scale(8))))      // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(8))))      // padding vertical
+        .arg(QString::fromStdString(std::to_string(scale(16))))     // padding horizontal
+        .arg(QString::fromStdString(std::to_string(scale(10))))     // margin top
+        .arg(QString::fromStdString(std::to_string(scale(0))))      // margin right
+        .arg(QString::fromStdString(std::to_string(scale(8))))      // margin bottom
+        .arg(QString::fromStdString(std::to_string(scale(0))))      // margin left
+        .arg(QString::fromStdString(std::to_string(110)))    // hover background-color alpha
+        .arg(QString::fromStdString(std::to_string(110)))    // pressed background-color alpha
+        .arg(QString::fromStdString(std::to_string(110)));   // focus border-color alpha
 }
 
 QString SettingsPanel::StyleSettingsPanel::volumeLabelStyle() {
@@ -114,18 +131,19 @@ SettingsPanel::SettingsPanel(QWidget* parent) : QWidget(parent) {
 
 void SettingsPanel::setupUI() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(15, 15, 15, 15);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(scale(15), scale(15), scale(15), scale(15));
+    mainLayout->setSpacing(scale(10));
 
     // Refresh button with icon
     QHBoxLayout* refreshLayout = new QHBoxLayout();
     refreshLayout->setContentsMargins(0, 0, 0, 0);
 
     m_refreshButton = new QPushButton("  Refresh", this);
+    m_refreshButton->setFixedHeight(scale(60));
     m_refreshButton->setIcon(QIcon(":/resources/reload.png"));
-    m_refreshButton->setIconSize(QSize(32, 28));
+    m_refreshButton->setIconSize(QSize(scale(32), scale(28)));
     m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
-    QFont refreshButtonFont("Outfit", 13, QFont::Medium);
+    QFont refreshButtonFont("Outfit", scale(13), QFont::Medium);
     m_refreshButton->setFont(refreshButtonFont);
     m_refreshButton->setToolTip("Refresh audio devices if changed");
 
@@ -135,29 +153,8 @@ void SettingsPanel::setupUI() {
 
 
     // Toggle кнопка mute
-    m_muteButton = new QPushButton(this);
-    m_muteButton->setCheckable(true); // Делаем кнопку toggle
-    m_muteButton->setChecked(false); // По умолчанию выключено
-    m_muteButton->setIcon(QIcon(":/resources/mute-microphone.png")); // Иконка когда не muted
-    m_muteButton->setIconSize(QSize(26, 26));
-    m_muteButton->setToolTip("Mute Audio");
-    m_muteButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: transparent;"
-        "   border: none;"
-        "   padding: 5px;"
-        "   border-radius: 5px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(0, 0, 0, 0.1);"
-        "}"
-        "QPushButton:checked {"
-        "   background-color: rgba(255, 0, 0, 0.2);"
-        "}"
-        "QPushButton:checked:hover {"
-        "   background-color: rgba(255, 0, 0, 0.3);"
-        "}"
-    );
+    m_muteButton = new ToggleButtonIcon(this, QIcon(":/resources/mute-microphone.png"), QIcon(":/resources/mute-microphoneHover.png"), QIcon(":/resources/mute-enabled-microphone.png"), QIcon(":/resources/mute-enabled-microphoneHover.png"), scale(40), scale(40));
+    m_muteButton->setSize(scale(26), scale(26));
 
     refreshLayout->addWidget(m_refreshButton);
     refreshLayout->addStretch();
@@ -170,36 +167,14 @@ void SettingsPanel::setupUI() {
     // Microphone slider
     m_micSlider = new QSlider(Qt::Horizontal, this);
     m_micSlider->setRange(0, 100);
-    m_micSlider->setValue(50);
-    m_micSlider->setFixedHeight(30);
-    m_micSlider->setStyleSheet(R"(
-        QSlider::groove:horizontal {
-            background-color: rgb(77, 77, 77); 
-            height: 8px; 
-            border-radius: 4px;
-            margin: 0px 0px; 
-        }
-        QSlider::handle:horizontal {
-            background-color: white;
-            width: 16px;
-            height: 16px; 
-            border-radius: 8px;
-            margin: -4px 0;
-        }
-        QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
-            border-radius: 4px;
-        }
-        QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
-            border-radius: 4px;
-        }
-    )");
+    m_micSlider->setValue(80);
+    m_micSlider->setFixedHeight(scale(30));
+    m_micSlider->setStyleSheet(StyleSettingsPanel::sliderStyle());
 
     m_micMuteButton = new ButtonIcon(this,
         QIcon(":/resources/microphone.png"),
         QIcon(":/resources/microphone.png"),
-        24, 24);
+        scale(24), scale(24));
 
     micLayout->addWidget(m_micMuteButton);
     micLayout->addWidget(m_micSlider, 1);
@@ -212,39 +187,17 @@ void SettingsPanel::setupUI() {
     m_speakerSlider = new QSlider(Qt::Horizontal, this);
     m_speakerSlider->setRange(0, 100);
     m_speakerSlider->setValue(50);
-    m_speakerSlider->setFixedHeight(30);
-    m_speakerSlider->setStyleSheet(R"(
-        QSlider::groove:horizontal {
-            background-color: rgb(77, 77, 77); 
-            height: 8px; 
-            border-radius: 4px;
-            margin: 0px 0px; 
-        }
-        QSlider::handle:horizontal {
-            background-color: white;
-            width: 16px;
-            height: 16px; 
-            border-radius: 8px;
-            margin: -4px 0;
-        }
-        QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
-            border-radius: 4px;
-        }
-        QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
-            border-radius: 4px;
-        }
-    )");
+    m_speakerSlider->setFixedHeight(scale(30));
+    m_speakerSlider->setStyleSheet(StyleSettingsPanel::sliderStyle());
 
     ButtonIcon* speakerIconButton = new ButtonIcon(this,
         QIcon(":/resources/speaker.png"),
         QIcon(":/resources/speaker.png"),
-        22, 22);
+        scale(22), scale(22));
 
-    speakerLayout->addSpacing(2);
+    speakerLayout->addSpacing(scale(2));
     speakerLayout->addWidget(speakerIconButton);
-    speakerLayout->addSpacing(3);
+    speakerLayout->addSpacing(scale(3));
     speakerLayout->addWidget(m_speakerSlider, 1);
 
     // Add widgets to layout
@@ -255,7 +208,7 @@ void SettingsPanel::setupUI() {
     // Connect signals
     connect(m_micSlider, &QSlider::valueChanged, this, &SettingsPanel::onMicVolumeChanged);
     connect(m_speakerSlider, &QSlider::valueChanged, this, &SettingsPanel::onSpeakerVolumeChanged);
-    connect(m_muteButton, &QPushButton::toggled, this, &SettingsPanel::onMicMuteClicked);
+    connect(m_muteButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onMicMuteClicked);
     connect(m_refreshButton, &QPushButton::clicked, this, [this]() {
         if (m_refreshEnabled) {
             m_refreshEnabled = false;
@@ -301,8 +254,9 @@ void SettingsPanel::setOutputVolume(int volume) {
 }
 
 void SettingsPanel::setMuted(bool muted) {
-    if (m_muteButton->isChecked() != muted) {
-        m_muteButton->toggle();
+    if (m_muteButton->isToggled() != muted) {
+        m_muteButton->setToggled(true);
+        m_muteButton->setToggled(true);
     }
 
     if (muted) {

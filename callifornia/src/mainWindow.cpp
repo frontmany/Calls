@@ -3,6 +3,8 @@
 #include <QHBoxLayout>
 #include <QFontDatabase>
 #include <QApplication>
+#include <QSoundEffect>
+#include <QFileInfo>
 
 #include "AuthorizationWidget.h"
 #include "MainMenuWidget.h"
@@ -28,6 +30,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
         }
     });
 
+    
     calls::init(host, port,
         [this](calls::Result authorizationResult) {
             QMetaObject::invokeMethod(this, "onAuthorizationResult", Qt::QueuedConnection,
@@ -56,6 +59,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
             QMetaObject::invokeMethod(this, "onNetworkError", Qt::QueuedConnection);
         }
     );
+    
 
     calls::run();
 
@@ -78,7 +82,7 @@ void MainWindow::playRingtone() {
     }
 }
 
-void MainWindow::stopRingtone() {
+void MainWindow::pauseRingtone() {
     if (!m_ringtonePlayer) return;
 
     if (m_ringtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
@@ -234,7 +238,7 @@ void MainWindow::onIncomingCallAccepted(const QString& friendNickname) {
     calls::acceptCall(friendNickname.toStdString());
     m_mainMenuWidget->clearIncomingCalls();
     switchToCallWidget(friendNickname);
-    stopRingtone();
+    pauseRingtone();
 }
 
 void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
@@ -243,9 +247,23 @@ void MainWindow::onIncomingCallDeclined(const QString& friendNickname) {
     calls::declineCall(friendNickname.toStdString());
 
     if (calls::getIncomingCallsCount() == 0) {
-        stopRingtone();
+        pauseRingtone();
     }
 
+    playSoundEffect(":/resources/callingEndedByMe.wav");
+}
+
+void MainWindow::playSoundEffect(const QString& soundPath) {
+    QSoundEffect* effect = new QSoundEffect(this);
+    effect->setSource(QUrl::fromLocalFile((soundPath)));
+    effect->setVolume(1.0f);
+    effect->play();
+
+    connect(effect, &QSoundEffect::playingChanged, this, [effect]() {
+        if (!effect->isPlaying()) {
+            effect->deleteLater();
+        }
+    });
 }
 
 void MainWindow::onHangupClicked() {
@@ -253,6 +271,7 @@ void MainWindow::onHangupClicked() {
     switchToMainMenuWidget();
     m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
+    playSoundEffect(":/resources/callEnd.wav");
 }
 
 void MainWindow::onRefreshAudioDevicesButtonClicked() {
@@ -260,11 +279,11 @@ void MainWindow::onRefreshAudioDevicesButtonClicked() {
 }
 
 void MainWindow::onInputVolumeChanged(int newVolume) {
-    calls::setOutputVolume(newVolume);
+    calls::setInputVolume(newVolume);
 }
 
 void MainWindow::onOutputVolumeChanged(int newVolume) {
-    calls::setInputVolume(newVolume);
+    calls::setOutputVolume(newVolume);
 }
 
 void MainWindow::onMuteButtonClicked(bool mute) {
@@ -279,6 +298,9 @@ void MainWindow::onCreateCallResult(calls::Result createCallResult) {
     QString errorMessage;
 
     if (createCallResult == calls::Result::CALL_ACCEPTED) {
+        m_mainMenuWidget->clearIncomingCalls();
+        calls::declineAllCalls();
+        pauseRingtone();
         m_mainMenuWidget->removeCallingPanel();
         m_mainMenuWidget->setState(calls::State::BUSY);
         switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
@@ -340,7 +362,6 @@ void MainWindow::onStopCallingButtonClicked() {
 
 
 void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
-    // Handle expired incoming call - remove from main menu
     m_mainMenuWidget->removeIncomingCall(QString::fromStdString(friendNickName));
 
     if (calls::getState() == calls::State::BUSY) {
@@ -348,8 +369,11 @@ void MainWindow::onIncomingCallExpired(const std::string& friendNickName) {
     }
 
     if (calls::getIncomingCallsCount() == 0) {
-        stopRingtone();
+        pauseRingtone();
     }
+
+
+    playSoundEffect(":/resources/callingEndedByRemote.wav");
 }
 
 void MainWindow::onSimultaneousCalling(const std::string& friendNickName) {
@@ -360,10 +384,17 @@ void MainWindow::onSimultaneousCalling(const std::string& friendNickName) {
 void MainWindow::onRemoteUserEndedCall() {
     switchToMainMenuWidget();
     m_mainMenuWidget->setState(calls::State::FREE);
+    playSoundEffect(":/resources/callEnd.wav");
 }
 
 void MainWindow::onNetworkError() {
     // Handle network error
+    calls::logout();
+    
+    pauseRingtone();
+    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->clearIncomingCalls();
+
     switchToAuthorizationWidget();
     m_authorizationWidget->resetBlur();
     m_authorizationWidget->setErrorMessage("Network error occurred");

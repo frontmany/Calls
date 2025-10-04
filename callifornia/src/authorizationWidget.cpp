@@ -4,6 +4,7 @@
 #include <QPainterPath>
 #include <QApplication>
 #include <QFontDatabase>
+#include "scaleFactor.h"
 
 // AuthorizationWidget implementation
 AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent) 
@@ -20,13 +21,13 @@ void AuthorizationWidget::setupUI() {
 
     // Create container
     m_container = new QWidget(this);
-    m_container->setFixedSize(450, 400);
+    m_container->setFixedSize(scale(450), scale(400));
     m_container->setAttribute(Qt::WA_TranslucentBackground);
 
     // Container layout
     m_glassLayout = new QVBoxLayout(m_container);
-    m_glassLayout->setSpacing(15);
-    m_glassLayout->setContentsMargins(30, 30, 30, 30);
+    m_glassLayout->setSpacing(scale(15));
+    m_glassLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
     m_glassLayout->setAlignment(Qt::AlignTop);
 
     // Title label
@@ -34,8 +35,8 @@ void AuthorizationWidget::setupUI() {
     m_titleLabel->setAlignment(Qt::AlignCenter);
     m_titleLabel->setStyleSheet(StyleAuthorizationWidget::glassTitleLabelStyle());
     m_titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    m_titleLabel->setMinimumHeight(62);
-    QFont titleFont("Pacifico", 28);
+    m_titleLabel->setMinimumHeight(scale(62));
+    QFont titleFont("Pacifico", scale(28));
     m_titleLabel->setFont(titleFont);
 
     // SubTitle label
@@ -43,7 +44,7 @@ void AuthorizationWidget::setupUI() {
     m_subtitleLabel->setAlignment(Qt::AlignCenter);
     m_subtitleLabel->setStyleSheet(StyleAuthorizationWidget::glassSubTitleLabelStyle());
     m_subtitleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    QFont subTitleFont("Outfit", 13, QFont::ExtraLight);
+    QFont subTitleFont("Outfit", scale(13), QFont::ExtraLight);
     m_subtitleLabel->setFont(subTitleFont);
 
     // Nickname label
@@ -51,15 +52,16 @@ void AuthorizationWidget::setupUI() {
     m_errorLabel->setStyleSheet(StyleAuthorizationWidget::glassErrorLabelStyle());
     m_errorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_errorLabel->hide();
-    QFont errorLabelFont("Outfit", 10, QFont::ExtraLight);
+    QFont errorLabelFont("Outfit", scale(10), QFont::ExtraLight);
     m_errorLabel->setFont(errorLabelFont);
 
     // Nickname input
     m_nicknameEdit = new QLineEdit(m_container);
+    m_nicknameEdit->setFixedSize(scale(390), scale(60));
     m_nicknameEdit->setStyleSheet(StyleAuthorizationWidget::glassLineEditStyle());
     m_nicknameEdit->setPlaceholderText("Only letters, numbers and _");
-    m_nicknameEdit->setMaxLength(20);
-    m_nicknameEdit->setMinimumHeight(40);
+    m_nicknameEdit->setMaxLength(scale(20));
+    m_nicknameEdit->setMinimumHeight(scale(40));
     m_nicknameEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_nicknameEdit->setFont(subTitleFont);
 
@@ -70,23 +72,25 @@ void AuthorizationWidget::setupUI() {
 
     // Authorize button
     m_authorizeButton = new QPushButton("Authorize", m_container);
-    m_authorizeButton->setStyleSheet(
-        StyleAuthorizationWidget::glassButtonStyle()
-    );
+    m_authorizeButton->setFixedSize(scale(390), scale(60));
+    m_authorizeButton->setStyleSheet(StyleAuthorizationWidget::glassButtonStyle());
     m_authorizeButton->setCursor(Qt::PointingHandCursor);
-    m_authorizeButton->setMinimumHeight(45);
+    m_authorizeButton->setMinimumHeight(scale(45));
     m_authorizeButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+    QFont authorizeButtonFont("Outfit", scale(14), QFont::Bold);
+    m_authorizeButton->setFont(authorizeButtonFont);
+
 
     // Add widgets to glass layout
     m_glassLayout->addWidget(m_titleLabel);
     m_glassLayout->addWidget(m_subtitleLabel);
-    m_glassLayout->addSpacing(16);
+    m_glassLayout->addSpacing(scale(16));
     m_glassLayout->addWidget(m_errorLabel);
     m_glassLayout->addWidget(m_nicknameEdit);
     m_glassLayout->addWidget(m_authorizeButton);
 
     // Add glass panel to main layout
-    m_mainLayout->addSpacing(42);
+    m_mainLayout->addSpacing(scale(42));
     m_mainLayout->addWidget(m_container);
 
     // Connect signals
@@ -119,9 +123,9 @@ void AuthorizationWidget::paintEvent(QPaintEvent* event) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     QLinearGradient gradient(0, 90, width(), height());
-    gradient.setColorAt(0.0, QColor(230, 230, 230));  // Темнее серый
-    gradient.setColorAt(0.5, QColor(220, 230, 240));  // Темнее голубовато-серый  
-    gradient.setColorAt(1.0, QColor(240, 240, 240));  // Темнее белый
+    gradient.setColorAt(0.0, QColor(230, 230, 230));  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+    gradient.setColorAt(0.5, QColor(220, 230, 240));  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ  
+    gradient.setColorAt(1.0, QColor(240, 240, 240));  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
     painter.fillRect(rect(), gradient);
 
@@ -192,14 +196,12 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
         "   background-color: %1;"
         "   color: %2;"
         "   border: 0px solid %3;"
-        "   border-radius: 15px;"
-        "   padding: 12px 24px;"
-        "   font-size: 14px;"
-        "   font-weight: bold;"
+        "   border-radius: %4px;"
+        "   padding: %5px %6px;"
         "   margin: 0px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: %4;"
+        "   background-color: %7;"
         "}"
         "QPushButton:disabled {"
         "   background-color: rgba(21, 119, 232, 150);"
@@ -207,6 +209,9 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
         "}").arg(m_primaryColor.name())
         .arg(m_glassBorderColor.name())
         .arg(m_glassBorderColor.name())
+        .arg(QString::fromStdString(std::to_string(scale(15))))  
+        .arg(QString::fromStdString(std::to_string(scale(12))))
+        .arg(QString::fromStdString(std::to_string(scale(24))))
         .arg(m_primaryColor.darker(110).name());
 }
 
@@ -214,8 +219,8 @@ QString StyleAuthorizationWidget::glassLineEditStyle() {
     return QString("QLineEdit {"
         "   background-color: rgba(245, 245, 245, 235);"
         "   border: 0px solid %1;"
-        "   border-radius: 12px;"
-        "   padding: 12px 15px;"
+        "   border-radius: %4px;"
+        "   padding: %5px %6px;"
         "   margin: 0px;"
         "   color: %2;"
         "   selection-background-color: %3;"
@@ -233,7 +238,10 @@ QString StyleAuthorizationWidget::glassLineEditStyle() {
         "   color: rgba(240, 240, 240, 180);"
         "}").arg(m_glassBorderColor.name())
         .arg(m_textColor.name())
-        .arg(m_primaryColor.name());
+        .arg(m_primaryColor.name())
+        .arg(QString::fromStdString(std::to_string(scale(12))))  
+        .arg(QString::fromStdString(std::to_string(scale(12))))
+        .arg(QString::fromStdString(std::to_string(scale(15))));
 }
 
 QString StyleAuthorizationWidget::glassLabelStyle() {

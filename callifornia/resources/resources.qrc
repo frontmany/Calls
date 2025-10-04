@@ -4,7 +4,9 @@
 	 <file>Outfit-VariableFont_wght.ttf</file>
 	 <file>blur.png</file>
 	 <file>ringtone.mp3</file>
-	 <file>void.mp3</file>
+	 <file>callEnd.wav</file>
+	 <file>callingEndedByRemote.wav</file>
+	 <file>callingEndedByMe.wav</file>
 	 <file>acceptCall.png</file>
 	 <file>callifornia.ico</file>
 	 <file>acceptCallHover.png</file>

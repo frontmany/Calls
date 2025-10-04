@@ -62,6 +62,7 @@ public:
     bool authorize(const std::string& nickname);
     bool createCall(const std::string& friendNickname);
     bool stopCalling();
+    bool declineAllIncomingCalls();
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
     bool endCall();
