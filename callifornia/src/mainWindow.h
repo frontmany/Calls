@@ -51,6 +51,7 @@ private:
     void loadFonts();
     void playRingtone();
     void pauseRingtone();
+    void playSoundEffect(const QString& soundPath);
 
 private:
     QMediaPlayer* m_ringtonePlayer;

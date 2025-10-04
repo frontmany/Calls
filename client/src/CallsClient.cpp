@@ -116,6 +116,12 @@ void CallsClient::checkPing() {
 CallsClient::~CallsClient() {
     logout();
 
+    m_running = false;
+
+    if (m_pingerThread.joinable()) {
+        m_pingerThread.join();
+    }
+
     if (m_thread.joinable()) {
         m_thread.join();
     }
@@ -130,6 +136,10 @@ CallsClient::~CallsClient() {
         pair.first->stop();
     }
     m_incomingCalls.clear();
+
+    if (m_keysFuture.valid()) {
+        m_keysFuture.wait();
+    }
 }
 
 void CallsClient::onReceive(const unsigned char* data, int length, PacketType type) {
@@ -285,6 +295,12 @@ const std::string& CallsClient::getNicknameInCallWith() const {
 }
 
 void CallsClient::stop() {
+    m_running = false;
+
+    if (m_pingerThread.joinable()) {
+        m_pingerThread.join();
+    }
+
     logout();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -303,7 +319,6 @@ void CallsClient::stop() {
         m_networkController->stop();
     }
 
-    m_running = false;
     if (m_thread.joinable()) {
         m_thread.join();
     }

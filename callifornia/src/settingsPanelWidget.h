@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 
 class ButtonIcon;
+class ToggleButtonIcon;
 
 class SettingsPanel : public QWidget {
     Q_OBJECT
@@ -38,7 +39,7 @@ private:
     QPushButton* m_refreshButton;
     QTimer* m_refreshCooldownTimer = nullptr;
     ButtonIcon* m_micMuteButton = nullptr;
-    QPushButton* m_muteButton = nullptr;
+    ToggleButtonIcon* m_muteButton = nullptr;
     bool m_isMicMuted = false;
     bool m_refreshEnabled = false;
 
