@@ -27,18 +27,18 @@ public:
     bool init(
         const std::string& host, 
         const std::string& port,
-        std::function<void(Result)> authorizationResult,
-        std::function<void(Result)> createCallResult,
-        std::function<void(Result)> createGroupCallResult,
-        std::function<void(Result)> joinGroupCallResult,
-        std::function<void(const std::string&)> onJoinRequest,
-        std::function<void(const std::string&)> onJoinRequestExpired,
-        std::function<void(const std::string&)> onParticipantLeft,
-        std::function<void(const std::string&)> onIncomingCall,
-        std::function<void(const std::string&)> onIncomingCallExpired,
-        std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
-        std::function<void()> onRemoteUserEndedCall,
-        std::function<void()> onNetworkError
+        std::function<void(Result)>&& authorizationResult,
+        std::function<void(Result)>&& createCallResult,
+        std::function<void(Result)>&& createGroupCallResult,
+        std::function<void(Result)>&& joinGroupCallResult,
+        std::function<void(const std::string&)>&& onJoinRequest,
+        std::function<void(const std::string&)>&& onJoinRequestExpired,
+        std::function<void(const std::string&)>&& onParticipantLeft,
+        std::function<void(const std::string&)>&& onIncomingCall,
+        std::function<void(const std::string&)>&& onIncomingCallExpired,
+        std::function<void(const std::string&)>&& onCallingSomeoneWhoAlreadyCallingYou,
+        std::function<void()>&& onRemoteUserEndedCall,
+        std::function<void()>&& onNetworkError
     );
 
     void run();
@@ -67,12 +67,12 @@ public:
     bool acceptIncomingCall(const std::string& friendNickname);
     bool endCall();
     
-    void createGroupCall(const std::string& groupCallName);
-    void joinGroupCall(const std::string& groupCallName);
+    bool createGroupCall(const std::string& groupCallName);
+    bool joinGroupCall(const std::string& groupCallName);
     bool endGroupCall(const std::string& groupCallName);
     bool leaveGroupCall(const std::string& groupCallName);
-    void allowJoin(const std::string& friendNickname);
-    void declineJoin(const std::string& friendNickname);
+    bool allowJoin(const std::string& friendNickname);
+    bool declineJoin(const std::string& friendNickname);
     
 private:
     CallsClient();

@@ -42,6 +42,13 @@ private slots:
     void onOutputVolumeChanged(int newVolume);
     void onMuteButtonClicked(bool mute);
 
+
+    void onCreateGroupCallResult(calls::Result result);
+    void onJoinGroupCallResult(calls::Result result);
+    void onJoinRequest(const std::string& friendNickname);
+    void onJoinRequestExpired(const std::string& friendNickname);
+    void onParticipantLeft(const std::string& friendNickname);
+
 private:
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();

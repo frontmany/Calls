@@ -19,18 +19,18 @@ CallsClient::CallsClient()
 bool CallsClient::init(
     const std::string& host,
     const std::string& port,
-    std::function<void(Result)> authorizationResult,
-    std::function<void(Result)> createCallResult,
-    std::function<void(Result)> createGroupCallResult,
-    std::function<void(Result)> joinGroupCallResult,
-    std::function<void(const std::string&)> onJoinRequest,
-    std::function<void(const std::string&)> onJoinRequestExpired,
-    std::function<void(const std::string&)> onParticipantLeft,
-    std::function<void(const std::string&)> onIncomingCall,
-    std::function<void(const std::string&)> onIncomingCallExpired,
-    std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
-    std::function<void()> onRemoteUserEndedCall,
-    std::function<void()> onNetworkError)
+    std::function<void(Result)>&& authorizationResult,
+    std::function<void(Result)>&& createCallResult,
+    std::function<void(Result)>&& createGroupCallResult,
+    std::function<void(Result)>&& joinGroupCallResult,
+    std::function<void(const std::string&)>&& onJoinRequest,
+    std::function<void(const std::string&)>&& onJoinRequestExpired,
+    std::function<void(const std::string&)>&& onParticipantLeft,
+    std::function<void(const std::string&)>&& onIncomingCall,
+    std::function<void(const std::string&)>&& onIncomingCallExpired,
+    std::function<void(const std::string&)>&& onCallingSomeoneWhoAlreadyCallingYou,
+    std::function<void()>&& onRemoteUserEndedCall,
+    std::function<void()>&& onNetworkError)
 {
     m_authorizationResult = authorizationResult;
     m_createCallResult = createCallResult;
@@ -477,8 +477,8 @@ bool CallsClient::createCall(const std::string& friendNickname) {
     return true;
 }
 
-void CallsClient::createGroupCall(const std::string& groupCallName) {
-    if (m_state == State::UNAUTHORIZED || m_state == State::CALLING || m_state == State::IN_GROUP_CALL || m_call) return;
+bool CallsClient::createGroupCall(const std::string& groupCallName) {
+    if (m_state == State::UNAUTHORIZED || m_state == State::CALLING || m_state == State::IN_GROUP_CALL || m_call) return false;
 
     m_networkController->send(
         PacketsFactory::getCreateGroupCallPacket(m_myNickname, groupCallName),
@@ -492,6 +492,8 @@ void CallsClient::createGroupCall(const std::string& groupCallName) {
     });
 
     m_groupCall = GroupCall(m_myNickname, m_myPublicKey, groupCallName, GroupCall::GroupCallRole::INITIATOR);
+
+    return true;
 }
 
 bool CallsClient::endGroupCall(const std::string& groupCallName) {
@@ -764,8 +766,8 @@ void CallsClient::onJoinRequest(const unsigned char* data, int length) {
     m_joinRequests.emplace_back(std::move(timer), std::move(joinRequestData));
 }
 
-void CallsClient::allowJoin(const std::string& friendNickname) {
-    if (m_state == State::UNAUTHORIZED || m_state != State::IN_GROUP_CALL || m_joinRequests.empty()) return;
+bool CallsClient::allowJoin(const std::string& friendNickname) {
+    if (m_state == State::UNAUTHORIZED || m_state != State::IN_GROUP_CALL || m_joinRequests.empty()) return false;
 
     
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -802,10 +804,13 @@ void CallsClient::allowJoin(const std::string& friendNickname) {
 
         m_joinRequests.erase(it);
     }
+
+    return true;
+
 }
 
-void CallsClient::joinGroupCall(const std::string& groupCallName) {
-    if (m_state == State::UNAUTHORIZED || m_state == State::CALLING || m_state == State::IN_GROUP_CALL || m_call) return;
+bool CallsClient::joinGroupCall(const std::string& groupCallName) {
+    if (m_state == State::UNAUTHORIZED || m_state == State::CALLING || m_state == State::IN_GROUP_CALL || m_call) return false;
 
     m_networkController->send(
         PacketsFactory::getCheckGroupCallExistencePacket(groupCallName),
@@ -817,10 +822,12 @@ void CallsClient::joinGroupCall(const std::string& groupCallName) {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_queue.push([this]() {m_joinGroupCallResult(Result::TIMEOUT); });
     });
+
+    return true;
 }
 
-void CallsClient::declineJoin(const std::string& friendNickname) {
-    if (m_state == State::UNAUTHORIZED || m_state != State::IN_GROUP_CALL || m_joinRequests.empty()) return;
+bool CallsClient::declineJoin(const std::string& friendNickname) {
+    if (m_state == State::UNAUTHORIZED || m_state != State::IN_GROUP_CALL || m_joinRequests.empty()) return false;
 
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = std::find_if(m_joinRequests.begin(), m_joinRequests.end(),
@@ -834,6 +841,8 @@ void CallsClient::declineJoin(const std::string& friendNickname) {
         m_networkController->send(PacketsFactory::getJoinDeclinedPacket(data.friendNickname, data.friendPublicKey, m_groupCall.value().getGroupCallName()), PacketType::JOIN_DECLINED);
         m_joinRequests.erase(it);
     }
+
+    return true;
 }
 
 const std::string& CallsClient::onParticipantLeft(const unsigned char* data, int length) const {

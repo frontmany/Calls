@@ -30,7 +30,6 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
         }
     });
 
-    
     calls::init(host, port,
         [this](calls::Result authorizationResult) {
             QMetaObject::invokeMethod(this, "onAuthorizationResult", Qt::QueuedConnection,
@@ -39,6 +38,26 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
         [this](calls::Result createCallResult) {
             QMetaObject::invokeMethod(this, "onCreateCallResult", Qt::QueuedConnection,
                 Q_ARG(calls::Result, createCallResult));
+        },
+        [this](calls::Result createGroupCallResult) {
+            QMetaObject::invokeMethod(this, "onCreateGroupCallResult", Qt::QueuedConnection,
+                Q_ARG(calls::Result, createGroupCallResult));
+        },
+        [this](calls::Result joinGroupCallResult) {
+            QMetaObject::invokeMethod(this, "onJoinGroupCallResult", Qt::QueuedConnection,
+                Q_ARG(calls::Result, joinGroupCallResult));
+        },
+        [this](const std::string& friendNickName) {
+            QMetaObject::invokeMethod(this, "onJoinRequest", Qt::QueuedConnection,
+                Q_ARG(std::string, friendNickName));
+        },
+        [this](const std::string& friendNickName) {
+            QMetaObject::invokeMethod(this, "onJoinRequestExpired", Qt::QueuedConnection,
+                Q_ARG(std::string, friendNickName));
+        },
+        [this](const std::string& friendNickName) {
+            QMetaObject::invokeMethod(this, "onParticipantLeft", Qt::QueuedConnection,
+                Q_ARG(std::string, friendNickName));
         },
         [this](const std::string& friendNickName) {
             QMetaObject::invokeMethod(this, "onIncomingCall", Qt::QueuedConnection,
@@ -386,6 +405,38 @@ void MainWindow::onRemoteUserEndedCall() {
     m_mainMenuWidget->setState(calls::State::FREE);
     playSoundEffect(":/resources/callEnd.wav");
 }
+
+
+
+
+
+
+
+
+
+
+void MainWindow::onCreateGroupCallResult(calls::Result result) {
+
+}
+
+void MainWindow::onJoinGroupCallResult(calls::Result result) {
+
+}
+
+void MainWindow::onJoinRequest(const std::string& friendNickname) {
+
+}
+
+void MainWindow::onJoinRequestExpired(const std::string& friendNickname) {
+
+}
+
+void MainWindow::onParticipantLeft(const std::string& friendNickname) {
+
+}
+
+
+
 
 void MainWindow::onNetworkError() {
     // Handle network error

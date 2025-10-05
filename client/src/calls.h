@@ -11,24 +11,34 @@ namespace calls {
     inline void init(
         const std::string& host,
         const std::string& port,
-        std::function<void(Result)> authorizationResultCallback,
-        std::function<void(Result)> createCallResultCallback,
-        std::function<void(const std::string& friendNickName)> onIncomingCall,
-        std::function<void(const std::string&)> onIncomingCallExpired,
-        std::function<void(const std::string&)> onSimultaneousCalling,
-        std::function<void()> onCallHangUpCallback,
-        std::function<void()> onNetworkErrorCallback)
+        std::function<void(Result)>&& authorizationResult,
+        std::function<void(Result)>&& createCallResult,
+        std::function<void(Result)>&& createGroupCallResult,
+        std::function<void(Result)>&& joinGroupCallResult,
+        std::function<void(const std::string&)>&& onJoinRequest,
+        std::function<void(const std::string&)>&& onJoinRequestExpired,
+        std::function<void(const std::string&)>&& onParticipantLeft,
+        std::function<void(const std::string&)>&& onIncomingCall,
+        std::function<void(const std::string&)>&& onIncomingCallExpired,
+        std::function<void(const std::string&)>&& onCallingSomeoneWhoAlreadyCallingYou,
+        std::function<void()>&& onRemoteUserEndedCall,
+        std::function<void()>&& onNetworkError)
     {
         CallsClient::get().init(
             host,
             port,
-            std::move(authorizationResultCallback),
-            std::move(createCallResultCallback),
+            std::move(authorizationResult),
+            std::move(createCallResult),
+            std::move(createGroupCallResult),
+            std::move(joinGroupCallResult),
+            std::move(onJoinRequest),
+            std::move(onJoinRequestExpired),
+            std::move(onParticipantLeft),
             std::move(onIncomingCall),
             std::move(onIncomingCallExpired),
-            std::move(onSimultaneousCalling),
-            std::move(onCallHangUpCallback),
-            std::move(onNetworkErrorCallback));
+            std::move(onCallingSomeoneWhoAlreadyCallingYou),
+            std::move(onRemoteUserEndedCall),
+            std::move(onNetworkError));
     }
 
     inline void run()
@@ -140,5 +150,30 @@ namespace calls {
 
     inline const std::string& getNicknameInCallWith() {
         return CallsClient::get().getNicknameInCallWith();
+    }
+
+
+    inline bool createGroupCall(const std::string& groupCallName) {
+        return CallsClient::get().createGroupCall(groupCallName);
+    }
+
+    inline bool joinGroupCall(const std::string& groupCallName) {
+        return CallsClient::get().joinGroupCall(groupCallName);
+    }
+
+    inline bool endGroupCall(const std::string& groupCallName) {
+        return CallsClient::get().endGroupCall(groupCallName);
+    }
+
+    inline bool leaveGroupCall(const std::string& groupCallName) {
+        return CallsClient::get().leaveGroupCall(groupCallName);
+    }
+
+    inline bool allowJoin(const std::string& friendNickname) {
+        return CallsClient::get().allowJoin(friendNickname);
+    }
+
+    inline bool declineJoin(const std::string& friendNickname) {
+        return CallsClient::get().declineJoin(friendNickname);
     }
 }
