@@ -51,7 +51,7 @@ namespace calls {
         return CallsClient::get().authorize(nickname);
     }
 
-    inline bool createCall(const std::string& friendNickname)
+    inline bool startCalling(const std::string& friendNickname)
     {
         return CallsClient::get().createCall(friendNickname);
     }

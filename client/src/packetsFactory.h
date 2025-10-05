@@ -3,29 +3,21 @@
 #include <string>
 
 #include "rsa.h"
-
 #include "crypto.h"
-#include "call.h"
 
 namespace calls {
 
-class PacketsFactory {
-public:
-    PacketsFactory() = default;
-    static std::string getAuthorizationPacket(const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& myNickname);
-    static std::string getCreateCallPacket(const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& myNickname, const Call& call);
-    static std::string getCallingEndPacket(const std::string& myNickname, const std::string& friendNicknameHash);
-    static std::string getRequestFriendInfoPacket(const std::string& friendNickname);
-    static std::string getDeclineCallPacket(const std::string& friendNickname);
-    static std::string getAcceptCallPacket(const std::string& friendNickname);
-
-private:
-    static constexpr const char* CALL_KEY = "callKey";
-    static constexpr const char* PACKET_KEY = "packetKey";
-    static constexpr const char* PUBLIC_KEY = "publicKey";
-    static constexpr const char* NICKNAME = "nickname";
-    static constexpr const char* NICKNAME_HASH = "nicknameHash";
-    static constexpr const char* NICKNAME_HASH_TO = "nicknameHashTo";
-};
-
+    class PacketsFactory {
+    public:
+        PacketsFactory() = default;
+        static std::string getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey);
+        static std::string getCreateCallPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey);
+        static std::string getCallingEndPacket(const std::string& myNickname, const std::string& friendNickname);
+        static std::string getRequestFriendInfoPacket(const std::string& myNickname, const std::string& estimatedFriendNickname);
+        static std::string getDeclineCallPacket(const std::string& myNickname, const std::string& friendNickname);
+        static std::string getDeclineAllCallsPacket(const std::string& myNickname, const std::vector<std::string>& nicknames);
+        static std::string getAcceptCallPacket(const std::string& myNickname, const std::string& friendNickname);
+        static std::string getEndCallPacket(const std::string& myNickname);
+        static std::string getLogoutPacket(const std::string& myNickname);
+    };
 }

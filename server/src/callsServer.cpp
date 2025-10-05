@@ -18,60 +18,51 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
     }
 
     try {
-        std::string jsonStr;
-        nlohmann::json jsonObject;
+        switch (type) {
+        case PacketType::PING_SUCCESS:
+            handlePingSuccess(endpointFrom);
+            return;
+
+        case PacketType::PING:
+            handlePing(endpointFrom);
+            return;
+        }
+
+
+        std::string jsonStr = std::string(reinterpret_cast<const char*>(data), size);
+        nlohmann::json jsonObject = nlohmann::json::parse(jsonStr);
 
         switch (type) {
         case PacketType::AUTHORIZE:
-            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-            jsonObject = nlohmann::json::parse(jsonStr);
             handleAuthorizationPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::GET_FRIEND_INFO:
-            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-            jsonObject = nlohmann::json::parse(jsonStr);
             handleGetFriendInfoPacket(jsonObject, endpointFrom);
             break;
 
-        case PacketType::PING_SUCCESS:
-            handlePingSuccess(endpointFrom);
-            break;
-
-        case PacketType::PING:
-            m_networkController.sendToClient(endpointFrom, PacketType::PING_SUCCESS);
-            break;
-
         case PacketType::CREATE_CALL:
-            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-            jsonObject = nlohmann::json::parse(jsonStr);
             handleCreateCallPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::END_CALL:
-            handleEndCallPacket(endpointFrom);
+            handleEndCallPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::CALL_ACCEPTED:
-            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-            jsonObject = nlohmann::json::parse(jsonStr);
             handleCallAcceptedPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::CALL_DECLINED:
-            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-            jsonObject = nlohmann::json::parse(jsonStr);
             handleCallDeclinedPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::CALLING_END:
-            jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-            jsonObject = nlohmann::json::parse(jsonStr);
             handleCallingEndPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::LOGOUT:
-            handleLogout(endpointFrom);
+            handleLogout(jsonObject, endpointFrom);
             break;
 
         default:
@@ -167,6 +158,10 @@ void CallsServer::handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom)
     if (m_pingResults.contains(endpointFrom)) {
         m_pingResults.at(endpointFrom) = true;
     }
+}
+
+void CallsServer::handlePing(const asio::ip::udp::endpoint& endpointFrom) {
+    m_networkController.sendToClient(endpointFrom, PacketType::PING_SUCCESS);
 }
 
 void CallsServer::handleAuthorizationPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {

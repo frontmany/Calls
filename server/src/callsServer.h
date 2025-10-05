@@ -31,12 +31,13 @@ private:
 	void handleGetFriendInfoPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCreateCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallingEndPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-	void handleEndCallPacket(const asio::ip::udp::endpoint& endpointFrom);
+	void handleEndCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallAcceptedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleVoicePacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
-	void handleLogout(const asio::ip::udp::endpoint& endpointFrom);
+	void handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
+	void handlePing(const asio::ip::udp::endpoint& endpointFrom);
 
 	void broadcastPing();
 	void checkPing();

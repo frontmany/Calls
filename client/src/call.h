@@ -18,8 +18,8 @@ public:
 	const std::string& getFriendNickname() const;
 
 private:
-	std::string m_friendNickname{};
-	std::string m_friendNicknameHash{};
+	std::string m_friendNickname;
+	std::string m_friendNicknameHash;
 	CryptoPP::RSA::PublicKey m_friendPublicKey;
 	CryptoPP::SecByteBlock m_callKey;
 };
