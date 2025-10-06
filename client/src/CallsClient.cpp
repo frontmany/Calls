@@ -117,16 +117,60 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
 
     switch (type) {
     case (PacketType::AUTHORIZE_SUCCESS):
-        m_timer.stop();
         m_state = State::FREE;
         m_callbacksQueue.push([this]() {m_authorizationResult(true); });
         break;
 
     case (PacketType::AUTHORIZE_FAIL):
-        m_timer.stop();
         m_myNickname = "";
         m_callbacksQueue.push([this]() {m_authorizationResult(false); });
         break;
+
+    case (PacketType::LOGOUT_OK):
+        onLogoutOk(data, length);
+        break;
+
+    case (PacketType::GET_FRIEND_INFO_SUCCESS):
+        onFriendInfoSuccess(data, length);
+        break;
+
+    case (PacketType::GET_FRIEND_INFO_FAIL):
+        m_nicknameWhomCalling.clear();
+        m_callbacksQueue.push([this]() {m_startCallingResult(false); });
+        break;
+
+    case (PacketType::CREATE_CALL_SUCCESS):
+        onCreateCallSuccess(data, length);
+        m_callbacksQueue.push([this]() {m_startCallingResult(true); });
+        break;
+
+    case (PacketType::CREATE_CALL_FAIL):
+        m_nicknameWhomCalling.clear();
+        m_callbacksQueue.push([this]() {m_startCallingResult(false); });
+        break;
+
+    case (PacketType::END_CALL_OK):
+        -
+        break;
+
+    case (PacketType::CALLING_END_OK):
+        -
+        break;
+
+    case (PacketType::CALL_ACCEPTED_OK):
+        -
+        break;
+
+    case (PacketType::CALL_DECLINED_OK):
+        -
+        break;
+
+    case (PacketType::ALL_CALLS_DECLINED_OK):
+        -
+        break;
+
+
+
 
     case (PacketType::PING):
         m_networkController->send(PacketType::PING_SUCCESS);
@@ -136,29 +180,8 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         m_pingManager->setPingSuccess();
         break;
 
-    case (PacketType::GET_FRIEND_INFO_SUCCESS):
-        m_timer.stop();
-        onFriendInfoSuccess(data, length);
-        break;
-
-    case (PacketType::GET_FRIEND_INFO_FAIL):
-        m_timer.stop();
-        m_nicknameWhomCalling.clear();
-        m_callbacksQueue.push([this]() {m_startCallingResult(false); });
-        break;
 
 
-    case (PacketType::CREATE_CALL_SUCCESS):
-        m_timer.stop();
-        startCalling();
-        m_callbacksQueue.push([this]() {m_startCallingResult(true); });
-        break;
-
-    case (PacketType::CREATE_CALL_FAIL):
-        m_timer.stop();
-        m_nicknameWhomCalling.clear();
-        m_callbacksQueue.push([this]() {m_startCallingResult(false); });
-        break;
 
     case (PacketType::CALL_ACCEPTED):
         if (m_state == State::BUSY) break;
@@ -179,7 +202,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         break;
 
     case (PacketType::CALLING_END):
-        onIncomingCallingEnd(data, length);
+        onCallingEnd(data, length);
         break;
 
     case (PacketType::END_CALL):
@@ -191,7 +214,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         }
         break;
 
-    case (PacketType::INCOMING_CALL):
+    case (PacketType::CREATE_CALL):
         if (bool parsed = onIncomingCall(data, length); parsed && m_state != State::UNAUTHORIZED) {
             m_callbacksQueue.push([this]() {
                 auto& [timer, incomingCallData] = m_incomingCalls.back();
@@ -293,7 +316,7 @@ void CallsClient::stop() {
 }
 
 bool CallsClient::logout() {
-    if (m_state == State::UNAUTHORIZED) return false;
+    if (m_state == State::UNAUTHORIZED || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
 
     std::vector<std::string> nicknames;
     {
@@ -309,13 +332,8 @@ bool CallsClient::logout() {
     }
 
     m_networkController->send(
-        PacketsFactory::getDeclineAllCallsPacket(m_myNickname, nicknames),
+        PacketsFactory::getDeclineAllCallsPacket(m_myNickname, nicknames, true),
         PacketType::ALL_CALLS_DECLINED
-    );
-
-    if (m_networkController)
-        m_networkController->send(
-        PacketType::LOGOUT
     );
 
     using namespace std::chrono_literals;
@@ -324,21 +342,11 @@ bool CallsClient::logout() {
         m_callbacksQueue.push([this]() {m_logoutResult(false); });
     });
 
-    if (m_state == State::CALLING) {
-        stopCalling();
-    }
-
-    if (m_state == State::BUSY) {
-        endCall();
-    }
-
-    m_state = State::UNAUTHORIZED;
-
     return true;
 }
 
 bool CallsClient::authorize(const std::string& nickname) {
-    if (m_state != State::UNAUTHORIZED) return false;
+    if (m_state != State::UNAUTHORIZED || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
 
     m_myNickname = nickname;
 
@@ -359,7 +367,7 @@ bool CallsClient::authorize(const std::string& nickname) {
 }
 
 bool CallsClient::endCall() {
-    if (m_state == State::UNAUTHORIZED || !m_call) return false;
+    if (m_state == State::UNAUTHORIZED || !m_call || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
     m_state = State::FREE;
     if (m_audioEngine) m_audioEngine->stopStream();
     m_networkController->send(PacketType::END_CALL);
@@ -370,7 +378,7 @@ bool CallsClient::endCall() {
 }
 
 bool CallsClient::startCalling(const std::string& friendNickname) {
-    if (m_state == State::UNAUTHORIZED || m_call) return false;
+    if (m_state == State::UNAUTHORIZED || m_call || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
 
     {
         std::lock_guard<std::mutex> lock(m_incomingCallsMutex);
@@ -382,14 +390,26 @@ bool CallsClient::startCalling(const std::string& friendNickname) {
         }
     }
 
-    requestFriendInfo(friendNickname);
+    
+    m_networkController->send(
+        PacketsFactory::getRequestFriendInfoPacket(m_myNickname, friendNickname),
+        PacketType::GET_FRIEND_INFO
+    );
+
+    using namespace std::chrono_literals;
+    m_timer.start(4s, [this]() {
+        std::lock_guard<std::mutex> lock(m_callbacksQueueMutex);
+        m_nicknameWhomCalling.clear();
+        m_callbacksQueue.push([this]() {m_startCallingResult(false); });
+    });
+
     m_nicknameWhomCalling = friendNickname;
 
     return true;
 }
 
 bool CallsClient::stopCalling() {
-    if (m_state != State::CALLING) return false;
+    if (m_state != State::CALLING || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
     
     m_timer.stop();
     m_state = State::FREE;
@@ -407,7 +427,7 @@ bool CallsClient::stopCalling() {
 }
 
 bool CallsClient::declineIncomingCall(const std::string& friendNickname) {
-    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty()) return false;
+    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty() || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
 
     std::lock_guard<std::mutex> lock(m_incomingCallsMutex);
 
@@ -429,7 +449,7 @@ bool CallsClient::declineIncomingCall(const std::string& friendNickname) {
 }
 
 bool CallsClient::declineAllIncomingCalls() {
-    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty()) return false;
+    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty() || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
 
     std::lock_guard<std::mutex> lock(m_incomingCallsMutex);
 
@@ -447,7 +467,7 @@ bool CallsClient::declineAllIncomingCalls() {
 }
 
 bool CallsClient::acceptIncomingCall(const std::string& friendNickname) {
-    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty()) return false;
+    if (m_state == State::UNAUTHORIZED || m_incomingCalls.empty() || !m_waitingForConfirmationOnPacketUUID.empty()) return false;
 
     std::lock_guard<std::mutex> lock(m_incomingCallsMutex);
 
@@ -503,18 +523,59 @@ void CallsClient::processQueue() {
     }
 }
 
-void CallsClient::requestFriendInfo(const std::string& friendNickname) {
-    m_networkController->send(
-        PacketsFactory::getRequestFriendInfoPacket(m_myNickname, friendNickname),
-        PacketType::GET_FRIEND_INFO
-    );
 
-    using namespace std::chrono_literals;
-    m_timer.start(4s, [this]() {
-        std::lock_guard<std::mutex> lock(m_callbacksQueueMutex);
-        m_nicknameWhomCalling.clear();
-        m_callbacksQueue.push([this]() {m_startCallingResult(false); });
-    });
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+void CallsClient::onAllCallsDeclinedOk(const unsigned char* data, int length) {
+    nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
+    std::string uuid = jsonObject[UUID].get<std::string>();
+    bool forLogout = jsonObject[PURPOSE].get<bool>();
+    
+    if (m_waitingForConfirmationOnPacketUUID == uuid) {
+        m_timer.stop();
+        m_waitingForConfirmationOnPacketUUID.clear();
+    }
+
+    if (forLogout) {
+        m_networkController->send(
+            PacketsFactory::getLogoutPacket(m_myNickname),
+            PacketType::LOGOUT);
+   
+
+        using namespace std::chrono_literals;
+        m_timer.start(4s, [this]() {
+            std::lock_guard<std::mutex> lock(m_callbacksQueueMutex);
+            m_callbacksQueue.push([this]() {m_logoutResult(false); });
+        });
+
+        if (m_state == State::CALLING) {
+            stopCalling();
+        }
+
+        if (m_state == State::BUSY) {
+            endCall();
+        }
+
+        m_state = State::UNAUTHORIZED;
+        m_myNickname.clear();
+    }
+    else {
+
+    }
+}
+
+void CallsClient::onLogoutOk(const unsigned char* data, int length) {
+    nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
+    std::string uuid = jsonObject[UUID].get<std::string>();
+
+    if (m_waitingForConfirmationOnPacketUUID == uuid) {
+        m_timer.stop();
+        m_waitingForConfirmationOnPacketUUID.clear();
+    }
+
+    std::lock_guard<std::mutex> lock(m_callbacksQueueMutex);
+    m_callbacksQueue.push([this]() {m_logoutResult(true); });
 }
 
 void CallsClient::onFriendInfoSuccess(const unsigned char* data, int length) {
@@ -613,7 +674,7 @@ void CallsClient::onIncomingCallingEnd(const unsigned char* data, int length) {
     }
 }
 
-void CallsClient::startCalling() {
+void CallsClient::onCreateCallSuccess(const unsigned char* data, int length) {
     if (m_call) {
         m_networkController->send(
             PacketsFactory::getCreateCallPacket(m_myNickname, m_keysManager->getPublicKey(), m_call->getFriendNickname(), m_call->getFriendPublicKey(), m_call->getCallKey()),

@@ -73,15 +73,34 @@ public:
 private:
     CallsClient();
     ~CallsClient();
-    void onIncomingCallingEnd(const unsigned char* data, int length);
+
     void onReceive(const unsigned char* data, int length, PacketType type);
-    void onFriendInfoSuccess(const unsigned char* data, int length);
     bool onIncomingCall(const unsigned char* data, int length);
     void processQueue();
-    void requestFriendInfo(const std::string& friendNickname);
-    void startCalling();
     void onInputVoice(const unsigned char* data, int length);
     void onPingFail();
+
+
+    void onAauthorizationSuccess(const unsigned char* data, int length);
+    void onAauthorizationFail(const unsigned char* data, int length);
+    void onLogoutOk(const unsigned char* data, int length);
+    void onFriendInfoSuccess(const unsigned char* data, int length);
+    void onFriendInfoFail(const unsigned char* data, int length);
+    void onCreateCallSuccess(const unsigned char* data, int length);
+    void onCreateCallFail(const unsigned char* data, int length);
+    void onEndCallOk(const unsigned char* data, int length);
+    void onCallingEndOk(const unsigned char* data, int length);
+    void onCallAcceptedOk(const unsigned char* data, int length);
+    void onCallDeclinedOk(const unsigned char* data, int length);
+    void onAllCallsDeclinedOk(const unsigned char* data, int length);
+
+    void onCallAccepted(const unsigned char* data, int length);
+    void onCallDeclined(const unsigned char* data, int length);
+    void onCallingEnd(const unsigned char* data, int length);
+    void onEndCall(const unsigned char* data, int length);
+    void onCreateCall(const unsigned char* data, int length);
+
+
 
 private:
     std::atomic_bool m_running = false;
@@ -99,6 +118,8 @@ private:
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
 
     Timer m_timer;
+    std::string m_waitingForConfirmationOnPacketUUID;
+
     std::shared_ptr<NetworkController> m_networkController;
     std::unique_ptr<AudioEngine> m_audioEngine;
     std::shared_ptr<PingManager> m_pingManager;

@@ -1,6 +1,8 @@
 #include "crypto.h"
 #include <stdexcept>
+#include <sstream>
 #include <cstring>
+#include <iomanip>
 
 namespace calls { namespace crypto {
     void generateRSAKeyPair(CryptoPP::RSA::PrivateKey& privateKey, CryptoPP::RSA::PublicKey& publicKey) {
@@ -267,5 +269,31 @@ namespace calls { namespace crypto {
         );
 
         return digest;
+    }
+
+    std::string generateUUID() {
+        try {
+            CryptoPP::AutoSeededRandomPool rng;
+            CryptoPP::byte uuid[16];
+            rng.GenerateBlock(uuid, sizeof(uuid));
+
+            uuid[6] = (uuid[6] & 0x0F) | 0x40; 
+            uuid[8] = (uuid[8] & 0x3F) | 0x80;
+
+            std::stringstream ss;
+            ss << std::hex << std::setfill('0');
+
+            for (int i = 0; i < 16; ++i) {
+                if (i == 4 || i == 6 || i == 8 || i == 10) {
+                    ss << '-';
+                }
+                ss << std::setw(2) << static_cast<unsigned int>(uuid[i]);
+            }
+
+            return ss.str();
+        }
+        catch (const std::exception& e) {
+            throw std::runtime_error(std::string("UUID generation error: ") + e.what());
+        }
     }
 }}

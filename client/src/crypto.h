@@ -25,4 +25,5 @@ namespace calls { namespace crypto {
     CryptoPP::SecByteBlock deserializeAESKey(const std::string& keyStr);
 
     std::string calculateHash(const std::string& text);
+    std::string generateUUID();
 }} 

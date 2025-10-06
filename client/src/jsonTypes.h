@@ -10,4 +10,6 @@ namespace calls {
     static constexpr const char* NICKNAME_HASH_RECEIVER = "nicknameHashReceiver";
     static constexpr const char* NICKNAME_HASH = "nicknameHashReceiver";
     static constexpr const char* ARRAY_NICKNAME_HASHES = "nicknameHashesArray";
+    static constexpr const char* UUID = "UUID";
+    static constexpr const char* PURPOSE = "purpose";
 }
