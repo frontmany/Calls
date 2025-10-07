@@ -40,7 +40,7 @@ void AuthorizationWidget::setupUI() {
     m_titleLabel->setFont(titleFont);
 
     // SubTitle label
-    m_subtitleLabel = new QLabel("Sign in to start making calls", m_container);
+    m_subtitleLabel = new QLabel("Enter your nickname to start making calls", m_container);
     m_subtitleLabel->setAlignment(Qt::AlignCenter);
     m_subtitleLabel->setStyleSheet(StyleAuthorizationWidget::glassSubTitleLabelStyle());
     m_subtitleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);

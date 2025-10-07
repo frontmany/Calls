@@ -66,12 +66,11 @@ std::pair<std::string, std::string> PacketsFactory::getDeclineCallPacket(const s
     return std::make_pair(uuid, jsonObject.dump());
 }
 
-std::pair<std::string, std::string> PacketsFactory::getDeclineAllCallsPacket(const std::string& myNickname, const std::vector<std::string>& nicknames, bool forLogout) {
+std::pair<std::string, std::string> PacketsFactory::getDeclineAllCallsPacket(const std::string& myNickname, const std::vector<std::string>& nicknames) {
     std::string uuid = crypto::generateUUID();
     
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;
-    jsonObject[PURPOSE] = forLogout;
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
 
     nlohmann::json nicknameHashesArray = nlohmann::json::array();

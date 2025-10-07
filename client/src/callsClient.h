@@ -34,9 +34,9 @@ public:
         std::function<void(bool)> declineIncomingCallResult,
         std::function<void(bool)> acceptIncomingCallResult,
         std::function<void(bool)> endCallResult,
+        std::function<void(bool)> onCallingStoppedResult,
         std::function<void()> onCallingAccepted,
         std::function<void()> onCallingDeclined,
-        std::function<void()> onCallingExpired,
         std::function<void(const std::string&)> onIncomingCall,
         std::function<void(const std::string&)> onIncomingCallExpired,
         std::function<void(const std::string&)> onCallingSomeoneWhoAlreadyCallingYou,
@@ -73,16 +73,15 @@ public:
 private:
     CallsClient();
     ~CallsClient();
-
     void onReceive(const unsigned char* data, int length, PacketType type);
-    bool onIncomingCall(const unsigned char* data, int length);
     void processQueue();
     void onInputVoice(const unsigned char* data, int length);
+    bool validatePacket(const unsigned char* data, int length);
     void onPingFail();
 
 
-    void onAauthorizationSuccess(const unsigned char* data, int length);
-    void onAauthorizationFail(const unsigned char* data, int length);
+    void onAuthorizationSuccess(const unsigned char* data, int length);
+    void onAuthorizationFail(const unsigned char* data, int length);
     void onLogoutOk(const unsigned char* data, int length);
     void onFriendInfoSuccess(const unsigned char* data, int length);
     void onFriendInfoFail(const unsigned char* data, int length);
@@ -118,7 +117,9 @@ private:
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
 
     Timer m_timer;
+    Timer m_callingTimer;
     std::string m_waitingForConfirmationOnPacketUUID;
+    std::unordered_map<std::string, Timer> m_timers;
 
     std::shared_ptr<NetworkController> m_networkController;
     std::unique_ptr<AudioEngine> m_audioEngine;
@@ -134,9 +135,9 @@ private:
     std::function<void(bool)> m_declineIncomingCallResult;
     std::function<void(bool)> m_acceptIncomingCallResult;
     std::function<void(bool)> m_endCallResult;
+    std::function<void(bool)> m_onCallingStoppedResult;
     std::function<void()> m_onCallingAccepted;
     std::function<void()> m_onCallingDeclined;
-    std::function<void()> m_onCallingExpired;
     std::function<void(const std::string&)> m_onIncomingCall;
     std::function<void(const std::string& friendNickname)> m_onIncomingCallExpired;
     std::function<void(const std::string& friendNickname)> m_onCallingSomeoneWhoAlreadyCallingYou;
