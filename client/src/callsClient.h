@@ -34,7 +34,7 @@ public:
         std::function<void(bool)> declineIncomingCallResult,
         std::function<void(bool)> acceptIncomingCallResult,
         std::function<void(bool)> endCallResult,
-        std::function<void(bool)> onCallingStoppedResult,
+        std::function<void(bool)> callingStoppedResult,
         std::function<void()> onCallingAccepted,
         std::function<void()> onCallingDeclined,
         std::function<void(const std::string&)> onIncomingCall,
@@ -43,14 +43,16 @@ public:
         std::function<void()> onRemoteUserEndedCall,
         std::function<void()> onNetworkError
     );
-
     void run();
     void stop();
+
+    // SET
     void refreshAudioDevices();
     void mute(bool isMute);
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
 
+    // GET
     bool isMuted();
     bool isRunning() const;
     const std::string& getNickname() const;
@@ -61,16 +63,17 @@ public:
     const std::string& getNicknameWhomCalling() const;
     const std::string& getNicknameInCallWith() const;
 
+    // flow functions
     bool logout();
     bool authorize(const std::string& nickname);
     bool startCalling(const std::string& friendNickname);
     bool stopCalling();
-    bool declineAllIncomingCalls();
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
     bool endCall();
 
 private:
+    // essential functions
     CallsClient();
     ~CallsClient();
     void onReceive(const unsigned char* data, int length, PacketType type);
@@ -79,7 +82,7 @@ private:
     bool validatePacket(const unsigned char* data, int length);
     void onPingFail();
 
-
+    // received results 
     void onAuthorizationSuccess(const unsigned char* data, int length);
     void onAuthorizationFail(const unsigned char* data, int length);
     void onLogoutOk(const unsigned char* data, int length);
@@ -91,8 +94,8 @@ private:
     void onCallingEndOk(const unsigned char* data, int length);
     void onCallAcceptedOk(const unsigned char* data, int length);
     void onCallDeclinedOk(const unsigned char* data, int length);
-    void onAllCallsDeclinedOk(const unsigned char* data, int length);
 
+    // received packets
     void onCallAccepted(const unsigned char* data, int length);
     void onCallDeclined(const unsigned char* data, int length);
     void onCallingEnd(const unsigned char* data, int length);
@@ -135,7 +138,7 @@ private:
     std::function<void(bool)> m_declineIncomingCallResult;
     std::function<void(bool)> m_acceptIncomingCallResult;
     std::function<void(bool)> m_endCallResult;
-    std::function<void(bool)> m_onCallingStoppedResult;
+    std::function<void(bool)> m_callingStoppedResult;
     std::function<void()> m_onCallingAccepted;
     std::function<void()> m_onCallingDeclined;
     std::function<void(const std::string&)> m_onIncomingCall;
