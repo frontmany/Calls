@@ -4,31 +4,18 @@
 #include <functional>
 
 #include "callsClient.h"
-#include "state.h"
 
 namespace calls {
     // facade functions
-    inline void init(
+    inline bool init(
         const std::string& host,
         const std::string& port,
-        std::function<void(Result)> authorizationResultCallback,
-        std::function<void(Result)> createCallResultCallback,
-        std::function<void(const std::string& friendNickName)> onIncomingCall,
-        std::function<void(const std::string&)> onIncomingCallExpired,
-        std::function<void(const std::string&)> onSimultaneousCalling,
-        std::function<void()> onCallHangUpCallback,
-        std::function<void()> onNetworkErrorCallback)
+        std::unique_ptr<Handler>&& handler)
     {
-        CallsClient::get().init(
+        return CallsClient::get().init(
             host,
             port,
-            std::move(authorizationResultCallback),
-            std::move(createCallResultCallback),
-            std::move(onIncomingCall),
-            std::move(onIncomingCallExpired),
-            std::move(onSimultaneousCalling),
-            std::move(onCallHangUpCallback),
-            std::move(onNetworkErrorCallback));
+            std::move(handler));
     }
 
     inline void run()
@@ -38,7 +25,7 @@ namespace calls {
 
     inline State getState()
     {
-        return CallsClient::get().getStatus();
+        return CallsClient::get().getState();
     }
 
     inline const std::string& getNickname()
@@ -53,7 +40,7 @@ namespace calls {
 
     inline bool startCalling(const std::string& friendNickname)
     {
-        return CallsClient::get().createCall(friendNickname);
+        return CallsClient::get().startCalling(friendNickname);
     }
 
     inline bool stopCalling()
@@ -69,11 +56,6 @@ namespace calls {
     inline bool declineCall(const std::string& friendNickname)
     {
         return CallsClient::get().declineIncomingCall(friendNickname);
-    }
-
-    inline bool declineAllCalls()
-    {
-        return CallsClient::get().declineAllIncomingCalls();
     }
 
     inline bool endCall()
@@ -124,9 +106,19 @@ namespace calls {
         CallsClient::get().logout();
     }
 
-    inline void stop()
+    inline bool initiateShutdown()
     {
-        CallsClient::get().stop();
+        return CallsClient::get().initiateShutdown();
+    }
+
+    inline void completeShutdown()
+    {
+        CallsClient::get().completeShutdown();
+    }
+
+    inline void forceShutdown()
+    {
+        CallsClient::get().completeShutdown();
     }
 
     inline bool isRunning()
