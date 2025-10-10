@@ -22,7 +22,6 @@ namespace calls {
         virtual void onCallingDeclined() = 0;
         virtual void onIncomingCall(const std::string& callId) = 0;
         virtual void onIncomingCallExpired(const std::string& friendNickname) = 0;
-        virtual void onCallingSomeoneWhoAlreadyCallingYou(const std::string& friendNickname) = 0;
 
         virtual void onNetworkError() = 0;
         virtual void onRemoteUserEndedCall() = 0;

@@ -73,8 +73,8 @@ private:
     void onLogoutAndStopOk(const unsigned char* data, int length);
     void onFriendInfoSuccess(const unsigned char* data, int length);
     void onFriendInfoFail(const unsigned char* data, int length);
-    void onCreateCallSuccess(const unsigned char* data, int length);
-    void onCreateCallFail(const unsigned char* data, int length);
+    void onStartCallingSuccess(const unsigned char* data, int length);
+    void onStartCallingFail(const unsigned char* data, int length);
     void onEndCallOk(const unsigned char* data, int length);
     void onCallingEndOk(const unsigned char* data, int length);
     void onCallAcceptedOk(const unsigned char* data, int length);
@@ -85,9 +85,7 @@ private:
     void onCallDeclined(const unsigned char* data, int length);
     void onCallingEnd(const unsigned char* data, int length);
     void onEndCall(const unsigned char* data, int length);
-    void onCreateCall(const unsigned char* data, int length);
-
-
+    void onIncomingCall(const unsigned char* data, int length);
 
 private:
     std::atomic_bool m_running = false;
