@@ -8,10 +8,7 @@ int main(int argc, char* argv[])
     // 92.255.165.77 server global ip
 
     QApplication app(argc, argv);
-    std::unique_ptr<MainWindow> mainWindow = std::make_unique<MainWindow>(nullptr,
-        "192.168.1.40",
-        "8081");
+    MainWindow* mainWindow = new MainWindow(nullptr, "192.168.1.40", "8081");
     mainWindow->showMaximized();
-    
     return app.exec();
 }

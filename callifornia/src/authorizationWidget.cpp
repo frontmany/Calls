@@ -115,7 +115,6 @@ void AuthorizationWidget::setupAnimations() {
     m_blurAnimation = new QPropertyAnimation(m_backgroundBlurEffect, "blurRadius", this);
     m_blurAnimation->setDuration(1200);
     m_blurAnimation->setEasingCurve(QEasingCurve::OutCubic);
-    connect(m_blurAnimation, &QPropertyAnimation::finished, [this]() {emit blurAnimationFinished(); });
 }
 
 void AuthorizationWidget::paintEvent(QPaintEvent* event) {
@@ -123,9 +122,9 @@ void AuthorizationWidget::paintEvent(QPaintEvent* event) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     QLinearGradient gradient(0, 90, width(), height());
-    gradient.setColorAt(0.0, QColor(230, 230, 230));  // ������ �����
-    gradient.setColorAt(0.5, QColor(220, 230, 240));  // ������ ����������-�����  
-    gradient.setColorAt(1.0, QColor(240, 240, 240));  // ������ �����
+    gradient.setColorAt(0.0, QColor(230, 230, 230));
+    gradient.setColorAt(0.5, QColor(220, 230, 240)); 
+    gradient.setColorAt(1.0, QColor(240, 240, 240)); 
 
     painter.fillRect(rect(), gradient);
 

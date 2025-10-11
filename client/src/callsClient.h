@@ -13,7 +13,6 @@
 #include "keysManager.h"
 #include "packetTypes.h"
 #include "incomingCallData.h"
-#include "result.h"
 #include "handler.h"
 #include "state.h"
 #include "timer.h"
@@ -39,6 +38,7 @@ public:
     bool isMuted();
     bool isRunning() const;
     const std::string& getNickname() const;
+    std::vector<std::string> getCallers();
     State getState() const;
     int getInputVolume() const;
     int getOutputVolume() const;

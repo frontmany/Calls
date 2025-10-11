@@ -726,12 +726,10 @@ void MainMenuWidget::setMuted(bool muted) {
 }
 
 void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
-    removeIncomingCall(friendNickname);
     emit acceptCallButtonClicked(friendNickname);
 }
 
 void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
-    removeIncomingCall(friendNickname);
     emit declineCallButtonClicked(friendNickname);
 }
 

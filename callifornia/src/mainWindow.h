@@ -8,6 +8,7 @@
 #include <QFile>
 
 #include "calls.h"
+#include "callsClientHandler.h"
 
 class AuthorizationWidget;
 class MainMenuWidget;
@@ -24,18 +25,27 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private slots:
-    void onAuthorizationResult(calls::Result authorizationResult);
-    void onCreateCallResult(calls::Result createCallResult);
-    void onIncomingCall(const std::string& friendNickName);
-    void onIncomingCallExpired(const std::string& friendNickName);
-    void onSimultaneousCalling(const std::string& friendNickName);
+    void onAuthorizationResult(bool success);
+    void onLogoutResult(bool success);
+    void onShutdownResult(bool success);
+    void onStartCallingResult(bool success);
+    void onCallingStoppedResult(bool success);
+    void onDeclineIncomingCallResult(bool success, QString nickname);
+    void onAcceptIncomingCallResult(bool success, QString nickname);
+    void onEndCallResult(bool success);
+
+    void onCallingAccepted();
+    void onCallingDeclined();
     void onRemoteUserEndedCall();
+    void onIncomingCall(const std::string& friendNicname);
+    void onIncomingCallEnded(const std::string& friendNickname);
     void onNetworkError();
-    void onIncomingCallAccepted(const QString& friendNickname);
-    void onIncomingCallDeclined(const QString& friendNickname);
-    void onCreateCallButtonClicked(const QString& friendNickname);
+
+    void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
-    void onHangupClicked();
+    void onAcceptCallButtonClicked(const QString& friendNickname);
+    void onDeclineCallButtonClicked(const QString& friendNickname);
+    void onEndCallButtonClicked();
     void onAuthorizationButtonClicked(const QString& friendNickname);
     void onRefreshAudioDevicesButtonClicked();
     void onInputVolumeChanged(int newVolume);
@@ -56,10 +66,11 @@ private:
 private:
     QMediaPlayer* m_ringtonePlayer;
     QAudioOutput* m_audioOutput;
-    calls::Result m_authorizationResult;
+
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;
     QStackedLayout* m_stackedLayout;
+
     AuthorizationWidget* m_authorizationWidget;
     MainMenuWidget* m_mainMenuWidget;
     CallWidget* m_callWidget;

@@ -33,6 +33,11 @@ namespace calls {
         return CallsClient::get().getNickname();
     }
 
+    inline std::vector<std::string> getCallers()
+    {
+        return CallsClient::get().getCallers();
+    }
+
     inline bool authorize(const std::string& nickname)
     {
         return CallsClient::get().authorize(nickname);
