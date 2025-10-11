@@ -1,5 +1,7 @@
 #include "callsServer.h"
 #include "packetsFactory.h"
+#include "jsonTypes.h"
+#include "crypto.h"
 #include "crypto.h"
 #include "logger.h"
 
@@ -16,6 +18,8 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
         handleVoicePacket(data, size, endpointFrom);
         return;
     }
+
+    std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
 
     try {
         switch (type) {
@@ -41,8 +45,8 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleGetFriendInfoPacket(jsonObject, endpointFrom);
             break;
 
-        case PacketType::CREATE_CALL:
-            handleCreateCallPacket(jsonObject, endpointFrom);
+        case PacketType::START_CALLING:
+            handleStartCallingPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::END_CALL:
@@ -63,6 +67,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
 
         case PacketType::LOGOUT:
             handleLogout(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::LOGOUT_AND_STOP:
+            handleLogout(jsonObject, endpointFrom, true);
             break;
 
         default:
@@ -97,11 +105,9 @@ void CallsServer::run() {
         auto timeSinceLastCheck = now - lastCheck;
         auto timeSinceLastPing = now - lastPing;
 
-        // Check ping takes priority over ping
         if (timeSinceLastCheck >= checkPingGap) {
             checkPing();
             lastCheck = now;
-            // After check, also reset ping timer to avoid immediate ping
             lastPing = now;
         }
         else if (timeSinceLastPing >= pingGap) {
@@ -115,6 +121,37 @@ void CallsServer::run() {
     m_networkController.stop();
 }
 
+void CallsServer::handleDeclineAllAssist(const nlohmann::json_abi_v3_11_3::json& nicknameHashesToDecline) {
+    for (const auto& nicknameHash : nicknameHashesToDecline) {
+        std::string nicknameHashToDecline = nicknameHash.get<std::string>();
+        if (m_nicknameHashToUser.contains(nicknameHashToDecline)) {
+            auto& userToDecline = m_nicknameHashToUser.at(nicknameHashToDecline);
+
+            m_networkController.sendToClient(userToDecline->getEndpoint(),
+                PacketType::CALL_DECLINED
+            );
+        }
+    }
+}
+
+void CallsServer::handleEndCallAssist(const UserPtr& user) {
+    if (user->inCall()) {
+        const std::string& userInCallWithNicknameHash = user->inCallWith();
+
+        if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
+            auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
+
+            m_networkController.sendToClient(userInCallWith->getEndpoint(),
+                PacketType::END_CALL
+            );
+
+            m_calls.erase(user->getCall());
+
+            user->resetCall();
+            userInCallWith->resetCall();
+        }
+    }
+}
 
 void CallsServer::broadcastPing() {
     std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
@@ -129,27 +166,35 @@ void CallsServer::broadcastPing() {
 }
 
 void CallsServer::checkPing() {
+    std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
+    std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
+
     std::vector<asio::ip::udp::endpoint> endpointsToLogout;
 
-    {
-        std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
-        std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
-
-        for (auto& [endpoint, result] : m_pingResults) {
-            if (result) {
-                m_pingResults.at(endpoint) = false;
-                DEBUG_LOG("ping confirmed");
-            }
-            else {
-                endpointsToLogout.push_back(endpoint);
-                DEBUG_LOG("user disconnected due to ping fail");
-            }
+    for (auto& [endpoint, result] : m_pingResults) {
+        if (result) {
+            m_pingResults.at(endpoint) = false;
+            DEBUG_LOG("ping confirmed");
+        }
+        else {
+            endpointsToLogout.push_back(endpoint);
+            DEBUG_LOG("user disconnected due to ping fail");
         }
     }
-
-    // Handle logouts after releasing all locks
+    
+    
+    std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
     for (const auto& endpoint : endpointsToLogout) {
-        handleLogout(endpoint);
+        auto it = m_endpointToUser.find(endpoint);
+
+        if (it != m_endpointToUser.end()) {
+            auto& userToErase = m_endpointToUser.at(endpoint);
+            handleEndCallAssist(userToErase);
+
+            m_endpointToUser.erase(endpoint);
+            m_nicknameHashToUser.erase(m_endpointToUser.at(endpoint)->getNicknameHash());
+            m_pingResults.erase(endpoint);
+        }
     }
 }
 
@@ -166,14 +211,15 @@ void CallsServer::handlePing(const asio::ip::udp::endpoint& endpointFrom) {
 
 void CallsServer::handleAuthorizationPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
-        std::string nicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string nicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
         std::string publicKeyStr = jsonObject[PUBLIC_KEY].get<std::string>();
         CryptoPP::RSA::PublicKey publicKey = crypto::deserializePublicKey(publicKeyStr);
 
         std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
         if (!m_nicknameHashToUser.contains(nicknameHash)) {
-            m_networkController.sendToClient(endpointFrom,
-                PacketType::AUTHORIZATION_SUCCESS
+            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                PacketType::AUTHORIZE_SUCCESS
             );
 
             UserPtr user = std::make_shared<User>(nicknameHash, publicKey, endpointFrom);
@@ -182,11 +228,11 @@ void CallsServer::handleAuthorizationPacket(const nlohmann::json& jsonObject, co
             DEBUG_LOG("User authorized: " + nicknameHash + " from " + endpointFrom.address().to_string());
         }
         else {
-            m_networkController.sendToClient(endpointFrom,
-                PacketType::AUTHORIZATION_FAIL
+            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                PacketType::AUTHORIZE_FAIL
             );
 
-            DEBUG_LOG("User not authorized (alreaady taken nickname)");
+            DEBUG_LOG("User not authorized (already taken nickname)");
         }
     }
     catch (const std::exception& e) {
@@ -195,87 +241,87 @@ void CallsServer::handleAuthorizationPacket(const nlohmann::json& jsonObject, co
 }
 
 
-void CallsServer::handleLogout(const asio::ip::udp::endpoint& endpointFrom) {
-    std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-    if (auto it = m_endpointToUser.find(endpointFrom); it != m_endpointToUser.end()) {
-        auto& user = it->second;
-        std::string nicknameHash = user->getNicknameHash();
+void CallsServer::handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom, bool logoutAndStop) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        const auto& nicknameHashesToDecline = jsonObject[ARRAY_NICKNAME_HASHES];
 
-        DEBUG_LOG("User logging out: "
-            + nicknameHash + " from "
-            + endpointFrom.address().to_string());
+        handleDeclineAllAssist(nicknameHashesToDecline);
 
-        // Handle call termination if user was in a call
-        if (user->inCall()) {
-            auto call = user->getCall();
-            const std::string& nicknameHashInCallWith = user->inCallWith();
+        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+            auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
 
-            if (m_nicknameHashToUser.contains(nicknameHashInCallWith)) {
-                auto userInCallWith = m_nicknameHashToUser.at(nicknameHashInCallWith);
+            handleEndCallAssist(userSender);
 
-                // Notify the other user that the call ended due to logout
-                m_networkController.sendToClient(userInCallWith->getEndpoint(),
-                    PacketType::END_CALL
+            std::string nicknameHashToErase = userSender->getNicknameHash();
+            m_nicknameHashToUser.erase(nicknameHashToErase);
+
+            {
+                std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
+                auto it = m_endpointToUser.find(endpointFrom);
+
+                if (it != m_endpointToUser.end()) {
+                    m_endpointToUser.erase(it);
+                }
+            }
+
+            {
+                std::lock_guard<std::mutex> pingLock(m_pingResultsMutex);
+                m_pingResults.erase(endpointFrom);
+            }
+            
+            if (logoutAndStop) {
+                m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                    PacketType::LOGOUT_AND_STOP_OK
                 );
-
-                // Reset the other user's call state
-                userInCallWith->resetCall();
-
-                DEBUG_LOG("Notified user "
-                    + nicknameHashInCallWith
-                    + " about call termination due to logout");
+            }
+            else {
+                m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                    PacketType::LOGOUT_OK
+                );
             }
 
-            // Remove the call from active calls
-            if (m_calls.contains(call)) {
-                m_calls.erase(call);
-                DEBUG_LOG("Removed call from active calls due to logout");
-            }
+            DEBUG_LOG("User successfully logged out: " + senderNicknameHash);
         }
+        else {
+            std::lock_guard<std::mutex> pingLock(m_pingResultsMutex);
+            m_pingResults.erase(endpointFrom);
 
-        // Clean up user data structures
-        m_endpointToUser.erase(it);
-        m_nicknameHashToUser.erase(nicknameHash);
-
-        // Also clean up ping results
-        std::lock_guard<std::mutex> pingLock(m_pingResultsMutex);
-        m_pingResults.erase(endpointFrom);
-
-        DEBUG_LOG("User successfully logged out: " + nicknameHash);
+            DEBUG_LOG("Logout request from unknown endpoint: " + endpointFrom.address().to_string());
+        }
     }
-    else {
-        // User wasn't found, but still clean up any residual data
-        std::lock_guard<std::mutex> pingLock(m_pingResultsMutex);
-        m_pingResults.erase(endpointFrom);
-
-        DEBUG_LOG("Logout request from unknown endpoint: "
-            + endpointFrom.address().to_string());
+    catch (const std::exception& e) {
+        DEBUG_LOG("Error during logout: " + std::string(e.what()));
     }
 }
 
 void CallsServer::handleGetFriendInfoPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
         std::string friendNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
 
-        std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
         if (m_nicknameHashToUser.contains(friendNicknameHash)) {
-            auto user = m_nicknameHashToUser.at(friendNicknameHash);
+            auto& friendUser = m_nicknameHashToUser.at(friendNicknameHash);
 
-            if (m_endpointToUser.contains(endpointFrom)) {
-                auto userWhoRequested = m_endpointToUser.at(endpointFrom);
-                if (userWhoRequested->getNicknameHash() == friendNicknameHash) {
-                    m_networkController.sendToClient(endpointFrom, PacketType::FRIEND_INFO_FAIL);
+            if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+                auto& senderUser = m_nicknameHashToUser.at(friendNicknameHash);
+
+                if (senderUser->getNicknameHash() == friendNicknameHash) {
+                    m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                        PacketType::GET_FRIEND_INFO_FAIL);
                     return;
                 }
             }
 
-            m_networkController.sendToClient(endpointFrom,
-                PacketsFactory::getFriendInfoSuccessPacket(user->getPublicKey(), user->getNicknameHash()),
-                PacketType::FRIEND_INFO_SUCCESS
+            m_networkController.sendToClient(endpointFrom, getPacketFriendInfoSuccess(uuid, friendUser->getPublicKey(), friendUser->getNicknameHash()),
+                PacketType::GET_FRIEND_INFO_SUCCESS
             );
         }
         else {
-            m_networkController.sendToClient(endpointFrom, PacketType::FRIEND_INFO_FAIL);
+            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                PacketType::GET_FRIEND_INFO_FAIL);
         }
     }
     catch (const std::exception& e) {
@@ -283,63 +329,113 @@ void CallsServer::handleGetFriendInfoPacket(const nlohmann::json& jsonObject, co
     }
 }
 
-void CallsServer::handleCreateCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    std::string responderNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+void CallsServer::handleStartCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    std::string uuid = jsonObject[UUID].get<std::string>();
+    std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+    std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
 
-    std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-    if (m_nicknameHashToUser.contains(responderNicknameHash)) {
-        auto userResponder = m_nicknameHashToUser.at(responderNicknameHash);
-        m_networkController.sendToClient(userResponder->getEndpoint(),
+    bool sentToReceiver = false;
+    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+        auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+        m_networkController.sendToClient(userReceiver->getEndpoint(),
             jsonObject.dump(),
-            PacketType::INCOMING_CALL
+            PacketType::START_CALLING
         );
+
+        sentToReceiver = true;
     }
+
+    if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+        auto& userSenser = m_nicknameHashToUser.at(receiverNicknameHash);
+
+        if (sentToReceiver) {
+            m_networkController.sendToClient(userSenser->getEndpoint(),
+                getPacketWithUuid(uuid),
+                PacketType::START_CALLING_SUCCESS
+            );
+        }
+        else {
+            m_networkController.sendToClient(userSenser->getEndpoint(),
+                getPacketWithUuid(uuid),
+                PacketType::START_CALLING_FAIL
+            );
+        }
+    }
+
     else return;
 }
 
-void CallsServer::handleEndCallPacket(const asio::ip::udp::endpoint& endpointFrom) {
-    std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-    if (m_endpointToUser.contains(endpointFrom)) {
-        auto user1 = m_endpointToUser.at(endpointFrom);
-        if (user1->inCall()) {
-            const std::string& user2NicknameHash = user1->inCallWith();
-            auto user2 = m_nicknameHashToUser.at(user2NicknameHash);
+void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
 
-            m_networkController.sendToClient(user2->getEndpoint(),
-                PacketType::END_CALL
+
+        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+            auto& userSender = m_endpointToUser.at(endpointFrom);
+            if (userSender->inCall()) {
+                const std::string& userInCallWithNicknameHash = userSender->inCallWith();
+
+                if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
+                    auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
+
+                    m_networkController.sendToClient(userInCallWith->getEndpoint(), jsonObject.dump(),
+                        PacketType::END_CALL
+                    );
+
+                    m_calls.erase(userSender->getCall());
+
+                    userSender->resetCall();
+                    userInCallWith->resetCall();
+                }
+            }
+
+            m_networkController.sendToClient(userSender->getEndpoint(), getPacketWithUuid(uuid),
+                PacketType::END_CALL_OK
             );
-
-            m_calls.erase(user1->getCall());
-
-            user1->resetCall();
-            user2->resetCall();
         }
+    }
+    catch (const std::exception& e) {
+        DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
     }
 }
 
 void CallsServer::handleCallAcceptedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
-        std::string initiatorNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        std::string nicknameHashTo = jsonObject[NICKNAME_HASH].get<std::string>();
+        const auto& nicknameHashesToDecline = jsonObject[ARRAY_NICKNAME_HASHES];
 
-        std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-        if (m_nicknameHashToUser.contains(initiatorNicknameHash)) {
-            auto userInitiator = m_nicknameHashToUser.at(initiatorNicknameHash);
+        handleDeclineAllAssist(nicknameHashesToDecline);
 
-            if (m_endpointToUser.contains(endpointFrom)) {
-                auto userResponder = m_endpointToUser.at(endpointFrom);
-                std::shared_ptr<Call> call = std::make_shared<Call>(userInitiator->getNicknameHash(), userResponder->getNicknameHash());
+        if (m_nicknameHashToUser.contains(nicknameHashTo)) {
+            auto& userTo = m_nicknameHashToUser.at(nicknameHashTo);
+
+            if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+                auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
+
+                handleEndCallAssist(userSender);
+
+                std::shared_ptr<Call> call = std::make_shared<Call>(userTo->getNicknameHash(), userSender->getNicknameHash());
                 m_calls.emplace(call);
 
-                userInitiator->setCall(call, User::CallRole::INITIATOR);
-                userResponder->setCall(call, User::CallRole::RESPONDER);
+                userTo->setCall(call, User::CallRole::INITIATOR);
+                userSender->setCall(call, User::CallRole::RESPONDER);
             }
             else return;
 
-            m_networkController.sendToClient(userInitiator->getEndpoint(),
+            m_networkController.sendToClient(userTo->getEndpoint(), jsonObject.dump(),
                 PacketType::CALL_ACCEPTED
             );
         }
-        else return;
+        
+        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+            auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
+            m_networkController.sendToClient(userSender->getEndpoint(), getPacketCallAcceptedOk(uuid, nicknameHashTo),
+                PacketType::CALL_ACCEPTED_OK
+            );
+        }
     }
     catch (const std::exception& e) {
         DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
@@ -348,17 +444,26 @@ void CallsServer::handleCallAcceptedPacket(const nlohmann::json& jsonObject, con
 
 void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
-        std::string initiatorNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        std::string nicknameHashTo = jsonObject[NICKNAME_HASH].get<std::string>();
 
-        std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-        if (m_nicknameHashToUser.contains(initiatorNicknameHash)) {
-            auto userInitiator = m_nicknameHashToUser.at(initiatorNicknameHash);
+ 
+        if (m_nicknameHashToUser.contains(nicknameHashTo)) {
+            auto& userTo = m_nicknameHashToUser.at(nicknameHashTo);
 
-            m_networkController.sendToClient(userInitiator->getEndpoint(),
+            m_networkController.sendToClient(userTo->getEndpoint(),
                 PacketType::CALL_DECLINED
             );
         }
-        else return;
+        
+        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+            auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
+
+            m_networkController.sendToClient(userSender->getEndpoint(), getPacketWithUuid(uuid),
+                PacketType::CALL_DECLINED_OK
+            );
+        }
     }
     catch (const std::exception& e) {
         DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
@@ -367,18 +472,27 @@ void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, con
 
 void CallsServer::handleCallingEndPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
-        std::string responderNicknameHash = jsonObject[NICKNAME_HASH_TO].get<std::string>();
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
 
-        std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-        if (m_nicknameHashToUser.contains(responderNicknameHash)) {
-            auto userResponder = m_nicknameHashToUser.at(responderNicknameHash);
+        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+            auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
 
-            m_networkController.sendToClient(userResponder->getEndpoint(),
+            m_networkController.sendToClient(userReceiver->getEndpoint(),
                 jsonObject.dump(),
                 PacketType::CALLING_END
             );
         }
-        else return;
+        
+        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+            auto& userReceiver = m_nicknameHashToUser.at(senderNicknameHash);
+
+            m_networkController.sendToClient(userReceiver->getEndpoint(),
+                jsonObject.dump(),
+                PacketType::CALLING_END_OK
+            );
+        }
     }
     catch (const std::exception& e) {
         DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
