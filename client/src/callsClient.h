@@ -67,6 +67,7 @@ private:
     void onInputVoice(const unsigned char* data, int length);
     bool validatePacket(const unsigned char* data, int length);
     void onPingFail();
+    void onConnectionRestored();
 
     // received results handlers
     void onAuthorizationSuccess(const unsigned char* data, int length);

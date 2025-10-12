@@ -23,6 +23,7 @@ namespace calls {
         virtual void onIncomingCallExpired(const std::string& friendNickname) = 0;
 
         virtual void onNetworkError() = 0;
+        virtual void onConnectionRestored() = 0;
         virtual void onRemoteUserEndedCall() = 0;
     };
 }

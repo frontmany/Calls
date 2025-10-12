@@ -5,8 +5,8 @@
 
 namespace calls {
     PingManager::PingManager(std::shared_ptr<NetworkController> networkController,
-        std::function<void()>&& onPingFail)
-        : m_networkController(networkController),
+        std::function<void()>&& onPingFail, std::function<void()>&& onPingEstablishedAgain)
+        : m_networkController(networkController), m_onPingEstablishedAgain(onPingEstablishedAgain),
         m_onPingFail(onPingFail)
     {
     }
@@ -38,8 +38,8 @@ namespace calls {
         using namespace std::chrono_literals;
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        std::chrono::seconds pingGap = 2s;
-        std::chrono::seconds checkPingGap = 6s;
+        std::chrono::seconds pingGap = 1s;
+        std::chrono::seconds checkPingGap = 3s;
 
         std::chrono::steady_clock::time_point lastPing = begin;
         std::chrono::steady_clock::time_point lastCheck = begin;
@@ -66,12 +66,21 @@ namespace calls {
 
     void PingManager::checkPing() {
         if (m_pingResult) {
+            if (m_error) {
+                m_onPingEstablishedAgain();
+                m_error = false;
+            }
+
             m_pingResult = false;
             DEBUG_LOG("ping success");
         }
         else {
+            if (!m_error) {
+                m_onPingFail();
+            }
+
+            m_error = true;
             DEBUG_LOG("ping fail");
-            m_onPingFail();
         }
     }
 }

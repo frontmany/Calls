@@ -12,6 +12,9 @@
 #include <QPixmap>
 #include <QPainter>
 #include <QGraphicsDropShadowEffect>
+#include <QTimer>
+
+#include "buttons.h"
 
 struct StyleAuthorizationWidget {
     // Color constants
@@ -33,6 +36,8 @@ struct StyleAuthorizationWidget {
     static QString glassErrorLabelStyle();
     static QString glassTitleLabelStyle();
     static QString glassSubTitleLabelStyle();
+    static QString notificationRedLabelStyle();
+    static QString notificationGreenLabelStyle();
 };
 
 class AuthorizationWidget : public QWidget {
@@ -44,6 +49,9 @@ public:
     void clearErrorMessage();
     void startBlurAnimation();
     void resetBlur();
+    void showNetworkErrorNotification();
+    void hideNetworkErrorNotification();
+    void showConnectionRestoredNotification(int durationMs);
 
 private slots:
     void onAuthorizationClicked();
@@ -67,6 +75,11 @@ private:
     QLabel* m_errorLabel;
     QLineEdit* m_nicknameEdit;
     QPushButton* m_authorizeButton;
+    
+    QWidget* m_notificationWidget;
+    QHBoxLayout* m_notificationLayout;
+    QLabel* m_notificationLabel;
+    QTimer* m_notificationTimer;
 
     QGraphicsBlurEffect* m_backgroundBlurEffect;
     QPropertyAnimation* m_blurAnimation;

@@ -8,6 +8,7 @@
 
 #include "AuthorizationWidget.h"
 #include "MainMenuWidget.h"
+#include "OverlayWidget.h"
 #include "CallWidget.h"
 
 MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::string& port)
@@ -34,8 +35,19 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
 
     std::unique_ptr<CallsClientHandler> callsClientHandler = std::make_unique<CallsClientHandler>(this);
 
-    calls::init(host, port, std::move(callsClientHandler));
-    calls::run();
+    bool initialized = calls::init(host, port, std::move(callsClientHandler));
+    
+    if (initialized) {
+        calls::run();
+    }
+    else {
+        QTimer::singleShot(0, this, [this]() {
+            showInitializationErrorDialog();
+        });
+    }
+    
+
+    showMaximized();
 }
 
 MainWindow::~MainWindow() {
@@ -130,8 +142,14 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         event->accept();
     }
     else {
-        calls::initiateShutdown();
-        event->ignore();
+        bool initiated = calls::initiateShutdown();
+        if (initiated) {
+            event->ignore();
+        }
+        else {
+            calls::forceShutdown();
+            event->accept();
+        }
     }
 }
 
@@ -195,12 +213,22 @@ void MainWindow::onBlurAnimationFinished() {
 }
 
 void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
-    calls::authorize(friendNickname.toStdString());
-    m_authorizationWidget->startBlurAnimation();
+    bool requestSent = calls::authorize(friendNickname.toStdString());
+    if (requestSent) {
+        m_authorizationWidget->startBlurAnimation();
+    }
+    else {
+        m_authorizationWidget->resetBlur();
+        QString errorMessage = "Failed to send authorization request. Please try again.";
+        m_authorizationWidget->setErrorMessage(errorMessage);
+    }
 }
 
 void MainWindow::onEndCallButtonClicked() {
-    calls::endCall();
+    bool requestSent = calls::endCall();
+    if (!requestSent) {
+        // TODO
+    }
 }
 
 void MainWindow::onRefreshAudioDevicesButtonClicked() {
@@ -220,16 +248,25 @@ void MainWindow::onMuteButtonClicked(bool mute) {
 }
 
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
-    calls::acceptCall(friendNickname.toStdString());
+    bool requestSent = calls::acceptCall(friendNickname.toStdString());
+    if (!requestSent) {
+        // TODO
+    }
 }
 
 void MainWindow::onDeclineCallButtonClicked(const QString& friendNickname) {
-    calls::declineCall(friendNickname.toStdString());
+    bool requestSent = calls::declineCall(friendNickname.toStdString());
+    if (!requestSent) {
+        // TODO
+    }
 }
 
 void MainWindow::onStartCallingButtonClicked(const QString& friendNickname) {
     if (!friendNickname.isEmpty() && friendNickname.toStdString() != calls::getNickname()) {
-        calls::startCalling(friendNickname.toStdString());
+        bool requestSent = calls::startCalling(friendNickname.toStdString());
+        if (!requestSent) {
+            // TODO
+        }
     }
     else {
         if (friendNickname.isEmpty()) {
@@ -242,7 +279,10 @@ void MainWindow::onStartCallingButtonClicked(const QString& friendNickname) {
 }
 
 void MainWindow::onStopCallingButtonClicked() {
-    calls::stopCalling();
+    bool requestSent = calls::stopCalling();
+    if (!requestSent) {
+        // TODO
+    }
 }
 
 //---------------------------------------------------------------------------------
@@ -346,12 +386,16 @@ void MainWindow::onEndCallResult(bool success) {
 }
 
 void MainWindow::onCallingAccepted() {
-    calls::declineAllCalls();
-
-    pauseRingtone();
-    m_mainMenuWidget->removeCallingPanel();
-    m_mainMenuWidget->setState(calls::State::BUSY);
-    switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
+    bool requestSent = calls::declineAllCalls();
+    if (requestSent) {
+        pauseRingtone();
+        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->setState(calls::State::BUSY);
+        switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
+    }
+    else {
+        // TODO
+    }
 }
 
 void MainWindow::onCallingDeclined() {
@@ -397,7 +441,110 @@ void MainWindow::onNetworkError() {
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->clearIncomingCalls();
 
-    switchToAuthorizationWidget();
+    if (m_stackedLayout->currentWidget() != m_authorizationWidget) {
+        switchToAuthorizationWidget();
+    }
+
     m_authorizationWidget->resetBlur();
-    m_authorizationWidget->setErrorMessage("Network error occurred");
+    m_authorizationWidget->showNetworkErrorNotification();
+}
+
+void MainWindow::onConnectionRestored() {
+    m_authorizationWidget->resetBlur();
+    m_authorizationWidget->showConnectionRestoredNotification(1500);
+}
+
+
+void MainWindow::showInitializationErrorDialog()
+{
+    QFont font("Outfit", 16, QFont::Normal);
+
+    OverlayWidget* overlay = new OverlayWidget(this);
+    overlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
+    overlay->setAttribute(Qt::WA_TranslucentBackground);
+    overlay->showMaximized();
+
+    QDialog* dialog = new QDialog(overlay);
+    dialog->setWindowTitle("Initialization problem");
+    dialog->setMinimumWidth(500);
+    dialog->setMinimumHeight(270);
+    dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
+
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(20);
+    shadowEffect->setXOffset(0);
+    shadowEffect->setYOffset(0);
+    shadowEffect->setColor(QColor(0, 0, 0, 120));
+
+    QWidget* mainWidget = new QWidget(dialog);
+    mainWidget->setGraphicsEffect(shadowEffect);
+    mainWidget->setObjectName("mainWidget");
+
+    QString mainWidgetStyle =
+        "QWidget#mainWidget {"
+        "   background-color: rgb(229, 228, 226);"
+        "   border-radius: 12px;"
+        "}";
+    mainWidget->setStyleSheet(mainWidgetStyle);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    mainLayout->addWidget(mainWidget);
+
+    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
+    contentLayout->setContentsMargins(16, 16, 16, 16);
+    contentLayout->setSpacing(20);
+
+    QLabel* iconLabel = new QLabel();
+    iconLabel->setPixmap(QIcon(":/resources/error.png").pixmap(64, 64));
+    iconLabel->setAlignment(Qt::AlignCenter);
+
+    QLabel* messageLabel = new QLabel("Initialization Error!\nPlease close the existing instance and restart the app.");
+    messageLabel->setAlignment(Qt::AlignCenter);
+    messageLabel->setWordWrap(true);
+    messageLabel->setStyleSheet("color: black; font-size: 14px; font-family: 'Outfit';");
+    messageLabel->setFont(font);
+
+    QPushButton* closeButton = new QPushButton("Close Application");
+    closeButton->setMinimumHeight(40);
+    closeButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgb(220, 220, 220);"
+        "   color: black;"
+        "   border-radius: 6px;"
+        "   padding: 8px;"
+        "   font-family: 'Outfit';"
+        "   font-size: 14px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgb(200, 200, 200);"
+        "}"
+    );
+    closeButton->setFont(font);
+
+    contentLayout->addWidget(iconLabel);
+    contentLayout->addWidget(messageLabel);
+    contentLayout->addWidget(closeButton);
+
+    connect(closeButton, &QPushButton::clicked, this, []() {
+        calls::forceShutdown();
+        QApplication::quit();
+        });
+
+    QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
+
+    QScreen* targetScreen = this->screen();
+    if (!targetScreen) {
+        targetScreen = QGuiApplication::primaryScreen();
+    }
+
+    QRect screenGeometry = targetScreen->availableGeometry();
+    dialog->adjustSize();
+    QSize dialogSize = dialog->size();
+
+    int x = screenGeometry.center().x() - dialogSize.width() / 2;
+    int y = screenGeometry.center().y() - dialogSize.height() / 2;
+    dialog->move(x, y);
+
+    dialog->exec();
 }

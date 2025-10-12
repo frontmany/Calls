@@ -24,6 +24,7 @@ public:
     void onIncomingCallExpired(const std::string& friendNickname) override;
 
     void onNetworkError() override;
+    void onConnectionRestored() override;
     void onRemoteUserEndedCall() override;
 
 private:

@@ -29,7 +29,7 @@ bool CallsClient::init(
     m_handler = std::move(handler);
     m_networkController = std::make_shared<NetworkController>();
     m_audioEngine = std::make_unique<AudioEngine>();
-    m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); });
+    m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); }, [this]() {onConnectionRestored(); });
     m_keysManager = std::make_unique<KeysManager>();
 
     bool audioInitialized = m_audioEngine->init([this](const unsigned char* data, int length) {
@@ -42,7 +42,6 @@ bool CallsClient::init(
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
-            m_timer.stop();
             m_callbacksQueue.push([this]() {m_handler->onNetworkError(); });
         });
 
@@ -67,6 +66,11 @@ void CallsClient::run() {
 void CallsClient::onPingFail() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
     m_callbacksQueue.push([this]() {m_handler->onNetworkError(); });
+}
+
+void CallsClient::onConnectionRestored() {
+    std::lock_guard<std::mutex> lock(m_dataMutex);
+    m_callbacksQueue.push([this]() {m_handler->onConnectionRestored(); });
 }
 
 void CallsClient::processQueue() {

@@ -7,10 +7,14 @@
 #include "scaleFactor.h"
 
 // AuthorizationWidget implementation
-AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent) 
+AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent)
 {
     setupUI();
     setupAnimations();
+
+    m_notificationTimer = new QTimer(this);
+    m_notificationTimer->setSingleShot(true);
+    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
 }
 
 void AuthorizationWidget::setupUI() {
@@ -18,6 +22,20 @@ void AuthorizationWidget::setupUI() {
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setAlignment(Qt::AlignCenter);
+
+    // Create network error widget
+    m_notificationWidget = new QWidget(this);
+    m_notificationWidget->hide();
+
+    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
+    m_notificationLayout->setContentsMargins(scale(8), scale(8), scale(8), scale(8)); // Увеличил отступы
+    m_notificationLayout->setSpacing(scale(15)); 
+
+    m_notificationLabel = new QLabel(m_notificationWidget);
+    QFont errorFont("Outfit", scale(12), QFont::Medium);
+    m_notificationLabel->setFont(errorFont);
+
+    m_notificationLayout->addWidget(m_notificationLabel);
 
     // Create container
     m_container = new QWidget(this);
@@ -80,7 +98,6 @@ void AuthorizationWidget::setupUI() {
     QFont authorizeButtonFont("Outfit", scale(14), QFont::Bold);
     m_authorizeButton->setFont(authorizeButtonFont);
 
-
     // Add widgets to glass layout
     m_glassLayout->addWidget(m_titleLabel);
     m_glassLayout->addWidget(m_subtitleLabel);
@@ -91,6 +108,7 @@ void AuthorizationWidget::setupUI() {
 
     // Add glass panel to main layout
     m_mainLayout->addSpacing(scale(42));
+    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
     m_mainLayout->addWidget(m_container);
 
     // Connect signals
@@ -103,7 +121,6 @@ void AuthorizationWidget::resetBlur() {
     m_backgroundBlurEffect->setBlurRadius(0);
     m_nicknameEdit->setDisabled(false);
     m_authorizeButton->setDisabled(false);
-    clearErrorMessage();
 }
 
 void AuthorizationWidget::setupAnimations() {
@@ -124,8 +141,8 @@ void AuthorizationWidget::paintEvent(QPaintEvent* event) {
 
     QLinearGradient gradient(0, 90, width(), height());
     gradient.setColorAt(0.0, QColor(230, 230, 230));
-    gradient.setColorAt(0.5, QColor(220, 230, 240)); 
-    gradient.setColorAt(1.0, QColor(240, 240, 240)); 
+    gradient.setColorAt(0.5, QColor(220, 230, 240));
+    gradient.setColorAt(1.0, QColor(240, 240, 240));
 
     painter.fillRect(rect(), gradient);
 
@@ -179,7 +196,30 @@ void AuthorizationWidget::clearErrorMessage() {
     m_errorLabel->hide();
 }
 
-// Style definitions
+void AuthorizationWidget::showNetworkErrorNotification() {
+    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationRedLabelStyle());
+
+    m_notificationLabel->setText("Network error occurred");
+    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+
+    m_notificationWidget->show();
+}
+
+void AuthorizationWidget::hideNetworkErrorNotification() {
+    m_notificationLabel->setText("");
+    m_notificationWidget->hide();
+}
+
+void AuthorizationWidget::showConnectionRestoredNotification(int durationMs) {
+    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationGreenLabelStyle());
+
+    m_notificationLabel->setText("Connection restored");
+    m_notificationLabel->setStyleSheet("color: #19ba00; background: transparent; font-size: 14px; margin: 0px; padding: 0px;"); 
+
+    m_notificationWidget->show();
+    m_notificationTimer->start(durationMs);
+}
+
 const QColor StyleAuthorizationWidget::m_primaryColor = QColor(21, 119, 232);
 const QColor StyleAuthorizationWidget::m_hoverColor = QColor(18, 113, 222);
 const QColor StyleAuthorizationWidget::m_errorColor = QColor(220, 80, 80, 200);
@@ -209,7 +249,7 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
         "}").arg(m_primaryColor.name())
         .arg(m_glassBorderColor.name())
         .arg(m_glassBorderColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(15))))  
+        .arg(QString::fromStdString(std::to_string(scale(15))))
         .arg(QString::fromStdString(std::to_string(scale(12))))
         .arg(QString::fromStdString(std::to_string(scale(24))))
         .arg(m_primaryColor.darker(110).name());
@@ -239,7 +279,7 @@ QString StyleAuthorizationWidget::glassLineEditStyle() {
         "}").arg(m_glassBorderColor.name())
         .arg(m_textColor.name())
         .arg(m_primaryColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(12))))  
+        .arg(QString::fromStdString(std::to_string(scale(12))))
         .arg(QString::fromStdString(std::to_string(scale(12))))
         .arg(QString::fromStdString(std::to_string(scale(15))));
 }
@@ -278,4 +318,24 @@ QString StyleAuthorizationWidget::glassSubTitleLabelStyle() {
         "   margin-bottom: 0px;"
         "   background: transparent;"
         "}").arg(m_textColor.name());
+}
+
+QString StyleAuthorizationWidget::notificationRedLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(220, 80, 80, 100);" 
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
+QString StyleAuthorizationWidget::notificationGreenLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(82, 196, 65, 100);"
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::fromStdString(std::to_string(scale(8))));
 }

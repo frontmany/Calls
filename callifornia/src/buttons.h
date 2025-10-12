@@ -7,7 +7,6 @@
 #include <QMouseEvent>
 #include <QEvent>
 #include <QPainter>
-#include <QWidget>
 #include <QPropertyAnimation>
 
 enum Theme;

@@ -129,6 +129,14 @@ void CallsClientHandler::onNetworkError()
     }
 }
 
+void CallsClientHandler::onConnectionRestored() 
+{
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onConnectionRestored",
+            Qt::QueuedConnection);
+    }
+}
+
 void CallsClientHandler::onRemoteUserEndedCall()
 {
     if (m_mainWindow) {

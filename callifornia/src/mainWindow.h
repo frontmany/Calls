@@ -6,6 +6,8 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 #include <QFile>
+#include <QDialog>
+#include <QScreen>
 
 #include "calls.h"
 #include "callsClientHandler.h"
@@ -41,6 +43,7 @@ private slots:
     void onIncomingCall(const std::string& friendNicname);
     void onIncomingCallEnded(const std::string& friendNickname);
     void onNetworkError();
+    void onConnectionRestored();
 
     void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
@@ -55,6 +58,7 @@ private slots:
     void onBlurAnimationFinished();
 
 private:
+    void showInitializationErrorDialog();
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
