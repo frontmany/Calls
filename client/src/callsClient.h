@@ -48,11 +48,13 @@ public:
 
     // flow functions
     bool logout();
+    void reset();
     bool authorize(const std::string& nickname);
     bool startCalling(const std::string& friendNickname);
     bool stopCalling();
     bool declineIncomingCall(const std::string& friendNickname);
     bool acceptIncomingCall(const std::string& friendNickname);
+    bool declineAll();
     bool endCall();
 
 private:
@@ -70,7 +72,7 @@ private:
     void onAuthorizationSuccess(const unsigned char* data, int length);
     void onAuthorizationFail(const unsigned char* data, int length);
     void onLogoutOk(const unsigned char* data, int length);
-    void onLogoutAndStopOk(const unsigned char* data, int length);
+    void onShutdownOk(const unsigned char* data, int length);
     void onFriendInfoSuccess(const unsigned char* data, int length);
     void onFriendInfoFail(const unsigned char* data, int length);
     void onStartCallingSuccess(const unsigned char* data, int length);
@@ -79,6 +81,7 @@ private:
     void onCallingEndOk(const unsigned char* data, int length);
     void onCallAcceptedOk(const unsigned char* data, int length);
     void onCallDeclinedOk(const unsigned char* data, int length);
+    void onAllCallsDeclinedOk(const unsigned char* data, int length);
 
     // on received packets
     void onCallAccepted(const unsigned char* data, int length);
@@ -95,8 +98,7 @@ private:
     std::string m_nicknameWhomCalling;
     std::string m_myNickname;
 
-    mutable std::mutex m_callbacksQueueMutex;
-    mutable std::mutex m_incomingCallsMutex;
+    mutable std::mutex m_dataMutex;
 
     std::thread m_callbacksQueueProcessingThread;
     std::queue<std::function<void()>> m_callbacksQueue;

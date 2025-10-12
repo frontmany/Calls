@@ -32,6 +32,7 @@ private slots:
     void onCallingStoppedResult(bool success);
     void onDeclineIncomingCallResult(bool success, QString nickname);
     void onAcceptIncomingCallResult(bool success, QString nickname);
+    void onAllIncomingCallsDeclinedResult(bool success);
     void onEndCallResult(bool success);
 
     void onCallingAccepted();
@@ -51,6 +52,7 @@ private slots:
     void onInputVolumeChanged(int newVolume);
     void onOutputVolumeChanged(int newVolume);
     void onMuteButtonClicked(bool mute);
+    void onBlurAnimationFinished();
 
 private:
     void switchToAuthorizationWidget();

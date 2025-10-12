@@ -97,6 +97,7 @@ void MainWindow::setupUI() {
 
     m_authorizationWidget = new AuthorizationWidget(this);
     connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, this, &MainWindow::onAuthorizationButtonClicked);
+    connect(m_authorizationWidget, &AuthorizationWidget::blurAnimationFinished, this, &MainWindow::onBlurAnimationFinished);
 
     m_stackedLayout->addWidget(m_authorizationWidget);
 
@@ -117,21 +118,21 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::inputVolumeChanged, this, &MainWindow::onInputVolumeChanged);
     connect(m_callWidget, &CallWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
     connect(m_callWidget, &CallWidget::muteButtonClicked, this, &MainWindow::onMuteButtonClicked);
-    connect(m_callWidget, &CallWidget::incomingCallAccepted, this, &MainWindow::onAcceptCallButtonClicked);
-    connect(m_callWidget, &CallWidget::incomingCallDeclined, this, &MainWindow::onDeclineCallButtonClicked);
+    connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
+    connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     m_stackedLayout->addWidget(m_callWidget);
 
     switchToAuthorizationWidget();
 }
 
-void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
-    calls::authorize(friendNickname.toStdString());
-    m_authorizationWidget->startBlurAnimation();
-}
-
 void MainWindow::closeEvent(QCloseEvent* event) {
-    calls::initiateShutdown();
-    event->ignore();
+    if (calls::getState() == calls::State::UNAUTHORIZED) {
+        event->accept();
+    }
+    else {
+        calls::initiateShutdown();
+        event->ignore();
+    }
 }
 
 
@@ -169,10 +170,34 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_callWidget->setCallInfo(friendNickname);
 }
 
+//---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
+void MainWindow::onBlurAnimationFinished() {
+    if (calls::getState() != calls::State::UNAUTHORIZED) {
+        switchToMainMenuWidget();
+
+        m_mainMenuWidget->setState(calls::State::FREE);
+
+        std::string nickname = calls::getNickname();
+        if (!nickname.empty()) {
+            m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
+        }
+
+        m_mainMenuWidget->setFocusToLineEdit();
+    }
+    else {
+        m_authorizationWidget->resetBlur();
+        QString errorMessage = "Authorization failed";
+        m_authorizationWidget->setErrorMessage(errorMessage);
+    }
+}
+
+void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
+    calls::authorize(friendNickname.toStdString());
+    m_authorizationWidget->startBlurAnimation();
+}
 
 void MainWindow::onEndCallButtonClicked() {
     calls::endCall();
@@ -224,25 +249,7 @@ void MainWindow::onStopCallingButtonClicked() {
 //---------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------
 
-void MainWindow::onAuthorizationResult(bool success) {
-    if (success) {
-        switchToMainMenuWidget();
-
-        m_mainMenuWidget->setState(calls::State::FREE);
-
-        std::string nickname = calls::getNickname();
-        if (!nickname.empty()) {
-            m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
-        }
-
-        m_mainMenuWidget->setFocusToLineEdit();
-    }
-    else {
-        QString errorMessage = "Authorization failed";
-        m_authorizationWidget->resetBlur();
-        m_authorizationWidget->setErrorMessage(errorMessage);
-    }
-}
+void MainWindow::onAuthorizationResult(bool success) {}
 
 void MainWindow::onLogoutResult(bool success) {
 
@@ -254,7 +261,8 @@ void MainWindow::onShutdownResult(bool success) {
         QCoreApplication::quit();
     }
     else {
-        // TODO
+        calls::forceShutdown();
+        QCoreApplication::quit();
     }
 }
 
@@ -313,6 +321,18 @@ void MainWindow::onAcceptIncomingCallResult(bool success, QString nickname) {
     }
 }
 
+void MainWindow::onAllIncomingCallsDeclinedResult(bool success) {
+    if (success) {
+        m_mainMenuWidget->clearIncomingCalls();
+
+        if (m_stackedLayout->currentWidget() == m_callWidget)
+            m_callWidget->clearIncomingCalls();
+    }
+    else {
+        // TODO
+    }
+}
+
 void MainWindow::onEndCallResult(bool success) {
     if (success) {
         m_mainMenuWidget->setState(calls::State::FREE);
@@ -326,12 +346,7 @@ void MainWindow::onEndCallResult(bool success) {
 }
 
 void MainWindow::onCallingAccepted() {
-    m_mainMenuWidget->clearIncomingCalls();
-
-    auto callers = calls::getCallers();
-    for (auto& nickname : callers) {
-        calls::declineCall(nickname);
-    }
+    calls::declineAllCalls();
 
     pauseRingtone();
     m_mainMenuWidget->removeCallingPanel();
@@ -376,7 +391,7 @@ void MainWindow::onIncomingCallEnded(const std::string& friendNickName) {
 }
 
 void MainWindow::onNetworkError() {
-    calls::logout();
+    calls::reset();
 
     pauseRingtone();
     m_mainMenuWidget->removeCallingPanel();

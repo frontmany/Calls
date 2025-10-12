@@ -61,6 +61,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleCallDeclinedPacket(jsonObject, endpointFrom);
             break;
 
+        case PacketType::DECLINE_ALL:
+            handleDeclineAllCallsPacket(jsonObject, endpointFrom);
+            break;
+
         case PacketType::CALLING_END:
             handleCallingEndPacket(jsonObject, endpointFrom);
             break;
@@ -69,7 +73,7 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleLogout(jsonObject, endpointFrom);
             break;
 
-        case PacketType::LOGOUT_AND_STOP:
+        case PacketType::SHUTDOWN:
             handleLogout(jsonObject, endpointFrom, true);
             break;
 
@@ -273,7 +277,7 @@ void CallsServer::handleLogout(const nlohmann::json& jsonObject, const asio::ip:
             
             if (logoutAndStop) {
                 m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
-                    PacketType::LOGOUT_AND_STOP_OK
+                    PacketType::SHUTDOWN_OK
                 );
             }
             else {
@@ -434,6 +438,26 @@ void CallsServer::handleCallAcceptedPacket(const nlohmann::json& jsonObject, con
             auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
             m_networkController.sendToClient(userSender->getEndpoint(), getPacketCallAcceptedOk(uuid, nicknameHashTo),
                 PacketType::CALL_ACCEPTED_OK
+            );
+        }
+    }
+    catch (const std::exception& e) {
+        DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
+    }
+}
+
+void CallsServer::handleDeclineAllCallsPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        const auto& nicknameHashesToDecline = jsonObject[ARRAY_NICKNAME_HASHES];
+
+        handleDeclineAllAssist(nicknameHashesToDecline);
+
+        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+            auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
+            m_networkController.sendToClient(userSender->getEndpoint(), getPacketWithUuid(uuid),
+                PacketType::DECLINE_ALL_OK
             );
         }
     }

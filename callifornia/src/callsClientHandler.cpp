@@ -52,6 +52,14 @@ void CallsClientHandler::onDeclineIncomingCallResult(bool success, const std::st
     }
 }
 
+void CallsClientHandler::onAllIncomingCallsDeclinedResult(bool success) {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onAllIncomingCallsDeclinedResult",
+            Qt::QueuedConnection,
+            Q_ARG(bool, success));
+    }
+}
+
 void CallsClientHandler::onAcceptIncomingCallResult(bool success, const std::string& nickname)
 {
     if (m_mainWindow) {

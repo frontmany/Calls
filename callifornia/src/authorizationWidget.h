@@ -51,6 +51,7 @@ private slots:
 
 signals:
     void authorizationButtonClicked(const QString& friendNickname);
+    void blurAnimationFinished();
 
 private:
     void setupUI();

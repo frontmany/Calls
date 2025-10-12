@@ -14,6 +14,7 @@ public:
     void onStartCallingResult(bool success) override;
     void onDeclineIncomingCallResult(bool success, const std::string& nickname) override;
     void onAcceptIncomingCallResult(bool success, const std::string& nickname) override;
+    void onAllIncomingCallsDeclinedResult(bool success) override;
     void onEndCallResult(bool success) override;
     void onCallingStoppedResult(bool success) override;
 

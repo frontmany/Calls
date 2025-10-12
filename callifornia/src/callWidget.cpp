@@ -615,11 +615,9 @@ void CallWidget::updateIncomingCallsVisibility() {
 }
 
 void CallWidget::onIncomingCallAccepted(const QString& callerName) {
-    emit incomingCallAccepted(callerName);
-    removeIncomingCall(callerName);
+    emit acceptCallButtonClicked(callerName);
 }
 
 void CallWidget::onIncomingCallDeclined(const QString& callerName) {
-    emit incomingCallDeclined(callerName);
-    removeIncomingCall(callerName);
+    emit declineCallButtonClicked(callerName);
 }

@@ -63,6 +63,11 @@ namespace calls {
         return CallsClient::get().declineIncomingCall(friendNickname);
     }
 
+    inline bool declineAllCalls()
+    {
+        return CallsClient::get().declineAll();
+    }
+
     inline bool endCall()
     {
         return CallsClient::get().endCall();
@@ -109,6 +114,11 @@ namespace calls {
     inline void logout()
     {
         CallsClient::get().logout();
+    }
+
+    inline void reset()
+    {
+        CallsClient::get().reset();
     }
 
     inline bool initiateShutdown()

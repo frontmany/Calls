@@ -65,8 +65,8 @@ signals:
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
     void muteButtonClicked(bool mute);
-    void incomingCallAccepted(const QString& callerName);
-    void incomingCallDeclined(const QString& callerName);
+    void acceptCallButtonClicked(const QString& callerName);
+    void declineCallButtonClicked(const QString& callerName);
 
 protected:
     void paintEvent(QPaintEvent* event) override;

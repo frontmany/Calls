@@ -6,7 +6,8 @@ enum class PacketType : uint32_t {
 	// only receive
 	AUTHORIZE,
 	LOGOUT,
-	LOGOUT_AND_STOP,
+	SHUTDOWN,
+	DECLINE_ALL,
 	GET_FRIEND_INFO,
 
 	// receive and redirect
@@ -20,7 +21,7 @@ enum class PacketType : uint32_t {
 	AUTHORIZE_SUCCESS,
 	AUTHORIZE_FAIL,
 	LOGOUT_OK,
-	LOGOUT_AND_STOP_OK,
+	SHUTDOWN_OK,
 	GET_FRIEND_INFO_SUCCESS,
 	GET_FRIEND_INFO_FAIL,
 	START_CALLING_SUCCESS,
@@ -29,6 +30,7 @@ enum class PacketType : uint32_t {
 	CALLING_END_OK,
 	CALL_ACCEPTED_OK,
 	CALL_DECLINED_OK,
+	DECLINE_ALL_OK,
 
 	// special packets
 	VOICE,

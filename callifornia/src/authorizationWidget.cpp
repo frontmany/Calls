@@ -115,6 +115,7 @@ void AuthorizationWidget::setupAnimations() {
     m_blurAnimation = new QPropertyAnimation(m_backgroundBlurEffect, "blurRadius", this);
     m_blurAnimation->setDuration(1200);
     m_blurAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    connect(m_blurAnimation, &QPropertyAnimation::finished, [this]() {emit blurAnimationFinished(); });
 }
 
 void AuthorizationWidget::paintEvent(QPaintEvent* event) {

@@ -66,7 +66,7 @@ std::pair<std::string, std::string> PacketsFactory::getDeclineCallPacket(const s
     return std::make_pair(uuid, jsonObject.dump());
 }
 
-std::pair<std::string, std::string> PacketsFactory::getAcceptCallPacket(const std::string& myNickname, const std::string& friendNicknameToAccept, std::vector<std::string> nicknamesToDecline, const std::string& friendNicknameToEndCalling) {
+std::pair<std::string, std::string> PacketsFactory::getAcceptCallPacket(const std::string& myNickname, const std::string& friendNicknameToAccept, const std::vector<std::string>& nicknamesToDecline, const std::string& friendNicknameToEndCalling) {
     std::string uuid = crypto::generateUUID();
 
     nlohmann::json jsonObject;
@@ -74,18 +74,38 @@ std::pair<std::string, std::string> PacketsFactory::getAcceptCallPacket(const st
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[NICKNAME_HASH] = crypto::calculateHash(friendNicknameToAccept);
 
-    if (nicknamesToDecline.size() != 0) {
-        nlohmann::json nicknameHashesArray = nlohmann::json::array();
-        for (const auto& nickname : nicknamesToDecline) {
-            nicknameHashesArray.push_back(crypto::calculateHash(nickname));
-        }
-
-        jsonObject[ARRAY_NICKNAME_HASHES] = nicknameHashesArray;
+    
+    nlohmann::json nicknameHashesArray = nlohmann::json::array();
+    for (const auto& nickname : nicknamesToDecline) {
+        nicknameHashesArray.push_back(crypto::calculateHash(nickname));
     }
+
+    jsonObject[ARRAY_NICKNAME_HASHES] = nicknameHashesArray;
+    
 
     if (!friendNicknameToEndCalling.empty()) {
         jsonObject[NICKNAME_HASH_RECEIVER] = crypto::calculateHash(friendNicknameToEndCalling);
     }
+    else {
+        jsonObject[NICKNAME_HASH] = "";
+    }
+
+    return std::make_pair(uuid, jsonObject.dump());
+}
+
+std::pair<std::string, std::string> PacketsFactory::getDeclineAllCallsPacket(const std::string& myNickname, const std::vector<std::string>& nicknamesToDecline) {
+    std::string uuid = crypto::generateUUID();
+
+    nlohmann::json jsonObject;
+    jsonObject[UUID] = uuid;
+    jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
+
+
+    nlohmann::json nicknameHashesArray = nlohmann::json::array();
+    for (const auto& nickname : nicknamesToDecline) {
+        nicknameHashesArray.push_back(crypto::calculateHash(nickname));
+    }
+    jsonObject[ARRAY_NICKNAME_HASHES] = nicknameHashesArray;
 
     return std::make_pair(uuid, jsonObject.dump());
 }
@@ -107,17 +127,20 @@ std::pair<std::string, std::string> PacketsFactory::getLogoutPacket(const std::s
     jsonObject[UUID] = uuid;
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
 
-    if (nicknamesToDecline.size() != 0) {
-        nlohmann::json nicknameHashesArray = nlohmann::json::array();
-        for (const auto& nickname : nicknamesToDecline) {
-            nicknameHashesArray.push_back(crypto::calculateHash(nickname));
-        }
-
-        jsonObject[ARRAY_NICKNAME_HASHES] = nicknameHashesArray;
+    
+    nlohmann::json nicknameHashesArray = nlohmann::json::array();
+    for (const auto& nickname : nicknamesToDecline) {
+        nicknameHashesArray.push_back(crypto::calculateHash(nickname));
     }
 
-    if (friendNicknameToEndCalling != "") {
+    jsonObject[ARRAY_NICKNAME_HASHES] = nicknameHashesArray;
+    
+
+    if (!friendNicknameToEndCalling.empty()) {
         jsonObject[NICKNAME_HASH] = crypto::calculateHash(friendNicknameToEndCalling);
+    }
+    else {
+        jsonObject[NICKNAME_HASH] = "";
     }
     
     return std::make_pair(uuid, jsonObject.dump());
