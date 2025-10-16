@@ -41,6 +41,7 @@ struct StyleCallWidget {
     static QString volumeLabelStyle();
     static QString scrollAreaStyle();
     static QString volumeSliderStyle();
+    static QString notificationRedLabelStyle();
 };
 
 class CallWidget : public QWidget {
@@ -55,9 +56,10 @@ public:
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
     void setMuted(bool muted);
-    void addIncomingCall(const QString& friendNickName);
+    void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
+    void showErrorNotification(const QString& text, int durationMs);
 
 signals:
     void hangupClicked();
@@ -138,6 +140,11 @@ private:
     QTimer* m_callTimer;
     QTime* m_callDuration;
     QString m_friendNickname;
+
+    QWidget* m_notificationWidget;
+    QHBoxLayout* m_notificationLayout;
+    QLabel* m_notificationLabel;
+    QTimer* m_notificationTimer;
 
     // refresh button cooldown 
     QTimer* m_refreshCooldownTimer;

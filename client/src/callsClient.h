@@ -4,6 +4,7 @@
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <unordered_map>
 #include <thread>
 #include <chrono>
 
@@ -13,10 +14,14 @@
 #include "keysManager.h"
 #include "packetTypes.h"
 #include "incomingCallData.h"
+#include "ErrorCode.h"
 #include "handler.h"
 #include "state.h"
 #include "timer.h"
 #include "call.h"
+#include "task.h"
+
+#include "json.hpp"
 
 namespace calls {
 class CallsClient {
@@ -25,8 +30,7 @@ public:
 
     bool init(const std::string& host, const std::string& port, std::unique_ptr<Handler>&& handler);
     void run();
-    bool initiateShutdown();
-    void completeShutdown();
+    void stop();
 
     // SET
     void refreshAudioDevices();
@@ -37,9 +41,11 @@ public:
     // GET
     bool isMuted();
     bool isRunning() const;
+    bool isAuthorized() const;
+    bool isCalling() const;
+    bool isBusy() const;
     const std::string& getNickname() const;
     std::vector<std::string> getCallers();
-    State getState() const;
     int getInputVolume() const;
     int getOutputVolume() const;
     int getIncomingCallsCount() const;
@@ -48,72 +54,79 @@ public:
 
     // flow functions
     bool logout();
-    void reset();
     bool authorize(const std::string& nickname);
     bool startCalling(const std::string& friendNickname);
     bool stopCalling();
-    bool declineIncomingCall(const std::string& friendNickname);
-    bool acceptIncomingCall(const std::string& friendNickname);
-    bool declineAll();
+    bool declineCall(const std::string& friendNickname);
+    bool acceptCall(const std::string& friendNickname);
     bool endCall();
 
 private:
+    // received results handlers
+    void onAuthorizationSuccess(const nlohmann::json& jsonObject);
+    void onAuthorizationFail(const nlohmann::json& jsonObject);
+
+    void onLogoutOk(const nlohmann::json& jsonObject);
+
+    void onFriendInfoSuccess(const nlohmann::json& jsonObject);
+    void onFriendInfoFail(const nlohmann::json& jsonObject);
+
+    void onStartCallingOk(const nlohmann::json& jsonObject);
+    void onStartCallingFail(const nlohmann::json& jsonObject);
+    void onEndCallOk(const nlohmann::json& jsonObject);
+    void onStopCallingOk(const nlohmann::json& jsonObject);
+    void onCallAcceptedOk(const nlohmann::json& jsonObject);
+    void onCallDeclinedOk(const nlohmann::json& jsonObject);
+
+    // on received packets
+    void onCallAccepted(const nlohmann::json& jsonObject);
+    void onCallDeclined(const nlohmann::json& jsonObject);
+    void onStopCalling(const nlohmann::json& jsonObject);
+    void onEndCall(const nlohmann::json& jsonObject);
+    void onIncomingCall(const nlohmann::json& jsonObject);
+
     // essential functions
     CallsClient() = default;
     ~CallsClient();
     void onReceive(const unsigned char* data, int length, PacketType type);
     void processQueue();
-    bool resolveLogout(PacketType type);
     void onInputVoice(const unsigned char* data, int length);
-    bool validatePacket(const unsigned char* data, int length);
+    bool validatePacket(const nlohmann::json& jsonObject);
     void onPingFail();
     void onConnectionRestored();
 
-    // received results handlers
-    void onAuthorizationSuccess(const unsigned char* data, int length);
-    void onAuthorizationFail(const unsigned char* data, int length);
-    void onLogoutOk(const unsigned char* data, int length);
-    void onShutdownOk(const unsigned char* data, int length);
-    void onFriendInfoSuccess(const unsigned char* data, int length);
-    void onFriendInfoFail(const unsigned char* data, int length);
-    void onStartCallingSuccess(const unsigned char* data, int length);
-    void onStartCallingFail(const unsigned char* data, int length);
-    void onEndCallOk(const unsigned char* data, int length);
-    void onCallingEndOk(const unsigned char* data, int length);
-    void onCallAcceptedOk(const unsigned char* data, int length);
-    void onCallDeclinedOk(const unsigned char* data, int length);
-    void onAllCallsDeclinedOk(const unsigned char* data, int length);
-
-    // on received packets
-    void onCallAccepted(const unsigned char* data, int length);
-    void onCallDeclined(const unsigned char* data, int length);
-    void onCallingEnd(const unsigned char* data, int length);
-    void onEndCall(const unsigned char* data, int length);
-    void onIncomingCall(const unsigned char* data, int length);
+    // essential senders
+    void sendAuthorizationPacket();
+    void sendLogoutPacket(bool createTask);
+    void sendRequestFriendInfoPacket(const std::string& friendNickname);
+    void sendAcceptCallPacket(const std::string& friendNickname);
+    void sendDeclineCallPacket(const std::string& friendNickname, bool createTask);
+    void sendStartCallingPacket(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey);
+    void sendStopCallingPacket(bool createTask);
+    void sendEndCallPacket(bool createTask);
+    void sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type);
 
 private:
-    std::atomic_bool m_running = false;
-    std::atomic<State> m_state = State::UNAUTHORIZED;
+    bool m_running = false;
+    State m_state = State::UNAUTHORIZED;
+    mutable std::mutex m_dataMutex;
 
     std::optional<Call> m_call = std::nullopt;
     std::string m_nicknameWhomCalling;
     std::string m_myNickname;
-
-    mutable std::mutex m_dataMutex;
+    Timer m_callingTimer;
 
     std::thread m_callbacksQueueProcessingThread;
     std::queue<std::function<void()>> m_callbacksQueue;
     std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
-
-    Timer m_timer;
-    std::string m_waitingForConfirmationOnPacketUUID;
-    Timer m_callingTimer;
+    std::unordered_map<PacketType, std::function<void(const nlohmann::json&)>> m_handlers;
+    std::unordered_map<std::string, std::shared_ptr<Task>> m_tasks;
 
     std::shared_ptr<NetworkController> m_networkController;
     std::unique_ptr<AudioEngine> m_audioEngine;
     std::shared_ptr<PingManager> m_pingManager;
     std::unique_ptr<KeysManager> m_keysManager;
-    std::unique_ptr<Handler> m_handler;
+    std::unique_ptr<Handler> m_callbackHandler;
 };
 
 }

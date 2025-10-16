@@ -158,6 +158,16 @@ QString StyleMainMenuWidget::disabledLineEditStyle() {
         .arg(QString::fromStdString(std::to_string(scale(15)))); // padding horizontal
 }
 
+QString StyleMainMenuWidget::notificationRedLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(220, 80, 80, 100);"
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
 QString StyleMainMenuWidget::avatarStyle(const QColor& color) {
     return QString("QLabel {"
         "   background-color: %1;"
@@ -283,12 +293,17 @@ QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
 MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
+
+    m_notificationTimer = new QTimer(this);
+    m_notificationTimer->setSingleShot(true);
+    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
 }
 
 void MainMenuWidget::setupUI() {
     m_backgroundTexture = QPixmap(":/resources/blur.png");
 
     m_mainLayout = new QVBoxLayout(this);
+    m_mainLayout->setAlignment(Qt::AlignCenter);
     m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
 
     // Main container
@@ -299,6 +314,24 @@ void MainMenuWidget::setupUI() {
     m_containerLayout = new QVBoxLayout(m_mainContainer);
     m_containerLayout->setSpacing(scale(20));
     m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
+
+    // Create network error widget
+    m_notificationWidget = new QWidget(this);
+    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_notificationWidget->hide();
+    m_notificationWidget->setStyleSheet(StyleMainMenuWidget::notificationRedLabelStyle());
+
+
+    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
+    m_notificationLayout->setAlignment(Qt::AlignCenter);
+    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
+
+    m_notificationLabel = new QLabel(m_notificationWidget);
+    QFont errorFont("Outfit", scale(12), QFont::Medium);
+    m_notificationLabel->setFont(errorFont);
+    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+
+    m_notificationLayout->addWidget(m_notificationLabel);
 
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
@@ -461,6 +494,8 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
+    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
+    m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
@@ -580,8 +615,26 @@ void MainMenuWidget::setState(calls::State state) {
     }
 }
 
-void MainMenuWidget::addIncomingCall(const QString& friendNickname) {
-    IncomingCallWidget* callWidget = new IncomingCallWidget(friendNickname, this);
+
+std::vector<std::pair<std::string, int>> MainMenuWidget::getIncomingCalls() const {
+    std::vector<std::pair<std::string, int>> incomingCalls;
+
+    for (int i = 0; i < m_incomingCallsLayout->count(); ++i) {
+        QWidget* widget = m_incomingCallsLayout->itemAt(i)->widget();
+
+        if (auto* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
+            QString nickname = callWidget->getFriendNickname();
+            int remainingTime = callWidget->getRemainingTime();
+
+            incomingCalls.emplace_back(nickname.toStdString(), remainingTime);
+        }
+    }
+
+    return incomingCalls;
+}
+
+void MainMenuWidget::addIncomingCall(const QString& friendNickname, int remainingTime) {
+    IncomingCallWidget* callWidget = new IncomingCallWidget(this, friendNickname, remainingTime);
     connect(callWidget, &IncomingCallWidget::callAccepted,
         this, &MainMenuWidget::onIncomingCallAccepted);
     connect(callWidget, &IncomingCallWidget::callDeclined,
@@ -662,6 +715,12 @@ void MainMenuWidget::updateCallingState(bool calling) {
         m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
         m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
     }
+}
+
+void MainMenuWidget::showErrorNotification(const QString& text, int durationMs) {
+    m_notificationLabel->setText(text);
+    m_notificationWidget->show();
+    m_notificationTimer->start(durationMs);
 }
 
 void MainMenuWidget::showIncomingCallsArea() {

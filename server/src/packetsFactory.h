@@ -18,6 +18,13 @@ static std::string getPacketCallAcceptedOk(const std::string& uuid, const std::s
     return jsonObject.dump();
 }
 
+static std::string getPacketCallDeclinedOk(const std::string& uuid, const std::string& friendNicknameHash) {
+    nlohmann::json jsonObject;
+    jsonObject[UUID] = uuid;
+    jsonObject[NICKNAME_HASH] = friendNicknameHash;
+    return jsonObject.dump();
+}
+
 static std::string getPacketFriendInfoSuccess(const std::string& uuid, const CryptoPP::RSA::PublicKey& friendPublicKey, const std::string& friendNicknameHash) {
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;

@@ -1,7 +1,6 @@
 #include "CallsClientHandler.h"
 #include <QMetaObject>
 #include <QApplication>
-
 #include "mainWindow.h"
 
 CallsClientHandler::CallsClientHandler(MainWindow* mainWindow)
@@ -9,60 +8,28 @@ CallsClientHandler::CallsClientHandler(MainWindow* mainWindow)
 {
 }
 
-void CallsClientHandler::onAuthorizationResult(bool success)
+void CallsClientHandler::onAuthorizationResult(calls::ErrorCode ec)
 {
     if (m_mainWindow) {
+        bool success = (ec == calls::ErrorCode::OK);
         QMetaObject::invokeMethod(m_mainWindow, "onAuthorizationResult",
             Qt::QueuedConnection, Q_ARG(bool, success));
     }
 }
 
-void CallsClientHandler::onLogoutResult(bool success)
+void CallsClientHandler::onStartCallingResult(calls::ErrorCode ec)
 {
     if (m_mainWindow) {
-        QMetaObject::invokeMethod(m_mainWindow, "onLogoutResult",
-            Qt::QueuedConnection, Q_ARG(bool, success));
-    }
-}
-
-void CallsClientHandler::onShutdownResult(bool success)
-{
-    if (m_mainWindow) {
-        QMetaObject::invokeMethod(m_mainWindow, "onShutdownResult",
-            Qt::QueuedConnection, Q_ARG(bool, success));
-    }
-}
-
-void CallsClientHandler::onStartCallingResult(bool success)
-{
-    if (m_mainWindow) {
+        bool success = (ec == calls::ErrorCode::OK);
         QMetaObject::invokeMethod(m_mainWindow, "onStartCallingResult",
             Qt::QueuedConnection, Q_ARG(bool, success));
     }
 }
 
-void CallsClientHandler::onDeclineIncomingCallResult(bool success, const std::string& nickname)
+void CallsClientHandler::onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname)
 {
     if (m_mainWindow) {
-        QString qNickname = QString::fromStdString(nickname);
-        QMetaObject::invokeMethod(m_mainWindow, "onDeclineIncomingCallResult",
-            Qt::QueuedConnection,
-            Q_ARG(bool, success),
-            Q_ARG(QString, qNickname));
-    }
-}
-
-void CallsClientHandler::onAllIncomingCallsDeclinedResult(bool success) {
-    if (m_mainWindow) {
-        QMetaObject::invokeMethod(m_mainWindow, "onAllIncomingCallsDeclinedResult",
-            Qt::QueuedConnection,
-            Q_ARG(bool, success));
-    }
-}
-
-void CallsClientHandler::onAcceptIncomingCallResult(bool success, const std::string& nickname)
-{
-    if (m_mainWindow) {
+        bool success = (ec == calls::ErrorCode::OK);
         QString qNickname = QString::fromStdString(nickname);
         QMetaObject::invokeMethod(m_mainWindow, "onAcceptIncomingCallResult",
             Qt::QueuedConnection,
@@ -71,19 +38,11 @@ void CallsClientHandler::onAcceptIncomingCallResult(bool success, const std::str
     }
 }
 
-void CallsClientHandler::onEndCallResult(bool success)
+void CallsClientHandler::onMaximumCallingTimeReached()
 {
     if (m_mainWindow) {
-        QMetaObject::invokeMethod(m_mainWindow, "onEndCallResult",
-            Qt::QueuedConnection, Q_ARG(bool, success));
-    }
-}
-
-void CallsClientHandler::onCallingStoppedResult(bool success)
-{
-    if (m_mainWindow) {
-        QMetaObject::invokeMethod(m_mainWindow, "onCallingStoppedResult",
-            Qt::QueuedConnection, Q_ARG(bool, success));
+        QMetaObject::invokeMethod(m_mainWindow, "onMaximumCallingTimeReached",
+            Qt::QueuedConnection);
     }
 }
 
@@ -103,12 +62,12 @@ void CallsClientHandler::onCallingDeclined()
     }
 }
 
-void CallsClientHandler::onIncomingCall(const std::string& callId)
+void CallsClientHandler::onIncomingCall(const std::string& friendNickname)
 {
     if (m_mainWindow) {
-        QString qCallId = QString::fromStdString(callId);
+        QString qFriendNickname = QString::fromStdString(friendNickname);
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingCall",
-            Qt::QueuedConnection, Q_ARG(QString, qCallId));
+            Qt::QueuedConnection, Q_ARG(QString, qFriendNickname));
     }
 }
 
@@ -129,7 +88,7 @@ void CallsClientHandler::onNetworkError()
     }
 }
 
-void CallsClientHandler::onConnectionRestored() 
+void CallsClientHandler::onConnectionRestored()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onConnectionRestored",

@@ -23,11 +23,6 @@ namespace calls {
         CallsClient::get().run();
     }
 
-    inline State getState()
-    {
-        return CallsClient::get().getState();
-    }
-
     inline const std::string& getNickname()
     {
         return CallsClient::get().getNickname();
@@ -55,17 +50,12 @@ namespace calls {
 
     inline bool acceptCall(const std::string& friendNickname)
     {
-        return CallsClient::get().acceptIncomingCall(friendNickname);
+        return CallsClient::get().acceptCall(friendNickname);
     }
 
     inline bool declineCall(const std::string& friendNickname)
     {
-        return CallsClient::get().declineIncomingCall(friendNickname);
-    }
-
-    inline bool declineAllCalls()
-    {
-        return CallsClient::get().declineAll();
+        return CallsClient::get().declineCall(friendNickname);
     }
 
     inline bool endCall()
@@ -116,29 +106,29 @@ namespace calls {
         CallsClient::get().logout();
     }
 
-    inline void reset()
+    inline void stop()
     {
-        CallsClient::get().reset();
-    }
-
-    inline bool initiateShutdown()
-    {
-        return CallsClient::get().initiateShutdown();
-    }
-
-    inline void completeShutdown()
-    {
-        CallsClient::get().completeShutdown();
-    }
-
-    inline void forceShutdown()
-    {
-        CallsClient::get().completeShutdown();
+        CallsClient::get().stop();
     }
 
     inline bool isRunning()
     {
         return CallsClient::get().isRunning();
+    }
+
+    inline bool isAuthorized()
+    {
+        return CallsClient::get().isAuthorized();
+    }
+
+    inline bool isCalling()
+    {
+        return CallsClient::get().isCalling();
+    }
+
+    inline bool isBusy()
+    {
+        return CallsClient::get().isBusy();
     }
 
     inline const std::string& getNicknameWhomCalling() {

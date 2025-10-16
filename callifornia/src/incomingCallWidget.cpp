@@ -58,8 +58,8 @@ QString StyleIncomingCallWidget::avatarStyle(const QColor& color) {
         .arg(QString::fromStdString(std::to_string(scale(25))))  // border-radius
         .arg(QString::fromStdString(std::to_string(scale(18)))); // font-size
 }
-IncomingCallWidget::IncomingCallWidget(const QString& friendNickname, QWidget* parent)
-    : QWidget(parent), m_friendNickname(friendNickname), m_remainingSeconds(32) {
+IncomingCallWidget::IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime)
+    : QWidget(parent), m_friendNickname(friendNickname), m_remainingSeconds(remainingTime) {
 
     setupUI();
     setupTimer();
@@ -182,8 +182,12 @@ QColor IncomingCallWidget::generateRandomColor(const QString& seed) {
     return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
 }
 
-const QString& IncomingCallWidget::getFriendNickname() {
+const QString& IncomingCallWidget::getFriendNickname() const {
     return m_friendNickname;
+}
+
+int IncomingCallWidget::getRemainingTime() const {
+    return m_remainingSeconds;
 }
 
 void IncomingCallWidget::setupTimer() {

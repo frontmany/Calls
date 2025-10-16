@@ -8,8 +8,9 @@ namespace calls {
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* NICKNAME_HASH_SENDER = "nicknameHashSender";
     static constexpr const char* NICKNAME_HASH_RECEIVER = "nicknameHashReceiver";
-    static constexpr const char* NICKNAME_HASH = "nicknameHashReceiver";
+    static constexpr const char* NICKNAME_HASH = "nicknameHash";
     static constexpr const char* ARRAY_NICKNAME_HASHES = "nicknameHashesArray";
     static constexpr const char* UUID = "UUID";
     static constexpr const char* PURPOSE = "purpose";
+    static constexpr const char* NEED_CONFIRMATION = "needConfirmation";
 }

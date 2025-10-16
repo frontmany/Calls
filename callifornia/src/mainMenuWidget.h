@@ -60,6 +60,7 @@ struct StyleMainMenuWidget {
     static QString incomingCallsHeaderStyle();
     static QString stopCallingButtonStyle();
     static QString stopCallingButtonHoverStyle();
+    static QString notificationRedLabelStyle();
 };
 
 class MainMenuWidget : public QWidget {
@@ -69,14 +70,17 @@ public:
     MainMenuWidget(QWidget* parent = nullptr);
     void setNickname(const QString& nickname);
     void setState(calls::State state);
-    void addIncomingCall(const QString& friendNickname);
+    void addIncomingCall(const QString& friendNickname, int remainingTime = 32);
     void removeIncomingCall(const QString& friendNickname);
     void clearIncomingCalls();
     void showCallingPanel(const QString& friendNickname);
+    void showErrorNotification(const QString& text, int durationMs);
     void removeCallingPanel();
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
+
+    std::vector<std::pair<std::string, int>> getIncomingCalls() const;
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
@@ -142,6 +146,12 @@ private:
     // Settings section
     QPushButton* m_settingsButton;
     SettingsPanel* m_settingsPanel;
+
+
+    QWidget* m_notificationWidget;
+    QHBoxLayout* m_notificationLayout;
+    QLabel* m_notificationLabel;
+    QTimer* m_notificationTimer;
 
     // Animations
     QPropertyAnimation* m_settingsAnimation;

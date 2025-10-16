@@ -28,14 +28,15 @@ private:
 	void onUserDisconnected(const asio::ip::udp::endpoint& endpointFrom);
 
 	void handleAuthorizationPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+	void handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom, bool logoutAndStop = false);
 	void handleGetFriendInfoPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+
 	void handleStartCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-	void handleCallingEndPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleEndCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+	void handleStopCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallAcceptedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-	void handleDeclineAllCallsPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-	void handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom, bool logoutAndStop = false);
+
 
 	void handleVoicePacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
@@ -45,6 +46,8 @@ private:
 
 	void handleDeclineAllAssist(const nlohmann::json_abi_v3_11_3::json& nicknameHashesToDecline);
 	void handleEndCallAssist(const UserPtr& user);
+	void handleStopCallingAssist(const std::string& receiverNicknameHash, const nlohmann::json& jsonObject);
+	void redirectPacket(const nlohmann::json& jsonObject, PacketType type);
 
 private:
 	std::mutex m_endpointToUserMutex;

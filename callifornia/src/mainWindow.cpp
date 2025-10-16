@@ -227,7 +227,7 @@ void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
 void MainWindow::onEndCallButtonClicked() {
     bool requestSent = calls::endCall();
     if (!requestSent) {
-        // TODO
+        handleEndCallErrorNotificationAppearance();
     }
 }
 
@@ -250,14 +250,14 @@ void MainWindow::onMuteButtonClicked(bool mute) {
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
     bool requestSent = calls::acceptCall(friendNickname.toStdString());
     if (!requestSent) {
-        // TODO
+        handleAcceptCallErrorNotificationAppearance();
     }
 }
 
 void MainWindow::onDeclineCallButtonClicked(const QString& friendNickname) {
     bool requestSent = calls::declineCall(friendNickname.toStdString());
     if (!requestSent) {
-        // TODO
+        handleDeclineCallErrorNotificationAppearance();
     }
 }
 
@@ -265,7 +265,7 @@ void MainWindow::onStartCallingButtonClicked(const QString& friendNickname) {
     if (!friendNickname.isEmpty() && friendNickname.toStdString() != calls::getNickname()) {
         bool requestSent = calls::startCalling(friendNickname.toStdString());
         if (!requestSent) {
-            // TODO
+            handleStartCallingErrorNotificationAppearance();
         }
     }
     else {
@@ -281,7 +281,87 @@ void MainWindow::onStartCallingButtonClicked(const QString& friendNickname) {
 void MainWindow::onStopCallingButtonClicked() {
     bool requestSent = calls::stopCalling();
     if (!requestSent) {
-        // TODO
+        handleStopCallingErrorNotificationAppearance();
+    }
+}
+//---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
+
+void MainWindow::handleAcceptCallErrorNotificationAppearance() {
+    QString errorText = "Failed to accept call. Please try again";
+
+    if (m_stackedLayout->currentWidget() == m_mainMenuWidget) {
+        m_mainMenuWidget->showErrorNotification(errorText, 1500);
+    }
+    else if (m_stackedLayout->currentWidget() == m_callWidget) {
+        m_callWidget->showErrorNotification(errorText, 1500);
+    }
+    else {
+        DEBUG_LOG("Trying to accept call from weird widget");
+    }
+}
+
+void MainWindow::handleDeclineCallErrorNotificationAppearance() {
+    QString errorText = "Failed to decline call. Please try again";
+
+    if (m_stackedLayout->currentWidget() == m_mainMenuWidget) {
+        m_mainMenuWidget->showErrorNotification(errorText, 1500);
+    }
+    else if (m_stackedLayout->currentWidget() == m_callWidget) {
+        m_callWidget->showErrorNotification(errorText, 1500);
+    }
+    else {
+        DEBUG_LOG("Trying to decline call from weird widget");
+    }
+}
+
+void MainWindow::handleDeclineAllCallsErrorNotificationAppearance() {
+    QString errorText = "Joined the call, but was unable to automatically decline other invitations";
+
+    if (m_stackedLayout->currentWidget() == m_callWidget) {
+        m_callWidget->showErrorNotification(errorText, 1500);
+
+        auto incomingCalls = m_mainMenuWidget->getIncomingCalls();
+        for (auto& [nickname, remainingTime] : incomingCalls) {
+            m_callWidget->addIncomingCall(QString::fromStdString(nickname), remainingTime);
+        }
+    }
+    else {
+        DEBUG_LOG("Trying to decline all calls from weird widget");
+    }
+}
+
+void MainWindow::handleStartCallingErrorNotificationAppearance() {
+    QString errorText = "Failed to start calling. Please try again";
+
+    if (m_stackedLayout->currentWidget() == m_mainMenuWidget) {
+        m_mainMenuWidget->showErrorNotification(errorText, 1500);
+    }
+    else {
+        DEBUG_LOG("Trying to start calling from weird widget");
+    }
+}
+
+void MainWindow::handleStopCallingErrorNotificationAppearance() {
+    QString errorText = "Failed to stop calling. Please try again";
+
+    if (m_stackedLayout->currentWidget() == m_mainMenuWidget) {
+        m_mainMenuWidget->showErrorNotification(errorText, 1500);
+    }
+    else {
+        DEBUG_LOG("Trying to stop calling from weird widget");
+    }
+}
+
+void MainWindow::handleEndCallErrorNotificationAppearance() {
+    QString errorText = "Failed to end call. Please try again";
+
+    if (m_stackedLayout->currentWidget() == m_callWidget) {
+        m_callWidget->showErrorNotification(errorText, 1500);
+    }
+    else {
+        DEBUG_LOG("Trying to end call from weird widget");
     }
 }
 
@@ -325,7 +405,7 @@ void MainWindow::onCallingStoppedResult(bool success) {
         m_mainMenuWidget->setState(calls::State::FREE);
     }
     else {
-        // TODO
+        handleStopCallingErrorNotificationAppearance();
     }
 }
 
@@ -339,7 +419,7 @@ void MainWindow::onDeclineIncomingCallResult(bool success, QString nickname) {
         playSoundEffect(":/resources/callingEndedByMe.wav");
     }
     else {
-        // TODO
+        void handleDeclineCallErrorNotificationAppearance();
     }
 }
 
@@ -357,7 +437,7 @@ void MainWindow::onAcceptIncomingCallResult(bool success, QString nickname) {
         pauseRingtone();
     }
     else {
-        // TODO
+        handleAcceptCallErrorNotificationAppearance();
     }
 }
 
@@ -369,7 +449,7 @@ void MainWindow::onAllIncomingCallsDeclinedResult(bool success) {
             m_callWidget->clearIncomingCalls();
     }
     else {
-        // TODO
+        handleDeclineAllCallsErrorNotificationAppearance();
     }
 }
 
@@ -381,20 +461,21 @@ void MainWindow::onEndCallResult(bool success) {
         playSoundEffect(":/resources/callEnd.wav");
     }
     else {
-        // TODO
+        handleEndCallErrorNotificationAppearance();
     }
 }
 
 void MainWindow::onCallingAccepted() {
-    bool requestSent = calls::declineAllCalls();
-    if (requestSent) {
-        pauseRingtone();
-        m_mainMenuWidget->removeCallingPanel();
-        m_mainMenuWidget->setState(calls::State::BUSY);
-        switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
-    }
-    else {
-        // TODO
+    pauseRingtone();
+    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->setState(calls::State::BUSY);
+    switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
+
+    if (calls::getIncomingCallsCount() > 0) {
+        bool requestSent = calls::declineAllCalls();
+        if (!requestSent) {
+            handleDeclineAllCallsErrorNotificationAppearance();
+        }
     }
 }
 
@@ -405,25 +486,26 @@ void MainWindow::onCallingDeclined() {
 
 void MainWindow::onRemoteUserEndedCall() {
     switchToMainMenuWidget();
+
     m_mainMenuWidget->setState(calls::State::FREE);
     playSoundEffect(":/resources/callEnd.wav");
 }
 
-void MainWindow::onIncomingCall(const std::string& friendNickName) {
+void MainWindow::onIncomingCall(QString friendNickName) {
     playRingtone();
 
-    m_mainMenuWidget->addIncomingCall(QString::fromStdString(friendNickName));
+    m_mainMenuWidget->addIncomingCall(friendNickName);
 
     if (calls::getState() == calls::State::BUSY) {
-        m_callWidget->addIncomingCall(QString::fromStdString(friendNickName));
+        m_callWidget->addIncomingCall(friendNickName);
     }
 }
 
-void MainWindow::onIncomingCallEnded(const std::string& friendNickName) {
-    m_mainMenuWidget->removeIncomingCall(QString::fromStdString(friendNickName));
+void MainWindow::onIncomingCallEnded(QString friendNickName) {
+    m_mainMenuWidget->removeIncomingCall(friendNickName);
 
     if (calls::getState() == calls::State::BUSY) {
-        m_callWidget->removeIncomingCall(QString::fromStdString(friendNickName));
+        m_callWidget->removeIncomingCall(friendNickName);
     }
 
     if (calls::getIncomingCallsCount() == 0) {

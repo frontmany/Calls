@@ -27,9 +27,10 @@ struct StyleIncomingCallWidget {
 class IncomingCallWidget : public QWidget {
     Q_OBJECT
 public:
-    IncomingCallWidget(const QString& friendNickname, QWidget* parent = nullptr);
+    IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime = 32);
     ~IncomingCallWidget();
-    const QString& getFriendNickname();
+    const QString& getFriendNickname() const;
+    int getRemainingTime() const;
 
 signals:
     void callAccepted(const QString& friendNickname);

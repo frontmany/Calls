@@ -40,8 +40,8 @@ private slots:
     void onCallingAccepted();
     void onCallingDeclined();
     void onRemoteUserEndedCall();
-    void onIncomingCall(const std::string& friendNicname);
-    void onIncomingCallEnded(const std::string& friendNickname);
+    void onIncomingCall(QString friendNicname);
+    void onIncomingCallEnded(QString friendNickname);
     void onNetworkError();
     void onConnectionRestored();
 
@@ -62,6 +62,13 @@ private:
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
+
+    void handleAcceptCallErrorNotificationAppearance();
+    void handleDeclineCallErrorNotificationAppearance();
+    void handleDeclineAllCallsErrorNotificationAppearance();
+    void handleStartCallingErrorNotificationAppearance();
+    void handleStopCallingErrorNotificationAppearance();
+    void handleEndCallErrorNotificationAppearance();
 
     void setupUI();
     void loadFonts();

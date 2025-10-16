@@ -25,11 +25,12 @@ void AuthorizationWidget::setupUI() {
 
     // Create network error widget
     m_notificationWidget = new QWidget(this);
+    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     m_notificationWidget->hide();
 
     m_notificationLayout = new QHBoxLayout(m_notificationWidget);
-    m_notificationLayout->setContentsMargins(scale(8), scale(8), scale(8), scale(8)); // Увеличил отступы
-    m_notificationLayout->setSpacing(scale(15)); 
+    m_notificationLayout->setAlignment(Qt::AlignCenter);
+    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
 
     m_notificationLabel = new QLabel(m_notificationWidget);
     QFont errorFont("Outfit", scale(12), QFont::Medium);
@@ -322,7 +323,7 @@ QString StyleAuthorizationWidget::glassSubTitleLabelStyle() {
 
 QString StyleAuthorizationWidget::notificationRedLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(220, 80, 80, 100);" 
+        "   background-color: rgba(220, 80, 80, 65);" 
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"

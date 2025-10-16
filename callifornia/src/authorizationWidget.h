@@ -79,8 +79,8 @@ private:
     QWidget* m_notificationWidget;
     QHBoxLayout* m_notificationLayout;
     QLabel* m_notificationLabel;
-    QTimer* m_notificationTimer;
 
     QGraphicsBlurEffect* m_backgroundBlurEffect;
     QPropertyAnimation* m_blurAnimation;
+    QTimer* m_notificationTimer;
 };

@@ -161,6 +161,16 @@ QString StyleCallWidget::volumeSliderStyle() {
         .arg(QString::fromStdString(std::to_string(scale(4))));
 }
 
+QString StyleCallWidget::notificationRedLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(220, 80, 80, 100);"
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
 CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupShadowEffect();
@@ -175,6 +185,10 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_refreshCooldownTimer->setSingleShot(true);
     m_refreshEnabled = true;
     connect(m_refreshCooldownTimer, &QTimer::timeout, this, &CallWidget::onRefreshCooldownFinished);
+
+    m_notificationTimer = new QTimer(this);
+    m_notificationTimer->setSingleShot(true);
+    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
 }
 
 void CallWidget::setupUI() {
@@ -190,6 +204,24 @@ void CallWidget::setupUI() {
     m_containerLayout->setSpacing(scale(10));
     m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
     m_containerLayout->setAlignment(Qt::AlignCenter);
+
+    // Create network error widget
+    m_notificationWidget = new QWidget(this);
+    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_notificationWidget->hide();
+    m_notificationWidget->setStyleSheet(StyleCallWidget::notificationRedLabelStyle());
+
+
+    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
+    m_notificationLayout->setAlignment(Qt::AlignCenter);
+    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
+
+    m_notificationLabel = new QLabel(m_notificationWidget);
+    QFont errorFont("Outfit", scale(12), QFont::Medium);
+    m_notificationLabel->setFont(errorFont);
+    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+
+    m_notificationLayout->addWidget(m_notificationLabel);
 
     // Incoming calls container (initially hidden)
     m_incomingCallsContainer = new QWidget(m_mainContainer);
@@ -356,6 +388,8 @@ void CallWidget::setupUI() {
     m_containerLayout->addWidget(m_slidersPanel);
     m_containerLayout->addStretch();
 
+    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
+    m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
@@ -567,11 +601,17 @@ void CallWidget::clearIncomingCalls() {
     updateIncomingCallsVisibility();
 }
 
-void CallWidget::addIncomingCall(const QString& friendNickName) {
+void CallWidget::showErrorNotification(const QString& text, int durationMs) {
+    m_notificationLabel->setText(text);
+    m_notificationWidget->show();
+    m_notificationTimer->start(durationMs);
+}
+
+void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTime) {
     if (m_incomingCallWidgets.contains(friendNickName)) return;
 
     // Create new incoming call widget
-    IncomingCallWidget* callWidget = new IncomingCallWidget(friendNickName, m_incomingCallsScrollWidget);
+    IncomingCallWidget* callWidget = new IncomingCallWidget(m_incomingCallsScrollWidget, friendNickName, remainingTime);
     setupElementShadow(callWidget, 10, QColor(0, 0, 3, 50));
     m_incomingCallsScrollLayout->addWidget(callWidget);
     m_incomingCallWidgets[friendNickName] = callWidget;
