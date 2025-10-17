@@ -79,7 +79,7 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             break;
 
         case PacketType::CALL_ACCEPTED_OK:
-            redirectPacket(jsonObject, PacketType::CALL_ACCEPTED_OK);
+            handleCallAcceptedOkPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::CALL_DECLINED_OK:
@@ -136,19 +136,6 @@ void CallsServer::run() {
     }
 
     m_networkController.stop();
-}
-
-void CallsServer::handleDeclineAllAssist(const nlohmann::json_abi_v3_11_3::json& nicknameHashesToDecline) {
-    for (const auto& nicknameHash : nicknameHashesToDecline) {
-        std::string nicknameHashToDecline = nicknameHash.get<std::string>();
-        if (m_nicknameHashToUser.contains(nicknameHashToDecline)) {
-            auto& userToDecline = m_nicknameHashToUser.at(nicknameHashToDecline);
-
-            m_networkController.sendToClient(userToDecline->getEndpoint(),
-                PacketType::CALL_DECLINED
-            );
-        }
-    }
 }
 
 void CallsServer::handleEndCallAssist(const UserPtr& user) {
@@ -218,8 +205,8 @@ void CallsServer::checkPing() {
             DEBUG_LOG("user disconnected due to ping fail");
         }
     }
-    
-    
+
+
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
     for (const auto& endpoint : endpointsToLogout) {
         auto it = m_endpointToUser.find(endpoint);
@@ -283,6 +270,7 @@ void CallsServer::handleLogout(const nlohmann::json& jsonObject, const asio::ip:
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
 
         {
             std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
@@ -299,16 +287,17 @@ void CallsServer::handleLogout(const nlohmann::json& jsonObject, const asio::ip:
         }
 
         if (m_nicknameHashToUser.contains(senderNicknameHash)) {
-            m_nicknameHashToUser.erase(senderNicknameHash);  
+            m_nicknameHashToUser.erase(senderNicknameHash);
 
-            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),  PacketType::LOGOUT_OK);
+            if (needConfirmation) 
+                m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid), PacketType::LOGOUT_OK);
 
             DEBUG_LOG("User successfully logged out: " + senderNicknameHash);
         }
 
-        else 
+        else
             DEBUG_LOG("Logout request from unknown endpoint: " + endpointFrom.address().to_string());
-        
+
     }
     catch (const std::exception& e) {
         DEBUG_LOG("Error during logout: " + std::string(e.what()));
@@ -377,10 +366,12 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        bool needConfirmation = jsonObject[NICKNAME_HASH_RECEIVER].get<bool>();
 
         if (m_nicknameHashToUser.contains(senderNicknameHash)) {
             auto& userSender = m_endpointToUser.at(endpointFrom);
 
+            bool error = false;
             if (userSender->inCall()) {
                 const std::string& userInCallWithNicknameHash = userSender->inCallWith();
 
@@ -397,6 +388,12 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
                     userInCallWith->resetCall();
                 }
             }
+
+            if (error && needConfirmation) {
+                m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                    PacketType::END_CALL_OK
+                );
+            }
         }
     }
     catch (const std::exception& e) {
@@ -409,30 +406,17 @@ void CallsServer::handleCallAcceptedPacket(const nlohmann::json& jsonObject, con
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
         std::string nicknameHashToAccept = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
-        std::string nicknameHashToStopCalling = jsonObject[NICKNAME_HASH].get<std::string>();
-        const auto& nicknameHashesToDecline = jsonObject[ARRAY_NICKNAME_HASHES];
-
-        handleDeclineAllAssist(nicknameHashesToDecline);
-        handleStopCallingAssist(nicknameHashToStopCalling, jsonObject);
 
         if (m_nicknameHashToUser.contains(nicknameHashToAccept)) {
             auto& userToAccept = m_nicknameHashToUser.at(nicknameHashToAccept);
 
-            if (m_nicknameHashToUser.contains(senderNicknameHash)) {
-                auto& userSender = m_nicknameHashToUser.at(senderNicknameHash);
-
-                handleEndCallAssist(userSender);
-
-                std::shared_ptr<Call> call = std::make_shared<Call>(userToAccept->getNicknameHash(), userSender->getNicknameHash());
-                m_calls.emplace(call);
-
-                userToAccept->setCall(call, User::CallRole::INITIATOR);
-                userSender->setCall(call, User::CallRole::RESPONDER);
-            }
-            else return;
-
             m_networkController.sendToClient(userToAccept->getEndpoint(), jsonObject.dump(),
                 PacketType::CALL_ACCEPTED
+            );
+        }
+        else {
+            m_networkController.sendToClient(endpointFrom, jsonObject.dump(),
+                PacketType::CALL_ACCEPTED_FAIL
             );
         }
     }
@@ -447,7 +431,6 @@ void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, con
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
         std::string nicknameHashTo = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
 
- 
         if (m_nicknameHashToUser.contains(nicknameHashTo)) {
             auto& userTo = m_nicknameHashToUser.at(nicknameHashTo);
 
@@ -461,13 +444,54 @@ void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, con
     }
 }
 
+void CallsServer::handleCallAcceptedOkPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>(); 
+        std::string responderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        std::string initiatorNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+
+        if (m_nicknameHashToUser.contains(initiatorNicknameHash)) {
+            auto& initiatorUser = m_nicknameHashToUser.at(initiatorNicknameHash);
+
+            if (m_nicknameHashToUser.contains(responderNicknameHash)) {
+                auto& responderSender = m_nicknameHashToUser.at(responderNicknameHash);
+
+                std::shared_ptr<Call> call = std::make_shared<Call>(initiatorNicknameHash, responderNicknameHash);
+                m_calls.emplace(call);
+
+                initiatorUser->setCall(call, User::CallRole::INITIATOR);
+                responderSender->setCall(call, User::CallRole::RESPONDER);
+            }
+
+            redirectPacket(jsonObject, PacketType::CALL_ACCEPTED_OK);
+        }
+    }
+    catch (const std::exception& e) {
+        DEBUG_LOG("Error in callAcceptedOk packet: " + std::string(e.what()));
+    }
+}
+
 void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+        bool needConfirmation = jsonObject[NICKNAME_HASH_RECEIVER].get<bool>();
 
-        handleStopCallingAssist(receiverNicknameHash, jsonObject);
+        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+            auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+
+            m_networkController.sendToClient(userReceiver->getEndpoint(),
+                jsonObject.dump(),
+                PacketType::STOP_CALLING
+            );
+        }
+
+        else if (needConfirmation) {
+            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                PacketType::STOP_CALLING_OK
+            );
+        }
     }
     catch (const std::exception& e) {
         DEBUG_LOG("Error in create call packet: " + std::string(e.what()));

@@ -16,11 +16,12 @@ std::pair<std::string, std::string> PacketsFactory::getAuthorizationPacket(const
     return std::make_pair(uuid, jsonObject.dump());
 }
 
-std::pair<std::string, std::string> PacketsFactory::getLogoutPacket(const std::string& myNickname) {
+std::pair<std::string, std::string> PacketsFactory::getLogoutPacket(const std::string& myNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
+    jsonObject[NEED_CONFIRMATION] = needConfirmation;
     return std::make_pair(uuid, jsonObject.dump());
 }
 
@@ -90,13 +91,12 @@ std::pair<std::string, std::string> PacketsFactory::getAcceptCallPacket(const st
     return std::make_pair(uuid, jsonObject.dump());
 }
 
-std::pair<std::string, std::string> PacketsFactory::getEndCallPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
+std::pair<std::string, std::string> PacketsFactory::getEndCallPacket(const std::string& myNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
-    jsonObject[NICKNAME_HASH_RECEIVER] = crypto::calculateHash(friendNickname);
     jsonObject[NEED_CONFIRMATION] = needConfirmation;
 
     return std::make_pair(uuid, jsonObject.dump());

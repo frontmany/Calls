@@ -11,30 +11,27 @@ CallsClientHandler::CallsClientHandler(MainWindow* mainWindow)
 void CallsClientHandler::onAuthorizationResult(calls::ErrorCode ec)
 {
     if (m_mainWindow) {
-        bool success = (ec == calls::ErrorCode::OK);
         QMetaObject::invokeMethod(m_mainWindow, "onAuthorizationResult",
-            Qt::QueuedConnection, Q_ARG(bool, success));
+            Qt::QueuedConnection, Q_ARG(calls::ErrorCode, ec));
     }
 }
 
 void CallsClientHandler::onStartCallingResult(calls::ErrorCode ec)
 {
     if (m_mainWindow) {
-        bool success = (ec == calls::ErrorCode::OK);
         QMetaObject::invokeMethod(m_mainWindow, "onStartCallingResult",
-            Qt::QueuedConnection, Q_ARG(bool, success));
+            Qt::QueuedConnection, Q_ARG(calls::ErrorCode, ec));
     }
 }
 
 void CallsClientHandler::onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname)
 {
     if (m_mainWindow) {
-        bool success = (ec == calls::ErrorCode::OK);
         QString qNickname = QString::fromStdString(nickname);
-        QMetaObject::invokeMethod(m_mainWindow, "onAcceptIncomingCallResult",
+        QMetaObject::invokeMethod(m_mainWindow, "onAcceptCallResult",
             Qt::QueuedConnection,
-            Q_ARG(bool, success),
-            Q_ARG(QString, qNickname));
+            Q_ARG(calls::ErrorCode, ec),
+            Q_ARG(const QString&, qNickname));
     }
 }
 
@@ -67,7 +64,7 @@ void CallsClientHandler::onIncomingCall(const std::string& friendNickname)
     if (m_mainWindow) {
         QString qFriendNickname = QString::fromStdString(friendNickname);
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingCall",
-            Qt::QueuedConnection, Q_ARG(QString, qFriendNickname));
+            Qt::QueuedConnection, Q_ARG(const QString&, qFriendNickname));
     }
 }
 
@@ -75,8 +72,8 @@ void CallsClientHandler::onIncomingCallExpired(const std::string& friendNickname
 {
     if (m_mainWindow) {
         QString qNickname = QString::fromStdString(friendNickname);
-        QMetaObject::invokeMethod(m_mainWindow, "onIncomingCallEnded",
-            Qt::QueuedConnection, Q_ARG(QString, qNickname));
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingCallExpired",
+            Qt::QueuedConnection, Q_ARG(const QString&, qNickname));
     }
 }
 

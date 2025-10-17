@@ -34,6 +34,7 @@ bool CallsClient::init(
     m_handlers.emplace(PacketType::END_CALL_OK, [this](const nlohmann::json& json) { onEndCallOk(json); });
     m_handlers.emplace(PacketType::STOP_CALLING_OK, [this](const nlohmann::json& json) { onStopCallingOk(json); });
     m_handlers.emplace(PacketType::CALL_ACCEPTED_OK, [this](const nlohmann::json& json) { onCallAcceptedOk(json); });
+    m_handlers.emplace(PacketType::CALL_ACCEPTED_FAIL, [this](const nlohmann::json& json) { onCallAcceptedFail(json); });
     m_handlers.emplace(PacketType::CALL_DECLINED_OK, [this](const nlohmann::json& json) { onCallDeclinedOk(json); });
     m_handlers.emplace(PacketType::LOGOUT_OK, [this](const nlohmann::json& json) { onLogoutOk(json); });
     m_handlers.emplace(PacketType::CALL_ACCEPTED, [this](const nlohmann::json& json) { onCallAccepted(json); });
@@ -348,9 +349,10 @@ void CallsClient::stop() {
         sendDeclineCallPacket(incomingCallData.friendNickname, false);
     }
 
-    sendLogoutPacket(false);
-
-    std::this_thread::sleep_for(250ms);
+    if (m_state != State::UNAUTHORIZED) {
+        sendLogoutPacket(false);
+        std::this_thread::sleep_for(250ms);
+    }
 
     m_tasks.clear();
 
@@ -374,7 +376,11 @@ void CallsClient::stop() {
 
     m_myNickname.clear();
     m_nicknameWhomCalling.clear();
-    if (m_keysManager) m_keysManager->resetKeys();
+
+    if (!m_keysManager->isKeys()) 
+        m_keysManager->awaitKeysGeneration();
+        
+    m_keysManager->resetKeys();
 
     m_incomingCalls.clear();
     m_call = std::nullopt;
@@ -385,8 +391,27 @@ void CallsClient::stop() {
     m_state = State::UNAUTHORIZED;
 }
 
+void CallsClient::reset() {
+    std::lock_guard<std::mutex> lock(m_dataMutex);
+
+    if (!m_running) return;
+
+    m_myNickname.clear();
+    m_nicknameWhomCalling.clear();
+    if (m_keysManager) m_keysManager->resetKeys();
+
+    m_incomingCalls.clear();
+    m_call = std::nullopt;
+
+    std::queue<std::function<void()>> empty;
+    std::swap(m_callbacksQueue, empty);
+
+    m_state = State::UNAUTHORIZED;
+}
+
 bool CallsClient::logout() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
+
     if (m_state == State::UNAUTHORIZED) return false;
     
     m_tasks.clear();
@@ -402,7 +427,19 @@ bool CallsClient::logout() {
         sendDeclineCallPacket(incomingCallData.friendNickname, true);
     }
 
-    sendLogoutPacket(true);
+    sendLogoutPacket(true);    
+
+    m_myNickname.clear();
+    m_nicknameWhomCalling.clear();
+    if (m_keysManager) m_keysManager->resetKeys();
+
+    m_incomingCalls.clear();
+    m_call = std::nullopt;
+
+    std::queue<std::function<void()>> empty;
+    std::swap(m_callbacksQueue, empty);
+
+    m_state = State::UNAUTHORIZED;
 
     return true;
 }
@@ -413,6 +450,16 @@ bool CallsClient::authorize(const std::string& nickname) {
     if (m_state != State::UNAUTHORIZED) return false;
 
     m_myNickname = nickname;
+
+    if (!m_keysManager->isKeys()) {
+        if (m_keysManager->isGeneratingKeys()) {
+            m_keysManager->awaitKeysGeneration();
+        }
+        else {
+            m_keysManager->generateKeys();
+            m_keysManager->awaitKeysGeneration();
+        }
+    }
 
     sendAuthorizationPacket();
 
@@ -541,7 +588,7 @@ void CallsClient::onCallAcceptedOk(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
 
-    std::string nicknameHash = jsonObject[NICKNAME_HASH];
+    std::string nicknameHash = jsonObject[NICKNAME_HASH_RECEIVER];
 
     auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [&nicknameHash](const auto& pair) {
         return crypto::calculateHash(pair.second.friendNickname) == nicknameHash;
@@ -557,6 +604,24 @@ void CallsClient::onCallAcceptedOk(const nlohmann::json& jsonObject) {
     m_audioEngine->startStream();
     
     m_callbacksQueue.push([this]() {m_callbackHandler->onAcceptCallResult(ErrorCode::OK, m_call.value().getFriendNickname()); });
+}
+
+void CallsClient::onCallAcceptedFail(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+
+    std::string nicknameHash = jsonObject[NICKNAME_HASH_RECEIVER];
+
+    auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [&nicknameHash](const auto& pair) {
+        return crypto::calculateHash(pair.second.friendNickname) == nicknameHash;
+    });
+
+    if (it == m_incomingCalls.end()) return;
+
+    m_callbacksQueue.push([this, nickname = it->second.friendNickname]() {m_callbackHandler->onAcceptCallResult(ErrorCode::UNEXISTING_USER, nickname); });
+
+    m_call = std::nullopt;
+    m_incomingCalls.erase(it);
 }
 
 void CallsClient::onCallDeclinedOk(const nlohmann::json& jsonObject) {
@@ -666,7 +731,7 @@ void CallsClient::sendAuthorizationPacket() {
 }
 
 void CallsClient::sendLogoutPacket(bool createTask) {
-    auto [uuid, packet] = PacketsFactory::getLogoutPacket(m_myNickname);
+    auto [uuid, packet] = PacketsFactory::getLogoutPacket(m_myNickname, createTask);
     m_networkController->send(std::move(packet), PacketType::LOGOUT);
 
     if (createTask) {
@@ -838,7 +903,7 @@ void CallsClient::sendStopCallingPacket(bool createTask) {
 }
 
 void CallsClient::sendEndCallPacket(bool createTask) {
-    auto [uuid, packet] = PacketsFactory::getEndCallPacket(m_myNickname, m_call->getFriendNickname(), createTask);
+    auto [uuid, packet] = PacketsFactory::getEndCallPacket(m_myNickname, createTask);
     m_networkController->send(std::move(packet), PacketType::END_CALL);
 
     if (createTask) {
@@ -864,9 +929,9 @@ void CallsClient::sendEndCallPacket(bool createTask) {
 }
 
 void CallsClient::sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type) {
-    std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER];
     std::string uuid = jsonObject[UUID];
-
-    auto packet = PacketsFactory::getConfirmationPacket(m_myNickname, senderNicknameHash, uuid);
-    m_networkController->send(std::move(packet), type);
+    std::string nicknameHashTo = jsonObject[NICKNAME_HASH_SENDER];
+    
+    auto packet = PacketsFactory::getConfirmationPacket(m_myNickname, nicknameHashTo, uuid);
+    m_networkController->send(jsonObject.dump(), type);
 }

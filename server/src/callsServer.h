@@ -36,6 +36,7 @@ private:
 	void handleStopCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallAcceptedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+	void handleCallAcceptedOkPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 
 
 	void handleVoicePacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
@@ -44,7 +45,6 @@ private:
 	void broadcastPing();
 	void checkPing();
 
-	void handleDeclineAllAssist(const nlohmann::json_abi_v3_11_3::json& nicknameHashesToDecline);
 	void handleEndCallAssist(const UserPtr& user);
 	void handleStopCallingAssist(const std::string& receiverNicknameHash, const nlohmann::json& jsonObject);
 	void redirectPacket(const nlohmann::json& jsonObject, PacketType type);

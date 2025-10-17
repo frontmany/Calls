@@ -54,6 +54,7 @@ public:
 
     // flow functions
     bool logout();
+    void reset();
     bool authorize(const std::string& nickname);
     bool startCalling(const std::string& friendNickname);
     bool stopCalling();
@@ -76,6 +77,7 @@ private:
     void onEndCallOk(const nlohmann::json& jsonObject);
     void onStopCallingOk(const nlohmann::json& jsonObject);
     void onCallAcceptedOk(const nlohmann::json& jsonObject);
+    void onCallAcceptedFail(const nlohmann::json& jsonObject);
     void onCallDeclinedOk(const nlohmann::json& jsonObject);
 
     // on received packets

@@ -27,21 +27,16 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private slots:
-    void onAuthorizationResult(bool success);
-    void onLogoutResult(bool success);
-    void onShutdownResult(bool success);
-    void onStartCallingResult(bool success);
-    void onCallingStoppedResult(bool success);
-    void onDeclineIncomingCallResult(bool success, QString nickname);
-    void onAcceptIncomingCallResult(bool success, QString nickname);
-    void onAllIncomingCallsDeclinedResult(bool success);
-    void onEndCallResult(bool success);
+    void onAuthorizationResult(calls::ErrorCode ec);
+    void onStartCallingResult(calls::ErrorCode ec);
+    void onAcceptCallResult(calls::ErrorCode ec, const QString& nickname);
 
+    void onMaximumCallingTimeReached();
     void onCallingAccepted();
     void onCallingDeclined();
     void onRemoteUserEndedCall();
-    void onIncomingCall(QString friendNicname);
-    void onIncomingCallEnded(QString friendNickname);
+    void onIncomingCall(const QString& friendNicname);
+    void onIncomingCallExpired(const QString& friendNickname);
     void onNetworkError();
     void onConnectionRestored();
 

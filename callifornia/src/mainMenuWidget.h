@@ -87,7 +87,7 @@ public:
     void setMuted(bool muted);
 
 signals:
-    void createCallButtonClicked(const QString& friendNickname);
+    void startCallingButtonClicked(const QString& friendNickname);
     void declineCallButtonClicked(const QString& friendNickname);
     void acceptCallButtonClicked(const QString& friendNickname);
     void stopCallingButtonClicked();

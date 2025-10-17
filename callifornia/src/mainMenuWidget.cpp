@@ -742,7 +742,7 @@ void MainMenuWidget::hideIncomingCallsArea() {
 
 void MainMenuWidget::onCallButtonClicked() {
     QString friendNickname = m_friendNicknameEdit->text().trimmed();
-    emit createCallButtonClicked(friendNickname);
+    emit startCallingButtonClicked(friendNickname);
 }
 
 void MainMenuWidget::setErrorMessage(const QString& errorText) {
