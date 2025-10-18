@@ -7,13 +7,11 @@
 
 NetworkController::NetworkController(const std::string& port,
     std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> onReceiveCallback,
-    std::function<void()> onNetworkErrorCallback,
-    std::function<void(asio::ip::udp::endpoint)> onUserDisconnectedCallback)
+    std::function<void()> onNetworkErrorCallback)
     : m_socket(m_context),
     m_workGuard(asio::make_work_guard(m_context)),
     m_onReceiveCallback(onReceiveCallback),
-    m_onNetworkErrorCallback(onNetworkErrorCallback),
-    m_onUserDisconnectedCallback(onUserDisconnectedCallback)
+    m_onNetworkErrorCallback(onNetworkErrorCallback)
 {
     asio::ip::udp::resolver resolver(m_context);
     asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), "0.0.0.0", port);
@@ -170,7 +168,6 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
     if (error) {
         if (error != asio::error::operation_aborted) {
             if (error == asio::error::connection_refused) {
-                m_onUserDisconnectedCallback(m_receivedFromEndpoint);
                 startReceive();
                 return;
             }

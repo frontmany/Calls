@@ -7,8 +7,7 @@
 CallsServer::CallsServer()
     :m_networkController("8081",
         [this](const unsigned char* data, int size, PacketType type, const asio::ip::udp::endpoint& endpointFrom) { onReceive(data, size, type, endpointFrom); },
-        [this]() {onNetworkError(); },
-        [this](asio::ip::udp::endpoint endpoint) {onUserDisconnected(endpoint); })
+        [this]() {onNetworkError(); })
 {
 }
 
@@ -366,7 +365,7 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
-        bool needConfirmation = jsonObject[NICKNAME_HASH_RECEIVER].get<bool>();
+        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
 
         if (m_nicknameHashToUser.contains(senderNicknameHash)) {
             auto& userSender = m_endpointToUser.at(endpointFrom);
@@ -427,14 +426,13 @@ void CallsServer::handleCallAcceptedPacket(const nlohmann::json& jsonObject, con
 
 void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     try {
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
         std::string nicknameHashTo = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
 
         if (m_nicknameHashToUser.contains(nicknameHashTo)) {
             auto& userTo = m_nicknameHashToUser.at(nicknameHashTo);
 
             m_networkController.sendToClient(userTo->getEndpoint(),
+                jsonObject.dump(),
                 PacketType::CALL_DECLINED
             );
         }
@@ -475,8 +473,7 @@ void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, cons
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
-        std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
-        bool needConfirmation = jsonObject[NICKNAME_HASH_RECEIVER].get<bool>();
+        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
 
         if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
             auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
@@ -516,34 +513,4 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
 
 void CallsServer::onNetworkError() {
     m_running = false;
-}
-
-void CallsServer::onUserDisconnected(const asio::ip::udp::endpoint& endpoint) {
-    std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
-    if (m_endpointToUser.contains(endpoint)) {
-        auto user = m_endpointToUser.at(endpoint);
-
-        if (user->inCall()) {
-            auto call = user->getCall();
-            const std::string& nicknameHashInCallWith = user->inCallWith();
-
-            if (m_nicknameHashToUser.contains(nicknameHashInCallWith)) {
-                auto userInCallWith = m_nicknameHashToUser.at(nicknameHashInCallWith);
-                m_networkController.sendToClient(userInCallWith->getEndpoint(),
-                    PacketType::END_CALL
-                );
-            }
-
-            m_calls.erase(call);
-        }
-
-        std::string nicknameHash = user->getNicknameHash();
-        m_endpointToUser.erase(endpoint);
-        m_nicknameHashToUser.erase(nicknameHash);
-
-        std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
-        m_pingResults.erase(endpoint);
-
-        DEBUG_LOG("erased force disconnected client");
-    }
 }

@@ -14,13 +14,12 @@ enum class PacketType : uint32_t {
 	STOP_CALLING,
 	CALL_ACCEPTED,
 	CALL_DECLINED,
+	END_CALL_OK,
 	STOP_CALLING_OK,
 	CALL_ACCEPTED_OK,
 	CALL_DECLINED_OK,
 	START_CALLING_OK,
 
-	//redirect or send
-	END_CALL_OK,
 
 
 
@@ -32,6 +31,7 @@ enum class PacketType : uint32_t {
 	CALL_ACCEPTED_FAIL,
 	START_CALLING_FAIL,
 	LOGOUT_OK,
+
 
 	// special packets
 	VOICE,

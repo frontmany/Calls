@@ -17,18 +17,21 @@ public:
     SettingsPanel(QWidget* parent = nullptr);
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
-    void setMuted(bool muted);
+    void setMicrophoneMuted(bool muted);
+    void setSpeakerMuted(bool muted);
 
 private slots:
-    void onMicVolumeChanged(int volume);
-    void onSpeakerVolumeChanged(int volume);
+    void onMicVolumeChanged();
+    void onSpeakerVolumeChanged();
     void onMicMuteClicked();
+    void onSpeakerMuteClicked();
 
 signals:
     void refreshAudioDevicesButtonClicked();
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
-    void muteButtonClicked(bool mute);
+    void muteMicrophoneClicked(bool mute);
+    void muteSpeakerClicked(bool mute);
 
 private:
     void setupUI();
@@ -39,8 +42,10 @@ private:
     QPushButton* m_refreshButton;
     QTimer* m_refreshCooldownTimer = nullptr;
     ButtonIcon* m_micMuteButton = nullptr;
-    ToggleButtonIcon* m_muteButton = nullptr;
+    ToggleButtonIcon* m_muteMicrophoneButton = nullptr;
+    ToggleButtonIcon* m_muteSpeakerButton = nullptr;
     bool m_isMicMuted = false;
+    bool m_isSpeakerMuted = false;
     bool m_refreshEnabled = false;
 
     struct StyleSettingsPanel {

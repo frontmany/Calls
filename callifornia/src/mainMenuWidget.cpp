@@ -11,6 +11,7 @@
 
 // Style definitions
 const QColor StyleMainMenuWidget::m_primaryColor = QColor(21, 119, 232);
+const QColor StyleMainMenuWidget::m_selectionColor = QColor(79, 161, 255);
 const QColor StyleMainMenuWidget::m_hoverColor = QColor(18, 113, 222);
 const QColor StyleMainMenuWidget::m_backgroundColor = QColor(230, 230, 230);
 const QColor StyleMainMenuWidget::m_textColor = QColor(1, 11, 19);
@@ -66,6 +67,10 @@ QString StyleMainMenuWidget::buttonStyle() {
         "   padding: 12px 24px;"
         "   margin: 0px;"
         "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
         "QPushButton:hover {"
         "   background-color: %2;"
         "}").arg(m_primaryColor.name()).arg(m_hoverColor.name());
@@ -106,6 +111,14 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
         "QPushButton:hover {"
         "   background-color: rgba(%5, %6, %7, %8);"
         "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(%5, %6, %7, %8);"
+        "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "   background-color: rgba(%5, %6, %7, %8);"
+        "}"
         "QPushButton::menu-indicator {"
         "   image: none;"
         "   width: 0px;"
@@ -133,8 +146,9 @@ QString StyleMainMenuWidget::lineEditStyle() {
         "   color: rgba(%13, %14, %15, %16);"
         "}").arg(m_lineEditBackgroundColor.red()).arg(m_lineEditBackgroundColor.green())
         .arg(m_lineEditBackgroundColor.blue()).arg(m_lineEditBackgroundColor.alpha())
-        .arg(m_textColor.name()).arg(m_textColor.name()).arg(m_textColor.name())
-        .arg(m_textColor.name())
+        .arg(m_textColor.name()).arg(m_textColor.name())
+        .arg(m_selectionColor.name())  
+        .arg(m_textColor.name()) 
         .arg(m_lineEditFocusBackgroundColor.red()).arg(m_lineEditFocusBackgroundColor.green())
         .arg(m_lineEditFocusBackgroundColor.blue()).arg(m_lineEditFocusBackgroundColor.alpha())
         .arg(m_placeholderColor.red()).arg(m_placeholderColor.green())
@@ -507,7 +521,8 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::refreshAudioDevicesButtonClicked, [this]() {emit refreshAudioDevicesButtonClicked(); });
     connect(m_settingsPanel, &SettingsPanel::inputVolumeChanged, [this](int newVolume) {emit inputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
-    connect(m_settingsPanel, &SettingsPanel::muteButtonClicked, [this](bool mute) {emit muteButtonClicked(mute); });
+    connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
+    connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
 }
 
 void MainMenuWidget::setupAnimations() {
@@ -780,8 +795,12 @@ void MainMenuWidget::setOutputVolume(int volume) {
     m_settingsPanel->setOutputVolume(volume);
 }
 
-void MainMenuWidget::setMuted(bool muted) {
-    m_settingsPanel->setMuted(muted);
+void MainMenuWidget::setMicrophoneMuted(bool muted) {
+    m_settingsPanel->setMicrophoneMuted(muted);
+}
+
+void MainMenuWidget::setSpeakerMuted(bool muted) {
+    m_settingsPanel->setSpeakerMuted(muted);
 }
 
 void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {

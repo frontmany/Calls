@@ -49,7 +49,8 @@ private slots:
     void onRefreshAudioDevicesButtonClicked();
     void onInputVolumeChanged(int newVolume);
     void onOutputVolumeChanged(int newVolume);
-    void onMuteButtonClicked(bool mute);
+    void onMuteMicrophoneButtonClicked(bool mute);
+    void onMuteSpeakerButtonClicked(bool mute);
     void onBlurAnimationFinished();
 
 private:
@@ -67,13 +68,15 @@ private:
 
     void setupUI();
     void loadFonts();
-    void playRingtone();
-    void pauseRingtone();
+    void playIncomingCallRingtone();
+    void stopIncomingCallRingtone();
+    void playCallingRingtone();
+    void stopCallingRingtone();
     void playSoundEffect(const QString& soundPath);
 
 private:
-    QMediaPlayer* m_ringtonePlayer;
-    QAudioOutput* m_audioOutput;
+    QMediaPlayer* m_incomingCallRingtonePlayer;
+    QMediaPlayer* m_callingRingtonePlayer;
 
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;

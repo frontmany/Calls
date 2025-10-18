@@ -171,12 +171,20 @@ void AudioEngine::setInputVolume(int volume) {
     m_inputVolume = static_cast<float>(volume) / 100.0f;
 }
 
-void AudioEngine::mute(bool isMute) {
-    m_muted = isMute;
+void AudioEngine::muteMicrophone(bool isMute) {
+    m_microphoneMuted = isMute;
 }
 
-bool AudioEngine::isMuted() {
-    return m_muted;
+void AudioEngine::muteSpeaker(bool isMute) {
+    m_speakerMuted = isMute;
+}
+
+bool AudioEngine::isMicrophoneMuted() {
+    return  m_microphoneMuted;
+}
+
+bool AudioEngine::isSpeakerMuted() {
+    return m_speakerMuted;
 }
 
 void AudioEngine::setOutputVolume(int volume) {
@@ -328,12 +336,12 @@ int AudioEngine::paInputAudioCallback(const void* input, void* output, unsigned 
         return paContinue;
     }
 
-    if (input && !engine->m_muted) {
+    if (input && !engine->m_microphoneMuted) {
         const float* in = static_cast<const float*>(input);
         engine->processInputAudio(in, frameCount);
     }
 
-    if (output) {
+    if (output && !engine->m_speakerMuted) {
         float* out = static_cast<float*>(output);
         engine->processOutputAudio(out, frameCount);
     }

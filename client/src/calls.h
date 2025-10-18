@@ -71,14 +71,24 @@ namespace calls {
         CallsClient::get().refreshAudioDevices();
     }
 
-    inline void mute(bool isMute)
+    inline void muteMicrophone(bool isMute)
     {
-        CallsClient::get().mute(isMute);
+        CallsClient::get().muteMicrophone(isMute);
     }
 
-    inline bool isMuted()
+    inline void muteSpeaker(bool isMute)
     {
-        return CallsClient::get().isMuted();
+        CallsClient::get().muteSpeaker(isMute);
+    }
+
+    inline bool isMicrophoneMuted()
+    {
+        return CallsClient::get().isMicrophoneMuted();
+    }
+
+    inline bool isSpeakerMuted()
+    {
+        return CallsClient::get().isMicrophoneMuted();
     }
 
     inline void setInputVolume(int volume)

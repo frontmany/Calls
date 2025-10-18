@@ -25,7 +25,6 @@ public:
 private:
 	void onReceive(const unsigned char* data, int size, PacketType type, const asio::ip::udp::endpoint& endpointFrom);
 	void onNetworkError();
-	void onUserDisconnected(const asio::ip::udp::endpoint& endpointFrom);
 
 	void handleAuthorizationPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom, bool logoutAndStop = false);

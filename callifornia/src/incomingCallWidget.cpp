@@ -10,8 +10,8 @@ const QColor StyleIncomingCallWidget::m_backgroundColor = QColor(235, 235, 235, 
 const QColor StyleIncomingCallWidget::m_borderColor = QColor(200, 200, 200, 100);
 const QColor StyleIncomingCallWidget::m_nicknameTextColor = QColor(1, 11, 19);
 const QColor StyleIncomingCallWidget::m_callTypeTextColor = QColor(102, 102, 102);
-const QColor StyleIncomingCallWidget::m_timerTextColor = QColor(224, 168, 0);
-const QColor StyleIncomingCallWidget::m_timerCircleColor = QColor(224, 168, 0);
+const QColor StyleIncomingCallWidget::m_timerTextColor = QColor(115, 115, 115);
+const QColor StyleIncomingCallWidget::m_timerCircleColor = QColor(115, 115, 115);
 
 QString StyleIncomingCallWidget::widgetStyle() {
     return QString("IncomingCallWidget {"

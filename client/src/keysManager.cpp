@@ -17,6 +17,7 @@ namespace calls {
         m_future = std::async(std::launch::async, [this]() {
             crypto::generateRSAKeyPair(m_privateKey, m_publicKey);
             m_generating.store(false);
+            m_keysReady.store(true);
         });
 
         m_generating.store(true);

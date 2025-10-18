@@ -36,8 +36,10 @@ public:
     bool stopStream();
     void playAudio(const unsigned char* data, int length);
     std::string getLastError() const;
-    void mute(bool isMute);
-    bool isMuted();
+    void muteMicrophone(bool isMute);
+    void muteSpeaker(bool isMute);
+    bool isSpeakerMuted();
+    bool isMicrophoneMuted();
     void setInputVolume(int volume);  
     void setOutputVolume(int volume);
     int getInputVolume() const;
@@ -56,7 +58,8 @@ private:
     PaStream* m_stream = nullptr;
     std::atomic<bool> m_isInitialized = false;
     std::atomic<bool> m_isStream = false;
-    std::atomic<bool> m_muted = false;
+    std::atomic<bool> m_microphoneMuted = false;
+    std::atomic<bool> m_speakerMuted = false;
 
     PaError m_lastError = paNoError;
     std::unique_ptr<Encoder> m_encoder;

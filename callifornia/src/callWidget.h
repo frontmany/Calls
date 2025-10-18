@@ -29,6 +29,7 @@ struct StyleCallWidget {
     static const QColor m_sliderSubPageColor;
     static const QColor m_volumeLabelColor;
     static const QColor m_scrollAreaBackgroundColor;
+    static const QColor m_sliderContainerColor;
 
     static QString containerStyle();
     static QString titleStyle();
@@ -42,6 +43,7 @@ struct StyleCallWidget {
     static QString scrollAreaStyle();
     static QString volumeSliderStyle();
     static QString notificationRedLabelStyle();
+    static QString sliderContainerStyle();
 };
 
 class CallWidget : public QWidget {
@@ -53,9 +55,11 @@ public:
 
     void setCallInfo(const QString& friendNickname);
     void updateTimer();
-    void setInputVolume(int volume);
-    void setOutputVolume(int volume);
-    void setMuted(bool muted);
+    void setInputVolume(int newVolume);
+    void setOutputVolume(int newVolume);
+    void setMicrophoneMuted(bool muted);
+    void setSpeakerMuted(bool muted);
+    void setAudioMuted(bool muted);
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
@@ -63,10 +67,10 @@ public:
 
 signals:
     void hangupClicked();
-    void refreshAudioDevicesButtonClicked();
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
-    void muteButtonClicked(bool mute);
+    void muteMicrophoneClicked(bool mute);
+    void muteSpeakerClicked(bool mute);
     void acceptCallButtonClicked(const QString& callerName);
     void declineCallButtonClicked(const QString& callerName);
 
@@ -74,22 +78,20 @@ protected:
     void paintEvent(QPaintEvent* event) override;
 
 private slots:
-    void onMuteClicked();
+    void onMuteMicrophoneClicked();
+    void onMuteAudioClicked();
+    void onSpeakerClicked();
     void onHangupClicked();
-    void onRefreshAudioDevicesClicked();
-    void onInputVolumeChanged(int volume);
-    void onOutputVolumeChanged(int volume);
+    void onInputVolumeChanged();
+    void onOutputVolumeChanged();
     void updateCallTimer();
-    void showMicSlider();
-    void showSpeakerSlider();
-    void onRefreshCooldownFinished();
     void onIncomingCallAccepted(const QString& callerName);
     void onIncomingCallDeclined(const QString& callerName);
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
 
 private:
     void setupUI();
-    void hideSliders();
+    void updateSlidersVisibility();
     void setupShadowEffect();
     void updateIncomingCallsVisibility();
     QColor generateRandomColor(const QString& seed);
@@ -113,10 +115,10 @@ private:
     // Control panels
     QWidget* m_buttonsPanel;
     QHBoxLayout* m_buttonsLayout;
-    QWidget* m_slidersPanel;
-    QHBoxLayout* m_slidersLayout;
+    QWidget* m_slidersContainer;
+    QVBoxLayout* m_slidersLayout;
 
-    // Volume sliders (initially hidden)
+    // Volume sliders
     QWidget* m_micSliderWidget;
     QVBoxLayout* m_micSliderLayout;
     QHBoxLayout* m_micLabelSliderLayout;
@@ -130,11 +132,10 @@ private:
     QSlider* m_speakerVolumeSlider;
 
     // Buttons
-    ButtonIcon* m_micButton;
-    ToggleButtonIcon* m_muteButton;
-    ButtonIcon* m_speakerButton;
+    ToggleButtonIcon* m_muteAudioButton;
+    ToggleButtonIcon* m_muteMicrophoneButton;
+    ToggleButtonIcon* m_speakerButton;
     QPushButton* m_hangupButton;
-    ButtonIcon* m_refreshButton;
 
     // Timer
     QTimer* m_callTimer;
@@ -146,14 +147,10 @@ private:
     QLabel* m_notificationLabel;
     QTimer* m_notificationTimer;
 
-    // refresh button cooldown 
-    QTimer* m_refreshCooldownTimer;
-    bool m_refreshEnabled;
-
     // States
-    bool m_muted = false;
-    bool m_showingMicSlider = false;
-    bool m_showingSpeakerSlider = false;
+    bool m_microphoneMuted = false;
+    bool m_audioMuted = false;
+    bool m_slidersVisible = false;
 
     // Incoming calls management
     QMap<QString, IncomingCallWidget*> m_incomingCallWidgets;

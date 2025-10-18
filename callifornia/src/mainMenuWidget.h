@@ -20,6 +20,7 @@
 
 struct StyleMainMenuWidget {
     static const QColor m_primaryColor;
+    static const QColor m_selectionColor;
     static const QColor m_hoverColor;
     static const QColor m_backgroundColor;
     static const QColor m_textColor;
@@ -84,7 +85,8 @@ public:
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
-    void setMuted(bool muted);
+    void setMicrophoneMuted(bool muted);
+    void setSpeakerMuted(bool muted);
 
 signals:
     void startCallingButtonClicked(const QString& friendNickname);
@@ -94,7 +96,8 @@ signals:
     void refreshAudioDevicesButtonClicked();
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
-    void muteButtonClicked(bool mute);
+    void muteMicrophoneClicked(bool mute);
+    void muteSpeakerClicked(bool mute);
 
 private slots:
     void onCallButtonClicked();

@@ -22,6 +22,7 @@ const QColor StyleCallWidget::m_sliderHandleColor = QColor(255, 255, 255);
 const QColor StyleCallWidget::m_sliderSubPageColor = QColor(21, 119, 232);
 const QColor StyleCallWidget::m_volumeLabelColor = QColor(51, 51, 51);
 const QColor StyleCallWidget::m_scrollAreaBackgroundColor = QColor(0, 0, 0, 0);
+const QColor StyleCallWidget::m_sliderContainerColor = QColor(255, 255, 255, 120);
 
 QString StyleCallWidget::containerStyle() {
     return QString("QWidget {"
@@ -29,6 +30,21 @@ QString StyleCallWidget::containerStyle() {
         "   border-radius: 20px;"
         "   padding: 0px;"
         "}");
+}
+
+QString StyleCallWidget::sliderContainerStyle() {
+    return QString("#slidersContainer {"
+        "   background-color: rgba(%1, %2, %3, %4);"
+        "   border-radius: %5px;"
+        "   padding: %6px;"
+        "   margin: %7px;"
+        "}").arg(m_sliderContainerColor.red())
+        .arg(m_sliderContainerColor.green())
+        .arg(m_sliderContainerColor.blue())
+        .arg(m_sliderContainerColor.alpha())
+        .arg(QString::fromStdString(std::to_string(scale(15))))
+        .arg(QString::fromStdString(std::to_string(scale(20))))
+        .arg(QString::fromStdString(std::to_string(scale(10))));
 }
 
 QString StyleCallWidget::longTimerStyle() {
@@ -69,9 +85,9 @@ QString StyleCallWidget::controlButtonStyle() {
         .arg(m_controlButtonColor.blue()).arg(m_controlButtonColor.alpha())
         .arg(m_controlButtonHoverColor.red()).arg(m_controlButtonHoverColor.green())
         .arg(m_controlButtonHoverColor.blue()).arg(m_controlButtonHoverColor.alpha())
-        .arg(QString::fromStdString(std::to_string(scale(25)))) 
-        .arg(QString::fromStdString(std::to_string(scale(15))))  
-        .arg(QString::fromStdString(std::to_string(scale(5)))); 
+        .arg(QString::fromStdString(std::to_string(scale(25))))
+        .arg(QString::fromStdString(std::to_string(scale(15))))
+        .arg(QString::fromStdString(std::to_string(scale(5))));
 }
 
 QString StyleCallWidget::hangupButtonStyle() {
@@ -129,10 +145,10 @@ QString StyleCallWidget::scrollAreaStyle() {
         "}"
     );
 }
+
 QString StyleCallWidget::volumeSliderStyle() {
     return QString(R"(
         QSlider::groove:horizontal {
-            background-color: rgb(77, 77, 77); 
             height: %1px; 
             border-radius: %2px;
             margin: 0px 0px; 
@@ -180,12 +196,6 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_callDuration = new QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &CallWidget::updateCallTimer);
 
-    // Initialize refresh cooldown timer
-    m_refreshCooldownTimer = new QTimer(this);
-    m_refreshCooldownTimer->setSingleShot(true);
-    m_refreshEnabled = true;
-    connect(m_refreshCooldownTimer, &QTimer::timeout, this, &CallWidget::onRefreshCooldownFinished);
-
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
     connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
@@ -210,7 +220,6 @@ void CallWidget::setupUI() {
     m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     m_notificationWidget->hide();
     m_notificationWidget->setStyleSheet(StyleCallWidget::notificationRedLabelStyle());
-
 
     m_notificationLayout = new QHBoxLayout(m_notificationWidget);
     m_notificationLayout->setAlignment(Qt::AlignCenter);
@@ -277,22 +286,35 @@ void CallWidget::setupUI() {
     m_buttonsLayout->setContentsMargins(scale(20), scale(10), scale(20), scale(10));
     m_buttonsLayout->setAlignment(Qt::AlignCenter);
 
-    // Mic button
-    m_micButton = new ButtonIcon(m_buttonsPanel, QIcon(":/resources/microphone.png"), QIcon(":/resources/microphoneHover.png"), 50, 50);
-    m_micButton->setSize(scale(35), scale(35));
+    // Mute audio button
+    m_muteAudioButton = new ToggleButtonIcon(m_buttonsPanel,
+        QIcon(":/resources/speakerMuted.png"),
+        QIcon(":/resources/speakerMutedHover.png"),
+        QIcon(":/resources/speakerMutedActive.png"),
+        QIcon(":/resources/speakerMutedActiveHover.png"),
+        scale(40), scale(40));
+    m_muteAudioButton->setSize(scale(35), scale(35));
+    m_muteAudioButton->setToolTip("Mute audio");
 
-    // Speaker button
-    m_speakerButton = new ButtonIcon(m_buttonsPanel, QIcon(":/resources/speaker.png"), QIcon(":/resources/speakerHover.png"), 50, 50);
+    // Mute microphone button
+    m_muteMicrophoneButton = new ToggleButtonIcon(m_buttonsPanel,
+        QIcon(":/resources/mute-microphone.png"),
+        QIcon(":/resources/mute-microphoneHover.png"),
+        QIcon(":/resources/mute-enabled-microphone.png"),
+        QIcon(":/resources/mute-enabled-microphoneHover.png"),
+        scale(40), scale(40));
+    m_muteMicrophoneButton->setSize(scale(35), scale(35));
+    m_muteMicrophoneButton->setToolTip("Mute microphone");
+
+    // Speaker button (toggles sliders visibility)
+    m_speakerButton = new ToggleButtonIcon(m_buttonsPanel,
+        QIcon(":/resources/speaker.png"),
+        QIcon(":/resources/speakerHover.png"),
+        QIcon(":/resources/speakerActive.png"),
+        QIcon(":/resources/speakerActiveHover.png"),
+        scale(40), scale(40));
     m_speakerButton->setSize(scale(35), scale(35));
-
-    // Refresh button
-    m_refreshButton = new ButtonIcon(m_buttonsPanel, QIcon(":/resources/reload.png"), QIcon(":/resources/reloadHover.png"), 40, 40);
-    m_refreshButton->setSize(scale(52), scale(34));
-    m_refreshButton->setToolTip("Refresh audio devices if changed");
-
-    // Mute button
-    m_muteButton = new ToggleButtonIcon(m_buttonsPanel, QIcon(":/resources/mute-microphone.png"), QIcon(":/resources/mute-microphoneHover.png"), QIcon(":/resources/mute-enabled-microphone.png"), QIcon(":/resources/mute-enabled-microphoneHover.png"), scale(40), scale(40));
-    m_muteButton->setSize(scale(35), scale(35));
+    m_speakerButton->setToolTip("Show volume controls");
 
     // Hangup button
     m_hangupButton = new QPushButton(m_buttonsPanel);
@@ -301,28 +323,30 @@ void CallWidget::setupUI() {
     m_hangupButton->setCursor(Qt::PointingHandCursor);
     m_hangupButton->setIcon(QIcon(":/resources/decline.png"));
     m_hangupButton->setIconSize(QSize(scale(30), scale(30)));
+    m_hangupButton->setToolTip("Hang up");
 
     // Add buttons to layout
-    m_buttonsLayout->addWidget(m_refreshButton);
-    m_buttonsLayout->addWidget(m_muteButton);
-    m_buttonsLayout->addWidget(m_micButton);
+    m_buttonsLayout->addWidget(m_muteAudioButton);
+    m_buttonsLayout->addWidget(m_muteMicrophoneButton);
     m_buttonsLayout->addWidget(m_speakerButton);
     m_buttonsLayout->addWidget(m_hangupButton);
 
-    // Sliders panel (initially hidden)
-    m_slidersPanel = new QWidget(m_mainContainer);
-    m_slidersPanel->setStyleSheet(StyleCallWidget::panelStyle());
-    m_slidersPanel->hide();
+    // Sliders container (initially hidden)
+    m_slidersContainer = new QWidget(m_mainContainer);
+    m_slidersContainer->setObjectName("slidersContainer");
+    m_slidersContainer->setStyleSheet(StyleCallWidget::sliderContainerStyle());
+    m_slidersContainer->hide();
 
-    m_slidersLayout = new QHBoxLayout(m_slidersPanel);
-    m_slidersLayout->setSpacing(scale(30));
-    m_slidersLayout->setContentsMargins(scale(20), scale(10), scale(20), scale(10));
+    m_slidersLayout = new QVBoxLayout(m_slidersContainer);
+    m_slidersLayout->setSpacing(scale(20));
+    m_slidersLayout->setContentsMargins(scale(20), scale(20), scale(20), scale(20));
     m_slidersLayout->setAlignment(Qt::AlignCenter);
 
     // Mic volume slider
-    m_micSliderWidget = new QWidget(m_slidersPanel);
+    m_micSliderWidget = new QWidget(m_slidersContainer);
+    m_micSliderWidget->setAttribute(Qt::WA_TranslucentBackground);
     m_micSliderLayout = new QVBoxLayout(m_micSliderWidget);
-    m_micSliderLayout->setSpacing(scale(5));
+    m_micSliderLayout->setSpacing(scale(8));
     m_micSliderLayout->setContentsMargins(0, 0, 0, 0);
 
     // Mic label and slider layout
@@ -331,26 +355,29 @@ void CallWidget::setupUI() {
     m_micLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
     m_micLabelSliderLayout->setAlignment(Qt::AlignLeft);
 
-    // Mic label (ButtonIcon like in SettingsPanel)
+    // Mic label
     m_micLabel = new ButtonIcon(m_micSliderWidget,
         QIcon(":/resources/microphone.png"),
         QIcon(":/resources/microphone.png"),
         scale(24), scale(24));
     m_micLabel->setSize(scale(24), scale(24));
+    m_micLabel->setToolTip("Microphone volume");
 
     m_micVolumeSlider = new QSlider(Qt::Horizontal, m_micSliderWidget);
     m_micVolumeSlider->setRange(0, 100);
     m_micVolumeSlider->setValue(80);
     m_micVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
+    m_micVolumeSlider->setToolTip("Adjust microphone volume");
+    m_micVolumeSlider->setTracking(false);
 
     m_micLabelSliderLayout->addWidget(m_micLabel);
     m_micLabelSliderLayout->addWidget(m_micVolumeSlider);
     m_micSliderLayout->addLayout(m_micLabelSliderLayout);
 
     // Speaker volume slider
-    m_speakerSliderWidget = new QWidget(m_slidersPanel);
+    m_speakerSliderWidget = new QWidget(m_slidersContainer);
     m_speakerSliderLayout = new QVBoxLayout(m_speakerSliderWidget);
-    m_speakerSliderLayout->setSpacing(scale(5));
+    m_speakerSliderLayout->setSpacing(scale(8));
     m_speakerSliderLayout->setContentsMargins(0, 0, 0, 0);
 
     // Speaker label and slider layout
@@ -359,23 +386,28 @@ void CallWidget::setupUI() {
     m_speakerLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
     m_speakerLabelSliderLayout->setAlignment(Qt::AlignLeft);
 
-    // Speaker label (ButtonIcon like in SettingsPanel)
+    // Speaker label
     m_speakerLabel = new ButtonIcon(m_speakerSliderWidget,
         QIcon(":/resources/speaker.png"),
         QIcon(":/resources/speaker.png"),
         scale(22), scale(22));
     m_speakerLabel->setSize(scale(22), scale(22));
+    m_speakerLabel->setToolTip("Speaker volume");
 
     m_speakerVolumeSlider = new QSlider(Qt::Horizontal, m_speakerSliderWidget);
     m_speakerVolumeSlider->setRange(0, 100);
     m_speakerVolumeSlider->setValue(80);
     m_speakerVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
+    m_speakerVolumeSlider->setToolTip("Adjust speaker volume");
+    m_speakerVolumeSlider->setTracking(false);
 
     m_speakerLabelSliderLayout->addWidget(m_speakerLabel);
     m_speakerLabelSliderLayout->addWidget(m_speakerVolumeSlider);
     m_speakerSliderLayout->addLayout(m_speakerLabelSliderLayout);
 
+    // Add sliders to container
     m_slidersLayout->addWidget(m_micSliderWidget);
+    m_slidersLayout->addSpacing(scale(4));
     m_slidersLayout->addWidget(m_speakerSliderWidget);
 
     // Add widgets to main layout
@@ -385,7 +417,7 @@ void CallWidget::setupUI() {
     m_containerLayout->addWidget(m_friendNicknameLabel);
     m_containerLayout->addSpacing(scale(10));
     m_containerLayout->addWidget(m_buttonsPanel);
-    m_containerLayout->addWidget(m_slidersPanel);
+    m_containerLayout->addWidget(m_slidersContainer);
     m_containerLayout->addStretch();
 
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
@@ -393,41 +425,27 @@ void CallWidget::setupUI() {
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
-    connect(m_micButton, &ButtonIcon::clicked, this, &CallWidget::showMicSlider);
-    connect(m_muteButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteClicked);
-    connect(m_speakerButton, &ButtonIcon::clicked, this, &CallWidget::showSpeakerSlider);
+    connect(m_muteAudioButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteAudioClicked);
+    connect(m_muteMicrophoneButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteMicrophoneClicked);
+    connect(m_speakerButton, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerClicked);
     connect(m_hangupButton, &QPushButton::clicked, this, &CallWidget::onHangupClicked);
-    connect(m_refreshButton, &ButtonIcon::clicked, this, [this]() {
-        if (m_refreshEnabled) {
-            // Start cooldown
-            m_refreshEnabled = false;
-            m_refreshButton->setEnabled(false);
 
-            // Visual feedback for cooldown
-            m_refreshButton->setIcons(QIcon(":/resources/reloadDisabled.png"), QIcon(":/resources/reloadDisabled.png")); // Optional: different icon
-            m_refreshButton->setToolTip("Refresh cooldown: 2s");
+    // Connect label buttons to toggle sliders
+    connect(m_micLabel, &ButtonIcon::clicked, this, &CallWidget::onSpeakerClicked);
+    connect(m_speakerLabel, &ButtonIcon::clicked, this, &CallWidget::onSpeakerClicked);
 
-            m_refreshCooldownTimer->start(2000); // 2 seconds cooldown
-            emit refreshAudioDevicesButtonClicked();
-        }
-        });
-
-    // Connect label buttons to show/hide sliders (optional functionality)
-    connect(m_micLabel, &ButtonIcon::clicked, this, &CallWidget::showMicSlider);
-    connect(m_speakerLabel, &ButtonIcon::clicked, this, &CallWidget::showSpeakerSlider);
-
-    connect(m_micVolumeSlider, &QSlider::valueChanged, this, &CallWidget::onInputVolumeChanged);
-    connect(m_speakerVolumeSlider, &QSlider::valueChanged, this, &CallWidget::onOutputVolumeChanged);
+    connect(m_micVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onInputVolumeChanged);
+    connect(m_speakerVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onOutputVolumeChanged);
 }
 
 void CallWidget::setupShadowEffect() {
     setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
     setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_micButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_muteAudioButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_muteMicrophoneButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_speakerButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_refreshButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_muteButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_slidersContainer, 10, QColor(0, 0, 0, 50));
 }
 
 void CallWidget::setupElementShadow(QWidget* widget, int blurRadius, const QColor& color) {
@@ -440,23 +458,23 @@ void CallWidget::setupElementShadow(QWidget* widget, int blurRadius, const QColo
     widget->setGraphicsEffect(shadowEffect);
 }
 
-void CallWidget::onRefreshCooldownFinished() {
-    m_refreshEnabled = true;
-    m_refreshButton->setEnabled(true);
-    m_refreshButton->setIcons(QIcon(":/resources/reload.png"), QIcon(":/resources/reloadHover.png"));
-    m_refreshButton->setToolTip("Refresh audio devices");
-}
-
 void CallWidget::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Draw background gradient (same as main menu)
-    QLinearGradient gradient(0, 90, width(), height());
-    gradient.setColorAt(0.0, QColor(230, 230, 230));
-    gradient.setColorAt(0.5, QColor(220, 230, 240));
-    gradient.setColorAt(1.0, QColor(240, 240, 240));
-    painter.fillRect(rect(), gradient);
+    // Draw background image
+    QPixmap background(":/resources/blur.png");
+    if (!background.isNull()) {
+        painter.drawPixmap(rect(), background);
+    }
+    else {
+        // Fallback gradient background if image not found
+        QLinearGradient gradient(0, 90, width(), height());
+        gradient.setColorAt(0.0, QColor(230, 230, 230));
+        gradient.setColorAt(0.5, QColor(220, 230, 240));
+        gradient.setColorAt(1.0, QColor(240, 240, 240));
+        painter.fillRect(rect(), gradient);
+    }
 
     QWidget::paintEvent(event);
 }
@@ -486,85 +504,72 @@ void CallWidget::updateCallTimer() {
     // Update timer style if needed
     if (isLongCall && m_timerLabel->styleSheet() != StyleCallWidget::longTimerStyle()) {
         m_timerLabel->setStyleSheet(StyleCallWidget::longTimerStyle());
-        QFont timerFont("Pacifico", scale(52), QFont::Bold); // Smaller font for long calls
+        QFont timerFont("Pacifico", scale(52), QFont::Bold);
         m_timerLabel->setFont(timerFont);
     }
 
     // Format time based on duration
     QString timeFormat;
     if (m_callDuration->hour() > 0) {
-        timeFormat = "hh:mm:ss"; // Show hours when call exceeds 1 hour
+        timeFormat = "hh:mm:ss";
     }
     else {
-        timeFormat = "mm:ss"; // Show only minutes and seconds for calls under 1 hour
+        timeFormat = "mm:ss";
     }
 
     m_timerLabel->setText(m_callDuration->toString(timeFormat));
 }
 
-void CallWidget::showMicSlider() {
-    if (m_showingMicSlider) {
-        hideSliders();
-    }
-    else {
-        m_showingMicSlider = true;
-        m_showingSpeakerSlider = false;
-        m_micSliderWidget->show();
-        m_speakerSliderWidget->hide();
-        m_slidersPanel->show();
-    }
-}
-
-void CallWidget::showSpeakerSlider() {
-    if (m_showingSpeakerSlider) {
-        hideSliders();
-    }
-    else {
-        m_showingSpeakerSlider = true;
-        m_showingMicSlider = false;
-        m_micSliderWidget->hide();
-        m_speakerSliderWidget->show();
-        m_slidersPanel->show();
-    }
-}
-
-void CallWidget::hideSliders() {
-    m_showingMicSlider = false;
-    m_showingSpeakerSlider = false;
-    m_slidersPanel->hide();
-}
-
-void CallWidget::onMuteClicked()
+void CallWidget::onMuteAudioClicked()
 {
-    m_muted = !m_muted;
+    m_audioMuted = m_muteMicrophoneButton->isToggled();
 
-    if (m_muted)
-    {
-        if (m_micVolumeSlider)
-        {
-            m_micVolumeSlider->setEnabled(false);
-            emit muteButtonClicked(true);
-        }
+    if (m_audioMuted) {
+        m_speakerVolumeSlider->setEnabled(false);
     }
-    else
-    {
-        if (m_micVolumeSlider)
-        {
-            m_micVolumeSlider->setEnabled(true);
-            emit muteButtonClicked(false);
-        }
+    else {
+        m_speakerVolumeSlider->setEnabled(true);
+    }
+
+    emit muteSpeakerClicked(m_audioMuted);
+}
+
+void CallWidget::onMuteMicrophoneClicked()
+{
+    m_microphoneMuted = m_muteMicrophoneButton->isToggled();
+
+    if (m_microphoneMuted) {
+        m_micVolumeSlider->setEnabled(false);
+    }
+    else {
+        m_micVolumeSlider->setEnabled(true);
+    }
+
+    emit muteMicrophoneClicked(m_microphoneMuted);
+}
+
+void CallWidget::onSpeakerClicked()
+{
+    m_slidersVisible = m_speakerButton->isToggled();
+    updateSlidersVisibility();
+}
+
+void CallWidget::updateSlidersVisibility() {
+    if (m_slidersVisible) {
+        m_slidersContainer->show();
+    }
+    else {
+        m_slidersContainer->hide();
     }
 }
 
-void CallWidget::onRefreshAudioDevicesClicked() {
-    emit refreshAudioDevicesButtonClicked();
-}
-
-void CallWidget::onInputVolumeChanged(int volume) {
+void CallWidget::onInputVolumeChanged() {
+    int volume = m_micVolumeSlider->value();
     emit inputVolumeChanged(volume);
 }
 
-void CallWidget::onOutputVolumeChanged(int volume) {
+void CallWidget::onOutputVolumeChanged() {
+    int volume = m_speakerVolumeSlider->value();
     emit outputVolumeChanged(volume);
 }
 
@@ -573,17 +578,29 @@ void CallWidget::onHangupClicked() {
     emit hangupClicked();
 }
 
-void CallWidget::setInputVolume(int volume) {
-    m_micVolumeSlider->setValue(volume);
+void CallWidget::setInputVolume(int newVolume) {
+    m_micVolumeSlider->setValue(newVolume);
 }
 
-void CallWidget::setOutputVolume(int volume) {
-    m_speakerVolumeSlider->setValue(volume);
+void CallWidget::setOutputVolume(int newVolume) {
+    m_speakerVolumeSlider->setValue(newVolume);
 }
 
-void CallWidget::setMuted(bool muted) {
-    if (m_muteButton->isToggled()) {
-        m_muteButton->setToggled(muted);
+void CallWidget::setMicrophoneMuted(bool muted) {
+    if (m_muteMicrophoneButton->isToggled() != muted) {
+        m_muteMicrophoneButton->setToggled(muted);
+    }
+}
+
+void CallWidget::setSpeakerMuted(bool muted) {
+    if (m_muteAudioButton->isToggled() != muted) {
+        m_muteAudioButton->setToggled(muted);
+    }
+}
+
+void CallWidget::setAudioMuted(bool muted) {
+    if (m_muteAudioButton->isToggled() != muted) {
+        m_muteAudioButton->setToggled(muted);
     }
 }
 
@@ -640,8 +657,8 @@ void CallWidget::updateIncomingCallsVisibility() {
         // Calculate required height based on number of calls (max 3 visible)
         int callCount = m_incomingCallWidgets.size();
         int visibleCount = qMin(callCount, 3);
-        int scrollAreaHeight = visibleCount * scale(90); // 80px per call + spacing
-        int containerHeight = scrollAreaHeight + scale(40); // Add space for label
+        int scrollAreaHeight = visibleCount * scale(90);
+        int containerHeight = scrollAreaHeight + scale(40);
 
         m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
         m_incomingCallsContainer->setFixedHeight(containerHeight);

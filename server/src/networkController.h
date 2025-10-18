@@ -17,8 +17,7 @@ class NetworkController {
 public:
     NetworkController(const std::string& port,
         std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> onReceiveCallback,
-        std::function<void()> onNetworkErrorCallback,
-        std::function<void(asio::ip::udp::endpoint)> onUserDisconnectedCallback);
+        std::function<void()> onNetworkErrorCallback);
     ~NetworkController();
 
     bool start();
@@ -40,7 +39,6 @@ private:
     std::array<unsigned char, 64000> m_receiveBuffer{};
     std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> m_onReceiveCallback;
     std::function<void()> m_onNetworkErrorCallback;
-    std::function<void(asio::ip::udp::endpoint)> m_onUserDisconnectedCallback;
 
     bool m_isRunning = false;
     asio::executor_work_guard<asio::io_context::executor_type> m_workGuard;

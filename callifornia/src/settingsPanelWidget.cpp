@@ -30,7 +30,6 @@ QString SettingsPanel::StyleSettingsPanel::titleStyle() {
 QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
     return QString(R"(
         QSlider::groove:horizontal {
-            background-color: rgb(77, 77, 77); 
             height: %1px; 
             border-radius: %2px;
             margin: 0px 0px; 
@@ -55,7 +54,7 @@ QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
         .arg(QString::fromStdString(std::to_string(scale(4))))
         .arg(QString::fromStdString(std::to_string(scale(16))))
         .arg(QString::fromStdString(std::to_string(scale(16))))
-        .arg(QString::fromStdString(std::to_string(scale(8))))  
+        .arg(QString::fromStdString(std::to_string(scale(8))))
         .arg(QString::fromStdString(std::to_string(scale(4))));
 }
 
@@ -119,7 +118,7 @@ QString SettingsPanel::StyleSettingsPanel::volumeValueStyle() {
 
 QString SettingsPanel::StyleSettingsPanel::settingsPanelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(240, 240, 240, 200);"
+        "   background-color: transparent;"
         "   border-radius: 10px;"
         "   padding: 15px;"
         "}");
@@ -146,19 +145,28 @@ void SettingsPanel::setupUI() {
     QFont refreshButtonFont("Outfit", scale(13), QFont::Medium);
     m_refreshButton->setFont(refreshButtonFont);
     m_refreshButton->setToolTip("Refresh audio devices if changed");
+    m_refreshButton->setCursor(Qt::PointingHandCursor);
 
     m_refreshCooldownTimer = new QTimer(this);
     m_refreshCooldownTimer->setSingleShot(true);
     m_refreshEnabled = true;
 
 
-    // Toggle кнопка mute
-    m_muteButton = new ToggleButtonIcon(this, QIcon(":/resources/mute-microphone.png"), QIcon(":/resources/mute-microphoneHover.png"), QIcon(":/resources/mute-enabled-microphone.png"), QIcon(":/resources/mute-enabled-microphoneHover.png"), scale(40), scale(40));
-    m_muteButton->setSize(scale(26), scale(26));
+    // Toggle кнопки mute
+    m_muteMicrophoneButton = new ToggleButtonIcon(this, QIcon(":/resources/mute-microphone.png"), QIcon(":/resources/mute-microphoneHover.png"), QIcon(":/resources/mute-enabled-microphone.png"), QIcon(":/resources/mute-enabled-microphoneHover.png"), scale(40), scale(40));
+    m_muteMicrophoneButton->setSize(scale(26), scale(26));
+    m_muteMicrophoneButton->setCursor(Qt::PointingHandCursor);
+
+    m_muteSpeakerButton = new ToggleButtonIcon(this, QIcon(":/resources/speakerMuted.png"), QIcon(":/resources/speakerMutedHover.png"), QIcon(":/resources/speakerMutedActive.png"), QIcon(":/resources/speakerMutedActiveHover.png"), scale(40), scale(40));
+    m_muteSpeakerButton->setSize(scale(26), scale(26));
+    m_muteSpeakerButton->setCursor(Qt::PointingHandCursor);
 
     refreshLayout->addWidget(m_refreshButton);
     refreshLayout->addStretch();
-    refreshLayout->addWidget(m_muteButton);
+    refreshLayout->addWidget(m_muteMicrophoneButton);
+    refreshLayout->addSpacing(5);
+    refreshLayout->addWidget(m_muteSpeakerButton);
+
 
     // Microphone section - микрофон, уровень громкости и mute
     QHBoxLayout* micLayout = new QHBoxLayout();
@@ -170,6 +178,8 @@ void SettingsPanel::setupUI() {
     m_micSlider->setValue(80);
     m_micSlider->setFixedHeight(scale(30));
     m_micSlider->setStyleSheet(StyleSettingsPanel::sliderStyle());
+    m_micSlider->setCursor(Qt::PointingHandCursor);
+    m_micSlider->setTracking(false);
 
     m_micMuteButton = new ButtonIcon(this,
         QIcon(":/resources/microphone.png"),
@@ -189,6 +199,8 @@ void SettingsPanel::setupUI() {
     m_speakerSlider->setValue(50);
     m_speakerSlider->setFixedHeight(scale(30));
     m_speakerSlider->setStyleSheet(StyleSettingsPanel::sliderStyle());
+    m_speakerSlider->setCursor(Qt::PointingHandCursor);
+    m_speakerSlider->setTracking(false);
 
     ButtonIcon* speakerIconButton = new ButtonIcon(this,
         QIcon(":/resources/speaker.png"),
@@ -206,9 +218,10 @@ void SettingsPanel::setupUI() {
     mainLayout->addLayout(speakerLayout);
 
     // Connect signals
-    connect(m_micSlider, &QSlider::valueChanged, this, &SettingsPanel::onMicVolumeChanged);
-    connect(m_speakerSlider, &QSlider::valueChanged, this, &SettingsPanel::onSpeakerVolumeChanged);
-    connect(m_muteButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onMicMuteClicked);
+    connect(m_micSlider, &QSlider::sliderReleased, this, &SettingsPanel::onMicVolumeChanged);
+    connect(m_speakerSlider, &QSlider::sliderReleased, this, &SettingsPanel::onSpeakerVolumeChanged);
+    connect(m_muteMicrophoneButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onMicMuteClicked);
+    connect(m_muteSpeakerButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onSpeakerMuteClicked);
     connect(m_refreshButton, &QPushButton::clicked, this, [this]() {
         if (m_refreshEnabled) {
             m_refreshEnabled = false;
@@ -235,13 +248,13 @@ void SettingsPanel::setupUI() {
     setStyleSheet(StyleSettingsPanel::settingsPanelStyle());
 }
 
-void SettingsPanel::onMicVolumeChanged(int volume) {
-    if (!m_isMicMuted) {
-        emit inputVolumeChanged(volume);
-    }
+void SettingsPanel::onMicVolumeChanged() {
+    int volume = m_micSlider->value();
+    emit inputVolumeChanged(volume);
 }
 
-void SettingsPanel::onSpeakerVolumeChanged(int volume) {
+void SettingsPanel::onSpeakerVolumeChanged() {
+    int volume = m_micSlider->value();
     emit outputVolumeChanged(volume);
 }
 
@@ -253,19 +266,35 @@ void SettingsPanel::setOutputVolume(int volume) {
     m_speakerSlider->setValue(volume);
 }
 
-void SettingsPanel::setMuted(bool muted) {
-    if (m_muteButton->isToggled() != muted) {
-        m_muteButton->setToggled(true);
-        m_muteButton->setToggled(true);
+void SettingsPanel::setMicrophoneMuted(bool muted) {
+    if (m_muteMicrophoneButton->isToggled() != muted) {
+        m_muteMicrophoneButton->setToggled(true);
+        m_muteMicrophoneButton->setToggled(true);
     }
 
     if (muted) {
         m_micSlider->setEnabled(false);
-        emit muteButtonClicked(true);
+        emit muteMicrophoneClicked(true);
     }
     else {
         m_micSlider->setEnabled(true);
-        emit muteButtonClicked(false);
+        emit muteMicrophoneClicked(false);
+    }
+}
+
+void SettingsPanel::setSpeakerMuted(bool muted) {
+    if (m_muteSpeakerButton->isToggled() != muted) {
+        m_muteSpeakerButton->setToggled(true);
+        m_muteSpeakerButton->setToggled(true);
+    }
+
+    if (muted) {
+        m_speakerSlider->setEnabled(false);
+        emit muteSpeakerClicked(true);
+    }
+    else {
+        m_speakerSlider->setEnabled(true);
+        emit muteSpeakerClicked(false);
     }
 }
 
@@ -278,7 +307,7 @@ void SettingsPanel::onMicMuteClicked()
         if (m_micSlider)
         {
             m_micSlider->setEnabled(false);
-            emit muteButtonClicked(true);
+            emit muteMicrophoneClicked(true);
         }
     }
     else
@@ -286,7 +315,29 @@ void SettingsPanel::onMicMuteClicked()
         if (m_micSlider)
         {
             m_micSlider->setEnabled(true);
-            emit muteButtonClicked(false);
+            emit muteMicrophoneClicked(false);
+        }
+    }
+}
+
+void SettingsPanel::onSpeakerMuteClicked()
+{
+    m_isSpeakerMuted = !m_isSpeakerMuted;
+
+    if (m_isSpeakerMuted)
+    {
+        if (m_speakerSlider)
+        {
+            m_speakerSlider->setEnabled(false);
+            emit muteSpeakerClicked(true);
+        }
+    }
+    else
+    {
+        if (m_speakerSlider)
+        {
+            m_speakerSlider->setEnabled(true);
+            emit muteSpeakerClicked(false);
         }
     }
 }

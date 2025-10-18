@@ -34,12 +34,14 @@ public:
 
     // SET
     void refreshAudioDevices();
-    void mute(bool isMute);
+    void muteMicrophone(bool isMute);
+    void muteSpeaker(bool isMute);
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
 
     // GET
-    bool isMuted();
+    bool isMicrophoneMuted();
+    bool isSpeakerMuted();
     bool isRunning() const;
     bool isAuthorized() const;
     bool isCalling() const;
