@@ -16,38 +16,21 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
 {
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
-    // Для входящих вызовов
-    m_incomingCallRingtonePlayer = new QMediaPlayer(this);
-    QAudioOutput* incomingCallAudioOutput = new QAudioOutput(this);
-    incomingCallAudioOutput->setVolume(0.4f);
-    m_incomingCallRingtonePlayer->setAudioOutput(incomingCallAudioOutput);
-    m_incomingCallRingtonePlayer->setSource(QUrl("qrc:/resources/incomingCallRingtone.mp3"));
+    // Единый плеер для всех мелодий
+    m_ringtonePlayer = new QMediaPlayer(this);
+    m_audioOutput = new QAudioOutput(this);
+    m_audioOutput->setVolume(0.4f);
+    m_ringtonePlayer->setAudioOutput(m_audioOutput);
 
-    connect(m_incomingCallRingtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
-        if (state == QMediaPlayer::StoppedState || state == QMediaPlayer::PausedState) {
+    // Настраиваем цикличное воспроизведение
+    connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
+        if (state == QMediaPlayer::StoppedState) {
+            // Автоматически перезапускаем если есть активные вызовы
             if (calls::getIncomingCallsCount() != 0) {
-                m_incomingCallRingtonePlayer->play();
+                m_ringtonePlayer->play();
             }
         }
         });
-
-    // Для исходящих вызовов
-    m_callingRingtonePlayer = new QMediaPlayer(this);
-    QAudioOutput* callingAudioOutput = new QAudioOutput(this);
-    callingAudioOutput->setVolume(0.4f);
-    m_callingRingtonePlayer->setAudioOutput(callingAudioOutput);
-    m_callingRingtonePlayer->setSource(QUrl("qrc:/resources/calling.wav"));
-
-    connect(m_callingRingtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
-        if (state == QMediaPlayer::StoppedState || state == QMediaPlayer::PausedState) {
-            if (calls::getIncomingCallsCount() != 0) {
-                m_callingRingtonePlayer->play();
-            }
-        }
-        });
-
-    // Удалите старый общий m_audioOutput
-    // m_audioOutput = new QAudioOutput(this); 
 
     loadFonts();
     setupUI();
@@ -55,63 +38,67 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
     std::unique_ptr<CallsClientHandler> callsClientHandler = std::make_unique<CallsClientHandler>(this);
 
     bool initialized = calls::init(host, port, std::move(callsClientHandler));
-    
+
     if (initialized) {
         calls::run();
     }
     else {
         QTimer::singleShot(0, this, [this]() {
             showInitializationErrorDialog();
-        });
+            });
     }
-    
 
     showMaximized();
 }
 
 MainWindow::~MainWindow() {
-    if (m_incomingCallRingtonePlayer) {
-        m_incomingCallRingtonePlayer->stop();
+    if (m_ringtonePlayer) {
+        m_ringtonePlayer->stop();
+    }
+}
+
+void MainWindow::playRingtone(const QUrl& ringtoneUrl) {
+    if (!m_ringtonePlayer) return;
+
+    if (m_ringtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
+        m_ringtonePlayer->stop();
+    }
+
+    m_ringtonePlayer->setSource(ringtoneUrl);
+
+    if (m_ringtonePlayer->playbackState() != QMediaPlayer::PlayingState) {
+        m_ringtonePlayer->setLoops(QMediaPlayer::Infinite);
+        m_ringtonePlayer->play();
+    }
+}
+
+void MainWindow::stopRingtone() {
+    if (!m_ringtonePlayer) return;
+
+    if (m_ringtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
+        m_ringtonePlayer->stop();
     }
 }
 
 void MainWindow::playIncomingCallRingtone() {
-    if (!m_incomingCallRingtonePlayer) return;
-
-    if (m_incomingCallRingtonePlayer->playbackState() != QMediaPlayer::PlayingState) {
-        m_incomingCallRingtonePlayer->setLoops(QMediaPlayer::Infinite);
-        m_incomingCallRingtonePlayer->play();
-    }
+    playRingtone(QUrl("qrc:/resources/incomingCallRingtone.mp3"));
 }
 
 void MainWindow::stopIncomingCallRingtone() {
-    if (!m_incomingCallRingtonePlayer) return;
-
-    if (m_incomingCallRingtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
-        m_incomingCallRingtonePlayer->stop();
-    }
+    stopRingtone();
 }
 
 void MainWindow::playCallingRingtone() {
-    if (m_callingRingtonePlayer) return;
-
-    if (m_callingRingtonePlayer->playbackState() != QMediaPlayer::PlayingState) {
-        m_callingRingtonePlayer->setLoops(QMediaPlayer::Infinite);
-        m_callingRingtonePlayer->play();
-    }
+    playRingtone(QUrl("qrc:/resources/calling.mp3"));
 }
 
 void MainWindow::stopCallingRingtone() {
-    if (!m_callingRingtonePlayer) return;
-
-    if (m_callingRingtonePlayer->playbackState() == QMediaPlayer::PlayingState) {
-        m_callingRingtonePlayer->stop();
-    }
+    stopRingtone();
 }
 
 void MainWindow::playSoundEffect(const QString& soundPath) {
     QSoundEffect* effect = new QSoundEffect(this);
-    effect->setSource(QUrl::fromLocalFile((soundPath)));
+    effect->setSource(QUrl::fromLocalFile(soundPath));
     effect->setVolume(1.0f);
     effect->play();
 
@@ -119,7 +106,7 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
         if (!effect->isPlaying()) {
             effect->deleteLater();
         }
-    });
+        });
 }
 
 void MainWindow::loadFonts() {
@@ -182,11 +169,6 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     event->accept();
 }
 
-
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-
 void MainWindow::switchToAuthorizationWidget() {
     m_stackedLayout->setCurrentWidget(m_authorizationWidget);
     setWindowTitle("Authorization - Callifornia");
@@ -219,15 +201,11 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_callWidget->setCallInfo(friendNickname);
 }
 
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-
 void MainWindow::onBlurAnimationFinished() {
     if (calls::isAuthorized()) {
         m_authorizationWidget->resetBlur();
         m_authorizationWidget->clearErrorMessage();
-        
+
         switchToMainMenuWidget();
 
         m_mainMenuWidget->setState(calls::State::FREE);
@@ -273,7 +251,7 @@ void MainWindow::onRefreshAudioDevicesButtonClicked() {
     calls::refreshAudioDevices();
 }
 
-void MainWindow::onInputVolumeChanged(int newVolume) { 
+void MainWindow::onInputVolumeChanged(int newVolume) {
     calls::setInputVolume(newVolume);
 }
 
@@ -306,7 +284,7 @@ void MainWindow::onDeclineCallButtonClicked(const QString& friendNickname) {
     }
     else {
         if (calls::getIncomingCallsCount() == 0) {
-            stopIncomingCallRingtone();
+            stopRingtone();
         }
 
         if (m_stackedLayout->currentWidget() == m_callWidget)
@@ -324,8 +302,6 @@ void MainWindow::onStartCallingButtonClicked(const QString& friendNickname) {
             handleStartCallingErrorNotificationAppearance();
             return;
         }
-
-        playCallingRingtone();
     }
     else {
         if (friendNickname.isEmpty()) {
@@ -345,12 +321,10 @@ void MainWindow::onStopCallingButtonClicked() {
     else {
         m_mainMenuWidget->removeCallingPanel();
         m_mainMenuWidget->setState(calls::State::FREE);
+        stopRingtone();
         playSoundEffect(":/resources/callingEnded.wav");
     }
 }
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
 
 void MainWindow::handleAcceptCallErrorNotificationAppearance() {
     QString errorText = "Failed to accept call";
@@ -429,10 +403,6 @@ void MainWindow::handleEndCallErrorNotificationAppearance() {
     }
 }
 
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------
-
 void MainWindow::onAuthorizationResult(calls::ErrorCode ec) {
     QString errorMessage;
 
@@ -455,9 +425,10 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
     if (ec == calls::ErrorCode::OK) {
         m_mainMenuWidget->showCallingPanel(QString::fromStdString(calls::getNicknameWhomCalling()));
         m_mainMenuWidget->setState(calls::State::CALLING);
+        playCallingRingtone();
         return;
     }
-    else if (ec == calls::ErrorCode::UNEXISTING_USER){
+    else if (ec == calls::ErrorCode::UNEXISTING_USER) {
         errorMessage = "User not found";
     }
     else if (ec == calls::ErrorCode::TIMEOUT) {
@@ -477,7 +448,7 @@ void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname
             m_callWidget->clearIncomingCalls();
 
         switchToCallWidget(nickname);
-        stopIncomingCallRingtone();
+        stopRingtone();
     }
     else {
         m_mainMenuWidget->removeIncomingCall(nickname);
@@ -492,10 +463,11 @@ void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname
 void MainWindow::onMaximumCallingTimeReached() {
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setState(calls::State::FREE);
+    stopRingtone();
 }
 
 void MainWindow::onCallingAccepted() {
-    stopIncomingCallRingtone();
+    stopRingtone();
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setState(calls::State::BUSY);
     switchToCallWidget(QString::fromStdString(calls::getNicknameInCallWith()));
@@ -505,7 +477,7 @@ void MainWindow::onCallingAccepted() {
 void MainWindow::onCallingDeclined() {
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setState(calls::State::FREE);
-    stopCallingRingtone();
+    stopRingtone();
     playSoundEffect(":/resources/callingEnded.wav");
 }
 
@@ -530,11 +502,11 @@ void MainWindow::onIncomingCall(const QString& friendNickName) {
 void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
     m_mainMenuWidget->removeIncomingCall(friendNickName);
 
-    if (m_stackedLayout->currentWidget() == m_callWidget) 
+    if (m_stackedLayout->currentWidget() == m_callWidget)
         m_callWidget->removeIncomingCall(friendNickName);
-    
-    if (calls::getIncomingCallsCount() == 0) 
-        stopIncomingCallRingtone();
+
+    if (calls::getIncomingCallsCount() == 0)
+        stopRingtone();
 
     playSoundEffect(":/resources/callingEnded.wav");
 }
@@ -542,7 +514,7 @@ void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
 void MainWindow::onNetworkError() {
     calls::reset();
 
-    stopIncomingCallRingtone();
+    stopRingtone();
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->clearIncomingCalls();
 
@@ -558,7 +530,6 @@ void MainWindow::onConnectionRestored() {
     m_authorizationWidget->resetBlur();
     m_authorizationWidget->showConnectionRestoredNotification(1500);
 }
-
 
 void MainWindow::showInitializationErrorDialog()
 {
@@ -634,7 +605,7 @@ void MainWindow::showInitializationErrorDialog()
     connect(closeButton, &QPushButton::clicked, this, []() {
         calls::stop();
         QApplication::quit();
-    });
+        });
 
     QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
 

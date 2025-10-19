@@ -68,15 +68,17 @@ private:
 
     void setupUI();
     void loadFonts();
-    void playIncomingCallRingtone();
+    void playRingtone(const QUrl& ringtoneUrl);
+    void stopRingtone();
     void stopIncomingCallRingtone();
+    void playIncomingCallRingtone();
     void playCallingRingtone();
     void stopCallingRingtone();
     void playSoundEffect(const QString& soundPath);
 
 private:
-    QMediaPlayer* m_incomingCallRingtonePlayer;
-    QMediaPlayer* m_callingRingtonePlayer;
+    QMediaPlayer* m_ringtonePlayer;
+    QAudioOutput* m_audioOutput;
 
     QWidget* m_centralWidget;
     QHBoxLayout* m_mainLayout;
