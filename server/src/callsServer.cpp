@@ -512,5 +512,6 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
 }
 
 void CallsServer::onNetworkError() {
+    DEBUG_LOG("Network Error");
     m_running = false;
 }

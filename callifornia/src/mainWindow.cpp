@@ -45,7 +45,7 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
     else {
         QTimer::singleShot(0, this, [this]() {
             showInitializationErrorDialog();
-            });
+        });
     }
 
     showMaximized();
