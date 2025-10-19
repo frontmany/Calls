@@ -145,10 +145,12 @@ void IncomingCallWidget::setupUI() {
     QIcon acceptIcon(":/resources/acceptCall.png");
     QIcon acceptIconHover(":/resources/acceptCallHover.png");
     m_acceptButton = new ButtonIcon(this, acceptIcon, acceptIconHover, scale(34), scale(34));
+    m_acceptButton->setCursor(Qt::PointingHandCursor);
 
     QIcon declineIcon(":/resources/declineCall.png");
     QIcon declineIconHover(":/resources/declineCallHover.png");
     m_declineButton = new ButtonIcon(this, declineIcon, declineIconHover, scale(34), scale(34));
+    m_declineButton->setCursor(Qt::PointingHandCursor);
 
     // Connect buttons
     connect(m_acceptButton, &ButtonIcon::clicked, [this]() {

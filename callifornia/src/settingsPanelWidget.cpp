@@ -49,6 +49,21 @@ QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
             background-color: rgb(21, 119, 232);
             border-radius: %6px;
         }
+        QSlider::disabled {
+            background-color: transparent;
+        }
+        QSlider::groove:horizontal:disabled {
+            background-color: rgb(180, 180, 180);
+        }
+        QSlider::handle:horizontal:disabled {
+            background-color: rgb(230, 230, 230);
+        }
+        QSlider::add-page:horizontal:disabled {
+            background-color: rgb(180, 180, 180);
+        }
+        QSlider::sub-page:horizontal:disabled {
+            background-color: rgb(150, 150, 150);
+        }
     )")
         .arg(QString::fromStdString(std::to_string(scale(8))))
         .arg(QString::fromStdString(std::to_string(scale(4))))

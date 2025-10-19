@@ -98,6 +98,10 @@ QString StyleCallWidget::hangupButtonStyle() {
         "   padding: %4px;"
         "   margin: %5px;"
         "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
         "QPushButton:hover {"
         "   background-color: %2;"
         "}").arg(m_hangupButtonColor.name()).arg(m_hangupButtonHoverColor.name())
@@ -167,6 +171,21 @@ QString StyleCallWidget::volumeSliderStyle() {
         QSlider::sub-page:horizontal {
             background-color: rgb(21, 119, 232);
             border-radius: %6px;
+        }
+        QSlider::disabled {
+            background-color: transparent;
+        }
+        QSlider::groove:horizontal:disabled {
+            background-color: rgb(180, 180, 180);
+        }
+        QSlider::handle:horizontal:disabled {
+            background-color: rgb(230, 230, 230);
+        }
+        QSlider::add-page:horizontal:disabled {
+            background-color: rgb(180, 180, 180);
+        }
+        QSlider::sub-page:horizontal:disabled {
+            background-color: rgb(150, 150, 150);
         }
     )")
         .arg(QString::fromStdString(std::to_string(scale(8))))
@@ -295,6 +314,7 @@ void CallWidget::setupUI() {
         scale(40), scale(40));
     m_muteAudioButton->setSize(scale(35), scale(35));
     m_muteAudioButton->setToolTip("Mute audio");
+    m_muteAudioButton->setCursor(Qt::PointingHandCursor);
 
     // Mute microphone button
     m_muteMicrophoneButton = new ToggleButtonIcon(m_buttonsPanel,
@@ -305,6 +325,7 @@ void CallWidget::setupUI() {
         scale(40), scale(40));
     m_muteMicrophoneButton->setSize(scale(35), scale(35));
     m_muteMicrophoneButton->setToolTip("Mute microphone");
+    m_muteMicrophoneButton->setCursor(Qt::PointingHandCursor);
 
     // Speaker button (toggles sliders visibility)
     m_speakerButton = new ToggleButtonIcon(m_buttonsPanel,
@@ -315,6 +336,7 @@ void CallWidget::setupUI() {
         scale(40), scale(40));
     m_speakerButton->setSize(scale(35), scale(35));
     m_speakerButton->setToolTip("Show volume controls");
+    m_speakerButton->setCursor(Qt::PointingHandCursor);
 
     // Hangup button
     m_hangupButton = new QPushButton(m_buttonsPanel);
@@ -324,6 +346,7 @@ void CallWidget::setupUI() {
     m_hangupButton->setIcon(QIcon(":/resources/decline.png"));
     m_hangupButton->setIconSize(QSize(scale(30), scale(30)));
     m_hangupButton->setToolTip("Hang up");
+    m_hangupButton->setCursor(Qt::PointingHandCursor);
 
     // Add buttons to layout
     m_buttonsLayout->addWidget(m_muteAudioButton);
@@ -369,6 +392,7 @@ void CallWidget::setupUI() {
     m_micVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
     m_micVolumeSlider->setToolTip("Adjust microphone volume");
     m_micVolumeSlider->setTracking(false);
+    m_micVolumeSlider->setCursor(Qt::PointingHandCursor);
 
     m_micLabelSliderLayout->addWidget(m_micLabel);
     m_micLabelSliderLayout->addWidget(m_micVolumeSlider);
@@ -400,6 +424,7 @@ void CallWidget::setupUI() {
     m_speakerVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
     m_speakerVolumeSlider->setToolTip("Adjust speaker volume");
     m_speakerVolumeSlider->setTracking(false);
+    m_speakerVolumeSlider->setCursor(Qt::PointingHandCursor);
 
     m_speakerLabelSliderLayout->addWidget(m_speakerLabel);
     m_speakerLabelSliderLayout->addWidget(m_speakerVolumeSlider);
@@ -522,7 +547,7 @@ void CallWidget::updateCallTimer() {
 
 void CallWidget::onMuteAudioClicked()
 {
-    m_audioMuted = m_muteMicrophoneButton->isToggled();
+    m_audioMuted = m_muteAudioButton->isToggled();
 
     if (m_audioMuted) {
         m_speakerVolumeSlider->setEnabled(false);
