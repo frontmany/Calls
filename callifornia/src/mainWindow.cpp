@@ -354,22 +354,6 @@ void MainWindow::handleDeclineCallErrorNotificationAppearance() {
     }
 }
 
-void MainWindow::handleDeclineAllCallsErrorNotificationAppearance() {
-    QString errorText = "Joined the call, but was unable to automatically decline other invitations";
-
-    if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
-
-        auto incomingCalls = m_mainMenuWidget->getIncomingCalls();
-        for (auto& [nickname, remainingTime] : incomingCalls) {
-            m_callWidget->addIncomingCall(QString::fromStdString(nickname), remainingTime);
-        }
-    }
-    else {
-        DEBUG_LOG("Trying to decline all calls from weird widget");
-    }
-}
-
 void MainWindow::handleStartCallingErrorNotificationAppearance() {
     QString errorText = "Failed to start calling. Please try again";
 
@@ -467,6 +451,8 @@ void MainWindow::onMaximumCallingTimeReached() {
 }
 
 void MainWindow::onCallingAccepted() {
+    m_mainMenuWidget->clearIncomingCalls();
+
     stopRingtone();
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setState(calls::State::BUSY);
@@ -494,9 +480,8 @@ void MainWindow::onIncomingCall(const QString& friendNickName) {
 
     m_mainMenuWidget->addIncomingCall(friendNickName);
 
-    if (calls::isBusy()) {
+    if (m_stackedLayout->currentWidget() == m_callWidget) 
         m_callWidget->addIncomingCall(friendNickName);
-    }
 }
 
 void MainWindow::onIncomingCallExpired(const QString& friendNickName) {

@@ -61,7 +61,6 @@ private:
 
     void handleAcceptCallErrorNotificationAppearance();
     void handleDeclineCallErrorNotificationAppearance();
-    void handleDeclineAllCallsErrorNotificationAppearance();
     void handleStartCallingErrorNotificationAppearance();
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();

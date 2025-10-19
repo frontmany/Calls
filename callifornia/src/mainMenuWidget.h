@@ -163,4 +163,6 @@ private:
 
     QString m_currentNickname;
     QString m_callingFriend;
+
+    QMap<QString, IncomingCallWidget*> m_incomingCallWidgets;
 };

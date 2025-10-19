@@ -137,36 +137,6 @@ void CallsServer::run() {
     m_networkController.stop();
 }
 
-void CallsServer::handleEndCallAssist(const UserPtr& user) {
-    if (user->inCall()) {
-        const std::string& userInCallWithNicknameHash = user->inCallWith();
-
-        if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
-            auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
-
-            m_networkController.sendToClient(userInCallWith->getEndpoint(),
-                PacketType::END_CALL
-            );
-
-            m_calls.erase(user->getCall());
-
-            user->resetCall();
-            userInCallWith->resetCall();
-        }
-    }
-}
-
-void CallsServer::handleStopCallingAssist(const std::string& receiverNicknameHash, const nlohmann::json& jsonObject) {
-    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
-        auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
-
-        m_networkController.sendToClient(userReceiver->getEndpoint(),
-            jsonObject.dump(),
-            PacketType::STOP_CALLING
-        );
-    }
-}
-
 void CallsServer::redirectPacket(const nlohmann::json& jsonObject, PacketType type) {
     const std::string& receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
 
@@ -214,7 +184,22 @@ void CallsServer::checkPing() {
             auto& userToErase = it->second;
             std::string nicknameHash = userToErase->getNicknameHash();
 
-            handleEndCallAssist(userToErase);
+            if (userToErase->inCall()) {
+                const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
+
+                if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
+                    auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
+
+                    m_networkController.sendToClient(userInCallWith->getEndpoint(), getPacketEndCall(nicknameHash, false),
+                        PacketType::END_CALL
+                    );
+
+                    m_calls.erase(userToErase->getCall());
+
+                    userToErase->resetCall();
+                    userInCallWith->resetCall();
+                }
+            }
 
             m_endpointToUser.erase(it);
             m_nicknameHashToUser.erase(nicknameHash);

@@ -648,44 +648,40 @@ std::vector<std::pair<std::string, int>> MainMenuWidget::getIncomingCalls() cons
     return incomingCalls;
 }
 
-void MainMenuWidget::addIncomingCall(const QString& friendNickname, int remainingTime) {
-    IncomingCallWidget* callWidget = new IncomingCallWidget(this, friendNickname, remainingTime);
+void MainMenuWidget::addIncomingCall(const QString& friendNickName, int remainingTime) {
+    if (m_incomingCallWidgets.contains(friendNickName)) return;
+
+    IncomingCallWidget* callWidget = new IncomingCallWidget(this, friendNickName, remainingTime);
+    m_incomingCallsLayout->addWidget(callWidget);
+    m_incomingCallWidgets[friendNickName] = callWidget;
+
     connect(callWidget, &IncomingCallWidget::callAccepted,
         this, &MainMenuWidget::onIncomingCallAccepted);
     connect(callWidget, &IncomingCallWidget::callDeclined,
         this, &MainMenuWidget::onIncomingCallDeclined);
 
-    m_incomingCallsLayout->addWidget(callWidget);
     showIncomingCallsArea();
 }
 
-void MainMenuWidget::removeIncomingCall(const QString& friendNickname) {
-    for (int i = 1; i < m_incomingCallsLayout->count(); ++i) {
-        QWidget* widget = m_incomingCallsLayout->itemAt(i)->widget();
-        if (IncomingCallWidget* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
-            if (callWidget->getFriendNickname() == friendNickname) {
-                m_incomingCallsLayout->removeWidget(widget);
-                widget->deleteLater();
-                break;
-            }
-        }
-    }
+void MainMenuWidget::removeIncomingCall(const QString& callerName) {
+    if (m_incomingCallWidgets.contains(callerName)) {
+        IncomingCallWidget* callWidget = m_incomingCallWidgets[callerName];
+        m_incomingCallsLayout->removeWidget(callWidget);
+        callWidget->deleteLater();
+        m_incomingCallWidgets.remove(callerName);
 
-    if (m_incomingCallsLayout->count() == 1) {
-        hideIncomingCallsArea();
+        if (m_incomingCallWidgets.size() == 0) {
+            hideIncomingCallsArea();
+        }
     }
 }
 
 void MainMenuWidget::clearIncomingCalls() {
-    QLayoutItem* item;
-    while ((item = m_incomingCallsLayout->takeAt(0)) != nullptr) {
-        if (QWidget* widget = item->widget()) {
-            widget->deleteLater();
-        }
-
-        delete item;
+    for (IncomingCallWidget* callWidget : m_incomingCallWidgets) {
+        m_incomingCallsLayout->removeWidget(callWidget);
+        callWidget->deleteLater();
     }
-
+    m_incomingCallWidgets.clear();
     hideIncomingCallsArea();
 }
 

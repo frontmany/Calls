@@ -43,9 +43,6 @@ private:
 	void handlePing(const asio::ip::udp::endpoint& endpointFrom);
 	void broadcastPing();
 	void checkPing();
-
-	void handleEndCallAssist(const UserPtr& user);
-	void handleStopCallingAssist(const std::string& receiverNicknameHash, const nlohmann::json& jsonObject);
 	void redirectPacket(const nlohmann::json& jsonObject, PacketType type);
 
 private:

@@ -11,6 +11,13 @@ static std::string getPacketWithUuid(const std::string& uuid) {
     return jsonObject.dump();
 }
 
+static std::string getPacketEndCall(const std::string& friendNicknameHash, bool needConfirmation) {
+    nlohmann::json jsonObject;
+    jsonObject[NEED_CONFIRMATION] = needConfirmation;
+    jsonObject[NICKNAME_HASH_SENDER] = friendNicknameHash;
+    return jsonObject.dump();
+}
+
 static std::string getPacketCallAcceptedOk(const std::string& uuid, const std::string& friendNicknameHash) {
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;
