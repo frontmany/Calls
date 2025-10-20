@@ -252,7 +252,7 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
 
     std::fill_n(output, frameCount * m_outputChannels, 0.0f);
 
-    if (output) {
+    if (output && !m_speakerMuted) {
         std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
 
         if (!m_outputAudioQueue.empty()) {
@@ -341,7 +341,7 @@ int AudioEngine::paInputAudioCallback(const void* input, void* output, unsigned 
         engine->processInputAudio(in, frameCount);
     }
 
-    if (output && !engine->m_speakerMuted) {
+    if (output) {
         float* out = static_cast<float*>(output);
         engine->processOutputAudio(out, frameCount);
     }
