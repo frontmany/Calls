@@ -11,11 +11,12 @@ file(GLOB SOURCES "src/*.cpp" "src/*.h")
 pybind11_add_module(callsClientPy ${SOURCES})
 
 target_link_libraries(callsClientPy PRIVATE calls_client)
-target_include_directories(callsClientPy PRIVATE 
+
+target_include_directories(callsClientPy PRIVATE
     ../client/src
     ../vendor/opus/include     
     ../vendor/portaudio/include
     ../vendor/json/include                    
     ../vendor/cryptopp               
     ../vendor/asio/asio/include
-    )
+)

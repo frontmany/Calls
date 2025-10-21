@@ -116,15 +116,10 @@ namespace calls {
         CallsClient::get().logout();
     }
 
-    inline void reset()
-    {
-        CallsClient::get().reset();
-    }
-
     inline void stop()
     {
         CallsClient::get().stop();
-    }
+    }   
 
     inline bool isRunning()
     {

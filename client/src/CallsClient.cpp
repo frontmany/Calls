@@ -59,6 +59,7 @@ bool CallsClient::init(
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
+            m_callbacksQueue.push([this]() {reset(); });
             m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
         });
 
@@ -432,6 +433,10 @@ void CallsClient::reset() {
 
     m_incomingCalls.clear();
     m_call = std::nullopt;
+
+    if (m_audioEngine && m_audioEngine->isStream()) {
+        m_audioEngine->stopStream();
+    }
 
     std::queue<std::function<void()>> empty;
     std::swap(m_callbacksQueue, empty);

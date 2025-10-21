@@ -158,7 +158,6 @@ PYBIND11_MODULE(callsClientPy, m) {
     m.def("get_input_volume", &calls::getInputVolume, "Get input volume");
     m.def("get_output_volume", &calls::getOutputVolume, "Get output volume");
     m.def("logout", &calls::logout, "Logout");
-    m.def("reset", &calls::reset, "Reset client");
     m.def("stop", &calls::stop, "Stop client");
     m.def("is_running", &calls::isRunning, "Check if client is running");
     m.def("is_authorized", &calls::isAuthorized, "Check if authorized");

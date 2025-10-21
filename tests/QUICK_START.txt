@@ -1,0 +1,57 @@
+╔════════════════════════════════════════════════════════════════╗
+║           CALLS SYSTEM TEST SUITE - QUICK START                ║
+╚════════════════════════════════════════════════════════════════╝
+
+STEP 1: Validate Everything Is Set Up
+--------------------------------------
+python validate_tests.py
+
+STEP 2: Run Tests
+-----------------
+Option A - Run ALL tests (11 tests total):
+    python tests.py --all
+
+Option B - Run only BASIC tests (5 tests):
+    python tests.py
+
+Option C - Run INDIVIDUAL test file:
+    Basic Tests:
+      python test_authorization.py
+      python test_call_flow.py
+      python test_incoming_call_accept.py
+      python test_incoming_call_decline.py
+      python test_audio_controls.py
+    
+    Advanced Tests:
+      python test_accept_while_calling.py
+      python test_call_busy_user.py
+      python test_call_queue.py
+      python test_overlapping_calls.py
+      python test_rapid_redial.py
+      python test_triple_call.py
+
+AVAILABLE TESTS (11 Total)
+---------------------------
+Basic Tests:
+  1. test_authorization.py - Authorization
+  2. test_call_flow.py - Call Flow
+  3. test_incoming_call_accept.py - Incoming Call Accept
+  4. test_incoming_call_decline.py - Incoming Call Decline
+  5. test_audio_controls.py - Audio Controls
+
+Advanced Tests:
+  6. test_accept_while_calling.py - Accept While Calling
+  7. test_call_busy_user.py - Call Busy User
+  8. test_call_queue.py - Call Queue
+  9. test_overlapping_calls.py - Overlapping Calls
+ 10. test_rapid_redial.py - Rapid Redial
+ 11. test_triple_call.py - Triple Call Chain
+
+DOCUMENTATION
+-------------
+README_TESTS.md   - Full documentation
+TESTS_SUMMARY.md  - Summary of changes
+QUICK_START.txt   - This file
+
+═══════════════════════════════════════════════════════════════════
+

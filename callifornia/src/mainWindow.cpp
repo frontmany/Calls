@@ -497,8 +497,6 @@ void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
 }
 
 void MainWindow::onNetworkError() {
-    calls::reset();
-
     stopRingtone();
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->clearIncomingCalls();

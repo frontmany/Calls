@@ -70,6 +70,7 @@ else()
     add_subdirectory(callifornia)
     add_subdirectory(server)
     add_subdirectory(client)
+    add_subdirectory(serverPy)
     add_subdirectory(clientPy)
     
 endif()

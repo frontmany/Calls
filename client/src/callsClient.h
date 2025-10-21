@@ -56,7 +56,6 @@ public:
 
     // flow functions
     bool logout();
-    void reset();
     bool authorize(const std::string& nickname);
     bool startCalling(const std::string& friendNickname);
     bool stopCalling();
@@ -98,6 +97,7 @@ private:
     bool validatePacket(const nlohmann::json& jsonObject);
     void onPingFail();
     void onConnectionRestored();
+    void reset();
 
     // essential senders
     void sendAuthorizationPacket();

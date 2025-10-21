@@ -4,8 +4,8 @@
 #include "crypto.h"
 #include "logger.h"
 
-CallsServer::CallsServer()
-    :m_networkController("8081",
+CallsServer::CallsServer(const std::string& port)
+    :m_networkController(port,
         [this](const unsigned char* data, int size, PacketType type, const asio::ip::udp::endpoint& endpointFrom) { onReceive(data, size, type, endpointFrom); },
         [this]() {onNetworkError(); })
 {
@@ -135,6 +135,11 @@ void CallsServer::run() {
     }
 
     m_networkController.stop();
+}
+
+void CallsServer::stop() {
+    DEBUG_LOG("Server stopped");
+    m_running = false;
 }
 
 void CallsServer::redirectPacket(const nlohmann::json& jsonObject, PacketType type) {

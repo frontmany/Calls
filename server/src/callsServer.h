@@ -12,15 +12,16 @@
 #include "call.h"
 #include "networkController.h"
 
-#include "asio.hpp"
+#include "asio.hpp" 
 #include "json.hpp"
 
 typedef std::shared_ptr<User> UserPtr;
 
 class CallsServer {
 public:
-	CallsServer();
-	void run();
+	CallsServer(const std::string& port);
+	void run(); 
+	void stop(); 
 
 private:
 	void onReceive(const unsigned char* data, int size, PacketType type, const asio::ip::udp::endpoint& endpointFrom);
