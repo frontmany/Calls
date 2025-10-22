@@ -47,11 +47,5 @@ Advanced Tests:
  10. test_rapid_redial.py - Rapid Redial
  11. test_triple_call.py - Triple Call Chain
 
-DOCUMENTATION
--------------
-README_TESTS.md   - Full documentation
-TESTS_SUMMARY.md  - Summary of changes
-QUICK_START.txt   - This file
-
 ═══════════════════════════════════════════════════════════════════
 

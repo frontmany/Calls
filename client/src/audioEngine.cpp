@@ -252,15 +252,17 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
 
     std::fill_n(output, frameCount * m_outputChannels, 0.0f);
 
-    if (output && !m_speakerMuted) {
+    if (output) {
         std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
 
         if (!m_outputAudioQueue.empty()) {
             const auto& currentPacket = m_outputAudioQueue.front();
 
-            if (size_t samplesToCopy = currentPacket.audioData.size(); samplesToCopy > 0) {
-                for (size_t i = 0; i < samplesToCopy; ++i) {
-                    output[i] = currentPacket.audioData[i] * m_outputVolume;
+            if (!m_speakerMuted) {
+                if (size_t samplesToCopy = currentPacket.audioData.size(); samplesToCopy > 0) {
+                    for (size_t i = 0; i < samplesToCopy; ++i) {
+                        output[i] = currentPacket.audioData[i] * m_outputVolume;
+                    }
                 }
             }
 
