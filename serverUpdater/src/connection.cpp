@@ -1,9 +1,8 @@
-#include "net_filesConnection.h"
-#include "avatarInfo.h"
+#include "connection.h"
 
 
 namespace net {
-	FilesConnection::FilesConnection(
+	Connection::Connection(
 		asio::io_context& asioContext,
 		asio::ip::tcp::socket socket,
 		SafeDeque<FileInfo>& incomingFilesQueue,
@@ -20,15 +19,15 @@ namespace net {
 		m_filesReceiver.startReceiving();
 	}
 
-	FilesConnection::~FilesConnection() 
+	Connection::~Connection() 
 	{
 	}
 
-	void FilesConnection::sendFile(const FileInfo& file) {
+	void Connection::sendFile(const FileInfo& file) {
 		m_filesSender.sendFile(file);
 	}
 
-    void FilesConnection::close() {
+    void Connection::close() {
         auto self = shared_from_this();
 
         asio::post(m_asioContext,
@@ -46,7 +45,7 @@ namespace net {
 						}
                     }
                     catch (const std::exception& e) {
-                        std::cerr << "Exception in FilesConnection::close: " << e.what() << "\n";
+                        std::cerr << "Exception in Connection::close: " << e.what() << "\n";
                     }
                 }
             });

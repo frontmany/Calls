@@ -7,11 +7,9 @@ source_group("Source Files" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/vendor/SQLiteCpp)
-
 target_link_libraries(${PROJECT_NAME}  SQLiteCpp sqlite3)
 
-target_include_directories(${PROJECT_NAME} PRIVATE 
+target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/asio/asio/include
     ../vendor/json/include
 )

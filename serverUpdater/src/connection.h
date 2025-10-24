@@ -1,20 +1,19 @@
 #pragma once
 
-#include "net_filesSender.h"
-#include "net_filesReceiver.h"   
-
-#include "asio.hpp"
-
 #include <iostream>
 #include <string>
+
+#include "safedeque.h"
+
+#include "asio.hpp"
 
 class AvatarInfo;
 class FileInfo;
 
 namespace net {
-	class FilesConnection : public std::enable_shared_from_this<FilesConnection> {
+	class Connection : public std::enable_shared_from_this<Connection> {
 	public:
-		FilesConnection(
+		Connection(
 			asio::io_context& asioContext,
 			asio::ip::tcp::socket socket,
 			SafeDeque<FileInfo>& incomingFilesQueue,
@@ -25,7 +24,7 @@ namespace net {
 			std::function<void(std::string)> onDisconnect
 		);
 
-		~FilesConnection();
+		~Connection();
 
 		void sendFile(const FileInfo& file);
 		void close();

@@ -5,8 +5,6 @@
 #include <string>    
 #include <stdexcept>   
 
-namespace updater {
-
 class Packet {
 private:
     struct PacketHeader {
@@ -43,5 +41,3 @@ private:
     PacketHeader m_header{};
     std::vector<uint8_t> m_body{};
 };
-
-}
