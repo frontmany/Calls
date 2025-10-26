@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <queue>
+#include <vector>
 #include <string>
 #include <thread>
 
@@ -60,6 +61,7 @@ private:
 
 	Packet m_metadata;
 	std::queue<FileMetadata> m_expectedFiles;
+	std::vector<std::filesystem::path> m_filesToDelete;
 	
 	std::array<char, c_chunkSize> m_receiveBuffer{};
 	std::ofstream m_fileStream;

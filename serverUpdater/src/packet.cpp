@@ -1,7 +1,6 @@
 #include "packet.h"
 #include <cstring>
 
-namespace updater {
 
 Packet::Packet() {
     m_header.type = 0;
@@ -23,7 +22,7 @@ void Packet::setData(const std::string& str) {
     m_header.size = this->size();
 }
 
-std::string Packet::getData() {
+std::string Packet::data() {
     uint32_t size = 0;
     extractSize(size);
 
@@ -96,6 +95,4 @@ uint32_t Packet::size() const {
 
 size_t Packet::sizeOfHeader() {
     return sizeof(PacketHeader);
-}
-
 }

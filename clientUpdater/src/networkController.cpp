@@ -168,38 +168,54 @@ uint64_t NetworkController::scramble(uint64_t inputNumber) {
 void NetworkController::parseMetadata() {
 	nlohmann::json jsonObject(std::move(m_metadata.getData()));
 
-	for (const auto& fileEntry : jsonObject) {
-		try {
-			if (fileEntry.contains(RELATIVE_FILE_PATH) && fileEntry.contains(FILE_SIZE) && fileEntry.contains(FILE_HASH)) {
-				std::string relativeFilePath = fileEntry[RELATIVE_FILE_PATH].get<std::string>();
-				std::string fileHash = fileEntry[FILE_HASH].get<std::string>();
-				uint64_t fileSize = fileEntry[FILE_SIZE].get<uint64_t>();
+	try {
+		if (jsonObject.contains(FILES_TO_DOWNLOAD)) {
+			for (const auto& fileEntry : jsonObject[FILES_TO_DOWNLOAD]) {
+				if (fileEntry.contains(RELATIVE_FILE_PATH) && fileEntry.contains(FILE_SIZE) && fileEntry.contains(FILE_HASH)) {
+					std::string relativeFilePath = fileEntry[RELATIVE_FILE_PATH].get<std::string>();
+					std::string fileHash = fileEntry[FILE_HASH].get<std::string>();
+					uint64_t fileSize = fileEntry[FILE_SIZE].get<uint64_t>();
 
-				int chunksCount = static_cast<int>(std::ceil(static_cast<double>(fileSize) / c_chunkSize));
-				uint64_t lastChunkSize = fileSize % c_chunkSize;
+					int chunksCount = static_cast<int>(std::ceil(static_cast<double>(fileSize) / c_chunkSize));
+					uint64_t lastChunkSize = fileSize % c_chunkSize;
 
-				if (lastChunkSize == 0) {
-					lastChunkSize = c_chunkSize;
+					if (lastChunkSize == 0) {
+						lastChunkSize = c_chunkSize;
+					}
+
+					FileMetadata fileInfo;
+					fileInfo.fileHash = fileHash;
+					fileInfo.expectedChunksCount = chunksCount;
+					fileInfo.relativeFilePath = relativeFilePath;
+					fileInfo.lastChunkSize = lastChunkSize;
+
+					m_expectedFiles.push(std::move(fileInfo));
 				}
-
-				FileMetadata fileInfo;
-				fileInfo.fileHash = fileHash;
-				fileInfo.expectedChunksCount = chunksCount;
-				fileInfo.relativeFilePath = relativeFilePath;
-				fileInfo.lastChunkSize = lastChunkSize;
-
-				m_expectedFiles.push(std::move(fileInfo));
-			}
-			else {
-				m_onError();
+				else {
+					m_onError();
+					return;
+				}
 			}
 		}
-		catch (const nlohmann::json::exception& e) {
-			m_onError();
+
+		if (jsonObject.contains(FILES_TO_DELETE)) {
+			for (const auto& filePath : jsonObject[FILES_TO_DELETE]) {
+				if (filePath.is_string()) {
+					std::filesystem::path pathToDelete = filePath.get<std::string>();
+					m_filesToDelete.push_back(std::move(pathToDelete));
+				}
+				else {
+					m_onError();
+					return;
+				}
+			}
 		}
+
+		m_currentChunksCount = 0;
 	}
-
-	m_currentChunksCount = 0;
+	catch (const nlohmann::json::exception& e) {
+		m_onError();
+	}
 }
 
 void NetworkController::readChunk() {

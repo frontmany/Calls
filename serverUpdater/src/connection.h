@@ -2,37 +2,43 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "safedeque.h"
+#include "fileData.h"
+#include "filesSender.h"
+#include "packetsSender.h"
+#include "packetsReceiver.h"
 
 #include "asio.hpp"
 
-class AvatarInfo;
-class FileInfo;
+class Packet;
 
-namespace net {
-	class Connection : public std::enable_shared_from_this<Connection> {
-	public:
-		Connection(
-			asio::io_context& asioContext,
-			asio::ip::tcp::socket socket,
-			SafeDeque<FileInfo>& incomingFilesQueue,
-			std::function<void(AvatarInfo&&)> onAvatar,
-			std::function<void(std::error_code, std::optional<FileInfo>)> onReceiveFileError,
-			std::function<void(std::error_code, FileInfo)> onSendFileError,
-			std::function<void(FileInfo)> onFileSent,
-			std::function<void(std::string)> onDisconnect
-		);
+class Connection : public std::enable_shared_from_this<Connection> {
+public:
+	Connection(
+		asio::io_context& asioContext,
+		asio::ip::tcp::socket&& socket,
+		std::function<void(OwnedPacket&&)>&& queueReceivedPacket,
+		std::function<void(std::shared_ptr<Connection>)>&& onDisconnected
+	);
 
-		~Connection();
+	~Connection();
 
-		void sendFile(const FileInfo& file);
-		void close();
+	void sendUpdateRequiredPacket(const Packet& packet);
+	void sendUpdatePossiblePacket(const Packet& packet);
+	void sendUpdateNotNeededPacket(const Packet& packet);
+	void sendUpdate(const Packet& packet, const std::vector<std::filesystem::path>& paths);
+	void close();
 
-	private:
-		asio::ip::tcp::socket m_socket;
-		FilesSender m_filesSender;
-		FilesReceiver m_filesReceiver;
-		asio::io_context& m_asioContext;
-	};
-}
+private:
+	asio::ip::tcp::socket m_socket;
+	asio::io_context& m_asioContext;
+
+	FilesSender m_filesSender;
+	PacketsSender m_packetsSender;
+	PacketsReceiver m_packetsReceiver;
+
+	std::function<void(OwnedPacket&&)> m_queueReceivedPacket;
+	std::function<void(std::shared_ptr<Connection>)> m_onDisconnected;
+};

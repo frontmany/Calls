@@ -1,9 +1,14 @@
 #pragma once
 
 #include <vector>     
+#include <memory>     
 #include <cstdint>     
 #include <string>    
 #include <stdexcept>   
+
+class Connection;
+
+typedef std::shared_ptr<Connection> ConnectionPtr;
 
 class Packet {
 private:
@@ -16,13 +21,14 @@ public:
     Packet();
     Packet(int type);
     void setData(const std::string& str);
-    std::string getData();
+    std::string data();
     void clear();
     uint32_t type() const;
     void setType(int type);
 
 private:
-    friend class NetworkController;
+    friend class PacketsReceiver;
+    friend class PacketsSender;
 
     uint32_t size() const;
     static size_t sizeOfHeader();
@@ -40,4 +46,9 @@ private:
 private:
     PacketHeader m_header{};
     std::vector<uint8_t> m_body{};
+};
+
+struct OwnedPacket {
+    ConnectionPtr connection;
+    Packet packet;
 };

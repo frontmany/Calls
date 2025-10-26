@@ -27,13 +27,22 @@ void ClientUpdater::disconnect() {
 	m_networkController.disconnect();
 }
 
-void ClientUpdater::checkUpdates(const std::string& currentVersionNumber, OperationSystemType type) {
+void ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
 	auto pathsWithHashes = getFilePathsWithHashes();
 
 	nlohmann::json jsonObject;
-
 	jsonObject[VERSION] = currentVersionNumber;
+	Packet packet(static_cast<int>(PacketType::CHECK_UPDATES));
+	packet.setData(jsonObject.dump());
+
+	m_networkController.sendPacket(packet);
+}
+
+void ClientUpdater::startUpdate(OperationSystemType type) {
+	nlohmann::json jsonObject;
 	jsonObject[OPERATION_SYSTEM] = static_cast<int>(type);
+
+	auto pathsWithHashes = getFilePathsWithHashes();
 
 	nlohmann::json filesArray = nlohmann::json::array();
 	for (const auto& [path, hash] : pathsWithHashes) {
@@ -46,33 +55,17 @@ void ClientUpdater::checkUpdates(const std::string& currentVersionNumber, Operat
 
 	jsonObject[FILES] = filesArray;
 
+	
 	std::string jsonString = jsonObject.dump();
 
-	Packet packet(static_cast<int>(PacketType::REQUEST));
-	packet.setData(jsonString);
-
-	m_networkController.sendPacket(packet);
-}
-
-void ClientUpdater::startUpdate() {
-	nlohmann::json jsonObject;
-	jsonObject[IS_ACCEPTED] = true;
-	std::string jsonString = jsonObject.dump();
-
-	Packet packet(static_cast<int>(PacketType::RESPOND));
+	Packet packet(static_cast<int>(PacketType::UPDATE_ACCEPT));
 	packet.setData(jsonString);
 
 	m_networkController.sendPacket(packet);
 }
 
 void ClientUpdater::declineUpdate() {
-	nlohmann::json jsonObject;
-	jsonObject[IS_ACCEPTED] = false;
-	std::string jsonString = jsonObject.dump();
-
-	Packet packet(static_cast<int>(PacketType::RESPOND));
-	packet.setData(jsonString);
-
+	Packet packet(static_cast<int>(PacketType::UPDATE_DECLINE));
 	m_networkController.sendPacket(packet);
 }
 

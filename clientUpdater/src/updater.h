@@ -24,8 +24,8 @@ public:
 	);
 	void connect(const std::string& host, const std::string& port);
 	void disconnect();
-	void checkUpdates(const std::string& currentVersionNumber, OperationSystemType type);
-	void startUpdate();
+	void checkUpdates(const std::string& currentVersionNumber);
+	void startUpdate(OperationSystemType type);
 	void declineUpdate();
 
 private:

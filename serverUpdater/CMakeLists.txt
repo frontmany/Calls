@@ -7,8 +7,6 @@ source_group("Source Files" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME}  SQLiteCpp sqlite3)
-
 target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/asio/asio/include
     ../vendor/json/include

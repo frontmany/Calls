@@ -1,11 +1,21 @@
 #include "networkController.h"
+
+#include <chrono>
+
+#include "packetTypes.h"
 #include "connection.h"
 #include "safeDeque.h"
+#include "logger.h"
 
+using namespace std::chrono_literals;
 
-NetworkController::NetworkController(uint16_t port)
-    : m_asioAcceptor(m_context,
-        asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) 
+NetworkController::NetworkController(uint16_t port,
+    std::function<void(ConnectionPtr, Packet&&)> onUpdatesCheck,
+    std::function<void(ConnectionPtr, Packet&&)> onUpdateAccepted)
+    : m_running(false),
+    m_asioAcceptor(m_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)),
+    m_onUpdatesCheck(onUpdatesCheck),
+    m_onUpdateAccepted(onUpdateAccepted)
 {
 }
 
@@ -13,21 +23,12 @@ NetworkController::~NetworkController() {
     stop();
 }
 
-void NetworkController::removeConnection(ConnectionPtr connection) {
-    m_setConnections.erase(connection);
-}
+void NetworkController::start() {
+    m_contextThread = std::thread([this]() {m_context.run(); });
+    waitForClientConnections();
 
-bool NetworkController::start() {
-    try {
-        m_contextThread = std::thread([this]() {m_context.run(); });
-        waitForClientConnections();
-    }
-    catch (std::runtime_error e) {
-        std::cout << "[SERVER] Start Error: " << e.what() << "\n";
-    }
-
-    std::cout << "[SERVER] Started!\n";
-    return true;
+    m_running = true;
+    processQueue();
 }
 
 void NetworkController::stop() {
@@ -36,80 +37,74 @@ void NetworkController::stop() {
     if (m_contextThread.joinable())
         m_contextThread.join();
 
-    std::cout << "[SERVER] Stopped!\n";
+    DEBUG_LOG("[SERVER] Stopped!");
+}
+
+void NetworkController::sendUpdate(ConnectionPtr connection, const Packet& packet, const std::vector<std::filesystem::path>& paths) {
+    connection->sendUpdate(packet, paths);
+}
+
+void NetworkController::sendUpdateRequiredPacket(ConnectionPtr connection, const Packet& packet) {
+    connection->sendUpdateRequiredPacket(packet);
+}
+
+void NetworkController::sendUpdatePossiblePacket(ConnectionPtr connection, const Packet& packet) {
+    connection->sendUpdatePossiblePacket(packet);
 }
 
 void NetworkController::waitForClientConnections() {
     m_asioAcceptor.async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
         if (!ec) {
-            std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
-            ConnectionPtr connection = std::make_shared<Connection>();
+            DEBUG_LOG("[SERVER] New Connection");
+            createConnection(std::move(socket));
         }
         else {
-            std::cout << "[SERVER] New Connection Error: " << ec.message() << "\n";
+            DEBUG_LOG("[SERVER] New Connection Error");
         }
 
         waitForClientConnections();
     });
 }
 
-void NetworkController::update(size_t maxPacketsCount) {
-    size_t processedPackets = 0;
-
-    while (true) {
-        if (!m_safeDequeIncomingFiles.empty()) {
-            FileMetadata file = m_safeDequeIncomingFiles.pop_front();
-            onFile(std::move(file));
+void NetworkController::processQueue() {
+    while (m_running) {
+        if (!m_queue.empty()) {
+            OwnedPacket packet = m_queue.pop_front();
+            handlePacket(std::move(packet));
         }
 
-        if (!m_safeDequeIncomingPackets.empty() && processedPackets < maxPacketsCount) {
-            OwnedPacket ownedPacket = m_safeDequeIncomingPackets.pop_front();
-            onPacket(ownedPacket.relatedConnection, ownedPacket.packet);
-            processedPackets++;
-        }
-
-        std::this_thread::yield();
+        std::this_thread::sleep_for(10ms); 
     }
 }
 
-void NetworkController::createConnection(uint64_t id, asio::ip::tcp::socket socket)
-{
-    PacketsConnectionPtr newPacketsConnection = std::make_shared<PacketsConnection>(
-        m_asioContext,
-        std::move(socket),
-        m_safeDequeIncomingPackets,
-        [this](std::error_code ec, Packet unsentPacket) { onSendPacketError(ec, unsentPacket); },
-        [this](std::string ownerLoginHash) { onDisconnect(ownerLoginHash); }
-    );
+void NetworkController::onDisconnect(ConnectionPtr connection) {
+    m_setConnections.erase(connection);
+    DEBUG_LOG("[SERVER] Client discnnected");
+}
 
-    if (m_mapResolvers.contains(id)) {
-        m_mapResolvers.erase(id);
+void NetworkController::handlePacket(OwnedPacket&& packet) {
+    if (packet.packet.type() == static_cast<int>(PacketType::CHECK_UPDATES)) {
+        m_onUpdatesCheck(packet.connection, std::move(packet.packet));
     }
+    else if (packet.packet.type() == static_cast<int>(PacketType::UPDATE_ACCEPT)) {
+        m_onUpdateAccepted(packet.connection, std::move(packet.packet));
+    }
+    else if (packet.packet.type() == static_cast<int>(PacketType::UPDATE_DECLINE)) {
 
-    if (isConnectionAllowed(newPacketsConnection)) {
-        std::lock_guard<std::mutex> lock(m_mtx);
-        m_setConnections.insert(newPacketsConnection);
     }
     else {
-        std::cout << "[-----] Connection Denied\n";
+        DEBUG_LOG("[SERVER] unknown request");
     }
 }
 
-void NetworkController::createFilesConnection(uint64_t id, asio::ip::tcp::socket socket, const std::string& login)
+void NetworkController::createConnection(asio::ip::tcp::socket socket)
 {
-    FilesConnectionPtr newFilesConnection = std::make_shared<FilesConnection>(
-        m_asioContext,
+    ConnectionPtr connection = std::make_shared<Connection>(
+        m_context,
         std::move(socket),
-        m_safeDequeIncomingFiles,
-        [this](std::error_code ec, std::optional<FileMetadata> unreceivedFile) { onReceiveFileError(ec, unreceivedFile); },
-        [this](std::error_code ec, FileMetadata unsentFile) { onSendFileError(ec, unsentFile); },
-        [this](FileMetadata file) { onFileSent(file); },
-        [this](std::string ownerLoginHash) { onDisconnect(ownerLoginHash); }
+        [this](OwnedPacket&& packet) {m_queue.push_back(std::move(packet));  },
+        [this](ConnectionPtr connection) { onDisconnect(connection); }
     );
 
-    if (m_mapResolvers.contains(id)) {
-        m_mapResolvers.erase(id);
-    }
-
-    bindFilesConnectionToUser(newFilesConnection, login);
+    m_setConnections.insert(connection);
 }

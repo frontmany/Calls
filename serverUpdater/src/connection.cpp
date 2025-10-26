@@ -1,53 +1,67 @@
 #include "connection.h"
 
 
-namespace net {
-	Connection::Connection(
-		asio::io_context& asioContext,
-		asio::ip::tcp::socket socket,
-		SafeDeque<FileInfo>& incomingFilesQueue,
-		std::function<void(AvatarInfo&&)> onAvatar,
-		std::function<void(std::error_code, std::optional<FileInfo>)> onReceiveFileError,
-		std::function<void(std::error_code, FileInfo)> onSendFileError,
-		std::function<void(FileInfo)> onFileSent,
-		std::function<void(std::string)> onDisconnect)
-		: m_asioContext(asioContext),
-		m_socket(std::move(socket)),
-		m_filesSender(this, asioContext, m_socket, onFileSent, onSendFileError),
-		m_filesReceiver(this, m_socket, incomingFilesQueue, onAvatar)
-	{
-		m_filesReceiver.startReceiving();
+
+Connection::Connection(
+	asio::io_context& asioContext,
+	asio::ip::tcp::socket&& socket,
+	std::function<void(OwnedPacket&&)>&& queueReceivedPacket,
+	std::function<void(std::shared_ptr<Connection>)>&& onDisconnected)
+	: m_asioContext(asioContext),
+	m_socket(std::move(socket)),
+    m_queueReceivedPacket(std::move(queueReceivedPacket)), 
+    m_onDisconnected(std::move(onDisconnected)),
+    m_filesSender(m_asioContext, m_socket, [this]() {m_onDisconnected(shared_from_this()); }),
+	m_packetsSender(m_asioContext, m_socket, [this]() {m_onDisconnected(shared_from_this()); }),
+    m_packetsReceiver(m_socket, [this](Packet packet) {m_queueReceivedPacket(OwnedPacket{ shared_from_this(), packet }); }, [this]() {m_onDisconnected(shared_from_this()); })
+{
+	m_packetsReceiver.startReceiving();
+}
+
+Connection::~Connection() 
+{
+}
+
+void Connection::sendUpdateRequiredPacket(const Packet& packet) {
+    m_packetsSender.send(packet);
+}
+
+void Connection::sendUpdatePossiblePacket(const Packet& packet) {
+    m_packetsSender.send(packet);
+}
+
+void Connection::sendUpdateNotNeededPacket(const Packet& packet) {
+    m_packetsSender.send(packet);
+}
+
+void Connection::sendUpdate(const Packet& packet, const std::vector<std::filesystem::path>& paths) {
+	m_packetsSender.send(packet);
+
+	for (auto& filePath : paths) {
+		m_filesSender.sendFile(filePath);
 	}
+}
 
-	Connection::~Connection() 
-	{
-	}
+void Connection::close() {
+    auto self = shared_from_this();
 
-	void Connection::sendFile(const FileInfo& file) {
-		m_filesSender.sendFile(file);
-	}
+    asio::post(m_asioContext,
+        [this, self]() {
+            if (m_socket.is_open()) {
+                try {
+                    std::error_code ec;
 
-    void Connection::close() {
-        auto self = shared_from_this();
-
-        asio::post(m_asioContext,
-            [this, self]() {
-                if (m_socket.is_open()) {
-                    try {
-                        std::error_code ec;
-
-                        m_socket.close(ec);
-                        if (ec) {
-                            std::cerr << "Socket close error: " << ec.message() << "\n";
-                        }
-						else {
-							std::cout << "files Connection closed successfully\n";
-						}
+                    m_socket.close(ec);
+                    if (ec) {
+                        std::cerr << "Socket close error: " << ec.message() << "\n";
                     }
-                    catch (const std::exception& e) {
-                        std::cerr << "Exception in Connection::close: " << e.what() << "\n";
-                    }
+					else {
+						std::cout << "files Connection closed successfully\n";
+					}
                 }
-            });
-    }
+                catch (const std::exception& e) {
+                    std::cerr << "Exception in Connection::close: " << e.what() << "\n";
+                }
+            }
+        });
 }

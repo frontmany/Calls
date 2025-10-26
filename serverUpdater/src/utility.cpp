@@ -1,6 +1,5 @@
 #include "utility.h"
 
-namespace updater {
 
 std::string calculateFileHash(std::filesystem::path filepath) {
 	std::ifstream file(filepath, std::ios::binary);
@@ -16,6 +15,4 @@ std::string calculateFileHash(std::filesystem::path filepath) {
 	std::stringstream ss;
 	ss << std::hex << std::setw(16) << std::setfill('0') << hash_value;
 	return ss.str();
-}
-
 }
