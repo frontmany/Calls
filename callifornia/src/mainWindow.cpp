@@ -64,7 +64,15 @@ void MainWindow::initializeCallifornia(const std::string& host, const std::strin
     m_authorizationWidget->showUpdatesCheckingNotification();
     m_authorizationWidget->setAuthorizationDisabled(true);
     //m_updater.connect(host, port);
-    //checkUpdates();
+    //m_updater.checkUpdates(parseVersionFromJson());
+
+    QTimer::singleShot(0, this, [this]() {
+        showUpdatingDialog();
+    });
+
+    QTimer::singleShot(9000, this, [this]() {
+        hideUpdatingDialog();
+    });
 
     showMaximized();
 }
@@ -131,29 +139,34 @@ void MainWindow::loadFonts() {
     }
 }
 
-void MainWindow::checkUpdates() {
+std::string MainWindow::parseVersionFromJson() {
     const QString filename = "config.json";
 
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
-        return;
+        return "";
     }
 
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    if (doc.isNull()) return;
+    if (doc.isNull()) return "";
 
     QJsonObject json = doc.object();
-    auto version = json[calls::VERSION].toString().toStdString();
+    std::string version = json[calls::VERSION].toString().toStdString();
 
-    m_updater.checkUpdates(version);
+    return version;
 }
 
 void MainWindow::onUpdaterCheckResult(updater::CheckResult checkResult) {
     if (checkResult == updater::CheckResult::POSSIBLE_UPDATE) {
-
+        QTimer::singleShot(0, this, [this]() {
+            // here decide what to do with incoming calls and calling
+            m_mainMenuWidget->showUpdateAvailableNotification();
+            showUpdatingDialog();
+        });
     }
     else if (checkResult == updater::CheckResult::REQUIRED_UPDATE) {
-
+        //m_updater.startUpdate();
+        showUpdatingDialog();
     }
     else if (checkResult == updater::CheckResult::UPDATE_NOT_NEEDED) {
         return;
@@ -656,6 +669,23 @@ void MainWindow::showInitializationErrorDialog()
     dialog->move(x, y);
 
     dialog->exec();
+}
+
+void MainWindow::hideUpdatingDialog()
+{
+    QList<OverlayWidget*> overlays = findChildren<OverlayWidget*>();
+    for (OverlayWidget* overlay : overlays) {
+        overlay->close();
+        overlay->deleteLater();
+    }
+
+    QList<QDialog*> dialogs = findChildren<QDialog*>();
+    for (QDialog* dialog : dialogs) {
+        if (dialog->windowTitle() == "Updating") {
+            dialog->close();
+            dialog->deleteLater();
+        }
+    }
 }
 
 void MainWindow::showUpdatingDialog()

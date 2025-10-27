@@ -151,13 +151,30 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 
         std::vector<std::filesystem::path> filesToDelete;
         std::vector<std::filesystem::path> filesToSend;
+        std::string version; 
 
         std::unordered_map<std::filesystem::path, std::string> newVersionFiles;
         for (const auto& entry : std::filesystem::recursive_directory_iterator(latestVersionPath)) {
-            if (entry.is_regular_file()) {
+            if (entry.is_regular_file() && entry.path().filename() != "version.json") {
                 std::filesystem::path relativePath = std::filesystem::relative(entry.path(), latestVersionPath);
                 std::string fileHash = calculateFileHash(entry.path());
                 newVersionFiles[relativePath] = fileHash;
+            }
+            else {
+                std::ifstream file(entry.path());
+                if (file.is_open()) {
+                    try {
+                        nlohmann::json jsonObject;
+                        file >> jsonObject;
+                        if (jsonObject.contains(VERSION)) {
+                            version = jsonObject[VERSION].get<std::string>();
+                        }
+                    }
+                    catch (const nlohmann::json::exception& e) {
+                        DEBUG_LOG("JSON parsing error onUpdateAccepted");
+                    }
+                    file.close();
+                }
             }
         }
 
@@ -202,6 +219,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
             }
         }
         responseJson[FILES_TO_DOWNLOAD] = filesToDownloadArray;
+        responseJson[VERSION] = version;
 
         nlohmann::json filesToDeleteArray = nlohmann::json::array();
         for (const auto& filePath : filesToDelete) {

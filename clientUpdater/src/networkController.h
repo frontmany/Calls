@@ -45,6 +45,7 @@ private:
 	void parseMetadata();
 	void createConnection(const std::string& host, const uint16_t port);
 	void reset();
+	void deleteReceived();
 	uint64_t scramble(uint64_t inputNumber);
 	void finalizeReceiving();
 	void openFile();

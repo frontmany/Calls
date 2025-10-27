@@ -64,6 +64,7 @@ private slots:
 private:
     void showInitializationErrorDialog();
     void showUpdatingDialog();
+    void hideUpdatingDialog();
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
@@ -76,7 +77,7 @@ private:
 
     void setupUI();
     void loadFonts();
-    void checkUpdates();
+    std::string parseVersionFromJson();
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
     void stopIncomingCallRingtone();

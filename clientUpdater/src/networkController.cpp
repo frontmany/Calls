@@ -10,7 +10,7 @@ namespace updater {
 NetworkController::NetworkController(
 	std::function<void(CheckResult)> onCheckResult,
 	std::function<void()> onAllFilesLoaded,
-	std::function<void()> onError) 
+	std::function<void()> onError)
 	: m_onCheckResult(onCheckResult),
 	m_onAllFilesLoaded(onAllFilesLoaded),
 	m_socket(m_context),
@@ -72,7 +72,7 @@ void NetworkController::writeHeader(const Packet& packet) {
 			if (ec)
 				m_onError();
 			else
-				writeBody(packet);		
+				writeBody(packet);
 		});
 }
 
@@ -169,6 +169,21 @@ void NetworkController::parseMetadata() {
 	nlohmann::json jsonObject(std::move(m_metadata.getData()));
 
 	try {
+		if (jsonObject.contains(VERSION)) {
+			std::filesystem::path versionsDir = "versions";
+			if (!std::filesystem::exists(versionsDir)) {
+				std::filesystem::create_directories(versionsDir);
+			}
+
+			std::ofstream outFile("config.json");
+			if (outFile.is_open()) {
+				nlohmann::json versionJson;
+				versionJson[VERSION] = jsonObject[VERSION].get<std::string>();
+				outFile << versionJson.dump(4);
+				outFile.close();
+			}
+		}
+
 		if (jsonObject.contains(FILES_TO_DOWNLOAD)) {
 			for (const auto& fileEntry : jsonObject[FILES_TO_DOWNLOAD]) {
 				if (fileEntry.contains(RELATIVE_FILE_PATH) && fileEntry.contains(FILE_SIZE) && fileEntry.contains(FILE_HASH)) {
@@ -224,6 +239,7 @@ void NetworkController::readChunk() {
 		[this](std::error_code ec, std::size_t bytesTransferred) {
 			if (ec) {
 				reset();
+				deleteReceived();
 			}
 			else {
 				m_currentChunksCount++;
@@ -233,7 +249,7 @@ void NetworkController::readChunk() {
 				}
 				else if (m_currentChunksCount == m_expectedFiles.front().expectedChunksCount) {
 					m_fileStream.write(m_receiveBuffer.data(), m_expectedFiles.front().lastChunkSize);
-					
+
 					if (m_expectedFiles.empty()) {
 						finalizeReceiving();
 					}
@@ -326,4 +342,9 @@ void NetworkController::reset() {
 	m_handshakeIn = 0;
 }
 
+void NetworkController::deleteReceived() {
+	const std::filesystem::path tempDirectory = "update_temp";
+	std::filesystem::remove_all(tempDirectory);
+	std::filesystem::remove(tempDirectory);
+}
 }
