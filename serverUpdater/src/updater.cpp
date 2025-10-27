@@ -238,7 +238,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
     }
 }
 
-int main() {
+void runServerUpdater() {
     NetworkController networkController(8081,
         [](ConnectionPtr connection, Packet&& packet) {onUpdatesCheck(connection, std::move(packet)); },
         [](ConnectionPtr connection, Packet&& packet) {onUpdateAccepted(connection, std::move(packet)); }
@@ -247,4 +247,9 @@ int main() {
     DEBUG_LOG("[SERVER] server started!");
 
     networkController.start();
+}
+
+
+int main() {
+    runServerUpdater();
 }
