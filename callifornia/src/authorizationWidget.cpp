@@ -14,7 +14,11 @@ AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent)
 
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
+    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
+
+    m_updatesNotificationTimer = new QTimer(this);
+    m_updatesNotificationTimer->setSingleShot(true);
+    connect(m_updatesNotificationTimer, &QTimer::timeout, this, &AuthorizationWidget::hideUpdatesCheckingNotification);
 }
 
 void AuthorizationWidget::setupUI() {
@@ -192,6 +196,44 @@ void AuthorizationWidget::setErrorMessage(const QString& errorText) {
     m_nicknameEdit->setFocus();
 }
 
+void AuthorizationWidget::setAuthorizationDisabled(bool disabled) {
+    m_nicknameEdit->setDisabled(disabled);
+    m_authorizeButton->setDisabled(disabled);
+
+    // Добавляем визуальную индикацию отключенного состояния
+    if (disabled) {
+        m_nicknameEdit->setStyleSheet(
+            "QLineEdit {"
+            "   background-color: rgba(245, 245, 245, 150);"
+            "   border: 0px solid rgba(255, 255, 255, 100);"
+            "   border-radius: " + QString::number(scale(12)) + "px;"
+            "   padding: " + QString::number(scale(12)) + "px " + QString::number(scale(15)) + "px;"
+            "   margin: 0px;"
+            "   color: rgba(1, 11, 19, 150);"
+            "}"
+            "QLineEdit::placeholder {"
+            "   color: rgba(240, 240, 240, 120);"
+            "}"
+        );
+
+        m_authorizeButton->setStyleSheet(
+            "QPushButton {"
+            "   background-color: rgba(21, 119, 232, 150);"
+            "   color: rgba(255, 255, 255, 180);"
+            "   border: 0px solid rgba(255, 255, 255, 100);"
+            "   border-radius: " + QString::number(scale(15)) + "px;"
+            "   padding: " + QString::number(scale(12)) + "px " + QString::number(scale(24)) + "px;"
+            "   margin: 0px;"
+            "}"
+        );
+    }
+    else {
+        // Восстанавливаем обычные стили
+        m_nicknameEdit->setStyleSheet(StyleAuthorizationWidget::glassLineEditStyle());
+        m_authorizeButton->setStyleSheet(StyleAuthorizationWidget::glassButtonStyle());
+    }
+}
+
 void AuthorizationWidget::clearErrorMessage() {
     m_nicknameEdit->setStyleSheet(StyleAuthorizationWidget::glassLineEditStyle());
     m_errorLabel->hide();
@@ -207,6 +249,22 @@ void AuthorizationWidget::showNetworkErrorNotification() {
 }
 
 void AuthorizationWidget::hideNetworkErrorNotification() {
+    m_notificationLabel->setText("");
+    m_notificationWidget->hide();
+}
+
+void AuthorizationWidget::showUpdatesCheckingNotification()
+{
+    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationBlueLabelStyle());
+
+    m_notificationLabel->setText("Checking for updates...");
+    m_notificationLabel->setStyleSheet("color: #1577E8; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+
+    m_notificationWidget->show();
+}
+
+void AuthorizationWidget::hideUpdatesCheckingNotification()
+{
     m_notificationLabel->setText("");
     m_notificationWidget->hide();
 }
@@ -343,4 +401,14 @@ QString StyleAuthorizationWidget::notificationGreenLabelStyle() {
         "   margin: 0px;"
         "   padding: 0px;"
         "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
+QString StyleAuthorizationWidget::notificationBlueLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(21, 119, 232, 80);"
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::number(scale(8)));
 }

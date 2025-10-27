@@ -258,6 +258,28 @@ void NetworkController::readChunk() {
 
 void NetworkController::finalizeReceiving() {
 	reset();
+
+	std::filesystem::path versionsDir = "versions";
+	if (!std::filesystem::exists(versionsDir)) {
+		std::filesystem::create_directories(versionsDir);
+	}
+
+	nlohmann::json removeJson;
+	nlohmann::json filesArray = nlohmann::json::array();
+
+	for (const auto& filePath : m_filesToDelete) {
+		filesArray.push_back(filePath.string());
+	}
+
+	removeJson[FILES] = filesArray;
+
+	std::filesystem::path removeJsonPath = versionsDir / "remove.json";
+	std::ofstream file(removeJsonPath);
+	if (file) {
+		file << std::setw(4) << removeJson << std::endl;
+		file.close();
+	}
+
 	m_onAllFilesLoaded();
 }
 
@@ -289,6 +311,11 @@ void NetworkController::reset() {
 		m_fileStream.close();
 	}
 	m_metadata.clear();
+
+	m_context.stop();
+	if (m_asioThread.joinable()) {
+		m_asioThread.join();
+	}
 
 	std::queue<FileMetadata> emptyQueue;
 	m_expectedFiles.swap(emptyQueue);

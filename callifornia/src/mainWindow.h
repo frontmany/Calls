@@ -6,9 +6,12 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 #include <QFile>
+#include <QMovie>
 #include <QDialog>
 #include <QScreen>
 
+#include "checkResult.h"
+#include "clientUpdater.h"
 #include "calls.h"
 #include "callsClientHandler.h"
 
@@ -20,8 +23,9 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget* parent, const std::string& host, const std::string& port);
+    MainWindow(QWidget* parent);
     ~MainWindow();
+    void initializeCallifornia(const std::string& host, const std::string& port);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -40,6 +44,10 @@ private slots:
     void onNetworkError();
     void onConnectionRestored();
 
+    void onUpdaterCheckResult(updater::CheckResult checkResult);
+    void onUpdateLoaded();
+    void onUpdaterError();
+
     void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
     void onAcceptCallButtonClicked(const QString& friendNickname);
@@ -55,6 +63,7 @@ private slots:
 
 private:
     void showInitializationErrorDialog();
+    void showUpdatingDialog();
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
@@ -67,6 +76,7 @@ private:
 
     void setupUI();
     void loadFonts();
+    void checkUpdates();
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
     void stopIncomingCallRingtone();
@@ -86,4 +96,6 @@ private:
     AuthorizationWidget* m_authorizationWidget;
     MainMenuWidget* m_mainMenuWidget;
     CallWidget* m_callWidget;
+
+    updater::ClientUpdater m_updater;
 };

@@ -5,38 +5,49 @@
 #include <QApplication>
 #include <QSoundEffect>
 #include <QFileInfo>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "AuthorizationWidget.h"
 #include "MainMenuWidget.h"
 #include "OverlayWidget.h"
 #include "CallWidget.h"
 
-MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::string& port)
-    : QMainWindow(parent)
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent),
+    m_updater(
+        [this](updater::CheckResult checkResult) {onUpdaterCheckResult(checkResult); },
+        [this]() {onUpdateLoaded(); },
+        [this]() {onUpdaterError(); })
 {
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
+}
 
-    // Единый плеер для всех мелодий
+MainWindow::~MainWindow() {
+    if (m_ringtonePlayer) {
+        m_ringtonePlayer->stop();
+    }
+}
+
+void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
     m_audioOutput->setVolume(0.4f);
     m_ringtonePlayer->setAudioOutput(m_audioOutput);
 
-    // Настраиваем цикличное воспроизведение
     connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
         if (state == QMediaPlayer::StoppedState) {
-            // Автоматически перезапускаем если есть активные вызовы
             if (calls::getIncomingCallsCount() != 0) {
                 m_ringtonePlayer->play();
             }
         }
-        });
+    });
 
     loadFonts();
     setupUI();
 
     std::unique_ptr<CallsClientHandler> callsClientHandler = std::make_unique<CallsClientHandler>(this);
-
     bool initialized = calls::init(host, port, std::move(callsClientHandler));
 
     if (initialized) {
@@ -46,15 +57,16 @@ MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::stri
         QTimer::singleShot(0, this, [this]() {
             showInitializationErrorDialog();
         });
+        return;
     }
+
+
+    m_authorizationWidget->showUpdatesCheckingNotification();
+    m_authorizationWidget->setAuthorizationDisabled(true);
+    //m_updater.connect(host, port);
+    //checkUpdates();
 
     showMaximized();
-}
-
-MainWindow::~MainWindow() {
-    if (m_ringtonePlayer) {
-        m_ringtonePlayer->stop();
-    }
 }
 
 void MainWindow::playRingtone(const QUrl& ringtoneUrl) {
@@ -106,7 +118,7 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
         if (!effect->isPlaying()) {
             effect->deleteLater();
         }
-        });
+    });
 }
 
 void MainWindow::loadFonts() {
@@ -117,6 +129,46 @@ void MainWindow::loadFonts() {
     if (QFontDatabase::addApplicationFont(":/resources/Outfit-VariableFont_wght.ttf") == -1) {
         qWarning() << "Font load error:";
     }
+}
+
+void MainWindow::checkUpdates() {
+    const QString filename = "config.json";
+
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (doc.isNull()) return;
+
+    QJsonObject json = doc.object();
+    auto version = json[calls::VERSION].toString().toStdString();
+
+    m_updater.checkUpdates(version);
+}
+
+void MainWindow::onUpdaterCheckResult(updater::CheckResult checkResult) {
+    if (checkResult == updater::CheckResult::POSSIBLE_UPDATE) {
+
+    }
+    else if (checkResult == updater::CheckResult::REQUIRED_UPDATE) {
+
+    }
+    else if (checkResult == updater::CheckResult::UPDATE_NOT_NEEDED) {
+        return;
+    }
+    else {
+        qWarning() << "error: unknown CheckResult type";
+    }
+}
+
+void MainWindow::onUpdateLoaded() {
+
+}
+
+void MainWindow::onUpdaterError() {
+    
 }
 
 void MainWindow::setupUI() {
@@ -146,7 +198,7 @@ void MainWindow::setupUI() {
     connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
     connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
-    m_stackedLayout->addWidget(m_mainMenuWidget);
+    m_stackedLayout->addWidget(m_mainMenuWidget); 
 
     m_callWidget = new CallWidget(this);
     connect(m_callWidget, &CallWidget::hangupClicked, this, &MainWindow::onEndCallButtonClicked);
@@ -162,10 +214,8 @@ void MainWindow::setupUI() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    if (calls::isAuthorized()) {
-        calls::stop();
-    }
-
+    calls::stop();
+    m_updater.disconnect();
     event->accept();
 }
 
@@ -588,7 +638,122 @@ void MainWindow::showInitializationErrorDialog()
     connect(closeButton, &QPushButton::clicked, this, []() {
         calls::stop();
         QApplication::quit();
-        });
+    });
+
+    QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
+
+    QScreen* targetScreen = this->screen();
+    if (!targetScreen) {
+        targetScreen = QGuiApplication::primaryScreen();
+    }
+
+    QRect screenGeometry = targetScreen->availableGeometry();
+    dialog->adjustSize();
+    QSize dialogSize = dialog->size();
+
+    int x = screenGeometry.center().x() - dialogSize.width() / 2;
+    int y = screenGeometry.center().y() - dialogSize.height() / 2;
+    dialog->move(x, y);
+
+    dialog->exec();
+}
+
+void MainWindow::showUpdatingDialog()
+{
+    QFont font("Outfit", 14, QFont::Normal);
+
+    OverlayWidget* overlay = new OverlayWidget(this);
+    overlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
+    overlay->setAttribute(Qt::WA_TranslucentBackground);
+    overlay->showMaximized();
+
+    QDialog* dialog = new QDialog(overlay);
+    dialog->setWindowTitle("Updating");
+    dialog->setMinimumWidth(300);
+    dialog->setMinimumHeight(250);
+    dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
+
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(30);
+    shadowEffect->setXOffset(0);
+    shadowEffect->setYOffset(0);
+    shadowEffect->setColor(QColor(0, 0, 0, 150));
+
+    QWidget* mainWidget = new QWidget(dialog);
+    mainWidget->setGraphicsEffect(shadowEffect);
+    mainWidget->setObjectName("mainWidget");
+
+    QString mainWidgetStyle =
+        "QWidget#mainWidget {"
+        "   background-color: rgb(226, 243, 231);"
+        "   border-radius: 16px;"
+        "   border: 1px solid rgb(210, 210, 210);"
+        "}";
+    mainWidget->setStyleSheet(mainWidgetStyle);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    mainLayout->addWidget(mainWidget);
+
+    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
+    contentLayout->setContentsMargins(24, 24, 24, 24);
+    contentLayout->setSpacing(16);
+
+    QLabel* gifLabel = new QLabel();
+    gifLabel->setAlignment(Qt::AlignCenter);
+    gifLabel->setMinimumHeight(120);
+
+    QMovie* movie = new QMovie(":/resources/updating.gif");
+    if (movie->isValid()) {
+        gifLabel->setMovie(movie);
+        movie->start();
+    }
+
+    QLabel* updatingLabel = new QLabel("Updating...");
+    updatingLabel->setAlignment(Qt::AlignCenter);
+    updatingLabel->setStyleSheet(
+        "color: rgb(60, 60, 60);"
+        "font-size: 16px;"
+        "font-family: 'Outfit';"
+        "font-weight: bold;"
+    );
+    updatingLabel->setFont(font);
+
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setAlignment(Qt::AlignCenter);
+
+    QPushButton* exitButton = new QPushButton("Exit");
+    exitButton->setFixedWidth(120);
+    exitButton->setMinimumHeight(36);
+    exitButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: transparent;"
+        "   color: rgb(120, 120, 120);"
+        "   border-radius: 6px;"
+        "   padding: 6px 12px;"
+        "   font-family: 'Outfit';"
+        "   font-size: 13px;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(0, 0, 0, 8);"
+        "   color: rgb(100, 100, 100);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(0, 0, 0, 15);"
+        "}"
+    );
+    exitButton->setFont(font);
+
+    buttonLayout->addWidget(exitButton);
+
+    contentLayout->addWidget(gifLabel);
+    contentLayout->addWidget(updatingLabel);
+    contentLayout->addLayout(buttonLayout);
+
+    connect(exitButton, &QPushButton::clicked, this, [this, dialog, overlay]() {
+        this->close();
+    });
 
     QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
 

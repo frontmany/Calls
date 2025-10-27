@@ -17,10 +17,11 @@ set(RC_FILE resources/app_icon.rc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES} ${RC_FILE})
 
-target_link_libraries(${PROJECT_NAME} Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client)
+target_link_libraries(${PROJECT_NAME} Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater)
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ../client/src
+    ../clientUpdater/src
     ../vendor/opus/include     
     ../vendor/portaudio/include
     ../vendor/json/include                    

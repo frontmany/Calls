@@ -38,6 +38,7 @@ struct StyleAuthorizationWidget {
     static QString glassSubTitleLabelStyle();
     static QString notificationRedLabelStyle();
     static QString notificationGreenLabelStyle();
+    static QString notificationBlueLabelStyle();
 };
 
 class AuthorizationWidget : public QWidget {
@@ -45,6 +46,7 @@ class AuthorizationWidget : public QWidget {
 
 public:
     AuthorizationWidget(QWidget* parent = nullptr);
+    void setAuthorizationDisabled(bool disabled);
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void startBlurAnimation();
@@ -52,6 +54,8 @@ public:
     void showNetworkErrorNotification();
     void hideNetworkErrorNotification();
     void showConnectionRestoredNotification(int durationMs);
+    void showUpdatesCheckingNotification();
+    void hideUpdatesCheckingNotification();
 
 private slots:
     void onAuthorizationClicked();
@@ -83,4 +87,6 @@ private:
     QGraphicsBlurEffect* m_backgroundBlurEffect;
     QPropertyAnimation* m_blurAnimation;
     QTimer* m_notificationTimer;
+
+    QTimer* m_updatesNotificationTimer;
 };

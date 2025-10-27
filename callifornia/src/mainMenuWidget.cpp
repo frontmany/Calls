@@ -304,13 +304,28 @@ QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
         .arg(m_stopCallingButtonHoverColor.blue()).arg(m_stopCallingButtonHoverColor.alpha());
 }
 
+QString StyleMainMenuWidget::notificationBlueLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(21, 119, 232, 80);"  // Синий цвет с прозрачностью
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
 MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
 
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
+    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
+
+    // Таймер для уведомления об обновлении
+    m_updateNotificationTimer = new QTimer(this);
+    m_updateNotificationTimer->setSingleShot(true);
+    connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableNotification);
 }
 
 void MainMenuWidget::setupUI() {
@@ -346,6 +361,38 @@ void MainMenuWidget::setupUI() {
     m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
 
     m_notificationLayout->addWidget(m_notificationLabel);
+
+    m_updateNotificationButton = new QPushButton(this);
+    m_updateNotificationButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_updateNotificationButton->hide();
+    m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
+
+    m_updateNotificationButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(21, 119, 232, 80);"
+        "   color: #1577E8;"
+        "   border: none;"
+        "   border-radius: 8px;"
+        "   padding: 8px 18px 8px 15px;"
+        "   font-size: 14px;"
+        "   font-weight: medium;"
+        "   margin: 0px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(21, 119, 232, 120);"
+        "   color: #0D6BC8;"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(21, 119, 232, 150);"
+        "   color: #0A5FC8;"
+        "}"
+    );
+
+    QFont updateFont("Outfit", scale(14), QFont::Medium);
+    m_updateNotificationButton->setFont(updateFont);
+    m_updateNotificationButton->setText("New version available! Click to update");
+    m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
+
 
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
@@ -508,6 +555,8 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
+    m_mainLayout->addWidget(m_updateNotificationButton, 0, Qt::AlignCenter);
+    m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
     m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
@@ -523,6 +572,7 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
+    connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableNotification(); });
 }
 
 void MainMenuWidget::setupAnimations() {
@@ -726,6 +776,14 @@ void MainMenuWidget::updateCallingState(bool calling) {
         m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
         m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
     }
+}
+
+void MainMenuWidget::showUpdateAvailableNotification() {
+    m_updateNotificationButton->show();
+}
+
+void MainMenuWidget::hideUpdateAvailableNotification() {
+    m_updateNotificationButton->hide();
 }
 
 void MainMenuWidget::showErrorNotification(const QString& text, int durationMs) {

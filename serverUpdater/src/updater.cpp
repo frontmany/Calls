@@ -66,47 +66,53 @@ void onUpdatesCheck(ConnectionPtr connection, Packet&& packet) {
     nlohmann::json jsonObject;
     std::string version = jsonObject[VERSION].get<std::string>();
 
-    bool hasMajorUpdate = false;
-    std::string latestVersion = version;
+    if (version != VERSION_LOST) {
+        bool hasMajorUpdate = false;
+        std::string latestVersion = version;
 
-    for (const auto& entry : std::filesystem::directory_iterator(versionsDirectory)) {
-        if (entry.is_directory()) {
-            std::filesystem::path versionJsonPath = entry.path() / "version.json";
+        for (const auto& entry : std::filesystem::directory_iterator(versionsDirectory)) {
+            if (entry.is_directory()) {
+                std::filesystem::path versionJsonPath = entry.path() / "version.json";
 
-            if (std::filesystem::exists(versionJsonPath) &&
-                std::filesystem::is_regular_file(versionJsonPath)) {
-                std::ifstream file(versionJsonPath);
-                nlohmann::json versionJson = nlohmann::json::parse(file);
+                if (std::filesystem::exists(versionJsonPath) &&
+                    std::filesystem::is_regular_file(versionJsonPath)) {
+                    std::ifstream file(versionJsonPath);
+                    nlohmann::json versionJson = nlohmann::json::parse(file);
 
-                std::string currentVersion = versionJson[VERSION].get<std::string>();
-                std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
+                    std::string currentVersion = versionJson[VERSION].get<std::string>();
+                    std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
 
-  
-                if (const std::string& latest = compareVersions(currentVersion, version); latest == version) {
 
-                    if (updateType == MAJOR_UPDATE) {
-                        hasMajorUpdate = true;
-                    }
+                    if (const std::string& latest = compareVersions(currentVersion, version); latest == version) {
 
-                    if (const std::string& latest = compareVersions(currentVersion, latestVersion); currentVersion == latest) {
-                        latestVersion = currentVersion;
+                        if (updateType == MAJOR_UPDATE) {
+                            hasMajorUpdate = true;
+                        }
+
+                        if (const std::string& latest = compareVersions(currentVersion, latestVersion); currentVersion == latest) {
+                            latestVersion = currentVersion;
+                        }
                     }
                 }
             }
         }
-    }
 
-    if (latestVersion == version) {
-        Packet packet(static_cast<int>(CheckResult::UPDATE_NOT_NEEDED));
-        connection->sendUpdateNotNeededPacket(packet);
-    }
-    else if (hasMajorUpdate) {
-        Packet packet(static_cast<int>(CheckResult::REQUIRED_UPDATE));
-        connection->sendUpdateRequiredPacket(packet);
+        if (latestVersion == version) {
+            Packet packet(static_cast<int>(CheckResult::UPDATE_NOT_NEEDED));
+            connection->sendUpdateNotNeededPacket(packet);
+        }
+        else if (hasMajorUpdate) {
+            Packet packet(static_cast<int>(CheckResult::REQUIRED_UPDATE));
+            connection->sendUpdateRequiredPacket(packet);
+        }
+        else {
+            Packet packet(static_cast<int>(CheckResult::POSSIBLE_UPDATE));
+            connection->sendUpdatePossiblePacket(packet);
+        }
     }
     else {
-        Packet packet(static_cast<int>(CheckResult::POSSIBLE_UPDATE));
-        connection->sendUpdatePossiblePacket(packet);
+        Packet packet(static_cast<int>(CheckResult::REQUIRED_UPDATE));
+        connection->sendUpdateRequiredPacket(packet);
     }
 }
 
@@ -155,9 +161,11 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
             }
         }
 
+        std::unordered_set<std::filesystem::path> clientFiles;
         for (const auto& [clientRelativePath, clientHash] : filePathsWithHashes) {
-            auto it = newVersionFiles.find(clientRelativePath);
+            clientFiles.insert(clientRelativePath);
 
+            auto it = newVersionFiles.find(clientRelativePath);
             if (it == newVersionFiles.end()) {
                 filesToDelete.push_back(clientRelativePath);
             }
@@ -166,6 +174,11 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
             }
         }
 
+        for (const auto& [serverRelativePath, serverHash] : newVersionFiles) {
+            if (clientFiles.find(serverRelativePath) == clientFiles.end()) {
+                filesToSend.push_back(serverRelativePath);
+            }
+        }
 
         nlohmann::json responseJson;
 

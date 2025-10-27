@@ -4,6 +4,7 @@
 #include <functional>
 
 #include "callsClient.h"
+#include "jsonTypes.h"
 
 namespace calls {
     // facade functions

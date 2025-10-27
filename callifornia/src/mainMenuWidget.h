@@ -62,6 +62,7 @@ struct StyleMainMenuWidget {
     static QString stopCallingButtonStyle();
     static QString stopCallingButtonHoverStyle();
     static QString notificationRedLabelStyle();
+    static QString notificationBlueLabelStyle();
 };
 
 class MainMenuWidget : public QWidget {
@@ -80,6 +81,8 @@ public:
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
+    void showUpdateAvailableNotification();
+    void hideUpdateAvailableNotification();
 
     std::vector<std::pair<std::string, int>> getIncomingCalls() const;
 
@@ -98,6 +101,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
+    void updateButtonClicked();
 
 private slots:
     void onCallButtonClicked();
@@ -155,6 +159,9 @@ private:
     QHBoxLayout* m_notificationLayout;
     QLabel* m_notificationLabel;
     QTimer* m_notificationTimer;
+
+    QPushButton* m_updateNotificationButton;
+    QTimer* m_updateNotificationTimer;
 
     // Animations
     QPropertyAnimation* m_settingsAnimation;
