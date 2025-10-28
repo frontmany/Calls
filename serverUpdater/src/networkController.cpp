@@ -40,18 +40,6 @@ void NetworkController::stop() {
     DEBUG_LOG("[SERVER] Stopped!");
 }
 
-void NetworkController::sendUpdate(ConnectionPtr connection, const Packet& packet, const std::vector<std::filesystem::path>& paths) {
-    connection->sendUpdate(packet, paths);
-}
-
-void NetworkController::sendUpdateRequiredPacket(ConnectionPtr connection, const Packet& packet) {
-    connection->sendUpdateRequiredPacket(packet);
-}
-
-void NetworkController::sendUpdatePossiblePacket(ConnectionPtr connection, const Packet& packet) {
-    connection->sendUpdatePossiblePacket(packet);
-}
-
 void NetworkController::waitForClientConnections() {
     m_asioAcceptor.async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
         if (!ec) {
@@ -88,9 +76,6 @@ void NetworkController::handlePacket(OwnedPacket&& packet) {
     }
     else if (packet.packet.type() == static_cast<int>(PacketType::UPDATE_ACCEPT)) {
         m_onUpdateAccepted(packet.connection, std::move(packet.packet));
-    }
-    else if (packet.packet.type() == static_cast<int>(PacketType::UPDATE_DECLINE)) {
-
     }
     else {
         DEBUG_LOG("[SERVER] unknown request");

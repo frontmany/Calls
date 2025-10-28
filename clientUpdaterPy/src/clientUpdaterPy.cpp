@@ -34,5 +34,4 @@ namespace updater {
                 py::arg("type"))
             .def("declineUpdate", &ClientUpdater::declineUpdate);
     }
-
 }

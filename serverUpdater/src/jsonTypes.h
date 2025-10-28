@@ -9,5 +9,5 @@ static constexpr const char* VERSION_LOST = "versionLost";
 static constexpr const char* OPERATION_SYSTEM = "osType";
 static constexpr const char* IS_ACCEPTED = "isAccepted";
 static constexpr const char* FILES_TO_DOWNLOAD = "filesToDownload";
-static constexpr const char* FILES_TO_DELETE = "fileToDelete";
+static constexpr const char* FILES_TO_DELETE = "filesToDelete";
 static constexpr const char* UPDATE_TYPE = "updateType";

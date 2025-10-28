@@ -6,33 +6,13 @@
 #include "operationSystemType.h"
 #include "jsonTypes.h"
 #include "checkResult.h"
+#include "version.h"
 #include "logger.h"
 #include "utility.h"
 
 #include "json.hpp"
 
-const std::string& compareVersions(const std::string& v1, const std::string& v2) {
-    std::vector<int> parts1, parts2;
-    std::stringstream ss1(v1), ss2(v2);
-    std::string part;
-
-    while (std::getline(ss1, part, '.')) {
-        parts1.push_back(std::stoi(part));
-    }
-
-    while (std::getline(ss2, part, '.')) {
-        parts2.push_back(std::stoi(part));
-    }
-
-    for (size_t i = 0; i < std::min(parts1.size(), parts2.size()); ++i) {
-        if (parts1[i] > parts2[i]) return v1;
-        if (parts1[i] < parts2[i]) return v2;
-    }
-
-    return parts1.size() > parts2.size() ? v1 : v2;
-}
-
-std::filesystem::path findLatestVersionPath() {
+std::pair<std::filesystem::path, std::string> findLatestVersion() {
     std::string latestVersion;
     std::filesystem::path latestVersionPath;
 
@@ -51,7 +31,7 @@ std::filesystem::path findLatestVersionPath() {
                 if (latestVersion.empty())
                     latestVersion = currentVersion;
 
-                if (const std::string& latest = compareVersions(currentVersion, latestVersion); currentVersion == latest) {
+                if (currentVersion > latestVersion) {
                     latestVersion = currentVersion;
                     latestVersionPath = entry.path();
                 }
@@ -59,16 +39,19 @@ std::filesystem::path findLatestVersionPath() {
         }
     }
 
-    return latestVersionPath;
+    return std::make_pair(latestVersionPath, latestVersion);
 }
 
 void onUpdatesCheck(ConnectionPtr connection, Packet&& packet) {
-    nlohmann::json jsonObject;
-    std::string version = jsonObject[VERSION].get<std::string>();
+    nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
+
+    Version version(jsonObject[VERSION].get<std::string>());
+
+    Packet packetResponse;
 
     if (version != VERSION_LOST) {
         bool hasMajorUpdate = false;
-        std::string latestVersion = version;
+        Version latestVersion = version;
 
         for (const auto& entry : std::filesystem::directory_iterator(versionsDirectory)) {
             if (entry.is_directory()) {
@@ -79,17 +62,17 @@ void onUpdatesCheck(ConnectionPtr connection, Packet&& packet) {
                     std::ifstream file(versionJsonPath);
                     nlohmann::json versionJson = nlohmann::json::parse(file);
 
-                    std::string currentVersion = versionJson[VERSION].get<std::string>();
+                    Version currentVersion(versionJson[VERSION].get<std::string>());
                     std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
 
 
-                    if (const std::string& latest = compareVersions(currentVersion, version); latest == version) {
+                    if (currentVersion > version) {
 
                         if (updateType == MAJOR_UPDATE) {
                             hasMajorUpdate = true;
                         }
 
-                        if (const std::string& latest = compareVersions(currentVersion, latestVersion); currentVersion == latest) {
+                        if (currentVersion > latestVersion) {
                             latestVersion = currentVersion;
                         }
                     }
@@ -98,27 +81,24 @@ void onUpdatesCheck(ConnectionPtr connection, Packet&& packet) {
         }
 
         if (latestVersion == version) {
-            Packet packet(static_cast<int>(CheckResult::UPDATE_NOT_NEEDED));
-            connection->sendUpdateNotNeededPacket(packet);
+            packetResponse.setType(static_cast<int>(CheckResult::UPDATE_NOT_NEEDED));
         }
         else if (hasMajorUpdate) {
-            Packet packet(static_cast<int>(CheckResult::REQUIRED_UPDATE));
-            connection->sendUpdateRequiredPacket(packet);
+            packetResponse.setType(static_cast<int>(CheckResult::REQUIRED_UPDATE));
         }
         else {
-            Packet packet(static_cast<int>(CheckResult::POSSIBLE_UPDATE));
-            connection->sendUpdatePossiblePacket(packet);
+            packetResponse.setType(static_cast<int>(CheckResult::POSSIBLE_UPDATE));
         }
     }
     else {
-        Packet packet(static_cast<int>(CheckResult::REQUIRED_UPDATE));
-        connection->sendUpdateRequiredPacket(packet);
+        packetResponse.setType(static_cast<int>(CheckResult::REQUIRED_UPDATE));
     }
+
+    connection->sendPacket(packetResponse);
 }
 
 void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
-    std::string jsonString = packet.data();
-    nlohmann::json jsonObject = nlohmann::json::parse(jsonString);
+    nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
 
     OperationSystemType osType;
     if (jsonObject.contains(OPERATION_SYSTEM)) {
@@ -147,11 +127,10 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
             }
         }
 
-        std::filesystem::path latestVersionPath = findLatestVersionPath();
+        auto [latestVersionPath, latestVersion] = findLatestVersion();
 
         std::vector<std::filesystem::path> filesToDelete;
         std::vector<std::filesystem::path> filesToSend;
-        std::string version; 
 
         std::unordered_map<std::filesystem::path, std::string> newVersionFiles;
         for (const auto& entry : std::filesystem::recursive_directory_iterator(latestVersionPath)) {
@@ -159,22 +138,6 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
                 std::filesystem::path relativePath = std::filesystem::relative(entry.path(), latestVersionPath);
                 std::string fileHash = calculateFileHash(entry.path());
                 newVersionFiles[relativePath] = fileHash;
-            }
-            else {
-                std::ifstream file(entry.path());
-                if (file.is_open()) {
-                    try {
-                        nlohmann::json jsonObject;
-                        file >> jsonObject;
-                        if (jsonObject.contains(VERSION)) {
-                            version = jsonObject[VERSION].get<std::string>();
-                        }
-                    }
-                    catch (const nlohmann::json::exception& e) {
-                        DEBUG_LOG("JSON parsing error onUpdateAccepted");
-                    }
-                    file.close();
-                }
             }
         }
 
@@ -203,7 +166,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 
         nlohmann::json filesToDownloadArray = nlohmann::json::array();
         for (const auto& filePath : filesToSend) {
-            auto fullPath = versionsDirectory / latestVersionPath / filePath;
+            auto fullPath = latestVersionPath / filePath;
             if (std::filesystem::exists(fullPath)) {
                 serverPathsToSend.push_back(fullPath);
 
@@ -218,8 +181,9 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
                 filesToDownloadArray.push_back(fileEntry);
             }
         }
+
         responseJson[FILES_TO_DOWNLOAD] = filesToDownloadArray;
-        responseJson[VERSION] = version;
+        responseJson[VERSION] = latestVersion;
 
         nlohmann::json filesToDeleteArray = nlohmann::json::array();
         for (const auto& filePath : filesToDelete) {
@@ -230,7 +194,10 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
         Packet packet;
         packet.setData(responseJson.dump());
 
-        connection->sendUpdate(packet, serverPathsToSend);
+        connection->sendPacket(packet);
+
+        for (const auto& path : serverPathsToSend) 
+            connection->sendFile(path);
     }
     else {
         DEBUG_LOG("Missing FILES field in packet");

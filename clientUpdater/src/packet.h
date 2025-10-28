@@ -16,9 +16,9 @@ private:
 
 public:
     Packet();
-    Packet(int type);
+    Packet(int type, const std::string& str);
     void setData(const std::string& str);
-    std::string getData();
+    std::string data();
     void clear();
     uint32_t type() const;
     void setType(int type);

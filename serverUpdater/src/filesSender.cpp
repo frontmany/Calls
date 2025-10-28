@@ -1,33 +1,37 @@
 #include "filesSender.h"
+#include "packetsSender.h"
 #include "logger.h"
 
 
 
 FilesSender::FilesSender(asio::io_context& asioContext,
 	asio::ip::tcp::socket& socket,
+	SafeDeque<std::variant<Packet, std::filesystem::path>>& queue,
+	PacketsSender& packetsSender,
 	std::function<void()>&& onError)
 	: m_asioContext(asioContext),
 	m_socket(socket),
+	m_queue(queue),
+	m_packetsSender(packetsSender),
 	m_onError(std::move(onError))
 {
 }
 
-void FilesSender::sendFile(const std::filesystem::path& fileData) {
-	asio::post(m_asioContext, [this, fileData]() {
-		bool allowed = m_queue.empty();
-
-		m_queue.push_back(fileData);
-
-		if (allowed) 
-			sendFileChunk();
-	});
+void FilesSender::sendFile() {
+	sendFileChunk();
 } 
 
 void FilesSender::sendFileChunk() {
-	if (!m_fileStream.is_open()) 
-		if (!openFile()) return;
-	
+	if (!m_fileStream.is_open()) {
+		if (!m_queue.empty()) {
+			auto& variant = m_queue.front();
 
+			if (auto path = std::get_if<std::filesystem::path>(&variant)) {
+				if (!openFile(*path)) return;
+			}
+		}
+	}
+	
 	m_fileStream.read(m_buffer.data(), c_chunkSize);
 	std::streamsize bytesRead = m_fileStream.gcount();
 
@@ -50,14 +54,25 @@ void FilesSender::sendFileChunk() {
 		m_fileStream.close();
 		m_queue.pop_front();
 
-		if (!m_queue.empty())
-			sendFileChunk();
+
+		if (!m_queue.empty()) {
+			auto& variant = m_queue.front();
+
+			if (auto path = std::get_if<std::filesystem::path>(&variant)) {
+				m_buffer.fill(0);
+				sendFileChunk();
+			}
+			else {
+				m_packetsSender.send();
+			}
+		}
 	}
 }
 
-bool FilesSender::openFile() {
-	auto& filePath = m_queue.front();
-	m_fileStream.open(filePath, std::ios::binary);
+bool FilesSender::openFile(const std::filesystem::path& path) {
+	auto& variant = m_queue.front();
+
+	m_fileStream.open(path, std::ios::binary);
 
 	if (!m_fileStream) {
 		DEBUG_LOG("Failed to open file");

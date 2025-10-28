@@ -10,14 +10,16 @@ namespace updater {
 NetworkController::NetworkController(
 	std::function<void(CheckResult)> onCheckResult,
 	std::function<void()> onAllFilesLoaded,
+	std::function<void()> onConnected,
 	std::function<void()> onError)
 	: m_onCheckResult(onCheckResult),
 	m_onAllFilesLoaded(onAllFilesLoaded),
-	m_socket(m_context),
+	m_onConnected(onConnected),
 	m_onError(onError),
-	m_currentChunksCount(0)
+	m_socket(m_context),
+	m_currentChunksCount(0),
+	m_workGuard(asio::make_work_guard(m_context))
 {
-
 }
 
 void NetworkController::sendPacket(const Packet& packet) {
@@ -26,6 +28,7 @@ void NetworkController::sendPacket(const Packet& packet) {
 
 void NetworkController::connect(const std::string& host, const std::string& port) {
 	m_asioThread = std::thread([this]() { m_context.run(); });
+
 	createConnection(host, std::stoi(port));
 }
 
@@ -40,14 +43,14 @@ void NetworkController::disconnect() {
 		m_fileStream.close();
 	}
 
-	reset();
+	reset(true);
 }
 
 
 void NetworkController::createConnection(const std::string& host, const uint16_t port) {
 	try {
 		asio::ip::tcp::resolver resolver(m_context);
-		auto serverEndpoint = resolver.resolve(host, std::to_string(port));
+		const asio::ip::tcp::resolver::results_type& serverEndpoint = resolver.resolve(host, std::to_string(port));
 
 		asio::async_connect(m_socket, serverEndpoint,
 			[this](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
@@ -70,10 +73,16 @@ void NetworkController::writeHeader(const Packet& packet) {
 		asio::buffer(&packet.header(), Packet::sizeOfHeader()),
 		[this, packet](std::error_code ec, std::size_t length) {
 			if (ec)
+			{
 				m_onError();
+			}
 			else
-				writeBody(packet);
-		});
+			{
+				if (packet.body().size() > 0)
+					writeBody(packet);
+			}
+		}
+	);
 }
 
 void NetworkController::writeBody(const Packet& packet) {
@@ -101,6 +110,24 @@ void NetworkController::readHandshake() {
 		});
 }
 
+void NetworkController::readHandshakeConfirmation() {
+	asio::async_read(m_socket, asio::buffer(&m_handshakeConfirmation, sizeof(uint64_t)),
+		[this](std::error_code ec, std::size_t length) {
+			if (ec) {
+				m_onError();
+			}
+			else {
+				if (m_handshakeConfirmation == m_handshakeOut) {
+					m_onConnected();
+					readCheckResult();
+				}
+				else {
+					m_onError();
+				}
+			}
+		});
+}
+
 void NetworkController::writeHandshake() {
 	asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
@@ -108,7 +135,7 @@ void NetworkController::writeHandshake() {
 				m_onError();
 			}
 			else {
-				readCheckResult();
+				readHandshakeConfirmation();
 			}
 		});
 }
@@ -124,6 +151,8 @@ void NetworkController::readCheckResult() {
 					m_onCheckResult(CheckResult::POSSIBLE_UPDATE);
 				else if (m_metadata.header().type == static_cast<int>(CheckResult::REQUIRED_UPDATE))
 					m_onCheckResult(CheckResult::REQUIRED_UPDATE);
+				else if (m_metadata.header().type == static_cast<int>(CheckResult::UPDATE_NOT_NEEDED))
+					m_onCheckResult(CheckResult::UPDATE_NOT_NEEDED);
 				else
 					m_onError();
 
@@ -152,6 +181,7 @@ void NetworkController::readMetadataBody() {
 				m_onError();
 			}
 			else {
+				deleteTempDirectory();
 				parseMetadata();
 				openFile();
 				readChunk();
@@ -159,23 +189,20 @@ void NetworkController::readMetadataBody() {
 		});
 }
 
-uint64_t NetworkController::scramble(uint64_t inputNumber) {
-	uint64_t out = inputNumber ^ 0xDEADBEEFC;
-	out = (out & 0xF0F0F0F0F) >> 4 | (out & 0x0F0F0F0F0F) << 4;
-	return out ^ 0xC0DEFACE12345678;
-}
-
 void NetworkController::parseMetadata() {
-	nlohmann::json jsonObject(std::move(m_metadata.getData()));
+	nlohmann::json jsonObject = nlohmann::json::parse(m_metadata.data());
+
+	const std::filesystem::path tempDirectory = "update_temp";
 
 	try {
 		if (jsonObject.contains(VERSION)) {
-			std::filesystem::path versionsDir = "versions";
-			if (!std::filesystem::exists(versionsDir)) {
-				std::filesystem::create_directories(versionsDir);
+			if (!std::filesystem::exists(tempDirectory)) {
+				std::filesystem::create_directories(tempDirectory);
 			}
 
-			std::ofstream outFile("config.json");
+			const std::filesystem::path newConfigPath = tempDirectory / "config.json";
+
+			std::ofstream outFile(newConfigPath);
 			if (outFile.is_open()) {
 				nlohmann::json versionJson;
 				versionJson[VERSION] = jsonObject[VERSION].get<std::string>();
@@ -201,7 +228,7 @@ void NetworkController::parseMetadata() {
 					FileMetadata fileInfo;
 					fileInfo.fileHash = fileHash;
 					fileInfo.expectedChunksCount = chunksCount;
-					fileInfo.relativeFilePath = relativeFilePath;
+					fileInfo.relativeFilePath = tempDirectory / relativeFilePath;
 					fileInfo.lastChunkSize = lastChunkSize;
 
 					m_expectedFiles.push(std::move(fileInfo));
@@ -238,8 +265,9 @@ void NetworkController::readChunk() {
 		asio::buffer(m_receiveBuffer.data(), c_chunkSize),
 		[this](std::error_code ec, std::size_t bytesTransferred) {
 			if (ec) {
-				reset();
-				deleteReceived();
+				reset(false);
+				deleteTempDirectory();
+				m_onError();
 			}
 			else {
 				m_currentChunksCount++;
@@ -250,15 +278,20 @@ void NetworkController::readChunk() {
 				else if (m_currentChunksCount == m_expectedFiles.front().expectedChunksCount) {
 					m_fileStream.write(m_receiveBuffer.data(), m_expectedFiles.front().lastChunkSize);
 
-					if (m_expectedFiles.empty()) {
+					m_currentChunksCount = 0;
+					m_fileStream.close();
+
+					if (m_expectedFiles.size() == 1) {
+						if (m_expectedFiles.front().fileHash != calculateFileHash(m_expectedFiles.front().relativeFilePath)) {
+							m_onError();
+							return;
+						}
+
+						m_expectedFiles.pop();
 						finalizeReceiving();
 					}
 					else {
-						m_currentChunksCount = 0;
-						m_fileStream.close();
-
 						if (m_expectedFiles.front().fileHash != calculateFileHash(m_expectedFiles.front().relativeFilePath)) {
-							m_expectedFiles.pop();
 							m_onError();
 						}
 						else {
@@ -273,12 +306,9 @@ void NetworkController::readChunk() {
 }
 
 void NetworkController::finalizeReceiving() {
-	reset();
+	reset(false);
 
-	std::filesystem::path versionsDir = "versions";
-	if (!std::filesystem::exists(versionsDir)) {
-		std::filesystem::create_directories(versionsDir);
-	}
+	const std::filesystem::path tempDirectory = "update_temp";
 
 	nlohmann::json removeJson;
 	nlohmann::json filesArray = nlohmann::json::array();
@@ -289,7 +319,7 @@ void NetworkController::finalizeReceiving() {
 
 	removeJson[FILES] = filesArray;
 
-	std::filesystem::path removeJsonPath = versionsDir / "remove.json";
+	std::filesystem::path removeJsonPath = tempDirectory / "remove.json";
 	std::ofstream file(removeJsonPath);
 	if (file) {
 		file << std::setw(4) << removeJson << std::endl;
@@ -302,12 +332,11 @@ void NetworkController::finalizeReceiving() {
 void NetworkController::openFile() {
 	try {
 		const std::filesystem::path tempDirectory = "update_temp";
-		std::filesystem::remove_all(tempDirectory);
 		std::filesystem::create_directories(tempDirectory);
 
 		if (m_expectedFiles.empty()) return;
 
-		std::filesystem::path filePath = tempDirectory / m_expectedFiles.front().relativeFilePath;
+		std::filesystem::path filePath = m_expectedFiles.front().relativeFilePath;
 		std::filesystem::create_directories(filePath.parent_path());
 
 		m_fileStream.open(filePath, std::ios::binary | std::ios::trunc);
@@ -322,27 +351,28 @@ void NetworkController::openFile() {
 	}
 }
 
-void NetworkController::reset() {
+void NetworkController::reset(bool stopContext) {
 	if (m_fileStream.is_open()) {
 		m_fileStream.close();
 	}
 	m_metadata.clear();
 
-	m_context.stop();
-	if (m_asioThread.joinable()) {
-		m_asioThread.join();
+	if (stopContext) {
+		m_context.stop();
+		if (m_asioThread.joinable()) {
+			m_asioThread.join();
+		}
 	}
 
 	std::queue<FileMetadata> emptyQueue;
 	m_expectedFiles.swap(emptyQueue);
 
 	m_currentChunksCount = 0;
-
 	m_handshakeOut = 0;
 	m_handshakeIn = 0;
 }
 
-void NetworkController::deleteReceived() {
+void NetworkController::deleteTempDirectory() {
 	const std::filesystem::path tempDirectory = "update_temp";
 	std::filesystem::remove_all(tempDirectory);
 	std::filesystem::remove(tempDirectory);

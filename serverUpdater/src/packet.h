@@ -19,7 +19,7 @@ private:
 
 public:
     Packet();
-    Packet(int type);
+    Packet(int type, const std::string& str);
     void setData(const std::string& str);
     std::string data();
     void clear();

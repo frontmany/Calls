@@ -22,7 +22,7 @@ void PacketsReceiver::readHeader() {
 					m_onDisconnect();
 				}
 			}
-			else {
+			else { 
 				if (m_temporaryPacket.size() > Packet::sizeOfHeader()) {
 					m_temporaryPacket.body_mut().resize(m_temporaryPacket.size() - Packet::sizeOfHeader());
 					readBody();
@@ -49,5 +49,3 @@ void PacketsReceiver::readBody() {
 			}
 		});
 }
-
-

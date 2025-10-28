@@ -14,10 +14,16 @@ file(GLOB SERVER_SOURCES
 )
 list(FILTER SERVER_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
-pybind11_add_module(serverUpdaterPy ${SOURCES} ${SERVER_SOURCES})
+pybind11_add_module(${PROJECT_NAME} ${SOURCES} ${SERVER_SOURCES})
 
-target_include_directories(serverUpdaterPy PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
     ../serverUpdater/src
     ../vendor/json/include                                   
     ../vendor/asio/asio/include
+)
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE 
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:RelWithDebInfo>:DEBUG>  
 )

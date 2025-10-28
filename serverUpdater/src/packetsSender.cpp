@@ -1,55 +1,57 @@
 #include "packetsSender.h"
+#include "filesSender.h"
 #include "packet.h"
 
 PacketsSender::PacketsSender(asio::io_context& asioContext,
 	asio::ip::tcp::socket& socket,
+	SafeDeque<std::variant<Packet, std::filesystem::path>>& queue,
+	FilesSender& filesSender,
 	std::function<void()>&& onError)
 	: m_socket(socket),
+	m_queue(queue),
+	m_filesSender(filesSender),
 	m_asioContext(asioContext),
 	m_onError(std::move(onError))
 {
 }
 
-void PacketsSender::send(const Packet& packet) {
-	asio::post(m_asioContext, [this, packet]() {
-		bool allowed = m_queue.empty();
-
-		m_queue.push_back(packet);
-
-		if (allowed) 
-			writeHeader();
-	});
+void PacketsSender::send() {
+	writeHeader();
 }
 
 void PacketsSender::writeHeader() {
-	asio::async_write(
-		m_socket,
-		asio::buffer(&m_queue.front().header(), Packet::sizeOfHeader()),
-		[this](std::error_code ec, std::size_t length) {
-			if (ec)
-			{
-				m_onError();
-			}
-			else
-			{
-				if (m_queue.front().body().size() > 0)
+	auto& variant = m_queue.front();
+
+	if (auto packet = std::get_if<Packet>(&variant)) {
+		asio::async_write(
+			m_socket,
+			asio::buffer(&packet->header(), Packet::sizeOfHeader()),
+			[this, packet](std::error_code ec, std::size_t length) {
+				if (ec)
 				{
-					writeBody();
+					m_onError();
 				}
 				else
 				{
-					if (!m_queue.empty())
-						writeHeader();
+					if (packet->body().size() > 0)
+					{
+						writeBody(packet);
+					}
+					else
+					{
+						m_queue.pop_front();
+						resolveSending();
+					}
 				}
 			}
-		}
-	);
+		);
+	}
 }
 
-void PacketsSender::writeBody() {
+void PacketsSender::writeBody(const Packet* packet) {
 	asio::async_write(
 		m_socket,
-		asio::buffer(m_queue.front().body().data(), m_queue.front().body().size()),
+		asio::buffer(packet->body().data(), packet->body().size()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) 
 			{
@@ -57,11 +59,22 @@ void PacketsSender::writeBody() {
 			}
 			else 
 			{
-				if (!m_queue.empty())
-					writeHeader();
+				m_queue.pop_front();
+				resolveSending();
 			}
 		}
 	);
 }
 
+void PacketsSender::resolveSending() {
+	if (!m_queue.empty()) {
+		auto& variant = m_queue.front();
+		if (auto packet = std::get_if<Packet>(&variant)) {
+			writeHeader();
+		}
+		else {
+			m_filesSender.sendFile();
+		}
+	}
+}
 

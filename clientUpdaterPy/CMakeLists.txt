@@ -8,12 +8,18 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/pybind11 ${CMAKE_CURRENT_BINARY_DIR}
 
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 
-pybind11_add_module(clientUpdaterPy ${SOURCES})
+pybind11_add_module(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(clientUpdaterPy PRIVATE client_updater)
+target_link_libraries(${PROJECT_NAME} PRIVATE client_updater)
 
-target_include_directories(clientUpdaterPy PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
     ../clientUpdater/src
     ../vendor/json/include                               
     ../vendor/asio/asio/include
+)
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE 
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:RelWithDebInfo>:DEBUG>  
 )

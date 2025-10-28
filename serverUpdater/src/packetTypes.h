@@ -2,6 +2,5 @@
 
 enum class PacketType : int {
 	CHECK_UPDATES,
-	UPDATE_ACCEPT,
-	UPDATE_DECLINE
+	UPDATE_ACCEPT
 };

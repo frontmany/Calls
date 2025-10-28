@@ -20,9 +20,6 @@ class NetworkController {
 public:
     NetworkController(uint16_t port, std::function<void(ConnectionPtr, Packet&&)> onUpdatesCheck, std::function<void(ConnectionPtr, Packet&&)> onUpdateAccepted);
     ~NetworkController();
-    void sendUpdate(ConnectionPtr connection, const Packet& packet, const std::vector<std::filesystem::path>& paths);
-    void sendUpdateRequiredPacket(ConnectionPtr connection, const Packet& packet);
-    void sendUpdatePossiblePacket(ConnectionPtr connection, const Packet& packet);
     void start();
     void stop();
 

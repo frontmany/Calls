@@ -3,16 +3,17 @@
 
 
 Packet::Packet() {
-    m_header.type = 0;
-    m_header.size = 0;
+    clear();
 }
 
-Packet::Packet(int type) {
+Packet::Packet(int type, const std::string& str) {
+    setData(str);
     m_header.type = type;
 }
 
 void Packet::setData(const std::string& str) {
-    clear();
+    m_header.size = 0;
+    m_body.clear();
 
     m_body.insert(m_body.end(), str.begin(), str.end());
 
