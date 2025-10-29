@@ -22,6 +22,11 @@ void handleCheckResult(CheckResult result) {
     }
 }
 
+// НОВАЯ ФУНКЦИЯ ДЛЯ ОТСЛЕЖИВАНИЯ ПРОГРЕССА
+void handleLoadingProgress(double progress) {
+    std::cout << "Прогресс загрузки: " << progress << "%" << std::endl;
+}
+
 void handleUpdateLoaded() {
     std::cout << "Обновление успешно загружено и готово к установке" << std::endl;
 }
@@ -66,7 +71,7 @@ void simulateUserInteraction(ClientUpdater& updater) {
         case 1:
             if (updater.getState() != ClientUpdater::State::DISCONNECTED) {
                 std::cout << "Проверка обновлений..." << std::endl;
-                if (!updater.checkUpdates("1.0.1")) {
+                if (!updater.checkUpdates("1.0.0")) {
                     std::cout << "Не удалось запустить проверку обновлений" << std::endl;
                 }
             }
@@ -126,7 +131,13 @@ int main() {
     setlocale(LC_ALL, "ru");
 
     try {
-        ClientUpdater updater(handleCheckResult, handleUpdateLoaded, handleError);
+        // ИСПРАВЛЕННЫЙ ВЫЗОВ КОНСТРУКТОРА - теперь передаем 4 callback-функции
+        ClientUpdater updater(
+            handleCheckResult,
+            handleLoadingProgress,     // Добавлен callback для прогресса
+            handleUpdateLoaded,
+            handleError
+        );
 
         std::cout << "Подключение к серверу обновлений..." << std::endl;
         updater.connect("192.168.1.44", "8081");
@@ -146,7 +157,7 @@ int main() {
     return 0;
 }
 
-// Дополнительный пример с автоматической проверкой
+// Дополнительный пример с автоматической проверкой (также исправлен)
 void automaticUpdateExample() {
     std::cout << "\n=== Автоматическая проверка обновлений ===" << std::endl;
 
@@ -163,6 +174,9 @@ void automaticUpdateExample() {
             else {
                 std::cout << "Обновления не требуются" << std::endl;
             }
+        },
+        [](double progress) {  // Добавлен callback для прогресса
+            std::cout << "Автообновление: Прогресс загрузки " << progress << "%" << std::endl;
         },
         []() {
             std::cout << "Автообновление: Обновление загружено успешно" << std::endl;

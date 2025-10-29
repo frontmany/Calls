@@ -28,6 +28,7 @@ public:
 
 	ClientUpdater(
 		std::function<void(CheckResult)>&& onCheckResult,
+		std::function<void(double)>&& onLoadingProgress,
 		std::function<void()>&& onUpdateLoaded,
 		std::function<void()>&& onError
 	);
@@ -50,6 +51,7 @@ private:
 	std::atomic<State> m_state = State::DISCONNECTED;
 	NetworkController m_networkController;
 	std::function<void(CheckResult)> m_onCheckResult;
+	std::function<void(double)> m_onLoadingProgress;
 	std::function<void()> m_onUpdateLoaded;
 	std::function<void()> m_onError;
 };

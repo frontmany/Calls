@@ -8,16 +8,17 @@
 namespace updater {
 
 NetworkController::NetworkController(
-	std::function<void(CheckResult)> onCheckResult,
-	std::function<void()> onAllFilesLoaded,
-	std::function<void()> onConnected,
-	std::function<void()> onError)
+	std::function<void(CheckResult)>&& onCheckResult,
+	std::function<void(double)>&& onLoadingProgress,
+	std::function<void()>&& onAllFilesLoaded,
+	std::function<void()>&& onConnected,
+	std::function<void()>&& onError)
 	: m_onCheckResult(onCheckResult),
+	m_onLoadingProgress(onLoadingProgress),
 	m_onAllFilesLoaded(onAllFilesLoaded),
 	m_onConnected(onConnected),
 	m_onError(onError),
 	m_socket(m_context),
-	m_currentChunksCount(0),
 	m_workGuard(asio::make_work_guard(m_context))
 {
 }
@@ -211,12 +212,17 @@ void NetworkController::parseMetadata() {
 			}
 		}
 
+		m_totalBytes = 0;
+		m_bytesReceived = 0;
+
 		if (jsonObject.contains(FILES_TO_DOWNLOAD)) {
 			for (const auto& fileEntry : jsonObject[FILES_TO_DOWNLOAD]) {
 				if (fileEntry.contains(RELATIVE_FILE_PATH) && fileEntry.contains(FILE_SIZE) && fileEntry.contains(FILE_HASH)) {
 					std::string relativeFilePath = fileEntry[RELATIVE_FILE_PATH].get<std::string>();
 					std::string fileHash = fileEntry[FILE_HASH].get<std::string>();
 					uint64_t fileSize = fileEntry[FILE_SIZE].get<uint64_t>();
+
+					m_totalBytes += fileSize;
 
 					int chunksCount = static_cast<int>(std::ceil(static_cast<double>(fileSize) / c_chunkSize));
 					uint64_t lastChunkSize = fileSize % c_chunkSize;
@@ -270,6 +276,16 @@ void NetworkController::readChunk() {
 				m_onError();
 			}
 			else {
+				m_bytesReceived += bytesTransferred;
+
+				double progress = 0;
+				if (m_totalBytes > 0) {
+					progress = (static_cast<double>(m_bytesReceived) * 100.0) / static_cast<double>(m_totalBytes);
+					progress = std::max(0.0, std::min(100.0, progress));
+					progress = std::round(progress * 100.0) / 100.0;
+				}
+				m_onLoadingProgress(progress);
+
 				m_currentChunksCount++;
 				if (m_currentChunksCount < m_expectedFiles.front().expectedChunksCount) {
 					m_fileStream.write(m_receiveBuffer.data(), c_chunkSize);
@@ -306,6 +322,8 @@ void NetworkController::readChunk() {
 }
 
 void NetworkController::finalizeReceiving() {
+	m_onLoadingProgress(100.0);
+
 	reset(false);
 
 	const std::filesystem::path tempDirectory = "update_temp";
@@ -370,6 +388,9 @@ void NetworkController::reset(bool stopContext) {
 	m_currentChunksCount = 0;
 	m_handshakeOut = 0;
 	m_handshakeIn = 0;
+
+	m_totalBytes = 0;
+	m_bytesReceived = 0;
 }
 
 void NetworkController::deleteTempDirectory() {

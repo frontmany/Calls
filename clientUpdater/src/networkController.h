@@ -27,7 +27,7 @@ private:
 	};
 
 public:
-	NetworkController(std::function<void(CheckResult)> onCheckResult, std::function<void()> onAllFilesLoaded, std::function<void()> onConnected, std::function<void()> onError);
+	NetworkController(std::function<void(CheckResult)>&& onCheckResult, std::function<void(double)>&& onLoadingProgress, std::function<void()>&& onAllFilesLoaded, std::function<void()>&& onConnected, std::function<void()>&& onError);
 	void sendPacket(const Packet& packet);
 	void connect(const std::string& host, const std::string& port);
 	void disconnect();
@@ -58,7 +58,9 @@ private:
 	uint64_t m_handshakeIn = 0;
 	uint64_t m_handshakeConfirmation = 0;
 
-	int m_currentChunksCount;
+	int m_currentChunksCount = 0;
+	uint64_t m_bytesReceived = 0;
+	uint64_t m_totalBytes = 0;
 
 	Packet m_metadata;
 	std::queue<FileMetadata> m_expectedFiles;
@@ -73,6 +75,7 @@ private:
 	std::thread m_asioThread;
 
 	std::function<void(CheckResult)> m_onCheckResult;
+	std::function<void(double)> m_onLoadingProgress;
 	std::function<void()> m_onAllFilesLoaded;
 	std::function<void()> m_onConnected;
 	std::function<void()> m_onError;

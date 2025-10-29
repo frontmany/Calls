@@ -6,13 +6,16 @@ namespace updater {
 
 ClientUpdater::ClientUpdater(
 	std::function<void(CheckResult)>&& onCheckResult,
+	std::function<void(double)>&& onLoadingProgress,
 	std::function<void()>&& onUpdateLoaded,
 	std::function<void()>&& onError)
 	: m_onCheckResult(std::move(onCheckResult)),
+	m_onLoadingProgress(onLoadingProgress),
 	m_onUpdateLoaded(std::move(onUpdateLoaded)),
 	m_onError(std::move(onError)),
 	m_networkController(
 		[this](CheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_onCheckResult(result); }); },
+		[this](double progress) {m_queue.push_back([this, progress]() {m_onLoadingProgress(progress); }); },
 		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK; m_onUpdateLoaded(); }); },
 		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK;});  },
 		[this]() {m_queue.push_back([this]() {m_state = State::DISCONNECTED; m_networkController.disconnect(); m_running = false; m_onError(); }); })
@@ -54,7 +57,7 @@ void ClientUpdater::processQueue() {
 			callback();
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 }
 
