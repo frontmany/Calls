@@ -46,6 +46,7 @@ private slots:
 
     void onUpdaterCheckResult(updater::CheckResult checkResult);
     void onUpdateLoaded();
+    void onLoadingProgress(double progress);
     void onUpdaterError();
 
     void onStartCallingButtonClicked(const QString& friendNickname);

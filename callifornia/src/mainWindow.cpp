@@ -18,6 +18,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),
     m_updater(
         [this](updater::CheckResult checkResult) {onUpdaterCheckResult(checkResult); },
+        [this](double progress) {onLoadingProgress(progress); },
         [this]() {onUpdateLoaded(); },
         [this]() {onUpdaterError(); })
 {
@@ -177,6 +178,10 @@ void MainWindow::onUpdaterCheckResult(updater::CheckResult checkResult) {
 }
 
 void MainWindow::onUpdateLoaded() {
+
+}
+
+void MainWindow::onLoadingProgress(double progress) {
 
 }
 
