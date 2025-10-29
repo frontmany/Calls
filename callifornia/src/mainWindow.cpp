@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget* parent)
         [this](updater::CheckResult checkResult) {onUpdaterCheckResult(checkResult); },
         [this](double progress) {onLoadingProgress(progress); },
         [this]() {onUpdateLoaded(); },
-        [this]() {onUpdaterError(); })
+        [this]() {onNetworkError(); })
 {
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 }
@@ -32,6 +32,9 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
+    m_updater.connect(host, port);
+    m_updater.checkUpdates(parseVersionFromConfig());
+
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
     m_audioOutput->setVolume(0.4f);
@@ -60,20 +63,6 @@ void MainWindow::initializeCallifornia(const std::string& host, const std::strin
         });
         return;
     }
-
-
-    m_authorizationWidget->showUpdatesCheckingNotification();
-    m_authorizationWidget->setAuthorizationDisabled(true);
-    //m_updater.connect(host, port);
-    //m_updater.checkUpdates(parseVersionFromJson());
-
-    QTimer::singleShot(0, this, [this]() {
-        showUpdatingDialog();
-    });
-
-    QTimer::singleShot(9000, this, [this]() {
-        hideUpdatingDialog();
-    });
 
     showMaximized();
 }
@@ -140,7 +129,7 @@ void MainWindow::loadFonts() {
     }
 }
 
-std::string MainWindow::parseVersionFromJson() {
+std::string MainWindow::parseVersionFromConfig() {
     const QString filename = "config.json";
 
     QFile file(filename);
@@ -157,19 +146,48 @@ std::string MainWindow::parseVersionFromJson() {
     return version;
 }
 
+updater::OperationSystemType MainWindow::resolveOperationSystemType() {
+#if defined(Q_OS_WINDOWS)
+    return updater::OperationSystemType::WINDOWS;
+#elif defined(Q_OS_LINUX)
+    return OperationSystemType::LINUX;
+#elif defined(Q_OS_MACOS)
+    return OperationSystemType::MAC;
+#else
+#if defined(_WIN32)
+    return OperationSystemType::WINDOWS;
+#elif defined(__linux__)
+    return OperationSystemType::LINUX;
+#elif defined(__APPLE__)
+    return OperationSystemType::MAC;
+#else
+    qWarning() << "Unknown operating system";
+    return updater::OperationSystemType::WINDOWS;
+#endif
+#endif
+}
+
 void MainWindow::onUpdaterCheckResult(updater::CheckResult checkResult) {
     if (checkResult == updater::CheckResult::POSSIBLE_UPDATE) {
-        QTimer::singleShot(0, this, [this]() {
-            // here decide what to do with incoming calls and calling
+        QTimer::singleShot(0, [this]() {
+            m_authorizationWidget->hideUpdatesCheckingNotification();
+            m_authorizationWidget->setAuthorizationDisabled(false);
+            m_authorizationWidget->showUpdateAvailableNotification();
+
             m_mainMenuWidget->showUpdateAvailableNotification();
+
             showUpdatingDialog();
         });
     }
     else if (checkResult == updater::CheckResult::REQUIRED_UPDATE) {
-        //m_updater.startUpdate();
-        showUpdatingDialog();
+        QTimer::singleShot(0, [this]() {
+            m_updater.startUpdate(resolveOperationSystemType());
+            showUpdatingDialog();
+        });
     }
     else if (checkResult == updater::CheckResult::UPDATE_NOT_NEEDED) {
+        m_authorizationWidget->hideUpdatesCheckingNotification();
+        m_authorizationWidget->setAuthorizationDisabled(false);
         return;
     }
     else {
@@ -183,10 +201,6 @@ void MainWindow::onUpdateLoaded() {
 
 void MainWindow::onLoadingProgress(double progress) {
 
-}
-
-void MainWindow::onUpdaterError() {
-    
 }
 
 void MainWindow::setupUI() {
@@ -227,6 +241,9 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     m_stackedLayout->addWidget(m_callWidget);
+
+    m_authorizationWidget->showUpdatesCheckingNotification();
+    m_authorizationWidget->setAuthorizationDisabled(true);
 
     switchToAuthorizationWidget();
 }
@@ -574,12 +591,16 @@ void MainWindow::onNetworkError() {
     }
 
     m_authorizationWidget->resetBlur();
+    m_authorizationWidget->hideUpdateAvailableNotification();
+    m_authorizationWidget->setAuthorizationDisabled(true);
     m_authorizationWidget->showNetworkErrorNotification();
 }
 
 void MainWindow::onConnectionRestored() {
     m_authorizationWidget->resetBlur();
+    m_authorizationWidget->setAuthorizationDisabled(false);
     m_authorizationWidget->showConnectionRestoredNotification(1500);
+    m_updater.checkUpdates(parseVersionFromConfig());
 }
 
 void MainWindow::showInitializationErrorDialog()

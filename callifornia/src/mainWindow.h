@@ -47,7 +47,6 @@ private slots:
     void onUpdaterCheckResult(updater::CheckResult checkResult);
     void onUpdateLoaded();
     void onLoadingProgress(double progress);
-    void onUpdaterError();
 
     void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
@@ -78,7 +77,8 @@ private:
 
     void setupUI();
     void loadFonts();
-    std::string parseVersionFromJson();
+    std::string parseVersionFromConfig();
+    updater::OperationSystemType resolveOperationSystemType();
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
     void stopIncomingCallRingtone();

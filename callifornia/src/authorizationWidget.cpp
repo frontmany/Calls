@@ -42,6 +42,23 @@ void AuthorizationWidget::setupUI() {
 
     m_notificationLayout->addWidget(m_notificationLabel);
 
+    // Create update available button
+    m_updateAvailableWidget = new QWidget(this);
+    m_updateAvailableWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_updateAvailableWidget->hide();
+
+    m_updateAvailableLayout = new QHBoxLayout(m_updateAvailableWidget);
+    m_updateAvailableLayout->setAlignment(Qt::AlignCenter);
+    m_updateAvailableLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
+
+    m_updateAvailableButton = new QPushButton(m_updateAvailableWidget);
+    m_updateAvailableButton->setCursor(Qt::PointingHandCursor);
+    QFont updateFont("Outfit", scale(12), QFont::Medium);
+    m_updateAvailableButton->setFont(updateFont);
+    m_updateAvailableButton->setText("Update available! Click to download");
+
+    m_updateAvailableLayout->addWidget(m_updateAvailableButton);
+
     // Create container
     m_container = new QWidget(this);
     m_container->setFixedSize(scale(450), scale(400));
@@ -114,12 +131,14 @@ void AuthorizationWidget::setupUI() {
     // Add glass panel to main layout
     m_mainLayout->addSpacing(scale(42));
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
+    m_mainLayout->addWidget(m_updateAvailableWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
     m_mainLayout->addWidget(m_container);
 
     // Connect signals
     connect(m_authorizeButton, &QPushButton::clicked, this, &AuthorizationWidget::onAuthorizationClicked);
     connect(m_nicknameEdit, &QLineEdit::textChanged, this, &AuthorizationWidget::onTextChanged);
     connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizationClicked);
+    connect(m_updateAvailableButton, &QPushButton::clicked, this, &AuthorizationWidget::onUpdateAvailableClicked);
 }
 
 void AuthorizationWidget::resetBlur() {
@@ -182,6 +201,10 @@ void AuthorizationWidget::onAuthorizationClicked() {
     else {
         setErrorMessage("field cannot be empty");
     }
+}
+
+void AuthorizationWidget::onUpdateAvailableClicked() {
+    emit updateAvailableClicked();
 }
 
 void AuthorizationWidget::onTextChanged(const QString& text) {
@@ -255,11 +278,10 @@ void AuthorizationWidget::hideNetworkErrorNotification() {
 
 void AuthorizationWidget::showUpdatesCheckingNotification()
 {
-    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationBlueLabelStyle());
+    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationLilacLabelStyle());
 
     m_notificationLabel->setText("Checking for updates...");
-    m_notificationLabel->setStyleSheet("color: #1577E8; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-
+    m_notificationLabel->setStyleSheet("color: #8C6BC7; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
     m_notificationWidget->show();
 }
 
@@ -269,11 +291,43 @@ void AuthorizationWidget::hideUpdatesCheckingNotification()
     m_notificationWidget->hide();
 }
 
+void AuthorizationWidget::showUpdateAvailableNotification() {
+    m_updateAvailableWidget->setStyleSheet(StyleAuthorizationWidget::notificationUpdateAvailableStyle());
+
+    m_updateAvailableButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(21, 119, 232, 80);"
+        "   color: #1577E8;"
+        "   border: none;"
+        "   border-radius: 8px;"
+        "   padding: 8px 18px 8px 15px;"
+        "   font-size: 14px;"
+        "   font-weight: medium;"
+        "   margin: 0px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(21, 119, 232, 120);"
+        "   color: #0D6BC8;"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(21, 119, 232, 150);"
+        "   color: #0A5FC8;"
+        "}"
+    );
+
+    m_updateAvailableWidget->show();
+}
+
+void AuthorizationWidget::hideUpdateAvailableNotification() {
+    m_updateAvailableButton->setText("");
+    m_updateAvailableWidget->hide();
+}
+
 void AuthorizationWidget::showConnectionRestoredNotification(int durationMs) {
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationGreenLabelStyle());
 
     m_notificationLabel->setText("Connection restored");
-    m_notificationLabel->setStyleSheet("color: #19ba00; background: transparent; font-size: 14px; margin: 0px; padding: 0px;"); 
+    m_notificationLabel->setStyleSheet("color: #19ba00; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
 
     m_notificationWidget->show();
     m_notificationTimer->start(durationMs);
@@ -289,6 +343,7 @@ const QColor StyleAuthorizationWidget::m_glassColor = QColor(255, 255, 255, 60);
 const QColor StyleAuthorizationWidget::m_glassBorderColor = QColor(255, 255, 255, 100);
 const QColor StyleAuthorizationWidget::m_textDarkColor = QColor(240, 240, 240);
 const QColor StyleAuthorizationWidget::m_disabledColor = QColor(160, 160, 160, 150);
+const QColor StyleAuthorizationWidget::m_updateAvailableColor = QColor(21, 119, 232);
 
 QString StyleAuthorizationWidget::glassButtonStyle() {
     return QString("QPushButton {"
@@ -385,7 +440,7 @@ QString StyleAuthorizationWidget::glassSubTitleLabelStyle() {
 
 QString StyleAuthorizationWidget::notificationRedLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(220, 80, 80, 65);" 
+        "   background-color: rgba(220, 80, 80, 65);"
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -403,9 +458,19 @@ QString StyleAuthorizationWidget::notificationGreenLabelStyle() {
         "}").arg(QString::fromStdString(std::to_string(scale(8))));
 }
 
-QString StyleAuthorizationWidget::notificationBlueLabelStyle() {
+QString StyleAuthorizationWidget::notificationLilacLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(21, 119, 232, 80);"
+        "   background-color: rgba(200, 180, 220, 80);"  // Нежный сиреневый для checking updates
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::number(scale(8)));
+}
+
+QString StyleAuthorizationWidget::notificationUpdateAvailableStyle() {
+    return QString("QWidget {"
+        "   background-color: transparent;"  // Прозрачный фон, так как фон задан кнопке
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
