@@ -102,9 +102,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 
     OperationSystemType osType;
     if (jsonObject.contains(OPERATION_SYSTEM)) {
-        osType = static_cast<OperationSystemType>(
-            jsonObject[OPERATION_SYSTEM].get<int>()
-            );
+        osType = static_cast<OperationSystemType>(jsonObject[OPERATION_SYSTEM].get<int>());
     }
     else {
         DEBUG_LOG("Missing OPERATION_SYSTEM field in packet");
@@ -129,13 +127,35 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 
         auto [latestVersionPath, latestVersion] = findLatestVersion();
 
+        std::filesystem::path osSpecificPath;
+        switch (osType) {
+        case OperationSystemType::WINDOWS:
+            osSpecificPath = latestVersionPath / "Windows";
+            break;
+        case OperationSystemType::LINUX:
+            osSpecificPath = latestVersionPath / "Linux";
+            break;
+        case OperationSystemType::MAC:
+            osSpecificPath = latestVersionPath / "Mac";
+            break;
+        default:
+            DEBUG_LOG("Unknown operating system type");
+            return;
+        }
+
+        if (!std::filesystem::exists(osSpecificPath)) {
+            DEBUG_LOG("OS-specific folder does not exist: " + osSpecificPath.string());
+            return;
+        }
+
         std::vector<std::filesystem::path> filesToDelete;
         std::vector<std::filesystem::path> filesToSend;
 
         std::unordered_map<std::filesystem::path, std::string> newVersionFiles;
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(latestVersionPath)) {
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(osSpecificPath)) {
             if (entry.is_regular_file() && entry.path().filename() != "version.json") {
-                std::filesystem::path relativePath = std::filesystem::relative(entry.path(), latestVersionPath);
+                std::filesystem::path relativePath = std::filesystem::relative(entry.path(), osSpecificPath);
                 std::string fileHash = calculateFileHash(entry.path());
                 newVersionFiles[relativePath] = fileHash;
             }
@@ -166,7 +186,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 
         nlohmann::json filesToDownloadArray = nlohmann::json::array();
         for (const auto& filePath : filesToSend) {
-            auto fullPath = latestVersionPath / filePath;
+            auto fullPath = osSpecificPath / filePath;
             if (std::filesystem::exists(fullPath)) {
                 serverPathsToSend.push_back(fullPath);
 
@@ -196,7 +216,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 
         connection->sendPacket(packet);
 
-        for (const auto& path : serverPathsToSend) 
+        for (const auto& path : serverPathsToSend)
             connection->sendFile(path);
     }
     else {
