@@ -363,6 +363,7 @@ void MainMenuWidget::setupUI() {
     m_notificationLayout->addWidget(m_notificationLabel);
 
     m_updateNotificationButton = new QPushButton(this);
+    m_updateNotificationButton->setMinimumSize(scale(100), scale(45));
     m_updateNotificationButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     m_updateNotificationButton->hide();
     m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
@@ -374,8 +375,6 @@ void MainMenuWidget::setupUI() {
         "   border: none;"
         "   border-radius: 8px;"
         "   padding: 8px 18px 8px 15px;"
-        "   font-size: 14px;"
-        "   font-weight: medium;"
         "   margin: 0px;"
         "}"
         "QPushButton:hover {"
@@ -388,7 +387,7 @@ void MainMenuWidget::setupUI() {
         "}"
     );
 
-    QFont updateFont("Outfit", scale(14), QFont::Medium);
+    QFont updateFont("Outfit", scale(13), QFont::Medium);
     m_updateNotificationButton->setFont(updateFont);
     m_updateNotificationButton->setText("New version available! Click to update");
     m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
@@ -818,6 +817,8 @@ void MainMenuWidget::setErrorMessage(const QString& errorText) {
     m_errorLabel->setText(errorText);
     m_errorLabel->show();
     m_friendNicknameEdit->setFocus();
+
+    QTimer::singleShot(2500, this, &MainMenuWidget::clearErrorMessage);
 }
 
 void MainMenuWidget::clearErrorMessage() {

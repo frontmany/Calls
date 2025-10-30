@@ -80,6 +80,7 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
 
+    void launchUpdateApplier();
     void setupUI();
     void loadFonts();
     std::string parseVersionFromConfig();

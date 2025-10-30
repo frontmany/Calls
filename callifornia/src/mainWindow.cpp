@@ -43,7 +43,6 @@ MainWindow::~MainWindow() {
 
 void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
     m_updater.connect(host, port);
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     m_updater.checkUpdates(parseVersionFromConfig());
 
 
@@ -70,6 +69,12 @@ void MainWindow::initializeCallifornia(const std::string& host, const std::strin
         qDebug("calls client initialization error");
     else 
         calls::run();
+
+    /*
+    QTimer::singleShot(0, [this]() {
+        showUpdatingDialog();
+    });
+    */
 
     showMaximized();
 }
@@ -227,7 +232,48 @@ void MainWindow::onUpdateButtonClicked() {
 void MainWindow::onUpdateLoaded() {
     calls::logout();
 
+    QDialog* updatingDialog = nullptr;
+    QList<QDialog*> dialogs = findChildren<QDialog*>();
+    for (QDialog* dialog : dialogs) {
+        if (dialog->windowTitle() == "Updating") {
+            updatingDialog = dialog;
+            break;
+        }
+    }
 
+    if (updatingDialog) {
+        QLabel* gifLabel = updatingDialog->findChild<QLabel*>();
+        QLabel* progressLabel = updatingDialog->findChild<QLabel*>(QString(), Qt::FindDirectChildrenOnly);
+        QLabel* updatingLabel = nullptr;
+
+        QList<QLabel*> labels = updatingDialog->findChildren<QLabel*>();
+        for (QLabel* label : labels) {
+            if (label->text().contains("Updating...")) {
+                updatingLabel = label;
+            }
+        }
+
+        if (gifLabel && gifLabel->movie()) {
+            gifLabel->movie()->stop();
+        }
+
+        if (updatingLabel) {
+            updatingLabel->setText("Restarting...");
+        }
+
+        if (progressLabel) {
+            progressLabel->setVisible(false);
+        }
+
+        qApp->processEvents();
+
+        QTimer::singleShot(1500, this, [this]() {
+            launchUpdateApplier();
+        });
+    }
+}
+
+void MainWindow::launchUpdateApplier() {
     qint64 currentPid = QCoreApplication::applicationPid();
     QString appPath = QCoreApplication::applicationFilePath();
 
@@ -797,16 +843,15 @@ void MainWindow::showUpdatingDialog()
     buttonLayout->addWidget(exitButton);
 
     contentLayout->addWidget(gifLabel);
-    contentLayout->addWidget(progressLabel); // Добавляем метку прогресса над надписью
+    contentLayout->addWidget(progressLabel); 
     contentLayout->addWidget(updatingLabel);
     contentLayout->addLayout(buttonLayout);
 
-    // Сохраняем указатель на метку прогресса для обновления
     m_updatingProgressLabel = progressLabel;
 
     connect(exitButton, &QPushButton::clicked, this, [this, dialog, overlay]() {
         this->close();
-        });
+    });
 
     QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
 

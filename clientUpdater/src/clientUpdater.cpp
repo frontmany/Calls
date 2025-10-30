@@ -66,6 +66,15 @@ void ClientUpdater::processQueue() {
 }
 
 bool ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
+	auto startTime = std::chrono::steady_clock::now();
+	auto timeout = std::chrono::milliseconds(400);
+
+	while (std::chrono::steady_clock::now() - startTime < timeout) {
+		if (m_state == State::AWAITING_UPDATES_CHECK) {
+			break;
+		}
+	}
+
 	if (m_state != State::AWAITING_UPDATES_CHECK) return false;
 
 	nlohmann::json jsonObject;
