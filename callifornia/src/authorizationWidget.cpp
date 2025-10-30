@@ -52,9 +52,9 @@ void AuthorizationWidget::setupUI() {
     m_updateAvailableLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
 
     m_updateAvailableButton = new QPushButton(m_updateAvailableWidget);
-    m_updateAvailableButton->setMinimumSize(scale(100), scale(45));
+    m_updateAvailableButton->setMinimumSize(scale(295), scale(32));
     m_updateAvailableButton->setCursor(Qt::PointingHandCursor);
-    QFont updateFont("Outfit", scale(13), QFont::Medium);
+    QFont updateFont("Outfit", scale(12), QFont::Medium);
     m_updateAvailableButton->setFont(updateFont);
     m_updateAvailableButton->setText("Update available! Click to download");
 
@@ -304,7 +304,7 @@ void AuthorizationWidget::showUpdateAvailableNotification() {
         "   background-color: rgba(21, 119, 232, 80);"
         "   color: #1577E8;"
         "   border: none;"
-        "   border-radius: 8px;"
+        "   border-radius: 12px;"
         "   padding: 8px 18px 8px 15px;"
         "   margin: 0px;"
         "}"

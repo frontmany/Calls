@@ -42,6 +42,9 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
+    m_serverHost = host;
+    m_serverPort = m_serverPort;
+
     m_updater.connect(host, port);
     m_updater.checkUpdates(parseVersionFromConfig());
 
@@ -718,7 +721,7 @@ void MainWindow::onConnectionRestored() {
     m_authorizationWidget->showConnectionRestoredNotification(1500);
 
     if (m_updater.getState() == updater::ClientUpdater::State::DISCONNECTED) {
-        m_updater.connect("192.168.1.44", "8081");
+        m_updater.connect(m_serverHost, m_serverPort);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         m_updater.checkUpdates(parseVersionFromConfig());
     }

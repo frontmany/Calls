@@ -182,17 +182,16 @@ QString StyleMainMenuWidget::notificationRedLabelStyle() {
         "}").arg(QString::fromStdString(std::to_string(scale(8))));
 }
 
-QString StyleMainMenuWidget::avatarStyle(const QColor& color) {
+QString StyleMainMenuWidget::avatarStyle() {
     return QString("QLabel {"
-        "   background-color: %1;"
-        "   border-radius: %2;"
+        "   background-color: black;"
+        "   border-radius: %1;"
         "   color: white;"
-        "   font-size: %3;"
+        "   font-size: %2;"
         "   font-weight: bold;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(color.name())
-        .arg(QString::fromStdString(std::to_string(scale(25))) + "px")
+        "}").arg(QString::fromStdString(std::to_string(scale(25))) + "px")
         .arg(QString::fromStdString(std::to_string(scale(18))) + "px");
 }
 
@@ -363,7 +362,7 @@ void MainMenuWidget::setupUI() {
     m_notificationLayout->addWidget(m_notificationLabel);
 
     m_updateNotificationButton = new QPushButton(this);
-    m_updateNotificationButton->setMinimumSize(scale(100), scale(45));
+    m_updateNotificationButton->setMinimumSize(scale(295), scale(32));
     m_updateNotificationButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     m_updateNotificationButton->hide();
     m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
@@ -373,7 +372,7 @@ void MainMenuWidget::setupUI() {
         "   background-color: rgba(21, 119, 232, 80);"
         "   color: #1577E8;"
         "   border: none;"
-        "   border-radius: 8px;"
+        "   border-radius: 12px;"
         "   padding: 8px 18px 8px 15px;"
         "   margin: 0px;"
         "}"
@@ -652,18 +651,16 @@ void MainMenuWidget::setNickname(const QString& nickname) {
     m_nicknameLabel->setText(nickname);
     m_nicknameLabel->setStyleSheet(StyleMainMenuWidget::nicknameStyle());
 
-    // Generate avatar
-    QColor avatarColor = generateRandomColor(nickname);
     QString firstLetter = nickname.left(1).toUpper();
 
     m_avatarLabel->setText(firstLetter);
-    m_avatarLabel->setStyleSheet(StyleMainMenuWidget::avatarStyle(avatarColor));
+    m_avatarLabel->setStyleSheet(StyleMainMenuWidget::avatarStyle());
 }
 
 void MainMenuWidget::setState(calls::State state) {
     if (state == calls::State::FREE) {
         m_statusLabel->setText("Online");
-        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_onlineColor.name()));
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_primaryColor.name()));
     }
     else if (state == calls::State::CALLING) {
         m_statusLabel->setText("Calling...");
@@ -864,9 +861,4 @@ void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
 
 void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
     emit declineCallButtonClicked(friendNickname);
-}
-
-QColor MainMenuWidget::generateRandomColor(const QString& seed) {
-    int hash = qHash(seed);
-    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
 }

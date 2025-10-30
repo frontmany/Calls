@@ -15,7 +15,12 @@ set(CMAKE_AUTOMOC ON)
 qt6_add_resources(QRC_FILES resources/resources.qrc)
 set(RC_FILE resources/app_icon.rc)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES} ${RC_FILE})
+if(WIN32)
+    set(RC_FILE resources/app_icon.rc)
+    add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${QRC_FILES} ${RC_FILE})
+else()
+    add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES})
+endif()
 
 target_link_libraries(${PROJECT_NAME} Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater)
 

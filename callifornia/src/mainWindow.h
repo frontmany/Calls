@@ -107,4 +107,7 @@ private:
 
     updater::ClientUpdater m_updater;
     QLabel* m_updatingProgressLabel = nullptr;
+
+    std::string m_serverHost = "";
+    std::string m_serverPort = "";
 };

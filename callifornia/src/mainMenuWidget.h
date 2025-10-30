@@ -51,7 +51,7 @@ struct StyleMainMenuWidget {
     static QString settingsButtonStyle();
     static QString lineEditStyle();
     static QString disabledLineEditStyle();
-    static QString avatarStyle(const QColor& color);
+    static QString avatarStyle();
     static QString scrollAreaStyle();
     static QString incomingCallWidgetStyle();
     static QString settingsPanelStyle();
@@ -116,7 +116,6 @@ private:
     void setupUI();
     void setupAnimations();
     void paintEvent(QPaintEvent* event) override;
-    QColor generateRandomColor(const QString& seed);
     void updateCallingState(bool calling);
 
     // Main layouts
