@@ -15,10 +15,10 @@ ClientUpdater::ClientUpdater(
 	m_onError(std::move(onError)),
 	m_networkController(
 		[this](CheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_onCheckResult(result); }); },
-		[this](double progress) {m_queue.push_back([this, progress]() {m_onLoadingProgress(progress); }); },
-		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK; m_onUpdateLoaded(); }); },
+		[this](double progress) {m_queue.push_back([this, progress]() {m_onLoadingProgress(progress); m_sendingProgress = true; }); },
+		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK; m_onUpdateLoaded(); m_sendingProgress = false; }); },
 		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK;});  },
-		[this]() {m_queue.push_back([this]() {m_state = State::DISCONNECTED; m_networkController.disconnect(); m_running = false; m_onError(); }); })
+		[this]() {m_queue.push_back([this]() {m_onError(); }); })
 {
 }
 
@@ -48,6 +48,8 @@ void ClientUpdater::disconnect() {
 	if (m_queueProcessingThread.joinable()) {
 		m_queueProcessingThread.join();
 	}
+
+	m_queue.clear();
 }
 
 void ClientUpdater::processQueue() {
@@ -56,8 +58,10 @@ void ClientUpdater::processQueue() {
 			auto callback = m_queue.pop_front();
 			callback();
 		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		
+		if (!m_sendingProgress) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
 	}
 }
 
@@ -121,8 +125,7 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 					continue;
 				}
 
-				if (relativePath.string().find("update_temp") == 0 ||
-					relativePath.string().find(".vs") == 0) {
+				if (relativePath.string().find("update_temp") == 0) {
 					continue;
 				}
 

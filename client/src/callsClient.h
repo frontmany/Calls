@@ -46,6 +46,7 @@ public:
     bool isAuthorized() const;
     bool isCalling() const;
     bool isBusy() const;
+    bool isNetworkError() const;
     const std::string& getNickname() const;
     std::vector<std::string> getCallers();
     int getInputVolume() const;
@@ -111,6 +112,7 @@ private:
     void sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type);
 
 private:
+    std::atomic_bool m_networkError = false;
     bool m_running = false;
     State m_state = State::UNAUTHORIZED;
     mutable std::mutex m_dataMutex;

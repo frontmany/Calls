@@ -11,3 +11,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/asio/asio/include
     ../vendor/json/include
 )
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE 
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:RelWithDebInfo>:DEBUG>  
+)

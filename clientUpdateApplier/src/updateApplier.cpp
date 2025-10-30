@@ -61,8 +61,17 @@ void copyDirectory(const QDir& source, const QDir& destination) {
     }
 
     for (const auto& file : source.entryList(QDir::Files)) {
+        if (file == "remove.json") {
+            continue;
+        }
+
         QString sourceFile = source.filePath(file);
         QString destFile = destination.filePath(file);
+
+        if (QFile::exists(destFile)) {
+            QFile::remove(destFile);
+        }
+
         QFile::copy(sourceFile, destFile);
     }
 

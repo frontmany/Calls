@@ -6,7 +6,9 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 #include <QFile>
+#include <QLabel>
 #include <QMovie>
+#include <QProcess>
 #include <QDialog>
 #include <QScreen>
 
@@ -42,12 +44,14 @@ private slots:
     void onIncomingCall(const QString& friendNicname);
     void onIncomingCallExpired(const QString& friendNickname);
     void onNetworkError();
+    void onUpdaterError();
     void onConnectionRestored();
 
     void onUpdaterCheckResult(updater::CheckResult checkResult);
     void onUpdateLoaded();
     void onLoadingProgress(double progress);
 
+    void onUpdateButtonClicked();
     void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
     void onAcceptCallButtonClicked(const QString& friendNickname);
@@ -62,7 +66,8 @@ private slots:
     void onBlurAnimationFinished();
 
 private:
-    void showInitializationErrorDialog();
+    void showConnectionErrorDialog();
+    void hideUpdatingErrorDialog();
     void showUpdatingDialog();
     void hideUpdatingDialog();
     void switchToAuthorizationWidget();
@@ -100,4 +105,5 @@ private:
     CallWidget* m_callWidget;
 
     updater::ClientUpdater m_updater;
+    QLabel* m_updatingProgressLabel = nullptr;
 };

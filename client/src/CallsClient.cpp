@@ -46,7 +46,7 @@ bool CallsClient::init(
     m_callbackHandler = std::move(handler);
     m_networkController = std::make_shared<NetworkController>();
     m_audioEngine = std::make_unique<AudioEngine>();
-    m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); }, [this]() {onConnectionRestored(); });
+    m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); }, [this]() {onConnectionRestored(); m_networkError = false; });
     m_keysManager = std::make_unique<KeysManager>();
 
     bool audioInitialized = m_audioEngine->init([this](const unsigned char* data, int length) {
@@ -59,7 +59,7 @@ bool CallsClient::init(
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
-            m_callbacksQueue.push([this]() {reset(); });
+            m_callbacksQueue.push([this]() {reset(); m_networkError = true; });
             m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
         });
 
@@ -81,6 +81,7 @@ void CallsClient::run() {
 
 void CallsClient::onPingFail() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
+    m_callbacksQueue.push([this]() {reset(); m_networkError = true; });
     m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
 }
 
@@ -338,6 +339,10 @@ bool CallsClient::isBusy() const {
     return m_state == State::BUSY;
 }
 
+bool CallsClient::isNetworkError() const {
+    return m_networkError;
+}
+
 int CallsClient::getIncomingCallsCount() const {
     std::lock_guard<std::mutex> lock(m_dataMutex);
     return m_incomingCalls.size();
@@ -437,9 +442,6 @@ void CallsClient::reset() {
     if (m_audioEngine && m_audioEngine->isStream()) {
         m_audioEngine->stopStream();
     }
-
-    std::queue<std::function<void()>> empty;
-    std::swap(m_callbacksQueue, empty);
 
     m_state = State::UNAUTHORIZED;
 }

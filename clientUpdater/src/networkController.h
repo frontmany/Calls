@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <queue>
+#include <memory>
 #include <vector>
 #include <string>
 #include <thread>
@@ -71,7 +72,7 @@ private:
 
 	asio::io_context m_context;
 	asio::ip::tcp::socket m_socket;
-	asio::executor_work_guard<asio::io_context::executor_type, void, void> m_workGuard;
+	std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
 	std::thread m_asioThread;
 
 	std::function<void(CheckResult)> m_onCheckResult;

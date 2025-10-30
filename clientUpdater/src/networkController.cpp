@@ -18,8 +18,7 @@ NetworkController::NetworkController(
 	m_onAllFilesLoaded(onAllFilesLoaded),
 	m_onConnected(onConnected),
 	m_onError(onError),
-	m_socket(m_context),
-	m_workGuard(asio::make_work_guard(m_context))
+	m_socket(m_context)
 {
 }
 
@@ -28,7 +27,17 @@ void NetworkController::sendPacket(const Packet& packet) {
 }
 
 void NetworkController::connect(const std::string& host, const std::string& port) {
-	m_asioThread = std::thread([this]() { m_context.run(); });
+	if (m_context.stopped()) {
+		m_context.restart();
+		m_socket = asio::ip::tcp::socket(m_context);
+	}
+
+	m_workGuard = std::make_unique<asio::executor_work_guard<asio::io_context::executor_type>>(
+		asio::make_work_guard(m_context));
+
+	if (!m_asioThread.joinable()) {
+		m_asioThread = std::thread([this]() { m_context.run(); });
+	}
 
 	createConnection(host, std::stoi(port));
 }
@@ -36,6 +45,7 @@ void NetworkController::connect(const std::string& host, const std::string& port
 void NetworkController::disconnect() {
 	if (m_socket.is_open()) {
 		std::error_code ec;
+		m_socket.cancel(ec);
 		m_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
 		m_socket.close(ec);
 	}
@@ -184,6 +194,12 @@ void NetworkController::readMetadataBody() {
 			else {
 				deleteTempDirectory();
 				parseMetadata();
+
+				if (m_expectedFiles.empty()) {
+					m_onAllFilesLoaded();
+					return;
+				}
+
 				openFile();
 				readChunk();
 			}
@@ -259,6 +275,22 @@ void NetworkController::parseMetadata() {
 			}
 		}
 
+		nlohmann::json removeJson;
+		nlohmann::json filesArray = nlohmann::json::array();
+
+		for (const auto& filePath : m_filesToDelete) {
+			filesArray.push_back(filePath.string());
+		}
+
+		removeJson[FILES] = filesArray;
+
+		std::filesystem::path removeJsonPath = tempDirectory / "remove.json";
+		std::ofstream file(removeJsonPath);
+		if (file) {
+			file << std::setw(4) << removeJson << std::endl;
+			file.close();
+		}
+
 		m_currentChunksCount = 0;
 	}
 	catch (const nlohmann::json::exception& e) {
@@ -323,27 +355,7 @@ void NetworkController::readChunk() {
 
 void NetworkController::finalizeReceiving() {
 	m_onLoadingProgress(100.0);
-
 	reset(false);
-
-	const std::filesystem::path tempDirectory = "update_temp";
-
-	nlohmann::json removeJson;
-	nlohmann::json filesArray = nlohmann::json::array();
-
-	for (const auto& filePath : m_filesToDelete) {
-		filesArray.push_back(filePath.string());
-	}
-
-	removeJson[FILES] = filesArray;
-
-	std::filesystem::path removeJsonPath = tempDirectory / "remove.json";
-	std::ofstream file(removeJsonPath);
-	if (file) {
-		file << std::setw(4) << removeJson << std::endl;
-		file.close();
-	}
-
 	m_onAllFilesLoaded();
 }
 
@@ -375,6 +387,8 @@ void NetworkController::reset(bool stopContext) {
 	}
 	m_metadata.clear();
 
+	m_workGuard.reset();
+
 	if (stopContext) {
 		m_context.stop();
 		if (m_asioThread.joinable()) {
@@ -391,8 +405,9 @@ void NetworkController::reset(bool stopContext) {
 
 	m_totalBytes = 0;
 	m_bytesReceived = 0;
-}
 
+	m_filesToDelete.clear();
+}
 void NetworkController::deleteTempDirectory() {
 	const std::filesystem::path tempDirectory = "update_temp";
 	std::filesystem::remove_all(tempDirectory);

@@ -132,6 +132,11 @@ namespace calls {
         return CallsClient::get().isAuthorized();
     }
 
+    inline bool isNetworkError()
+    {
+        return CallsClient::get().isNetworkError();
+    }
+
     inline bool isCalling()
     {
         return CallsClient::get().isCalling();

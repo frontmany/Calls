@@ -8,7 +8,14 @@ source_group("Source Files" FILES ${SOURCES})
 add_library(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME})
+
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ../vendor/asio/asio/include
     ../vendor/json/include
+)
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE 
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:RelWithDebInfo>:DEBUG>  
 )

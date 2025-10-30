@@ -48,6 +48,7 @@ private:
 	std::thread m_queueProcessingThread;
 
 	std::atomic_bool m_running = false;
+	std::atomic_bool m_sendingProgress = false;
 	std::atomic<State> m_state = State::DISCONNECTED;
 	NetworkController m_networkController;
 	std::function<void(CheckResult)> m_onCheckResult;

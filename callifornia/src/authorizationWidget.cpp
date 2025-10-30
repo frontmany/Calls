@@ -204,7 +204,7 @@ void AuthorizationWidget::onAuthorizationClicked() {
 }
 
 void AuthorizationWidget::onUpdateAvailableClicked() {
-    emit updateAvailableClicked();
+    emit updateButtonClicked();
 }
 
 void AuthorizationWidget::onTextChanged(const QString& text) {
@@ -265,7 +265,7 @@ void AuthorizationWidget::clearErrorMessage() {
 void AuthorizationWidget::showNetworkErrorNotification() {
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationRedLabelStyle());
 
-    m_notificationLabel->setText("Network error occurred");
+    m_notificationLabel->setText("Network error occurred, reconnecting...");
     m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
 
     m_notificationWidget->show();
@@ -287,8 +287,10 @@ void AuthorizationWidget::showUpdatesCheckingNotification()
 
 void AuthorizationWidget::hideUpdatesCheckingNotification()
 {
-    m_notificationLabel->setText("");
-    m_notificationWidget->hide();
+    if (m_notificationLabel->text() != "Connection restored") {
+        m_notificationLabel->setText("");
+        m_notificationWidget->hide();
+    }
 }
 
 void AuthorizationWidget::showUpdateAvailableNotification() {
