@@ -3,6 +3,7 @@
 #pragma once
 
 #include <deque>
+#include <condition_variable>
 #include <mutex>
 
 template<typename T>

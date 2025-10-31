@@ -1,12 +1,13 @@
 #pragma once
 
 #include <iostream>
+#include <condition_variable>
 #include <variant>
 #include <string>
 #include <vector>
 #include <filesystem>
 
-#include "safedeque.h"
+#include "safeDeque.h"
 #include "filesSender.h"
 #include "packetsSender.h"
 #include "packetsReceiver.h"

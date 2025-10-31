@@ -1,4 +1,5 @@
-#include "AuthorizationWidget.h"
+#include "authorizationWidget.h"
+
 #include <QResizeEvent>
 #include <QRegularExpressionValidator>
 #include <QPainterPath>

@@ -9,8 +9,6 @@
 #include <QPainter>
 #include <QPropertyAnimation>
 
-enum Theme;
-
 /*
 class ToggleSwitch : public QWidget {
     Q_OBJECT

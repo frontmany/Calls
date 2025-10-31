@@ -10,7 +10,12 @@ add_library(${PROJECT_NAME} ${SOURCES})
 
 set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
 set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
-set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
+
+if (WIN32) 
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
+else()
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp")
+endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${PORTAUDIO_DIR}"
@@ -22,14 +27,23 @@ if(WIN32)
     add_compile_definitions(_WIN32_WINNT=0x0A00)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
-    "${OPUS_DIR}/$<CONFIG>/opus.lib"
-    "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
-    ole32 
-    winmm 
-    uuid
-)
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
+        "${OPUS_DIR}/$<CONFIG>/opus.lib"
+        "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
+        ole32 
+        winmm 
+        uuid
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        "${PORTAUDIO_DIR}/libportaudio.a"
+        "${OPUS_DIR}/libopus.a"
+        "${CRYPTOPP_DIR}/libcryptopp.a"
+    )
+endif()
+
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/opus/include     

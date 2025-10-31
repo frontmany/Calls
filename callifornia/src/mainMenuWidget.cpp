@@ -1,4 +1,5 @@
-#include "MainMenuWidget.h"
+#include "mainMenuWidget.h"
+
 #include <QResizeEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -6,6 +7,7 @@
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <QRegularExpressionValidator>
+
 #include "buttons.h"
 #include "scaleFactor.h"
 

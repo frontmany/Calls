@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "errorcode.h"
+#include "errorCode.h"
 
 namespace calls {
     class Handler {

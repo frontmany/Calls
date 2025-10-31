@@ -9,10 +9,10 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-#include "AuthorizationWidget.h"
-#include "MainMenuWidget.h"
-#include "OverlayWidget.h"
-#include "CallWidget.h"
+#include "authorizationWidget.h"
+#include "mainMenuWidget.h"
+#include "overlayWidget.h"
+#include "callWidget.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),
@@ -159,16 +159,16 @@ updater::OperationSystemType MainWindow::resolveOperationSystemType() {
 #if defined(Q_OS_WINDOWS)
     return updater::OperationSystemType::WINDOWS;
 #elif defined(Q_OS_LINUX)
-    return OperationSystemType::LINUX;
+    return updater::OperationSystemType::LINUX;
 #elif defined(Q_OS_MACOS)
     return OperationSystemType::MAC;
 #else
 #if defined(_WIN32)
-    return OperationSystemType::WINDOWS;
+    return updater::OperationSystemType::WINDOWS;
 #elif defined(__linux__)
-    return OperationSystemType::LINUX;
+    return updater::OperationSystemType::LINUX;
 #elif defined(__APPLE__)
-    return OperationSystemType::MAC;
+    return updater::OperationSystemType::MAC;
 #else
     qWarning() << "Unknown operating system";
     return updater::OperationSystemType::WINDOWS;

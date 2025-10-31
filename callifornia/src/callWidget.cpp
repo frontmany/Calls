@@ -1,4 +1,4 @@
-#include "CallWidget.h"
+#include "callWidget.h"
 #include "incomingCallWidget.h"
 #include <QPainter>
 #include <QPainterPath>

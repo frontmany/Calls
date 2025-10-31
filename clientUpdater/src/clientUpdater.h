@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <condition_variable>
 #include <string>
 #include <fstream>
 #include <sstream>

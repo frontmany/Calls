@@ -14,7 +14,7 @@
 #include "keysManager.h"
 #include "packetTypes.h"
 #include "incomingCallData.h"
-#include "ErrorCode.h"
+#include "errorCode.h"
 #include "handler.h"
 #include "state.h"
 #include "timer.h"

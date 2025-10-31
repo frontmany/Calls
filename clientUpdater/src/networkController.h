@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include <condition_variable>
 #include <queue>
 #include <memory>
 #include <vector>
