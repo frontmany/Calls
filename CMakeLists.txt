@@ -15,6 +15,8 @@ if(NOT DEPENDENCIES_FETCHED)
 
     message(STATUS "Fetching dependencies...")
 
+    include(FetchContent)
+
     FetchContent_Declare(
         opus
         GIT_REPOSITORY https://github.com/xiph/opus.git
@@ -50,8 +52,7 @@ if(NOT DEPENDENCIES_FETCHED)
         SOURCE_DIR ${VENDOR_DIR}/asio
     )
 
-    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio)
-
+    # Configure third-party projects BEFORE making them available
     set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "Build shared library" FORCE)
     set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
     set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build programs" FORCE)
@@ -63,19 +64,22 @@ if(NOT DEPENDENCIES_FETCHED)
     set(PA_BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
     set(PA_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 
+    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio)
+
     message(STATUS "Dependencies fetched successfully")
 
 else()
     message(STATUS "Dependencies already fetched")
-    add_subdirectory(callifornia)
-    add_subdirectory(server)
-    add_subdirectory(client)
-    add_subdirectory(clientUpdater)
-    add_subdirectory(clientUpdaterPy)
-    add_subdirectory(clientUpdateApplier)
-    add_subdirectory(serverUpdater)
-    add_subdirectory(serverUpdaterPy)
-    add_subdirectory(serverPy)
-    add_subdirectory(clientPy)
-    
 endif()
+
+# Always add project subdirectories so the build works on first configure
+add_subdirectory(callifornia)
+add_subdirectory(server)
+add_subdirectory(client)
+add_subdirectory(clientUpdater)
+add_subdirectory(clientUpdaterPy)
+add_subdirectory(clientUpdateApplier)
+add_subdirectory(serverUpdater)
+add_subdirectory(serverUpdaterPy)
+add_subdirectory(serverPy)
+add_subdirectory(clientPy)

@@ -5,7 +5,10 @@ project(update_applier)
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 source_group("Source Files" FILES ${SOURCES})
 
-set(CMAKE_PREFIX_PATH "C:/Qt/6.9.2/6.9.2/msvc2022_64")
+if(WIN32)
+    set(CMAKE_PREFIX_PATH "C:/Qt/6.9.2/6.9.2/msvc2022_64")
+endif()
+
 find_package(Qt6 COMPONENTS Core REQUIRED)
 qt_standard_project_setup()
 set(CMAKE_AUTOMOC ON)

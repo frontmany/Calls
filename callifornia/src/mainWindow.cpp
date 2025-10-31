@@ -73,12 +73,6 @@ void MainWindow::initializeCallifornia(const std::string& host, const std::strin
     else 
         calls::run();
 
-    /*
-    QTimer::singleShot(0, [this]() {
-        showUpdatingDialog();
-    });
-    */
-
     showMaximized();
 }
 
