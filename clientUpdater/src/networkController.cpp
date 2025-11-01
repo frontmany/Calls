@@ -8,9 +8,9 @@
 namespace updater {
 
 NetworkController::NetworkController(
-	std::function<void(CheckResult)>&& onCheckResult,
+	std::function<void(UpdatesCheckResult)>&& onCheckResult,
 	std::function<void(double)>&& onLoadingProgress,
-	std::function<void()>&& onAllFilesLoaded,
+	std::function<void(bool)>&& onAllFilesLoaded,
 	std::function<void()>&& onConnected,
 	std::function<void()>&& onError)
 	: m_onCheckResult(onCheckResult),
@@ -158,12 +158,12 @@ void NetworkController::readCheckResult() {
 				m_onError();
 			}
 			else {
-				if (m_metadata.header().type == static_cast<int>(CheckResult::POSSIBLE_UPDATE))
-					m_onCheckResult(CheckResult::POSSIBLE_UPDATE);
-				else if (m_metadata.header().type == static_cast<int>(CheckResult::REQUIRED_UPDATE))
-					m_onCheckResult(CheckResult::REQUIRED_UPDATE);
-				else if (m_metadata.header().type == static_cast<int>(CheckResult::UPDATE_NOT_NEEDED))
-					m_onCheckResult(CheckResult::UPDATE_NOT_NEEDED);
+				if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::POSSIBLE_UPDATE))
+					m_onCheckResult(UpdatesCheckResult::POSSIBLE_UPDATE);
+				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::REQUIRED_UPDATE))
+					m_onCheckResult(UpdatesCheckResult::REQUIRED_UPDATE);
+				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::UPDATE_NOT_NEEDED))
+					m_onCheckResult(UpdatesCheckResult::UPDATE_NOT_NEEDED);
 				else
 					m_onError();
 
@@ -196,7 +196,7 @@ void NetworkController::readMetadataBody() {
 				parseMetadata();
 
 				if (m_expectedFiles.empty()) {
-					m_onAllFilesLoaded();
+					m_onAllFilesLoaded(true);
 					return;
 				}
 
@@ -356,7 +356,7 @@ void NetworkController::readChunk() {
 void NetworkController::finalizeReceiving() {
 	m_onLoadingProgress(100.0);
 	reset(false);
-	m_onAllFilesLoaded();
+	m_onAllFilesLoaded(false);
 }
 
 void NetworkController::openFile() {

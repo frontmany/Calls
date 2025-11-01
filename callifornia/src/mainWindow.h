@@ -12,10 +12,8 @@
 #include <QDialog>
 #include <QScreen>
 
-#include "checkResult.h"
-#include "clientUpdater.h"
+#include "updater.h"
 #include "calls.h"
-#include "callsClientHandler.h"
 
 class AuthorizationWidget;
 class MainMenuWidget;
@@ -27,8 +25,8 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget* parent);
     ~MainWindow();
+    void init();
     void connectCallifornia(const std::string& host, const std::string& port);
-    void connectUpdater(const std::string& host, const std::string& port);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -44,12 +42,12 @@ private slots:
     void onRemoteUserEndedCall();
     void onIncomingCall(const QString& friendNicname);
     void onIncomingCallExpired(const QString& friendNickname);
-    void onNetworkError();
-    void onUpdaterError();
+    void onClientNetworkError();
+    void onUpdaterNetworkError();
     void onConnectionRestored();
 
-    void onUpdaterCheckResult(updater::CheckResult checkResult);
-    void onUpdateLoaded();
+    void onUpdaterCheckResult(updater::UpdatesCheckResult checkResult);
+    void onUpdateLoaded(bool emptyUpdate);
     void onLoadingProgress(double progress);
 
     void onUpdateButtonClicked();
@@ -92,7 +90,7 @@ private:
     void playIncomingCallRingtone();
     void playCallingRingtone();
     void stopCallingRingtone();
-    void playSoundEffect(const QString& soundPath);
+    void playSoundEffect(const QString& soundPath); 
 
 private:
     QMediaPlayer* m_ringtonePlayer;
@@ -106,9 +104,5 @@ private:
     MainMenuWidget* m_mainMenuWidget;
     CallWidget* m_callWidget;
 
-    updater::ClientUpdater m_updater;
     QLabel* m_updatingProgressLabel = nullptr;
-
-    std::string m_serverUpdaterHost = "";
-    std::string m_serverUpdaterPort = "";
 };

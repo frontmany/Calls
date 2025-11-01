@@ -2,17 +2,22 @@
 #include <functional>
 #include <condition_variable>
 #include <string>
+#include <memory>
 #include <fstream>
 #include <sstream>
 #include <atomic>
 #include <iomanip>
 #include <filesystem>
 
-#include "checkResult.h"
+#include "utility.h"
+#include "callbacksInterface.h"
+#include "updatesCheckResult.h"
 #include "safeDeque.h"
 #include "operationSystemType.h"
 #include "networkController.h"
 #include "jsonTypes.h"
+#include "packetTypes.h"
+#include "state.h"
 
 #include "json.hpp"
 
@@ -20,27 +25,23 @@ namespace updater {
 
 class ClientUpdater {
 public:
-	enum class State {
-		DISCONNECTED,
-		AWAITING_SERVER_RESPONSE,
-		AWAITING_UPDATES_CHECK,
-		AWAITING_START_UPDATE
-	};
+	static ClientUpdater& get();
 
-	ClientUpdater(
-		std::function<void(CheckResult)>&& onCheckResult,
-		std::function<void(double)>&& onLoadingProgress,
-		std::function<void()>&& onUpdateLoaded,
-		std::function<void()>&& onError
-	);
-	~ClientUpdater();
+	void init(std::unique_ptr<CallbacksInterface>&& callbacksHandler);
 	bool connect(const std::string& host, const std::string& port);
 	void disconnect();
 	bool checkUpdates(const std::string& currentVersionNumber);
 	bool startUpdate(OperationSystemType type);
-	State getState();
+	bool isConnected();
+	bool isAwaitingServerResponse();
+	bool isAwaitingCheckUpdatesFunctionCall();
+	bool isAwaitingStartUpdateFunctionCall();
+	const std::string& getServerHost();
+	const std::string& getServerPort();
 
 private:
+	ClientUpdater();
+	~ClientUpdater();
 	void processQueue();
 	std::vector<std::pair<std::filesystem::path, std::string>> getFilePathsWithHashes();
 
@@ -49,13 +50,14 @@ private:
 	std::thread m_queueProcessingThread;
 
 	std::atomic_bool m_running = false;
-	std::atomic_bool m_sendingProgress = false;
+	std::atomic_bool m_processingProgress = false;
 	std::atomic<State> m_state = State::DISCONNECTED;
+
 	NetworkController m_networkController;
-	std::function<void(CheckResult)> m_onCheckResult;
-	std::function<void(double)> m_onLoadingProgress;
-	std::function<void()> m_onUpdateLoaded;
-	std::function<void()> m_onError;
+	std::unique_ptr<CallbacksInterface> m_callbacksHandler;
+
+	std::string m_serverHost;
+	std::string m_serverPort;
 };
 
 }

@@ -5,9 +5,9 @@
 #include "errorCode.h"
 
 namespace calls {
-    class Handler {
+    class CallbacksInterface {
     public:
-        virtual ~Handler() = default;
+        virtual ~CallbacksInterface() = default;
 
         virtual void onAuthorizationResult(ErrorCode ec) = 0;
         virtual void onStartCallingResult(ErrorCode ec) = 0;

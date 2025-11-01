@@ -14,25 +14,11 @@
 #include "overlayWidget.h"
 #include "callWidget.h"
 
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent),
-    m_updater(
-        [this](updater::CheckResult checkResult) {
-            QMetaObject::invokeMethod(this, "onUpdaterCheckResult",
-                Qt::QueuedConnection, Q_ARG(updater::CheckResult, checkResult));
-        },
-        [this](double progress) {
-            QMetaObject::invokeMethod(this, "onLoadingProgress",
-                Qt::QueuedConnection, Q_ARG(double, progress));
-        },
-        [this]() {
-            QMetaObject::invokeMethod(this, "onUpdateLoaded", Qt::QueuedConnection);
-        },
-        [this]() {
-            QMetaObject::invokeMethod(this, "onUpdaterError", Qt::QueuedConnection);
-        })
+#include "clientCallbacksHandler.h"
+#include "updaterCallbacksHandler.h"
+
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
-    setWindowIcon(QIcon(":/resources/callifornia.ico"));
 }
 
 MainWindow::~MainWindow() {
@@ -41,22 +27,15 @@ MainWindow::~MainWindow() {
     }
 }
 
+void MainWindow::init() {
+    setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
-void MainWindow::connectUpdater(const std::string& host, const std::string& port) {
-    m_serverUpdaterHost = host;
-    m_serverUpdaterPort = port;
-
-    m_updater.connect(host, port);
-    m_updater.checkUpdates(parseVersionFromConfig());
-}
-
-void MainWindow::connectCallifornia(const std::string& host, const std::string& port) {
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
     m_audioOutput->setVolume(0.4f);
     m_ringtonePlayer->setAudioOutput(m_audioOutput);
 
-    connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
+    connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, [this](QMediaPlayer::PlaybackState state) {
         if (state == QMediaPlayer::StoppedState) {
             if (calls::getIncomingCallsCount() != 0) {
                 m_ringtonePlayer->play();
@@ -66,16 +45,18 @@ void MainWindow::connectCallifornia(const std::string& host, const std::string& 
 
     loadFonts();
     setupUI();
-
-    std::unique_ptr<CallsClientHandler> callsClientHandler = std::make_unique<CallsClientHandler>(this);
-    bool initialized = calls::init(host, port, std::move(callsClientHandler));
-    
-    if (!initialized) 
-        qDebug("calls client initialization error");
-    else 
-        calls::run();
-
     showMaximized();
+}
+
+void MainWindow::connectCallifornia(const std::string& host, const std::string& port) {
+    std::unique_ptr<UpdaterCallbacksHandler> updaterHandler = std::make_unique<UpdaterCallbacksHandler>(this);
+    updater::init(std::move(updaterHandler));
+    updater::connect(host, port);
+    updater::checkUpdates(parseVersionFromConfig());
+
+    std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
+    calls::init(host, port, std::move(callsClientHandler));
+    calls::run();
 }
 
 void MainWindow::playRingtone(const QUrl& ringtoneUrl) {
@@ -178,10 +159,10 @@ updater::OperationSystemType MainWindow::resolveOperationSystemType() {
 #endif
 }
 
-void MainWindow::onUpdaterCheckResult(updater::CheckResult checkResult) {
+void MainWindow::onUpdaterCheckResult(updater::UpdatesCheckResult checkResult) {
     m_authorizationWidget->hideUpdatesCheckingNotification();
 
-    if (checkResult == updater::CheckResult::POSSIBLE_UPDATE) {
+    if (checkResult == updater::UpdatesCheckResult::POSSIBLE_UPDATE) {
         if (!calls::isNetworkError()) {
             m_authorizationWidget->setAuthorizationDisabled(false);
         }
@@ -193,19 +174,19 @@ void MainWindow::onUpdaterCheckResult(updater::CheckResult checkResult) {
         m_authorizationWidget->showUpdateAvailableNotification();
         m_mainMenuWidget->showUpdateAvailableNotification();
     }
-    else if (checkResult == updater::CheckResult::REQUIRED_UPDATE) {
-        m_updater.startUpdate(resolveOperationSystemType());
+    else if (checkResult == updater::UpdatesCheckResult::REQUIRED_UPDATE) {
+        updater::startUpdate(resolveOperationSystemType());
         showUpdatingDialog();
     }
-    else if (checkResult == updater::CheckResult::UPDATE_NOT_NEEDED) {
-        m_updater.disconnect();
+    else if (checkResult == updater::UpdatesCheckResult::UPDATE_NOT_NEEDED) {
+        updater::disconnect();
 
         if (!calls::isNetworkError()) {
             m_authorizationWidget->setAuthorizationDisabled(false);
         }
     }
     else {
-        qWarning() << "error: unknown CheckResult type";
+        qWarning() << "error: unknown UpdatesCheckResult type";
     }
 }
 
@@ -224,11 +205,11 @@ void MainWindow::onUpdateButtonClicked() {
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->clearIncomingCalls();
 
-    m_updater.startUpdate(resolveOperationSystemType());
+    updater::startUpdate(resolveOperationSystemType());
     showUpdatingDialog();
 }
 
-void MainWindow::onUpdateLoaded() {
+void MainWindow::onUpdateLoaded(bool emptyUpdate) {
     calls::logout();
 
     QDialog* updatingDialog = nullptr;
@@ -351,7 +332,7 @@ void MainWindow::setupUI() {
 
 void MainWindow::closeEvent(QCloseEvent* event) {
     calls::stop();
-    m_updater.disconnect();
+    updater::disconnect();
     event->accept();
 }
 
@@ -682,7 +663,7 @@ void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
     playSoundEffect(":/resources/callingEnded.wav");
 }
 
-void MainWindow::onNetworkError() {
+void MainWindow::onClientNetworkError() {
     stopRingtone();
 
     m_mainMenuWidget->removeCallingPanel();
@@ -695,20 +676,20 @@ void MainWindow::onNetworkError() {
     m_authorizationWidget->resetBlur();
     m_authorizationWidget->setAuthorizationDisabled(true);
 
-    if (m_updater.getState() != updater::ClientUpdater::State::AWAITING_START_UPDATE)
+    if (!updater::isAwaitingServerResponse())
         m_authorizationWidget->showNetworkErrorNotification();
 }
 
-void MainWindow::onUpdaterError() {
+void MainWindow::onUpdaterNetworkError() {
     m_authorizationWidget->hideUpdateAvailableNotification();
     m_mainMenuWidget->hideUpdateAvailableNotification();
 
     hideUpdatingDialog();
-    if (!calls::isAuthorized() || m_updater.getState() == updater::ClientUpdater::State::AWAITING_SERVER_RESPONSE) {
+    if (!calls::isAuthorized() || updater::isAwaitingServerResponse()) {
         showConnectionErrorDialog();
     }
 
-    m_updater.disconnect();
+    updater::disconnect();
 }
 
 void MainWindow::onConnectionRestored() {
@@ -716,10 +697,9 @@ void MainWindow::onConnectionRestored() {
     m_authorizationWidget->setAuthorizationDisabled(false);
     m_authorizationWidget->showConnectionRestoredNotification(1500);
 
-    if (m_updater.getState() == updater::ClientUpdater::State::DISCONNECTED) {
-        m_updater.connect(m_serverUpdaterHost, m_serverUpdaterPort);
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        m_updater.checkUpdates(parseVersionFromConfig());
+    if (!updater::isConnected()) {
+        updater::connect(updater::getServerHost(), updater::getServerPort());
+        updater::checkUpdates(parseVersionFromConfig());
     }
 }
 
@@ -793,7 +773,7 @@ void MainWindow::showUpdatingDialog()
         movie->start();
     }
 
-    // Создаем метку для отображения прогресса
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     QLabel* progressLabel = new QLabel("0.00%");
     progressLabel->setAlignment(Qt::AlignCenter);
     progressLabel->setStyleSheet(
@@ -933,7 +913,7 @@ void MainWindow::showConnectionErrorDialog()
     imageLabel->setMinimumHeight(140);
 
     QPixmap errorPixmap(":/resources/error.png");
-    imageLabel->setPixmap(errorPixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation));  // Увеличил размер изображения
+    imageLabel->setPixmap(errorPixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation));  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
 
     QLabel* errorLabel = new QLabel("Connection Error");

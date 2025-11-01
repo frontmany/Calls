@@ -4,9 +4,9 @@
 
 class MainWindow;
 
-class CallsClientHandler : public calls::Handler {
+class ClientCallbacksHandler : public calls::CallbacksInterface {
 public:
-    CallsClientHandler(MainWindow* mainWindow);
+    ClientCallbacksHandler(MainWindow* mainWindow);
 
     void onAuthorizationResult(calls::ErrorCode ec) override;
     void onStartCallingResult(calls::ErrorCode ec) override;

@@ -2,7 +2,7 @@
 
 namespace updater {
 
-enum class CheckResult : int {
+enum class UpdatesCheckResult : int {
 	UPDATE_NOT_NEEDED,
 	REQUIRED_UPDATE,
 	POSSIBLE_UPDATE

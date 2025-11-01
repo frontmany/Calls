@@ -1,14 +1,14 @@
-#include "callsClientHandler.h"
+#include "clientCallbacksHandler.h"
 #include <QMetaObject>
 #include <QApplication>
 #include "mainWindow.h"
 
-CallsClientHandler::CallsClientHandler(MainWindow* mainWindow)
+ClientCallbacksHandler::ClientCallbacksHandler(MainWindow* mainWindow)
     : m_mainWindow(mainWindow)
 {
 }
 
-void CallsClientHandler::onAuthorizationResult(calls::ErrorCode ec)
+void ClientCallbacksHandler::onAuthorizationResult(calls::ErrorCode ec)
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onAuthorizationResult",
@@ -16,7 +16,7 @@ void CallsClientHandler::onAuthorizationResult(calls::ErrorCode ec)
     }
 }
 
-void CallsClientHandler::onStartCallingResult(calls::ErrorCode ec)
+void ClientCallbacksHandler::onStartCallingResult(calls::ErrorCode ec)
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onStartCallingResult",
@@ -24,7 +24,7 @@ void CallsClientHandler::onStartCallingResult(calls::ErrorCode ec)
     }
 }
 
-void CallsClientHandler::onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname)
+void ClientCallbacksHandler::onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname)
 {
     if (m_mainWindow) {
         QString qNickname = QString::fromStdString(nickname);
@@ -35,7 +35,7 @@ void CallsClientHandler::onAcceptCallResult(calls::ErrorCode ec, const std::stri
     }
 }
 
-void CallsClientHandler::onMaximumCallingTimeReached()
+void ClientCallbacksHandler::onMaximumCallingTimeReached()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onMaximumCallingTimeReached",
@@ -43,7 +43,7 @@ void CallsClientHandler::onMaximumCallingTimeReached()
     }
 }
 
-void CallsClientHandler::onCallingAccepted()
+void ClientCallbacksHandler::onCallingAccepted()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onCallingAccepted",
@@ -51,7 +51,7 @@ void CallsClientHandler::onCallingAccepted()
     }
 }
 
-void CallsClientHandler::onCallingDeclined()
+void ClientCallbacksHandler::onCallingDeclined()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onCallingDeclined",
@@ -59,7 +59,7 @@ void CallsClientHandler::onCallingDeclined()
     }
 }
 
-void CallsClientHandler::onIncomingCall(const std::string& friendNickname)
+void ClientCallbacksHandler::onIncomingCall(const std::string& friendNickname)
 {
     if (m_mainWindow) {
         QString qFriendNickname = QString::fromStdString(friendNickname);
@@ -68,7 +68,7 @@ void CallsClientHandler::onIncomingCall(const std::string& friendNickname)
     }
 }
 
-void CallsClientHandler::onIncomingCallExpired(const std::string& friendNickname)
+void ClientCallbacksHandler::onIncomingCallExpired(const std::string& friendNickname)
 {
     if (m_mainWindow) {
         QString qNickname = QString::fromStdString(friendNickname);
@@ -77,15 +77,15 @@ void CallsClientHandler::onIncomingCallExpired(const std::string& friendNickname
     }
 }
 
-void CallsClientHandler::onNetworkError()
+void ClientCallbacksHandler::onNetworkError()
 {
     if (m_mainWindow) {
-        QMetaObject::invokeMethod(m_mainWindow, "onNetworkError",
+        QMetaObject::invokeMethod(m_mainWindow, "onClientNetworkError",
             Qt::QueuedConnection);
     }
 }
 
-void CallsClientHandler::onConnectionRestored()
+void ClientCallbacksHandler::onConnectionRestored()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onConnectionRestored",
@@ -93,7 +93,7 @@ void CallsClientHandler::onConnectionRestored()
     }
 }
 
-void CallsClientHandler::onRemoteUserEndedCall()
+void ClientCallbacksHandler::onRemoteUserEndedCall()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onRemoteUserEndedCall",

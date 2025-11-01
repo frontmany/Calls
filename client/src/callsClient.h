@@ -15,7 +15,7 @@
 #include "packetTypes.h"
 #include "incomingCallData.h"
 #include "errorCode.h"
-#include "handler.h"
+#include "callbacksInterface.h"
 #include "state.h"
 #include "timer.h"
 #include "call.h"
@@ -28,7 +28,7 @@ class CallsClient {
 public:
     static CallsClient& get();
 
-    bool init(const std::string& host, const std::string& port, std::unique_ptr<Handler>&& handler);
+    bool init(const std::string& host, const std::string& port, std::unique_ptr<CallbacksInterface>&& callbacksHandler);
     void run();
     void stop();
 
@@ -132,7 +132,7 @@ private:
     std::unique_ptr<AudioEngine> m_audioEngine;
     std::shared_ptr<PingManager> m_pingManager;
     std::unique_ptr<KeysManager> m_keysManager;
-    std::unique_ptr<Handler> m_callbackHandler;
+    std::unique_ptr<CallbacksInterface> m_callbackHandler;
 };
 
 }

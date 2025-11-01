@@ -3,17 +3,17 @@
 #include <string>
 #include <functional>
 
+#include "updatesCheckResult.h"
 #include "callsClient.h"
 #include "jsonTypes.h"
 
 namespace calls {
-    // facade functions
-    inline bool init(
+    inline void init(
         const std::string& host,
         const std::string& port,
-        std::unique_ptr<Handler>&& handler)
+        std::unique_ptr<CallbacksInterface>&& handler)
     {
-        return CallsClient::get().init(
+        CallsClient::get().init(
             host,
             port,
             std::move(handler));

@@ -9,7 +9,7 @@
 #include <string>
 #include <thread>
 
-#include "checkResult.h"
+#include "updatescheckResult.h"
 #include "safeDeque.h"
 #include "packet.h"
 
@@ -29,7 +29,7 @@ private:
 	};
 
 public:
-	NetworkController(std::function<void(CheckResult)>&& onCheckResult, std::function<void(double)>&& onLoadingProgress, std::function<void()>&& onAllFilesLoaded, std::function<void()>&& onConnected, std::function<void()>&& onError);
+	NetworkController(std::function<void(UpdatesCheckResult)>&& onCheckResult, std::function<void(double)>&& onLoadingProgress, std::function<void(bool)>&& onAllFilesLoaded, std::function<void()>&& onConnected, std::function<void()>&& onError);
 	void sendPacket(const Packet& packet);
 	void connect(const std::string& host, const std::string& port);
 	void disconnect();
@@ -76,9 +76,9 @@ private:
 	std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
 	std::thread m_asioThread;
 
-	std::function<void(CheckResult)> m_onCheckResult;
+	std::function<void(UpdatesCheckResult)> m_onCheckResult;
 	std::function<void(double)> m_onLoadingProgress;
-	std::function<void()> m_onAllFilesLoaded;
+	std::function<void(bool)> m_onAllFilesLoaded;
 	std::function<void()> m_onConnected;
 	std::function<void()> m_onError;
 };

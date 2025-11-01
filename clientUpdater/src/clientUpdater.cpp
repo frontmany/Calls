@@ -1,24 +1,19 @@
 #include "clientUpdater.h"
-#include "utility.h"
-#include "packetTypes.h"
 
 namespace updater {
 
-ClientUpdater::ClientUpdater(
-	std::function<void(CheckResult)>&& onCheckResult,
-	std::function<void(double)>&& onLoadingProgress,
-	std::function<void()>&& onUpdateLoaded,
-	std::function<void()>&& onError)
-	: m_onCheckResult(std::move(onCheckResult)),
-	m_onLoadingProgress(onLoadingProgress),
-	m_onUpdateLoaded(std::move(onUpdateLoaded)),
-	m_onError(std::move(onError)),
-	m_networkController(
-		[this](CheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_onCheckResult(result); }); },
-		[this](double progress) {m_queue.push_back([this, progress]() {m_onLoadingProgress(progress); m_sendingProgress = true; }); },
-		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK; m_onUpdateLoaded(); m_sendingProgress = false; }); },
+ClientUpdater& ClientUpdater::get() {
+	static ClientUpdater s_instance;
+	return s_instance;
+}
+
+ClientUpdater::ClientUpdater()
+	: m_networkController(
+		[this](UpdatesCheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_callbacksHandler->onUpdatesCheckResult(result); }); },
+		[this](double progress) {m_queue.push_back([this, progress]() {m_callbacksHandler->onLoadingProgress(progress); m_processingProgress = true; }); },
+		[this](bool emptyUpdate) {m_queue.push_back([this, emptyUpdate]() {m_state = State::AWAITING_UPDATES_CHECK; m_callbacksHandler->onUpdateLoaded(emptyUpdate); m_processingProgress = false; }); },
 		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK;});  },
-		[this]() {m_queue.push_back([this]() {m_onError(); }); })
+		[this]() {m_queue.push_back([this]() {m_callbacksHandler->onError(); }); })
 {
 }
 
@@ -29,7 +24,14 @@ ClientUpdater::~ClientUpdater() {
 	}
 }
 
+void ClientUpdater::init(std::unique_ptr<CallbacksInterface>&& callbacksHandler) {
+	m_callbacksHandler = std::move(callbacksHandler);
+}
+
 bool ClientUpdater::connect(const std::string& host, const std::string& port) {
+	m_serverHost = host;
+	m_serverPort = port;
+
 	if (m_state != State::DISCONNECTED || m_running) return false;
 
 	m_networkController.connect(host, port);
@@ -59,7 +61,7 @@ void ClientUpdater::processQueue() {
 			callback();
 		}
 		
-		if (!m_sendingProgress) {
+		if (!m_processingProgress) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 	}
@@ -115,8 +117,28 @@ bool ClientUpdater::startUpdate(OperationSystemType type) {
 	return true;
 }
 
-ClientUpdater::State ClientUpdater::getState() { 
-	return m_state;
+bool ClientUpdater::isConnected() {
+	return m_state != State::DISCONNECTED;
+}
+
+bool ClientUpdater::isAwaitingServerResponse() {
+	return m_state == State::AWAITING_SERVER_RESPONSE;
+}
+
+bool ClientUpdater::isAwaitingCheckUpdatesFunctionCall() {
+	return m_state == State::AWAITING_UPDATES_CHECK;
+}
+
+bool ClientUpdater::isAwaitingStartUpdateFunctionCall() {
+	return m_state == State::AWAITING_START_UPDATE;
+}
+
+const::std::string& ClientUpdater::getServerHost() {
+	return m_serverHost;
+}
+
+const::std::string& ClientUpdater::getServerPort() {
+	return m_serverPort;
 }
 
 std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFilePathsWithHashes() {
@@ -144,7 +166,7 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 		}
 	}
 	catch (const std::filesystem::filesystem_error& e) {
-		m_onError();
+		m_callbacksHandler->onError();
 	}
 
 	return result;

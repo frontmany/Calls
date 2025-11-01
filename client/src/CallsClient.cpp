@@ -21,7 +21,7 @@ CallsClient& CallsClient::get()
 bool CallsClient::init(
     const std::string& host,
     const std::string& port,
-    std::unique_ptr<Handler>&& handler)
+    std::unique_ptr<CallbacksInterface>&& callbacksHandler)
 {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -43,7 +43,7 @@ bool CallsClient::init(
     m_handlers.emplace(PacketType::END_CALL, [this](const nlohmann::json& json) { onEndCall(json); });
     m_handlers.emplace(PacketType::START_CALLING, [this](const nlohmann::json& json) { onIncomingCall(json); });
 
-    m_callbackHandler = std::move(handler);
+    m_callbackHandler = std::move(callbacksHandler);
     m_networkController = std::make_shared<NetworkController>();
     m_audioEngine = std::make_unique<AudioEngine>();
     m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); }, [this]() {onConnectionRestored(); m_networkError = false; });
@@ -63,7 +63,7 @@ bool CallsClient::init(
             m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
         });
 
-    if (audioInitialized && networkInitialized) 
+    if (audioInitialized && networkInitialized)
         return true;
     else 
         return false;
