@@ -226,7 +226,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
 }
 
 void runServerUpdater() {
-    NetworkController networkController(8081,
+    NetworkController networkController(8080,
         [](ConnectionPtr connection, Packet&& packet) {onUpdatesCheck(connection, std::move(packet)); },
         [](ConnectionPtr connection, Packet&& packet) {onUpdateAccepted(connection, std::move(packet)); }
     );

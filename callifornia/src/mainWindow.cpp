@@ -41,15 +41,13 @@ MainWindow::~MainWindow() {
     }
 }
 
-void MainWindow::initializeUpdater(const std::string& host, const std::string& port) {
+void MainWindow::init(const std::string& host, const std::string& port) {
     m_serverUpdaterHost = host;
     m_serverUpdaterPort = port;
 
     m_updater.connect(host, port);
     m_updater.checkUpdates(parseVersionFromConfig());
-}
-
-void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
+    
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
     m_audioOutput->setVolume(0.4f);

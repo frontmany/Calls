@@ -9,7 +9,6 @@ int main(int argc, char* argv[])
 
     QApplication app(argc, argv);
     MainWindow* mainWindow = new MainWindow(nullptr);
-    mainWindow->initializeUpdater("192.168.1.48", "8081");
-    mainWindow->initializeCallifornia("192.168.1.48", "8081");
+    mainWindow->init("92.255.165.77", "8081");
     return app.exec();
 }

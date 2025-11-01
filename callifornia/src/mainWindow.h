@@ -27,8 +27,7 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget* parent);
     ~MainWindow();
-    void initializeCallifornia(const std::string& host, const std::string& port);
-    void initializeUpdater(const std::string& host, const std::string& port);
+    void init(const std::string& host, const std::string& port);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
