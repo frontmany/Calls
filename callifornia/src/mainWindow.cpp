@@ -41,14 +41,15 @@ MainWindow::~MainWindow() {
     }
 }
 
-void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
-    m_serverHost = host;
-    m_serverPort = m_serverPort;
+void MainWindow::initializeUpdater(const std::string& host, const std::string& port) {
+    m_serverUpdaterHost = host;
+    m_serverUpdaterPort = port;
 
     m_updater.connect(host, port);
     m_updater.checkUpdates(parseVersionFromConfig());
+}
 
-
+void MainWindow::initializeCallifornia(const std::string& host, const std::string& port) {
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
     m_audioOutput->setVolume(0.4f);
@@ -715,7 +716,7 @@ void MainWindow::onConnectionRestored() {
     m_authorizationWidget->showConnectionRestoredNotification(1500);
 
     if (m_updater.getState() == updater::ClientUpdater::State::DISCONNECTED) {
-        m_updater.connect(m_serverHost, m_serverPort);
+        m_updater.connect(m_serverUpdaterHost, m_serverUpdaterPort);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         m_updater.checkUpdates(parseVersionFromConfig());
     }

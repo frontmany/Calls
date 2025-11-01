@@ -28,6 +28,7 @@ public:
     MainWindow(QWidget* parent);
     ~MainWindow();
     void initializeCallifornia(const std::string& host, const std::string& port);
+    void initializeUpdater(const std::string& host, const std::string& port);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -108,6 +109,6 @@ private:
     updater::ClientUpdater m_updater;
     QLabel* m_updatingProgressLabel = nullptr;
 
-    std::string m_serverHost = "";
-    std::string m_serverPort = "";
+    std::string m_serverUpdaterHost = "";
+    std::string m_serverUpdaterPort = "";
 };
