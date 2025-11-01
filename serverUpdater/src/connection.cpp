@@ -2,6 +2,8 @@
 
 #include <random>
 
+#include "logger.h"
+
 Connection::Connection(
 	asio::io_context& asioContext,
 	asio::ip::tcp::socket&& socket,
@@ -56,14 +58,14 @@ void Connection::close() {
 
                     m_socket.close(ec);
                     if (ec) {
-                        std::cerr << "Socket close error: " << ec.message() << "\n";
+                        LOG_ERROR("Socket close error: {}", ec.message());
                     }
 					else {
-						std::cout << "files Connection closed successfully\n";
+						LOG_DEBUG("Connection closed successfully");
 					}
                 }
                 catch (const std::exception& e) {
-                    std::cerr << "Exception in Connection::close: " << e.what() << "\n";
+                    LOG_ERROR("Exception in Connection::close: {}", e.what());
                 }
             }
         });
@@ -73,6 +75,7 @@ void Connection::writeHandshake() {
 	asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Handshake write error: {}", ec.message());
 				m_onDisconnected(shared_from_this());
 			}
 		});
@@ -82,19 +85,23 @@ void Connection::readHandshake() {
 	asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Handshake read error: {}", ec.message());
 				m_onDisconnected(shared_from_this());
 			}
 			else {
 				if (scramble(m_handshakeOut) == m_handshakeIn) {
+					LOG_DEBUG("Handshake successful");
 					asio::async_write(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
 						[this](std::error_code ec, std::size_t length) {
 							if (ec) {
+								LOG_ERROR("Handshake confirmation write error: {}", ec.message());
 								m_onDisconnected(shared_from_this());
 							}
 						});
 					m_packetsReceiver.startReceiving();
 				}
 				else {
+					LOG_WARN("Handshake validation failed");
 					m_onDisconnected(shared_from_this());
 				}
 			}

@@ -2,6 +2,7 @@
 #include "operationSystemType.h"
 #include "utility.h"
 #include "jsonTypes.h"
+#include "logger.h"
 
 #include "json.hpp"
 
@@ -64,16 +65,19 @@ void NetworkController::createConnection(const std::string& host, const uint16_t
 		const asio::ip::tcp::resolver::results_type& serverEndpoint = resolver.resolve(host, std::to_string(port));
 
 		asio::async_connect(m_socket, serverEndpoint,
-			[this](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
+			[this, host, port](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
 				if (ec) {
+					LOG_ERROR("Connection failed: {}", ec.message());
 					m_onError();
 				}
 				else {
+					LOG_INFO("Connected to update server {}:{}", host, port);
 					readHandshake();
 				}
 			});
 	}
 	catch (std::exception& e) {
+		LOG_ERROR("Connection exception: {}", e.what());
 		m_onError();
 	}
 }
@@ -85,6 +89,7 @@ void NetworkController::writeHeader(const Packet& packet) {
 		[this, packet](std::error_code ec, std::size_t length) {
 			if (ec)
 			{
+				LOG_ERROR("Packet header write error: {}", ec.message());
 				m_onError();
 			}
 			else
@@ -102,6 +107,7 @@ void NetworkController::writeBody(const Packet& packet) {
 		asio::buffer(packet.body().data(), packet.body().size()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Packet body write error: {}", ec.message());
 				m_onError();
 			}
 		}
@@ -112,9 +118,11 @@ void NetworkController::readHandshake() {
 	asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Handshake read error: {}", ec.message());
 				m_onError();
 			}
 			else {
+				LOG_DEBUG("Handshake received, sending response");
 				m_handshakeOut = scramble(m_handshakeIn);
 				writeHandshake();
 			}
@@ -125,14 +133,17 @@ void NetworkController::readHandshakeConfirmation() {
 	asio::async_read(m_socket, asio::buffer(&m_handshakeConfirmation, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Handshake confirmation read error: {}", ec.message());
 				m_onError();
 			}
 			else {
 				if (m_handshakeConfirmation == m_handshakeOut) {
+					LOG_INFO("Handshake completed successfully");
 					m_onConnected();
 					readCheckResult();
 				}
 				else {
+					LOG_ERROR("Handshake validation failed");
 					m_onError();
 				}
 			}
@@ -155,17 +166,26 @@ void NetworkController::readCheckResult() {
 	asio::async_read(m_socket, asio::buffer(&m_metadata.header_mut(), Packet::sizeOfHeader()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Check result read error: {}", ec.message());
 				m_onError();
 			}
 			else {
-				if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::POSSIBLE_UPDATE))
+				if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::POSSIBLE_UPDATE)) {
+					LOG_INFO("Update available: possible update");
 					m_onCheckResult(UpdatesCheckResult::POSSIBLE_UPDATE);
-				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::REQUIRED_UPDATE))
+				}
+				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::REQUIRED_UPDATE)) {
+					LOG_INFO("Update available: required update");
 					m_onCheckResult(UpdatesCheckResult::REQUIRED_UPDATE);
-				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::UPDATE_NOT_NEEDED))
+				}
+				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::UPDATE_NOT_NEEDED)) {
+					LOG_INFO("No updates needed");
 					m_onCheckResult(UpdatesCheckResult::UPDATE_NOT_NEEDED);
-				else
+				}
+				else {
+					LOG_ERROR("Unknown update check result: {}", m_metadata.header().type);
 					m_onError();
+				}
 
 				readMetadataHeader();
 			}
@@ -176,9 +196,11 @@ void NetworkController::readMetadataHeader() {
 	asio::async_read(m_socket, asio::buffer(&m_metadata.header_mut(), Packet::sizeOfHeader()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Metadata header read error: {}", ec.message());
 				m_onError();
 			}
 			else {
+				LOG_DEBUG("Metadata header received, size: {} bytes", m_metadata.size());
 				m_metadata.body_mut().resize(m_metadata.size() - Packet::sizeOfHeader());
 				readMetadataBody();
 			}
@@ -189,17 +211,21 @@ void NetworkController::readMetadataBody() {
 	asio::async_read(m_socket, asio::buffer(m_metadata.body_mut().data(), m_metadata.body().size()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
+				LOG_ERROR("Metadata body read error: {}", ec.message());
 				m_onError();
 			}
 			else {
+				LOG_DEBUG("Metadata body received");
 				deleteTempDirectory();
 				parseMetadata();
 
 				if (m_expectedFiles.empty()) {
+					LOG_INFO("No files to download");
 					m_onAllFilesLoaded(true);
 					return;
 				}
 
+				LOG_INFO("Starting download of {} files", m_expectedFiles.size());
 				openFile();
 				readChunk();
 			}
@@ -256,11 +282,14 @@ void NetworkController::parseMetadata() {
 					m_expectedFiles.push(std::move(fileInfo));
 				}
 				else {
+					LOG_ERROR("Invalid file entry in metadata");
 					m_onError();
 					return;
 				}
 			}
 		}
+
+		LOG_INFO("Expecting {} files to download, total size: {} bytes", m_expectedFiles.size(), m_totalBytes);
 
 		if (jsonObject.contains(FILES_TO_DELETE)) {
 			for (const auto& filePath : jsonObject[FILES_TO_DELETE]) {
@@ -269,11 +298,14 @@ void NetworkController::parseMetadata() {
 					m_filesToDelete.push_back(std::move(pathToDelete));
 				}
 				else {
+					LOG_ERROR("Invalid file path in FILES_TO_DELETE");
 					m_onError();
 					return;
 				}
 			}
 		}
+		
+		LOG_INFO("{} files marked for deletion", m_filesToDelete.size());
 
 		nlohmann::json removeJson;
 		nlohmann::json filesArray = nlohmann::json::array();
@@ -294,6 +326,7 @@ void NetworkController::parseMetadata() {
 		m_currentChunksCount = 0;
 	}
 	catch (const nlohmann::json::exception& e) {
+		LOG_ERROR("JSON parsing error in metadata: {}", e.what());
 		m_onError();
 	}
 }
@@ -303,6 +336,7 @@ void NetworkController::readChunk() {
 		asio::buffer(m_receiveBuffer.data(), c_chunkSize),
 		[this](std::error_code ec, std::size_t bytesTransferred) {
 			if (ec) {
+				LOG_ERROR("Chunk read error: {}", ec.message());
 				reset(false);
 				deleteTempDirectory();
 				m_onError();
@@ -331,18 +365,22 @@ void NetworkController::readChunk() {
 
 					if (m_expectedFiles.size() == 1) {
 						if (m_expectedFiles.front().fileHash != calculateFileHash(m_expectedFiles.front().relativeFilePath)) {
+							LOG_ERROR("File hash mismatch: {}", m_expectedFiles.front().relativeFilePath.string());
 							m_onError();
 							return;
 						}
 
+						LOG_INFO("File downloaded successfully: {}", m_expectedFiles.front().relativeFilePath.string());
 						m_expectedFiles.pop();
 						finalizeReceiving();
 					}
 					else {
 						if (m_expectedFiles.front().fileHash != calculateFileHash(m_expectedFiles.front().relativeFilePath)) {
+							LOG_ERROR("File hash mismatch: {}", m_expectedFiles.front().relativeFilePath.string());
 							m_onError();
 						}
 						else {
+							LOG_INFO("File downloaded successfully: {}", m_expectedFiles.front().relativeFilePath.string());
 							m_expectedFiles.pop();
 							openFile();
 							readChunk();
@@ -354,6 +392,7 @@ void NetworkController::readChunk() {
 }
 
 void NetworkController::finalizeReceiving() {
+	LOG_INFO("All files downloaded successfully");
 	m_onLoadingProgress(100.0);
 	reset(false);
 	m_onAllFilesLoaded(false);
@@ -372,10 +411,15 @@ void NetworkController::openFile() {
 		m_fileStream.open(filePath, std::ios::binary | std::ios::trunc);
 
 		if (!m_fileStream.is_open()) {
+			LOG_ERROR("Failed to open file for writing: {}", filePath.string());
 			m_onError();
+		}
+		else {
+			LOG_DEBUG("Opened file for writing: {}", filePath.string());
 		}
 	}
 	catch (const std::exception& e) {
+		LOG_ERROR("Exception opening file: {}", e.what());
 		m_onError();
 		return;
 	}

@@ -2,6 +2,8 @@
 #include "filesSender.h"
 #include "packet.h"
 
+#include "logger.h"
+
 PacketsSender::PacketsSender(asio::io_context& asioContext,
 	asio::ip::tcp::socket& socket,
 	SafeDeque<std::variant<Packet, std::filesystem::path>>& queue,
@@ -29,6 +31,7 @@ void PacketsSender::writeHeader() {
 			[this, packet](std::error_code ec, std::size_t length) {
 				if (ec)
 				{
+					LOG_ERROR("Packet header write error: {}", ec.message());
 					m_onError();
 				}
 				else
@@ -55,10 +58,12 @@ void PacketsSender::writeBody(const Packet* packet) {
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) 
 			{
+				LOG_ERROR("Packet body write error: {}", ec.message());
 				m_onError();
 			}
 			else 
 			{
+				LOG_TRACE("Packet sent successfully");
 				m_queue.pop_front();
 				resolveSending();
 			}

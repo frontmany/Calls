@@ -4,11 +4,16 @@
 #include <sstream>
 #include <iomanip>
 
+#include "logger.h"
+
 std::string calculateFileHash(std::filesystem::path filepath) {
     std::ifstream file(filepath, std::ios::binary);
     if (!file.is_open()) {
+        LOG_ERROR("Failed to open file for hash calculation: {}", filepath.string());
         return "";
     }
+    
+    LOG_TRACE("Calculating hash for file: {}", filepath.string());
 
     uint32_t h0 = 0x67452301;
     uint32_t h1 = 0xEFCDAB89;

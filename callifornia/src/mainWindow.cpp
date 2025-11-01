@@ -17,6 +17,7 @@
 
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
+#include "logger.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -29,6 +30,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::init() {
+    LOG_INFO("Initializing main window");
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
     m_ringtonePlayer = new QMediaPlayer(this);
@@ -50,10 +52,15 @@ void MainWindow::init() {
 }
 
 void MainWindow::connectCallifornia(const std::string& host, const std::string& port) {
+    LOG_INFO("Connecting to Callifornia server: {}:{}", host, port);
+    
     std::unique_ptr<UpdaterCallbacksHandler> updaterHandler = std::make_unique<UpdaterCallbacksHandler>(this);
     updater::init(std::move(updaterHandler));
     updater::connect(host, port);
-    updater::checkUpdates(parseVersionFromConfig());
+    
+    std::string currentVersion = parseVersionFromConfig();
+    LOG_INFO("Current application version: {}", currentVersion);
+    updater::checkUpdates(currentVersion);
 
     std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
     calls::init(host, port, std::move(callsClientHandler));
@@ -114,11 +121,16 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
 
 void MainWindow::loadFonts() {
     if (QFontDatabase::addApplicationFont(":/resources/Pacifico-Regular.ttf") == -1) {
+        LOG_ERROR("Failed to load font: Pacifico-Regular.ttf");
         qWarning() << "Font load error:";
     }
 
     if (QFontDatabase::addApplicationFont(":/resources/Outfit-VariableFont_wght.ttf") == -1) {
+        LOG_ERROR("Failed to load font: Outfit-VariableFont_wght.ttf");
         qWarning() << "Font load error:";
+    }
+    else {
+        LOG_DEBUG("Fonts loaded successfully");
     }
 }
 
@@ -127,15 +139,20 @@ std::string MainWindow::parseVersionFromConfig() {
 
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
+        LOG_WARN("Failed to open config.json, version lost");
         return "versionLost";
     }
 
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    if (doc.isNull()) return "";
+    if (doc.isNull()) {
+        LOG_ERROR("Failed to parse config.json");
+        return "";
+    }
 
     QJsonObject json = doc.object();
     std::string version = json[calls::VERSION].toString().toStdString();
 
+    LOG_DEBUG("Parsed version from config: {}", version);
     return version;
 }
 
@@ -479,7 +496,7 @@ void MainWindow::handleAcceptCallErrorNotificationAppearance() {
         m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to accept call from weird widget");
+        LOG_WARN("Trying to accept call from unexpected widget");
     }
 }
 
@@ -493,7 +510,7 @@ void MainWindow::handleDeclineCallErrorNotificationAppearance() {
         m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to decline call from weird widget");
+        LOG_WARN("Trying to decline call from unexpected widget");
     }
 }
 
@@ -504,7 +521,7 @@ void MainWindow::handleStartCallingErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to start calling from weird widget");
+        LOG_WARN("Trying to start calling from unexpected widget");
     }
 }
 
@@ -515,7 +532,7 @@ void MainWindow::handleStopCallingErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to stop calling from weird widget");
+        LOG_WARN("Trying to stop calling from unexpected widget");
     }
 }
 
@@ -526,7 +543,7 @@ void MainWindow::handleEndCallErrorNotificationAppearance() {
         m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to end call from weird widget");
+        LOG_WARN("Trying to end call from unexpected widget");
     }
 }
 
@@ -534,13 +551,16 @@ void MainWindow::onAuthorizationResult(calls::ErrorCode ec) {
     QString errorMessage;
 
     if (ec == calls::ErrorCode::OK) {
+        LOG_INFO("User authorization successful");
         return;
     }
     else if (ec == calls::ErrorCode::TAKEN_NICKNAME) {
         errorMessage = "Taken nickname";
+        LOG_WARN("Authorization failed: nickname already taken");
     }
     else if (ec == calls::ErrorCode::TIMEOUT) {
         errorMessage = "Timeout (please try again)";
+        LOG_ERROR("Authorization failed: timeout");
     }
 
     m_authorizationWidget->setErrorMessage(errorMessage);
@@ -550,6 +570,7 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
     QString errorMessage;
 
     if (ec == calls::ErrorCode::OK) {
+        LOG_INFO("Started calling user: {}", calls::getNicknameWhomCalling());
         m_mainMenuWidget->showCallingPanel(QString::fromStdString(calls::getNicknameWhomCalling()));
         m_mainMenuWidget->setState(calls::State::CALLING);
         playCallingRingtone();
@@ -557,9 +578,11 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
     }
     else if (ec == calls::ErrorCode::UNEXISTING_USER) {
         errorMessage = "User not found";
+        LOG_WARN("Start calling failed: user not found");
     }
     else if (ec == calls::ErrorCode::TIMEOUT) {
         errorMessage = "Timeout (please try again)";
+        LOG_ERROR("Start calling failed: timeout");
     }
 
     m_mainMenuWidget->setErrorMessage(errorMessage);
@@ -567,6 +590,7 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
 
 void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname) {
     if (ec == calls::ErrorCode::OK) {
+        LOG_INFO("Call accepted successfully with: {}", nickname.toStdString());
         m_mainMenuWidget->removeCallingPanel();
 
         m_mainMenuWidget->clearIncomingCalls();
@@ -594,6 +618,7 @@ void MainWindow::onMaximumCallingTimeReached() {
 }
 
 void MainWindow::onCallingAccepted() {
+    LOG_INFO("Outgoing call accepted by user: {}", calls::getNicknameInCallWith());
     m_mainMenuWidget->clearIncomingCalls();
 
     stopRingtone();
@@ -604,6 +629,7 @@ void MainWindow::onCallingAccepted() {
 }
 
 void MainWindow::onCallingDeclined() {
+    LOG_INFO("Outgoing call was declined");
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setState(calls::State::FREE);
     stopRingtone();
@@ -611,6 +637,7 @@ void MainWindow::onCallingDeclined() {
 }
 
 void MainWindow::onRemoteUserEndedCall() {
+    LOG_INFO("Remote user ended the call");
     m_callWidget->clearIncomingCalls();
     switchToMainMenuWidget();
 
@@ -619,6 +646,7 @@ void MainWindow::onRemoteUserEndedCall() {
 }
 
 void MainWindow::onIncomingCall(const QString& friendNickName) {
+    LOG_INFO("Incoming call from: {}", friendNickName.toStdString());
     playIncomingCallRingtone();
 
     m_mainMenuWidget->addIncomingCall(friendNickName);
@@ -628,6 +656,7 @@ void MainWindow::onIncomingCall(const QString& friendNickName) {
 }
 
 void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
+    LOG_INFO("Incoming call from {} expired", friendNickName.toStdString());
     m_mainMenuWidget->removeIncomingCall(friendNickName);
 
     if (m_stackedLayout->currentWidget() == m_callWidget)
@@ -640,6 +669,7 @@ void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
 }
 
 void MainWindow::onClientNetworkError() {
+    LOG_ERROR("Client network error occurred");
     stopRingtone();
 
     m_mainMenuWidget->removeCallingPanel();
@@ -657,6 +687,7 @@ void MainWindow::onClientNetworkError() {
 }
 
 void MainWindow::onUpdaterNetworkError() {
+    LOG_ERROR("Updater network error occurred");
     m_authorizationWidget->hideUpdateAvailableNotification();
     m_mainMenuWidget->hideUpdateAvailableNotification();
 
@@ -669,11 +700,13 @@ void MainWindow::onUpdaterNetworkError() {
 }
 
 void MainWindow::onConnectionRestored() {
+    LOG_INFO("Connection restored to server");
     m_authorizationWidget->resetBlur();
     m_authorizationWidget->setAuthorizationDisabled(false);
     m_authorizationWidget->showConnectionRestoredNotification(1500);
 
     if (!updater::isConnected()) {
+        LOG_INFO("Reconnecting updater");
         updater::connect(updater::getServerHost(), updater::getServerPort());
         updater::checkUpdates(parseVersionFromConfig());
     }

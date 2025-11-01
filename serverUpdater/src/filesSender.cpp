@@ -42,6 +42,7 @@ void FilesSender::sendFileChunk() {
 			[this](std::error_code ec, std::size_t) {
 				if (ec) 
 				{
+					LOG_ERROR("Error sending file chunk: {}", ec.message());
 					m_onError();
 				}
 				else {
@@ -51,6 +52,7 @@ void FilesSender::sendFileChunk() {
 		);
 	}
 	else {
+		LOG_DEBUG("File transfer completed");
 		m_fileStream.close();
 		m_queue.pop_front();
 
@@ -75,9 +77,10 @@ bool FilesSender::openFile(const std::filesystem::path& path) {
 	m_fileStream.open(path, std::ios::binary);
 
 	if (!m_fileStream) {
-		DEBUG_LOG("Failed to open file");
+		LOG_ERROR("Failed to open file: {}", path.string());
 		return false;
 	}
 
+	LOG_DEBUG("Opened file for sending: {}", path.string());
 	return true;
 }

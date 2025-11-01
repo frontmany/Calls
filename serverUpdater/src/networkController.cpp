@@ -24,6 +24,7 @@ NetworkController::~NetworkController() {
 }
 
 void NetworkController::start() {
+    LOG_INFO("[SERVER] Starting network controller");
     m_contextThread = std::thread([this]() {m_context.run(); });
     waitForClientConnections();
 
@@ -37,17 +38,18 @@ void NetworkController::stop() {
     if (m_contextThread.joinable())
         m_contextThread.join();
 
-    DEBUG_LOG("[SERVER] Stopped!");
+    LOG_INFO("[SERVER] Server stopped");
 }
 
 void NetworkController::waitForClientConnections() {
     m_asioAcceptor.async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
         if (!ec) {
-            DEBUG_LOG("[SERVER] New Connection");
+            auto endpoint = socket.remote_endpoint();
+            LOG_INFO("[SERVER] New connection from {}:{}", endpoint.address().to_string(), endpoint.port());
             createConnection(std::move(socket));
         }
         else {
-            DEBUG_LOG("[SERVER] New Connection Error");
+            LOG_ERROR("[SERVER] Connection error: {}", ec.message());
         }
 
         waitForClientConnections();
@@ -67,18 +69,20 @@ void NetworkController::processQueue() {
 
 void NetworkController::onDisconnect(ConnectionPtr connection) {
     m_setConnections.erase(connection);
-    DEBUG_LOG("[SERVER] Client discnnected");
+    LOG_INFO("[SERVER] Client disconnected (active connections: {})", m_setConnections.size());
 }
 
 void NetworkController::handlePacket(OwnedPacket&& packet) {
     if (packet.packet.type() == static_cast<int>(PacketType::CHECK_UPDATES)) {
+        LOG_DEBUG("[SERVER] Handling CHECK_UPDATES request");
         m_onUpdatesCheck(packet.connection, std::move(packet.packet));
     }
     else if (packet.packet.type() == static_cast<int>(PacketType::UPDATE_ACCEPT)) {
+        LOG_DEBUG("[SERVER] Handling UPDATE_ACCEPT request");
         m_onUpdateAccepted(packet.connection, std::move(packet.packet));
     }
     else {
-        DEBUG_LOG("[SERVER] unknown request");
+        LOG_WARN("[SERVER] Unknown request type: {}", packet.packet.type());
     }
 }
 

@@ -1,5 +1,7 @@
 #include "packetsReceiver.h"
 
+#include "logger.h"
+
 
 PacketsReceiver::PacketsReceiver(asio::ip::tcp::socket& socket,
 	std::function<void(Packet&&)>&& queueReceivedPacket,
@@ -19,10 +21,12 @@ void PacketsReceiver::readHeader() {
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
 				if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
+					LOG_ERROR("Packet header read error: {}", ec.message());
 					m_onDisconnect();
 				}
 			}
 			else { 
+				LOG_TRACE("Received packet header, type: {}, size: {}", m_temporaryPacket.type(), m_temporaryPacket.size());
 				if (m_temporaryPacket.size() > Packet::sizeOfHeader()) {
 					m_temporaryPacket.body_mut().resize(m_temporaryPacket.size() - Packet::sizeOfHeader());
 					readBody();
@@ -40,6 +44,7 @@ void PacketsReceiver::readBody() {
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
 				if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
+					LOG_ERROR("Packet body read error: {}", ec.message());
 					m_onDisconnect();
 				}
 			}

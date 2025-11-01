@@ -52,7 +52,20 @@ if(NOT DEPENDENCIES_FETCHED)
         SOURCE_DIR ${VENDOR_DIR}/asio
     )
 
-    # Configure third-party projects BEFORE making them available
+    FetchContent_Declare(
+        pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG v2.12.0
+        SOURCE_DIR ${VENDOR_DIR}/pybind11
+    )
+
+    FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG v1.14.1
+        SOURCE_DIR ${VENDOR_DIR}/spdlog
+    )
+
     set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "Build shared library" FORCE)
     set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
     set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build programs" FORCE)
@@ -64,7 +77,7 @@ if(NOT DEPENDENCIES_FETCHED)
     set(PA_BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
     set(PA_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 
-    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio)
+    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio pybind11 spdlog)
 
     message(STATUS "Dependencies fetched successfully")
 
@@ -72,7 +85,6 @@ else()
     message(STATUS "Dependencies already fetched")
 endif()
 
-# Always add project subdirectories so the build works on first configure
 add_subdirectory(callifornia)
 add_subdirectory(server)
 add_subdirectory(client)

@@ -90,20 +90,19 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             break;
 
         default:
-            DEBUG_LOG("Unknown packet type: " + std::to_string(static_cast<int>(type)));
+            LOG_WARN("Unknown packet type: {}", static_cast<int>(type));
             break;
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error processing packet type "
-            + std::to_string(static_cast<int>(type))
-            + ": " << e.what());
+        LOG_ERROR("Error processing packet type {}: {}", static_cast<int>(type), e.what());
     }
 }
 
 
 void CallsServer::run() {
     m_running = true;
+    LOG_INFO("Starting calls server main loop");
     m_networkController.start();
 
     using namespace std::chrono_literals;
@@ -138,7 +137,7 @@ void CallsServer::run() {
 }
 
 void CallsServer::stop() {
-    DEBUG_LOG("Server stopped");
+    LOG_INFO("Server stopped");
     m_running = false;
 }
 
@@ -172,11 +171,11 @@ void CallsServer::checkPing() {
     for (auto& [endpoint, result] : m_pingResults) {
         if (result) {
             m_pingResults.at(endpoint) = false;
-            DEBUG_LOG("ping confirmed");
+            LOG_DEBUG("Ping confirmed from {}", endpoint.address().to_string());
         }
         else {
             endpointsToLogout.push_back(endpoint);
-            DEBUG_LOG("user disconnected due to ping fail");
+            LOG_INFO("User disconnected due to ping timeout: {}", endpoint.address().to_string());
         }
     }
 
@@ -240,18 +239,18 @@ void CallsServer::handleAuthorizationPacket(const nlohmann::json& jsonObject, co
             UserPtr user = std::make_shared<User>(nicknameHash, publicKey, endpointFrom);
             m_endpointToUser.emplace(endpointFrom, user);
             m_nicknameHashToUser.emplace(nicknameHash, user);
-            DEBUG_LOG("User authorized: " + nicknameHash + " from " + endpointFrom.address().to_string());
+            LOG_INFO("User authorized: {} from {}:{}", nicknameHash, endpointFrom.address().to_string(), endpointFrom.port());
         }
         else {
             m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
                 PacketType::AUTHORIZE_FAIL
             );
 
-            DEBUG_LOG("User not authorized (already taken nickname)");
+            LOG_WARN("Authorization failed - nickname already taken: {}", nicknameHash);
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in authorization packet: " + std::string(e.what()));
+        LOG_ERROR("Error in authorization packet: {}", e.what());
     }
 }
 
@@ -281,15 +280,15 @@ void CallsServer::handleLogout(const nlohmann::json& jsonObject, const asio::ip:
             if (needConfirmation) 
                 m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid), PacketType::LOGOUT_OK);
 
-            DEBUG_LOG("User successfully logged out: " + senderNicknameHash);
+            LOG_INFO("User successfully logged out: {}", senderNicknameHash);
         }
 
         else
-            DEBUG_LOG("Logout request from unknown endpoint: " + endpointFrom.address().to_string());
+            LOG_WARN("Logout request from unknown endpoint: {}", endpointFrom.address().to_string());
 
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error during logout: " + std::string(e.what()));
+        LOG_ERROR("Error during logout: {}", e.what());
     }
 }
 
@@ -322,7 +321,7 @@ void CallsServer::handleGetFriendInfoPacket(const nlohmann::json& jsonObject, co
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in get friend info packet: " + std::string(e.what()));
+        LOG_ERROR("Error in get friend info packet: {}", e.what());
     }
 }
 
@@ -330,6 +329,8 @@ void CallsServer::handleStartCallingPacket(const nlohmann::json& jsonObject, con
     std::string uuid = jsonObject[UUID].get<std::string>();
     std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
     std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+
+    LOG_INFO("Call initiated from {} to {}", senderNicknameHash, receiverNicknameHash);
 
     bool receiverOnline = false;
     if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
@@ -348,6 +349,7 @@ void CallsServer::handleStartCallingPacket(const nlohmann::json& jsonObject, con
             getPacketWithUuid(uuid),
             PacketType::START_CALLING_FAIL
         );
+        LOG_WARN("Call failed: receiver {} is offline", receiverNicknameHash);
     }
 }
 
@@ -386,7 +388,7 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
+        LOG_ERROR("Error in end call packet: {}", e.what());
     }
 }
 
@@ -410,7 +412,7 @@ void CallsServer::handleCallAcceptedPacket(const nlohmann::json& jsonObject, con
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
+        LOG_ERROR("Error in call accepted packet: {}", e.what());
     }
 }
 
@@ -428,7 +430,7 @@ void CallsServer::handleCallDeclinedPacket(const nlohmann::json& jsonObject, con
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
+        LOG_ERROR("Error in call declined packet: {}", e.what());
     }
 }
 
@@ -449,13 +451,15 @@ void CallsServer::handleCallAcceptedOkPacket(const nlohmann::json& jsonObject, c
 
                 initiatorUser->setCall(call, User::CallRole::INITIATOR);
                 responderSender->setCall(call, User::CallRole::RESPONDER);
+                
+                LOG_INFO("Call established between {} and {}", initiatorNicknameHash, responderNicknameHash);
             }
 
             redirectPacket(jsonObject, PacketType::CALL_ACCEPTED_OK);
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in callAcceptedOk packet: " + std::string(e.what()));
+        LOG_ERROR("Error in call accepted OK packet: {}", e.what());
     }
 }
 
@@ -481,7 +485,7 @@ void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, cons
         }
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Error in create call packet: " + std::string(e.what()));
+        LOG_ERROR("Error in stop calling packet: {}", e.what());
     }
 }
 
@@ -502,6 +506,6 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
 }
 
 void CallsServer::onNetworkError() {
-    DEBUG_LOG("Network Error");
+    LOG_ERROR("Network error occurred, stopping server");
     m_running = false;
 }

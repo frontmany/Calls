@@ -1,7 +1,8 @@
-#include "updater.h"
-
+#include <filesystem>
 #include <regex>
 
+#include "connection.h"
+#include "packet.h"
 #include "networkController.h"
 #include "operationSystemType.h"
 #include "jsonTypes.h"
@@ -12,7 +13,12 @@
 
 #include "json.hpp"
 
-std::pair<std::filesystem::path, std::string> findLatestVersion() {
+constexpr const char* MAJOR_UPDATE = "major";
+constexpr const char* MINOR_UPDATE = "minor";
+const std::filesystem::path versionsDirectory = "versions";
+
+std::pair<std::filesystem::path, std::string> findLatestVersion()
+{
     std::string latestVersion;
     std::filesystem::path latestVersionPath;
 
@@ -42,10 +48,12 @@ std::pair<std::filesystem::path, std::string> findLatestVersion() {
     return std::make_pair(latestVersionPath, latestVersion);
 }
 
-void onUpdatesCheck(ConnectionPtr connection, Packet&& packet) {
+void onUpdatesCheck(ConnectionPtr connection, Packet&& packet)
+{
     nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
 
     Version version(jsonObject[VERSION].get<std::string>());
+    LOG_INFO("Checking for updates, client version: {}", version.getAsString());
 
     Packet packetResponse;
 
@@ -82,22 +90,28 @@ void onUpdatesCheck(ConnectionPtr connection, Packet&& packet) {
 
         if (latestVersion == version) {
             packetResponse.setType(static_cast<int>(CheckResult::UPDATE_NOT_NEEDED));
+            LOG_INFO("Client is up to date (version: {})", version.getAsString());
         }
         else if (hasMajorUpdate) {
             packetResponse.setType(static_cast<int>(CheckResult::REQUIRED_UPDATE));
+            LOG_INFO("Major update available for client (current: {}, latest: {})", version.getAsString(), latestVersion.getAsString());
         }
         else {
             packetResponse.setType(static_cast<int>(CheckResult::POSSIBLE_UPDATE));
+            LOG_INFO("Minor update available for client (current: {}, latest: {})", version.getAsString(), latestVersion.getAsString());
         }
     }
     else {
         packetResponse.setType(static_cast<int>(CheckResult::REQUIRED_UPDATE));
+        LOG_WARN("Client has invalid version, requiring update");
     }
 
     connection->sendPacket(packetResponse);
 }
 
-void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
+void onUpdateAccepted(ConnectionPtr connection, Packet&& packet)
+{
+    LOG_INFO("Client accepted update, preparing files");
     nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
 
     OperationSystemType osType;
@@ -105,7 +119,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
         osType = static_cast<OperationSystemType>(jsonObject[OPERATION_SYSTEM].get<int>());
     }
     else {
-        DEBUG_LOG("Missing OPERATION_SYSTEM field in packet");
+        LOG_ERROR("Missing OPERATION_SYSTEM field in packet");
         return;
     }
 
@@ -120,7 +134,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
                 filePathsWithHashes.emplace_back(relativePath, fileHash);
             }
             else {
-                DEBUG_LOG("Incomplete file information in packet");
+                LOG_ERROR("Incomplete file information in packet");
                 return;
             }
         }
@@ -131,20 +145,23 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
         switch (osType) {
         case OperationSystemType::WINDOWS:
             osSpecificPath = latestVersionPath / "Windows";
+            LOG_DEBUG("Client OS: Windows");
             break;
         case OperationSystemType::LINUX:
             osSpecificPath = latestVersionPath / "Linux";
+            LOG_DEBUG("Client OS: Linux");
             break;
         case OperationSystemType::MAC:
             osSpecificPath = latestVersionPath / "Mac";
+            LOG_DEBUG("Client OS: Mac");
             break;
         default:
-            DEBUG_LOG("Unknown operating system type");
+            LOG_ERROR("Unknown operating system type");
             return;
         }
 
         if (!std::filesystem::exists(osSpecificPath)) {
-            DEBUG_LOG("OS-specific folder does not exist: " + osSpecificPath.string());
+            LOG_ERROR("OS-specific folder does not exist: {}", osSpecificPath.string());
             return;
         }
 
@@ -211,6 +228,9 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
         }
         responseJson[FILES_TO_DELETE] = filesToDeleteArray;
 
+        LOG_INFO("Sending update: {} files to download, {} files to delete", filesToSend.size(), filesToDelete.size());
+        LOG_DEBUG("Update version: {}", latestVersion);
+
         Packet packet;
         packet.setData(responseJson.dump());
 
@@ -220,23 +240,38 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet) {
             connection->sendFile(path);
     }
     else {
-        DEBUG_LOG("Missing FILES field in packet");
+        LOG_ERROR("Missing FILES field in packet");
         return;
     }
 }
 
-void runServerUpdater() {
+void runServerUpdater()
+{
     NetworkController networkController(8081,
         [](ConnectionPtr connection, Packet&& packet) {onUpdatesCheck(connection, std::move(packet)); },
         [](ConnectionPtr connection, Packet&& packet) {onUpdateAccepted(connection, std::move(packet)); }
     );
 
-    DEBUG_LOG("[SERVER] server started!");
+    LOG_INFO("[SERVER] Server started on port 8081");
 
     networkController.start();
 }
 
-
-int main() {
-    runServerUpdater();
+int main()
+{
+    std::filesystem::create_directories("logs");
+    
+    LOG_INFO("=== Server Updater Starting ===");
+    LOG_INFO("Version directory: {}", versionsDirectory.string());
+    
+    try {
+        runServerUpdater();
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Fatal error: {}", e.what());
+        return 1;
+    }
+    
+    return 0;
 }
+

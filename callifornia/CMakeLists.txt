@@ -27,7 +27,32 @@ else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME} Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater)
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+endif()
+
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        _WIN32_WINNT=0x0601
+        ASIO_STANDALONE
+    )
+endif()
+
+if(WIN32)
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build/Release")
+else()
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
+endif()
+
+target_link_directories(${PROJECT_NAME} PRIVATE
+    "${SPDLOG_DIR}"
+)
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater spdlog.lib)
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater libspdlog.a)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ../client/src
@@ -37,4 +62,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/json/include                    
     ../vendor/cryptopp               
     ../vendor/asio/asio/include
+    ../vendor/spdlog/include
     )
