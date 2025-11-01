@@ -67,7 +67,7 @@ void ClientUpdater::processQueue() {
 
 bool ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
 	auto startTime = std::chrono::steady_clock::now();
-	auto timeout = std::chrono::milliseconds(400);
+	auto timeout = std::chrono::seconds(5);
 
 	while (std::chrono::steady_clock::now() - startTime < timeout) {
 		if (m_state == State::AWAITING_UPDATES_CHECK) {
