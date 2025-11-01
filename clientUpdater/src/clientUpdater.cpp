@@ -156,7 +156,7 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 					continue;
 				}
 
-				if (relativePath.string().find("update_temp") == 0) {
+				if (relativePath.string().find("update_temp") == 0 || relativePath.string().find(".vs") == 0) {
 					continue;
 				}
 

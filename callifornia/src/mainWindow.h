@@ -18,6 +18,7 @@
 class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
+class DialogsController;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -65,10 +66,6 @@ private slots:
     void onBlurAnimationFinished();
 
 private:
-    void showConnectionErrorDialog();
-    void hideUpdatingErrorDialog();
-    void showUpdatingDialog();
-    void hideUpdatingDialog();
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
@@ -103,6 +100,5 @@ private:
     AuthorizationWidget* m_authorizationWidget;
     MainMenuWidget* m_mainMenuWidget;
     CallWidget* m_callWidget;
-
-    QLabel* m_updatingProgressLabel = nullptr;
+    DialogsController* m_dialogsController;
 };

@@ -13,6 +13,7 @@
 #include "mainMenuWidget.h"
 #include "overlayWidget.h"
 #include "callWidget.h"
+#include "dialogsController.h"
 
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
@@ -176,7 +177,7 @@ void MainWindow::onUpdaterCheckResult(updater::UpdatesCheckResult checkResult) {
     }
     else if (checkResult == updater::UpdatesCheckResult::REQUIRED_UPDATE) {
         updater::startUpdate(resolveOperationSystemType());
-        showUpdatingDialog();
+        m_dialogsController->showUpdatingDialog();
     }
     else if (checkResult == updater::UpdatesCheckResult::UPDATE_NOT_NEEDED) {
         updater::disconnect();
@@ -206,51 +207,25 @@ void MainWindow::onUpdateButtonClicked() {
     m_mainMenuWidget->clearIncomingCalls();
 
     updater::startUpdate(resolveOperationSystemType());
-    showUpdatingDialog();
+    m_dialogsController->showUpdatingDialog();
 }
 
-void MainWindow::onUpdateLoaded(bool emptyUpdate) {
-    calls::logout();
-
-    QDialog* updatingDialog = nullptr;
-    QList<QDialog*> dialogs = findChildren<QDialog*>();
-    for (QDialog* dialog : dialogs) {
-        if (dialog->windowTitle() == "Updating") {
-            updatingDialog = dialog;
-            break;
-        }
-    }
-
-    if (updatingDialog) {
-        QLabel* gifLabel = updatingDialog->findChild<QLabel*>();
-        QLabel* progressLabel = updatingDialog->findChild<QLabel*>(QString(), Qt::FindDirectChildrenOnly);
-        QLabel* updatingLabel = nullptr;
-
-        QList<QLabel*> labels = updatingDialog->findChildren<QLabel*>();
-        for (QLabel* label : labels) {
-            if (label->text().contains("Updating...")) {
-                updatingLabel = label;
-            }
-        }
-
-        if (gifLabel && gifLabel->movie()) {
-            gifLabel->movie()->stop();
-        }
-
-        if (updatingLabel) {
-            updatingLabel->setText("Restarting...");
-        }
-
-        if (progressLabel) {
-            progressLabel->setVisible(false);
-        }
-
+void MainWindow::onUpdateLoaded(bool emptyUpdate)
+{
+    if (!emptyUpdate) {
+        calls::logout();
+        m_dialogsController->swapUpdatingToRestarting();
         qApp->processEvents();
 
-        QTimer::singleShot(1500, this, [this]() {
-            launchUpdateApplier();
+        QTimer::singleShot(1500, [this]() {
+                launchUpdateApplier();
         });
     }
+    else {
+        m_dialogsController->hideUpdatingDialog();
+    }
+
+    
 }
 
 void MainWindow::launchUpdateApplier() {
@@ -276,11 +251,9 @@ void MainWindow::launchUpdateApplier() {
     QProcess::startDetached(updateApplierName, arguments);
 }
 
-void MainWindow::onLoadingProgress(double progress) {
-    if (m_updatingProgressLabel) {
-        QString progressText = QString("%1%").arg(progress, 0, 'f', 2);
-        m_updatingProgressLabel->setText(progressText);
-    }
+void MainWindow::onLoadingProgress(double progress)
+{
+    m_dialogsController->updateLoadingProgress(progress);
 }
 
 void MainWindow::setupUI() {
@@ -293,6 +266,9 @@ void MainWindow::setupUI() {
 
     m_stackedLayout = new QStackedLayout();
     m_mainLayout->addLayout(m_stackedLayout);
+
+    m_dialogsController = new DialogsController(this);
+    connect(m_dialogsController, &DialogsController::exitButtonClicked, this, &MainWindow::close);
 
     m_authorizationWidget = new AuthorizationWidget(this);
     connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
@@ -684,9 +660,9 @@ void MainWindow::onUpdaterNetworkError() {
     m_authorizationWidget->hideUpdateAvailableNotification();
     m_mainMenuWidget->hideUpdateAvailableNotification();
 
-    hideUpdatingDialog();
+    m_dialogsController->hideUpdatingDialog();
     if (!calls::isAuthorized() || updater::isAwaitingServerResponse()) {
-        showConnectionErrorDialog();
+        m_dialogsController->showConnectionErrorDialog();
     }
 
     updater::disconnect();
@@ -701,291 +677,4 @@ void MainWindow::onConnectionRestored() {
         updater::connect(updater::getServerHost(), updater::getServerPort());
         updater::checkUpdates(parseVersionFromConfig());
     }
-}
-
-void MainWindow::hideUpdatingDialog()
-{
-    QList<OverlayWidget*> overlays = findChildren<OverlayWidget*>();
-    for (OverlayWidget* overlay : overlays) {
-        overlay->close();
-        overlay->deleteLater();
-    }
-
-    QList<QDialog*> dialogs = findChildren<QDialog*>();
-    for (QDialog* dialog : dialogs) {
-        if (dialog->windowTitle() == "Updating") {
-            dialog->close();
-            dialog->deleteLater();
-        }
-    }
-
-    m_updatingProgressLabel = nullptr;
-}
-
-void MainWindow::showUpdatingDialog()
-{
-    QFont font("Outfit", 14, QFont::Normal);
-
-    OverlayWidget* overlay = new OverlayWidget(this);
-    overlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
-    overlay->setAttribute(Qt::WA_TranslucentBackground);
-    overlay->showMaximized();
-
-    QDialog* dialog = new QDialog(overlay);
-    dialog->setWindowTitle("Updating");
-    dialog->setMinimumWidth(300);
-    dialog->setMinimumHeight(250);
-    dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
-    dialog->setAttribute(Qt::WA_TranslucentBackground);
-
-    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-    shadowEffect->setBlurRadius(30);
-    shadowEffect->setXOffset(0);
-    shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
-
-    QWidget* mainWidget = new QWidget(dialog);
-    mainWidget->setGraphicsEffect(shadowEffect);
-    mainWidget->setObjectName("mainWidget");
-
-    QString mainWidgetStyle =
-        "QWidget#mainWidget {"
-        "   background-color: rgb(226, 243, 231);"
-        "   border-radius: 16px;"
-        "   border: 1px solid rgb(210, 210, 210);"
-        "}";
-    mainWidget->setStyleSheet(mainWidgetStyle);
-
-    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
-    mainLayout->addWidget(mainWidget);
-
-    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-    contentLayout->setContentsMargins(24, 24, 24, 24);
-    contentLayout->setSpacing(16);
-
-    QLabel* gifLabel = new QLabel();
-    gifLabel->setAlignment(Qt::AlignCenter);
-    gifLabel->setMinimumHeight(120);
-
-    QMovie* movie = new QMovie(":/resources/updating.gif");
-    if (movie->isValid()) {
-        gifLabel->setMovie(movie);
-        movie->start();
-    }
-
-    // ������� ����� ��� ����������� ���������
-    QLabel* progressLabel = new QLabel("0.00%");
-    progressLabel->setAlignment(Qt::AlignCenter);
-    progressLabel->setStyleSheet(
-        "color: rgb(80, 80, 80);"
-        "font-size: 14px;"
-        "font-family: 'Outfit';"
-        "font-weight: bold;"
-    );
-
-    QLabel* updatingLabel = new QLabel("Updating...");
-    updatingLabel->setAlignment(Qt::AlignCenter);
-    updatingLabel->setStyleSheet(
-        "color: rgb(60, 60, 60);"
-        "font-size: 16px;"
-        "font-family: 'Outfit';"
-        "font-weight: bold;"
-    );
-    updatingLabel->setFont(font);
-
-    QHBoxLayout* buttonLayout = new QHBoxLayout();
-    buttonLayout->setAlignment(Qt::AlignCenter);
-
-    QPushButton* exitButton = new QPushButton("Exit");
-    exitButton->setFixedWidth(120);
-    exitButton->setMinimumHeight(36);
-    exitButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: transparent;"
-        "   color: rgb(120, 120, 120);"
-        "   border-radius: 6px;"
-        "   padding: 6px 12px;"
-        "   font-family: 'Outfit';"
-        "   font-size: 13px;"
-        "   border: none;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(0, 0, 0, 8);"
-        "   color: rgb(100, 100, 100);"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: rgba(0, 0, 0, 15);"
-        "}"
-    );
-    exitButton->setFont(font);
-
-    buttonLayout->addWidget(exitButton);
-
-    contentLayout->addWidget(gifLabel);
-    contentLayout->addWidget(progressLabel); 
-    contentLayout->addWidget(updatingLabel);
-    contentLayout->addLayout(buttonLayout);
-
-    m_updatingProgressLabel = progressLabel;
-
-    connect(exitButton, &QPushButton::clicked, this, [this, dialog, overlay]() {
-        this->close();
-    });
-
-    QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
-
-    QScreen* targetScreen = this->screen();
-    if (!targetScreen) {
-        targetScreen = QGuiApplication::primaryScreen();
-    }
-
-    QRect screenGeometry = targetScreen->availableGeometry();
-    dialog->adjustSize();
-    QSize dialogSize = dialog->size();
-
-    int x = screenGeometry.center().x() - dialogSize.width() / 2;
-    int y = screenGeometry.center().y() - dialogSize.height() / 2;
-    dialog->move(x, y);
-
-    dialog->exec();
-}
-
-void MainWindow::hideUpdatingErrorDialog()
-{
-    QList<OverlayWidget*> overlays = findChildren<OverlayWidget*>();
-    for (OverlayWidget* overlay : overlays) {
-        overlay->close();
-        overlay->deleteLater();
-    }
-
-    QList<QDialog*> dialogs = findChildren<QDialog*>();
-    for (QDialog* dialog : dialogs) {
-        if (dialog->windowTitle() == "Update Error") {
-            dialog->close();
-            dialog->deleteLater();
-        }
-    }
-}
-
-void MainWindow::showConnectionErrorDialog()
-{
-    QFont font("Outfit", 14, QFont::Normal);
-
-    OverlayWidget* overlay = new OverlayWidget(this);
-    overlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
-    overlay->setAttribute(Qt::WA_TranslucentBackground);
-    overlay->showMaximized();
-
-    QDialog* dialog = new QDialog(overlay);
-    dialog->setWindowTitle("Update Error");
-    dialog->setMinimumWidth(520);
-    dialog->setMinimumHeight(360);
-    dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
-    dialog->setAttribute(Qt::WA_TranslucentBackground);
-
-    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-    shadowEffect->setBlurRadius(30);
-    shadowEffect->setXOffset(0);
-    shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
-
-    QWidget* mainWidget = new QWidget(dialog);
-    mainWidget->setGraphicsEffect(shadowEffect);
-    mainWidget->setObjectName("mainWidget");
-
-    QString mainWidgetStyle =
-        "QWidget#mainWidget {"
-        "   background-color: rgb(255, 240, 240);"
-        "   border-radius: 16px;"
-        "   border: 1px solid rgb(210, 210, 210);"
-        "}";
-    mainWidget->setStyleSheet(mainWidgetStyle);
-
-    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
-    mainLayout->addWidget(mainWidget);
-
-    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-    contentLayout->setContentsMargins(32, 32, 32, 32);
-    contentLayout->setSpacing(20);
-
-    QLabel* imageLabel = new QLabel();
-    imageLabel->setAlignment(Qt::AlignCenter);
-    imageLabel->setMinimumHeight(140);
-
-    QPixmap errorPixmap(":/resources/error.png");
-    imageLabel->setPixmap(errorPixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation));  // �������� ������ �����������
-
-
-    QLabel* errorLabel = new QLabel("Connection Error");
-    errorLabel->setAlignment(Qt::AlignCenter);
-    errorLabel->setStyleSheet(
-        "color: rgb(180, 60, 60);"
-        "font-size: 18px;"
-        "font-family: 'Outfit';"
-        "font-weight: bold;"
-    );
-    errorLabel->setFont(font);
-
-    QLabel* messageLabel = new QLabel("An error occurred. Please restart and try again.");
-    messageLabel->setAlignment(Qt::AlignCenter);
-    messageLabel->setWordWrap(true);
-    messageLabel->setStyleSheet(
-        "color: rgb(100, 100, 100);"
-        "font-size: 14px;"
-        "font-family: 'Outfit';"
-    );
-
-    QHBoxLayout* buttonLayout = new QHBoxLayout();
-    buttonLayout->setAlignment(Qt::AlignCenter);
-
-    QPushButton* closeButton = new QPushButton("Close Calllifornia");
-    closeButton->setFixedWidth(140);
-    closeButton->setMinimumHeight(42);
-    closeButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: rgba(180, 60, 60, 30);"
-        "   color: rgb(180, 60, 60);"
-        "   border-radius: 8px;"
-        "   padding: 8px 16px;"
-        "   font-family: 'Outfit';"
-        "   font-size: 14px;"
-        "   border: none;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(180, 60, 60, 40);"
-        "   color: rgb(160, 50, 50);"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: rgba(180, 60, 60, 60);"
-        "}"
-    );
-    closeButton->setFont(font);
-
-    buttonLayout->addWidget(closeButton);
-
-    contentLayout->addWidget(imageLabel);
-    contentLayout->addWidget(errorLabel);
-    contentLayout->addWidget(messageLabel);
-    contentLayout->addLayout(buttonLayout);
-
-    connect(closeButton, &QPushButton::clicked, this, [this, dialog, overlay]() {
-        this->close();
-    });
-
-    QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
-
-    QScreen* targetScreen = this->screen();
-    if (!targetScreen) {
-        targetScreen = QGuiApplication::primaryScreen();
-    }
-
-    QRect screenGeometry = targetScreen->availableGeometry();
-    dialog->adjustSize();
-    QSize dialogSize = dialog->size();
-
-    int x = screenGeometry.center().x() - dialogSize.width() / 2;
-    int y = screenGeometry.center().y() - dialogSize.height() / 2;
-    dialog->move(x, y);
-
-    dialog->exec();
 }
