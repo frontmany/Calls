@@ -22,27 +22,81 @@ std::pair<std::filesystem::path, std::string> findLatestVersion()
     std::string latestVersion;
     std::filesystem::path latestVersionPath;
 
+    LOG_DEBUG("Starting search for latest version in directory: {}", versionsDirectory.string());
+
+    if (!std::filesystem::exists(versionsDirectory)) {
+        LOG_ERROR("Versions directory does not exist: {}", versionsDirectory.string());
+        return std::make_pair(latestVersionPath, latestVersion);
+    }
+
+    if (!std::filesystem::is_directory(versionsDirectory)) {
+        LOG_ERROR("Versions path is not a directory: {}", versionsDirectory.string());
+        return std::make_pair(latestVersionPath, latestVersion);
+    }
+
+    bool foundAnyVersions = false;
+    int directoriesChecked = 0;
+    int validVersionFiles = 0;
+
     for (const auto& entry : std::filesystem::directory_iterator(versionsDirectory)) {
         if (entry.is_directory()) {
+            directoriesChecked++;
             std::filesystem::path versionJsonPath = entry.path() / "version.json";
+            LOG_DEBUG("Checking directory: {}, version.json path: {}",
+                entry.path().string(), versionJsonPath.string());
 
             if (std::filesystem::exists(versionJsonPath) &&
                 std::filesystem::is_regular_file(versionJsonPath)) {
-                std::ifstream file(versionJsonPath);
-                nlohmann::json versionJson = nlohmann::json::parse(file);
 
-                std::string currentVersion = versionJson[VERSION].get<std::string>();
-                std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
+                try {
+                    std::ifstream file(versionJsonPath);
+                    nlohmann::json versionJson = nlohmann::json::parse(file);
 
-                if (latestVersion.empty())
-                    latestVersion = currentVersion;
+                    std::string currentVersion = versionJson[VERSION].get<std::string>();
+                    std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
+                    validVersionFiles++;
 
-                if (currentVersion > latestVersion) {
-                    latestVersion = currentVersion;
-                    latestVersionPath = entry.path();
+                    LOG_DEBUG("Found version: {} (type: {}) in {}",
+                        currentVersion, updateType, entry.path().string());
+
+                    if (latestVersion.empty()) {
+                        latestVersion = currentVersion;
+                        latestVersionPath = entry.path();
+                        LOG_DEBUG("Setting as initial latest version: {}", currentVersion);
+                    }
+
+                    if (currentVersion > latestVersion) {
+                        LOG_DEBUG("New latest version found: {} (previous: {})",
+                            currentVersion, latestVersion);
+                        latestVersion = currentVersion;
+                        latestVersionPath = entry.path();
+                    }
+
+                    foundAnyVersions = true;
+                }
+                catch (const std::exception& e) {
+                    LOG_ERROR("Error parsing version.json in {}: {}",
+                        entry.path().string(), e.what());
                 }
             }
+            else {
+                LOG_DEBUG("version.json not found or not a regular file in: {}",
+                    entry.path().string());
+            }
         }
+    }
+
+    // Логируем итоговые результаты поиска
+    if (foundAnyVersions) {
+        LOG_INFO("Latest version search completed: found version {} in {}",
+            latestVersion, latestVersionPath.string());
+        LOG_DEBUG("Directories checked: {}, valid version files: {}",
+            directoriesChecked, validVersionFiles);
+    }
+    else {
+        LOG_WARN("No valid versions found in directory: {}", versionsDirectory.string());
+        LOG_DEBUG("Checked {} directories, found {} valid version files",
+            directoriesChecked, validVersionFiles);
     }
 
     return std::make_pair(latestVersionPath, latestVersion);
@@ -247,6 +301,15 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet)
 
 void runServerUpdater()
 {
+    LOG_DEBUG("Checking versions directory structure...");
+    if (std::filesystem::exists(versionsDirectory)) {
+        for (const auto& entry : std::filesystem::directory_iterator(versionsDirectory)) {
+            if (entry.is_directory()) {
+                LOG_DEBUG("Found version directory: {}", entry.path().string());
+            }
+        }
+    }
+
     NetworkController networkController(8081,
         [](ConnectionPtr connection, Packet&& packet) {onUpdatesCheck(connection, std::move(packet)); },
         [](ConnectionPtr connection, Packet&& packet) {onUpdateAccepted(connection, std::move(packet)); }

@@ -45,3 +45,4 @@ namespace updater {
 #define LOG_WARN(...)  if (auto logger = getLogger()) { logger->warn(__VA_ARGS__); }
 #define LOG_ERROR(...) if (auto logger = getLogger()) { logger->error(__VA_ARGS__); }
 }
+

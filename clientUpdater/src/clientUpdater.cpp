@@ -1,5 +1,4 @@
 #include "clientUpdater.h"
-#include "logger.h"
 
 namespace updater {
 
@@ -33,12 +32,8 @@ bool ClientUpdater::connect(const std::string& host, const std::string& port) {
 	m_serverHost = host;
 	m_serverPort = port;
 
-	if (m_state != State::DISCONNECTED || m_running) {
-		LOG_WARN("Cannot connect - already connected or running");
-		return false;
-	}
+	if (m_state != State::DISCONNECTED || m_running) return false;
 
-	LOG_INFO("Connecting to update server {}:{}", host, port);
 	m_networkController.connect(host, port);
 
 	m_running = true;
@@ -48,7 +43,6 @@ bool ClientUpdater::connect(const std::string& host, const std::string& port) {
 }
 
 void ClientUpdater::disconnect() {
-	LOG_INFO("Disconnecting from update server");
 	m_networkController.disconnect();
 	m_state = State::DISCONNECTED;
 
@@ -83,12 +77,8 @@ bool ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
 		}
 	}
 
-	if (m_state != State::AWAITING_UPDATES_CHECK) {
-		LOG_WARN("Cannot check updates - invalid state");
-		return false;
-	}
+	if (m_state != State::AWAITING_UPDATES_CHECK) return false;
 
-	LOG_INFO("Checking for updates, current version: {}", currentVersionNumber);
 	nlohmann::json jsonObject;
 	jsonObject["version"] = currentVersionNumber;
 	Packet packet(static_cast<int>(PacketType::CHECK_UPDATES), jsonObject.dump());
@@ -100,12 +90,8 @@ bool ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
 }
 
 bool ClientUpdater::startUpdate(OperationSystemType type) {
-	if (m_state != State::AWAITING_START_UPDATE) {
-		LOG_WARN("Cannot start update - not ready");
-		return false;
-	}
+	if (m_state != State::AWAITING_START_UPDATE) return false;
 
-	LOG_INFO("Starting update process");
 	nlohmann::json jsonObject;
 	jsonObject[OPERATION_SYSTEM] = static_cast<int>(type);
 
@@ -180,11 +166,9 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 		}
 	}
 	catch (const std::filesystem::filesystem_error& e) {
-		LOG_ERROR("Filesystem error while scanning files: {}", e.what());
 		m_callbacksHandler->onError();
 	}
 
-	LOG_DEBUG("Collected {} files for update check", result.size());
 	return result;
 }
 
