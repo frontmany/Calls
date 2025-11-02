@@ -11,15 +11,13 @@
 	 <file>callJoined.wav</file>
 	 <file>endCall.wav</file>
 	 <file>callingEnded.wav</file>
+	 <file>updating.gif</file>
 	 <file>acceptCall.png</file>
 	 <file>callifornia.ico</file>
 	 <file>acceptCallHover.png</file>
 	 <file>decline.png</file>
 	 <file>declineCall.png</file>
 	 <file>declineCallHover.png</file>
-	 <file>reloadHover.png</file>
-	 <file>reload.png</file>
-	 <file>reloadDisabled.png</file>
 	 <file>speaker.png</file>
 	 <file>speakerHover.png</file>
 	 <file>speakerActive.png</file>

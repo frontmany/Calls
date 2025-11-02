@@ -21,7 +21,7 @@ CallsClient& CallsClient::get()
 bool CallsClient::init(
     const std::string& host,
     const std::string& port,
-    std::unique_ptr<Handler>&& handler)
+    std::unique_ptr<CallbacksInterface>&& callbacksHandler)
 {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -43,10 +43,10 @@ bool CallsClient::init(
     m_handlers.emplace(PacketType::END_CALL, [this](const nlohmann::json& json) { onEndCall(json); });
     m_handlers.emplace(PacketType::START_CALLING, [this](const nlohmann::json& json) { onIncomingCall(json); });
 
-    m_callbackHandler = std::move(handler);
+    m_callbackHandler = std::move(callbacksHandler);
     m_networkController = std::make_shared<NetworkController>();
     m_audioEngine = std::make_unique<AudioEngine>();
-    m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); }, [this]() {onConnectionRestored(); });
+    m_pingManager = std::make_shared<PingManager>(m_networkController, [this]() {onPingFail(); }, [this]() {onConnectionRestored(); m_networkError = false; });
     m_keysManager = std::make_unique<KeysManager>();
 
     bool audioInitialized = m_audioEngine->init([this](const unsigned char* data, int length) {
@@ -59,21 +59,27 @@ bool CallsClient::init(
         },
         [this]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
-            m_callbacksQueue.push([this]() {reset(); });
+            m_callbacksQueue.push([this]() {reset(); m_networkError = true; });
             m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
         });
 
-    if (audioInitialized && networkInitialized) 
+    if (audioInitialized && networkInitialized) {
+        LOG_INFO("Calls client initialized successfully");
         return true;
-    else 
+    }
+    else {
+        LOG_ERROR("Calls client initialization failed - audio: {}, network: {}", audioInitialized, networkInitialized);
         return false;
+    }
 }
 
 void CallsClient::run() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
+    LOG_INFO("Starting calls client");
     m_running = true;
     m_keysManager->generateKeys();
+    LOG_DEBUG("RSA keys generated");
     m_callbacksQueueProcessingThread = std::thread(&CallsClient::processQueue, this);
     m_networkController->run();
     m_pingManager->start();
@@ -81,11 +87,14 @@ void CallsClient::run() {
 
 void CallsClient::onPingFail() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
+    LOG_ERROR("Network error - ping failed");
+    m_callbacksQueue.push([this]() {reset(); m_networkError = true; });
     m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
 }
 
 void CallsClient::onConnectionRestored() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
+    LOG_INFO("Connection restored");
     m_callbacksQueue.push([this]() {m_callbackHandler->onConnectionRestored(); });
 }
 
@@ -155,6 +164,7 @@ void CallsClient::onCallAccepted(const nlohmann::json& jsonObject) {
     std::string nicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
     if (crypto::calculateHash(m_nicknameWhomCalling) != nicknameHash) return;
 
+    LOG_INFO("Call accepted by {}", m_nicknameWhomCalling);
     m_callingTimer.stop();
     m_nicknameWhomCalling.clear();
     m_state = State::BUSY;
@@ -213,10 +223,13 @@ void CallsClient::onEndCall(const nlohmann::json& jsonObject) {
     const std::string& senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
     if (senderNicknameHash != m_call->getFriendNicknameHash()) return;
 
-    m_audioEngine->stopStream();
+    LOG_INFO("Call ended by remote user");
     m_state = State::FREE;
     m_call = std::nullopt;
-    m_callbacksQueue.push([this]() {m_callbackHandler->onRemoteUserEndedCall(); });
+    m_callbacksQueue.push([this]() {
+        m_audioEngine->stopStream();
+        m_callbackHandler->onRemoteUserEndedCall();
+    });
 }
 
 void CallsClient::onIncomingCall(const nlohmann::json& jsonObject) {
@@ -226,6 +239,7 @@ void CallsClient::onIncomingCall(const nlohmann::json& jsonObject) {
 
     auto packetAesKey = crypto::RSADecryptAESKey(m_keysManager->getPrivateKey(), jsonObject[PACKET_KEY]);
     std::string nickname = crypto::AESDecrypt(packetAesKey, jsonObject[NICKNAME]);
+    LOG_INFO("Incoming call from {}", nickname);
     auto callKey = crypto::RSADecryptAESKey(m_keysManager->getPrivateKey(), jsonObject[CALL_KEY]);
 
     auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [nickname](const std::pair<std::unique_ptr<Timer>, IncomingCallData>& pair) {
@@ -338,6 +352,10 @@ bool CallsClient::isBusy() const {
     return m_state == State::BUSY;
 }
 
+bool CallsClient::isNetworkError() const {
+    return m_networkError;
+}
+
 int CallsClient::getIncomingCallsCount() const {
     std::lock_guard<std::mutex> lock(m_dataMutex);
     return m_incomingCalls.size();
@@ -437,9 +455,6 @@ void CallsClient::reset() {
     if (m_audioEngine && m_audioEngine->isStream()) {
         m_audioEngine->stopStream();
     }
-
-    std::queue<std::function<void()>> empty;
-    std::swap(m_callbacksQueue, empty);
 
     m_state = State::UNAUTHORIZED;
 }
@@ -610,6 +625,7 @@ bool CallsClient::acceptCall(const std::string& friendNickname) {
 void CallsClient::onAuthorizationSuccess(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
+    LOG_INFO("User authorized successfully");
     m_state = State::FREE;
     m_callbacksQueue.push([this]() {m_callbackHandler->onAuthorizationResult(ErrorCode::OK); });
 }
@@ -617,6 +633,7 @@ void CallsClient::onAuthorizationSuccess(const nlohmann::json& jsonObject) {
 void CallsClient::onAuthorizationFail(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
+    LOG_WARN("Authorization failed - nickname already taken");
     m_myNickname.clear();
     m_callbacksQueue.push([this]() {m_callbackHandler->onAuthorizationResult(ErrorCode::TAKEN_NICKNAME); });
 }

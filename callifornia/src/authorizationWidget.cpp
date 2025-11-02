@@ -1,4 +1,5 @@
-#include "AuthorizationWidget.h"
+#include "authorizationWidget.h"
+
 #include <QResizeEvent>
 #include <QRegularExpressionValidator>
 #include <QPainterPath>
@@ -14,7 +15,11 @@ AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent)
 
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
+    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
+
+    m_updatesNotificationTimer = new QTimer(this);
+    m_updatesNotificationTimer->setSingleShot(true);
+    connect(m_updatesNotificationTimer, &QTimer::timeout, this, &AuthorizationWidget::hideUpdatesCheckingNotification);
 }
 
 void AuthorizationWidget::setupUI() {
@@ -37,6 +42,24 @@ void AuthorizationWidget::setupUI() {
     m_notificationLabel->setFont(errorFont);
 
     m_notificationLayout->addWidget(m_notificationLabel);
+
+    // Create update available button
+    m_updateAvailableWidget = new QWidget(this);
+    m_updateAvailableWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_updateAvailableWidget->hide();
+
+    m_updateAvailableLayout = new QHBoxLayout(m_updateAvailableWidget);
+    m_updateAvailableLayout->setAlignment(Qt::AlignCenter);
+    m_updateAvailableLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
+
+    m_updateAvailableButton = new QPushButton(m_updateAvailableWidget);
+    m_updateAvailableButton->setMinimumSize(scale(295), scale(32));
+    m_updateAvailableButton->setCursor(Qt::PointingHandCursor);
+    QFont updateFont("Outfit", scale(12), QFont::Medium);
+    m_updateAvailableButton->setFont(updateFont);
+    m_updateAvailableButton->setText("Update available! Click to download");
+
+    m_updateAvailableLayout->addWidget(m_updateAvailableButton);
 
     // Create container
     m_container = new QWidget(this);
@@ -110,12 +133,14 @@ void AuthorizationWidget::setupUI() {
     // Add glass panel to main layout
     m_mainLayout->addSpacing(scale(42));
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
+    m_mainLayout->addWidget(m_updateAvailableWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
     m_mainLayout->addWidget(m_container);
 
     // Connect signals
     connect(m_authorizeButton, &QPushButton::clicked, this, &AuthorizationWidget::onAuthorizationClicked);
     connect(m_nicknameEdit, &QLineEdit::textChanged, this, &AuthorizationWidget::onTextChanged);
     connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizationClicked);
+    connect(m_updateAvailableButton, &QPushButton::clicked, this, &AuthorizationWidget::onUpdateAvailableClicked);
 }
 
 void AuthorizationWidget::resetBlur() {
@@ -180,6 +205,10 @@ void AuthorizationWidget::onAuthorizationClicked() {
     }
 }
 
+void AuthorizationWidget::onUpdateAvailableClicked() {
+    emit updateButtonClicked();
+}
+
 void AuthorizationWidget::onTextChanged(const QString& text) {
     if (validateNickname(text)) {
         clearErrorMessage();
@@ -190,6 +219,46 @@ void AuthorizationWidget::setErrorMessage(const QString& errorText) {
     m_errorLabel->setText(errorText);
     m_errorLabel->show();
     m_nicknameEdit->setFocus();
+
+    QTimer::singleShot(2500, this, &AuthorizationWidget::clearErrorMessage);
+}
+
+void AuthorizationWidget::setAuthorizationDisabled(bool disabled) {
+    m_nicknameEdit->setDisabled(disabled);
+    m_authorizeButton->setDisabled(disabled);
+
+    // Добавляем визуальную индикацию отключенного состояния
+    if (disabled) {
+        m_nicknameEdit->setStyleSheet(
+            "QLineEdit {"
+            "   background-color: rgba(245, 245, 245, 150);"
+            "   border: 0px solid rgba(255, 255, 255, 100);"
+            "   border-radius: " + QString::number(scale(12)) + "px;"
+            "   padding: " + QString::number(scale(12)) + "px " + QString::number(scale(15)) + "px;"
+            "   margin: 0px;"
+            "   color: rgba(1, 11, 19, 150);"
+            "}"
+            "QLineEdit::placeholder {"
+            "   color: rgba(240, 240, 240, 120);"
+            "}"
+        );
+
+        m_authorizeButton->setStyleSheet(
+            "QPushButton {"
+            "   background-color: rgba(21, 119, 232, 150);"
+            "   color: rgba(255, 255, 255, 180);"
+            "   border: 0px solid rgba(255, 255, 255, 100);"
+            "   border-radius: " + QString::number(scale(15)) + "px;"
+            "   padding: " + QString::number(scale(12)) + "px " + QString::number(scale(24)) + "px;"
+            "   margin: 0px;"
+            "}"
+        );
+    }
+    else {
+        // Восстанавливаем обычные стили
+        m_nicknameEdit->setStyleSheet(StyleAuthorizationWidget::glassLineEditStyle());
+        m_authorizeButton->setStyleSheet(StyleAuthorizationWidget::glassButtonStyle());
+    }
 }
 
 void AuthorizationWidget::clearErrorMessage() {
@@ -200,7 +269,7 @@ void AuthorizationWidget::clearErrorMessage() {
 void AuthorizationWidget::showNetworkErrorNotification() {
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationRedLabelStyle());
 
-    m_notificationLabel->setText("Network error occurred");
+    m_notificationLabel->setText("Network error occurred, reconnecting...");
     m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
 
     m_notificationWidget->show();
@@ -211,11 +280,58 @@ void AuthorizationWidget::hideNetworkErrorNotification() {
     m_notificationWidget->hide();
 }
 
+void AuthorizationWidget::showUpdatesCheckingNotification()
+{
+    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationLilacLabelStyle());
+
+    m_notificationLabel->setText("Checking for updates...");
+    m_notificationLabel->setStyleSheet("color: #8C6BC7; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+    m_notificationWidget->show();
+}
+
+void AuthorizationWidget::hideUpdatesCheckingNotification()
+{
+    if (m_notificationLabel->text() != "Connection restored") {
+        m_notificationLabel->setText("");
+        m_notificationWidget->hide();
+    }
+}
+
+void AuthorizationWidget::showUpdateAvailableNotification() {
+    m_updateAvailableWidget->setStyleSheet(StyleAuthorizationWidget::notificationUpdateAvailableStyle());
+
+    m_updateAvailableButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(21, 119, 232, 80);"
+        "   color: #1577E8;"
+        "   border: none;"
+        "   border-radius: 12px;"
+        "   padding: 8px 18px 8px 15px;"
+        "   margin: 0px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(21, 119, 232, 120);"
+        "   color: #0D6BC8;"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(21, 119, 232, 150);"
+        "   color: #0A5FC8;"
+        "}"
+    );
+
+    m_updateAvailableWidget->show();
+}
+
+void AuthorizationWidget::hideUpdateAvailableNotification() {
+    m_updateAvailableButton->setText("");
+    m_updateAvailableWidget->hide();
+}
+
 void AuthorizationWidget::showConnectionRestoredNotification(int durationMs) {
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationGreenLabelStyle());
 
     m_notificationLabel->setText("Connection restored");
-    m_notificationLabel->setStyleSheet("color: #19ba00; background: transparent; font-size: 14px; margin: 0px; padding: 0px;"); 
+    m_notificationLabel->setStyleSheet("color: #19ba00; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
 
     m_notificationWidget->show();
     m_notificationTimer->start(durationMs);
@@ -231,6 +347,7 @@ const QColor StyleAuthorizationWidget::m_glassColor = QColor(255, 255, 255, 60);
 const QColor StyleAuthorizationWidget::m_glassBorderColor = QColor(255, 255, 255, 100);
 const QColor StyleAuthorizationWidget::m_textDarkColor = QColor(240, 240, 240);
 const QColor StyleAuthorizationWidget::m_disabledColor = QColor(160, 160, 160, 150);
+const QColor StyleAuthorizationWidget::m_updateAvailableColor = QColor(21, 119, 232);
 
 QString StyleAuthorizationWidget::glassButtonStyle() {
     return QString("QPushButton {"
@@ -327,7 +444,7 @@ QString StyleAuthorizationWidget::glassSubTitleLabelStyle() {
 
 QString StyleAuthorizationWidget::notificationRedLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(220, 80, 80, 65);" 
+        "   background-color: rgba(220, 80, 80, 65);"
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -343,4 +460,24 @@ QString StyleAuthorizationWidget::notificationGreenLabelStyle() {
         "   margin: 0px;"
         "   padding: 0px;"
         "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
+QString StyleAuthorizationWidget::notificationLilacLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(200, 180, 220, 80);"  // Нежный сиреневый для checking updates
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::number(scale(8)));
+}
+
+QString StyleAuthorizationWidget::notificationUpdateAvailableStyle() {
+    return QString("QWidget {"
+        "   background-color: transparent;"  // Прозрачный фон, так как фон задан кнопке
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::number(scale(8)));
 }

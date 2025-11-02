@@ -36,12 +36,11 @@ bool NetworkController::start() {
         m_isRunning = true;
         startReceive();
 
-        DEBUG_LOG("UDP Server started on " + m_serverEndpoint.address().to_string() +
-            ":" + std::to_string(m_serverEndpoint.port()));
+        LOG_INFO("UDP Server started on {}:{}", m_serverEndpoint.address().to_string(), m_serverEndpoint.port());
         return true;
     }
     catch (const std::exception& e) {
-        DEBUG_LOG("Server start error: " + std::string(e.what()));
+        LOG_ERROR("Server start error: {}", e.what());
         m_isRunning = false;
         return false;
     }
@@ -78,7 +77,7 @@ void NetworkController::sendVoiceToClient(const asio::ip::udp::endpoint& clientE
 
             const size_t totalSize = sharedData->size() + sizeof(PacketType);
             if (totalSize > m_receiveBuffer.size()) {
-                DEBUG_LOG("Packet too large: " + std::to_string(totalSize) + " bytes");
+                LOG_WARN("Voice packet too large: {} bytes (max: {})", totalSize, m_receiveBuffer.size());
                 return;
             }
 
@@ -92,7 +91,7 @@ void NetworkController::sendVoiceToClient(const asio::ip::udp::endpoint& clientE
             m_socket.async_send_to(buffers, clientEndpoint,
                 [](const asio::error_code& error, std::size_t bytesSent) {
                     if (error) {
-                        DEBUG_LOG("Send error: " + error.message());
+                        LOG_ERROR("Voice packet send error: {}", error.message());
                     }
                 }
             );
@@ -114,7 +113,7 @@ void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoi
             m_socket.async_send_to(buffer, clientEndpoint,
                 [this](const asio::error_code& error, std::size_t bytesSent) {
                     if (error && error != asio::error::operation_aborted) {
-                        DEBUG_LOG("Send error: " + error.message());
+                        LOG_ERROR("Packet send error: {}", error.message());
                         m_onNetworkErrorCallback();
                     }
                 }
@@ -136,7 +135,7 @@ void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoi
 
             const size_t totalSize = sharedData->size() + sizeof(PacketType);
             if (totalSize > m_receiveBuffer.size()) {
-                DEBUG_LOG("Packet too large: " + std::to_string(totalSize) + " bytes");
+                LOG_WARN("Data packet too large: {} bytes (max: {})", totalSize, m_receiveBuffer.size());
                 return;
             }
 
@@ -148,7 +147,7 @@ void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoi
             m_socket.async_send_to(buffers, clientEndpoint,
                 [sharedData](const asio::error_code& error, std::size_t bytesSent) {
                     if (error && error != asio::error::operation_aborted) {
-                        DEBUG_LOG("Send error: " + error.message());
+                        LOG_ERROR("Data packet send error: {}", error.message());
                     }
                 }
             );
@@ -179,7 +178,7 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
     }
 
     if (bytesTransferred < sizeof(PacketType)) {
-        DEBUG_LOG("Received packet too small: " + std::to_string(bytesTransferred) + " bytes");
+        LOG_WARN("Received packet too small: {} bytes (minimum: {})", bytesTransferred, sizeof(PacketType));
         if (m_isRunning) {
             startReceive();
         }

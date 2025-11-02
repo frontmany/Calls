@@ -1,13 +1,25 @@
 #include <QApplication>
+
+#include <filesystem>
+
 #include "mainWindow.h"
+#include "logger.h"
 
 int main(int argc, char* argv[])
 {
-    // 192.168.1.40 local machine 
+    std::filesystem::create_directories("logs");
+    
+    LOG_INFO("=== Callifornia Application Starting ===");
+    
+    // 192.168.1.44 local machine 
     // 192.168.1.48 server internal ip
     // 92.255.165.77 server global ip
 
     QApplication app(argc, argv);
-    MainWindow* mainWindow = new MainWindow(nullptr, "192.168.1.40", "8081");
+    MainWindow* mainWindow = new MainWindow(nullptr);
+    mainWindow->init();
+    mainWindow->connectCallifornia("192.168.1.48", "8081");
+
+    LOG_INFO("Entering Qt event loop");
     return app.exec();
 }

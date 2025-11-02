@@ -14,8 +14,8 @@
 #include "keysManager.h"
 #include "packetTypes.h"
 #include "incomingCallData.h"
-#include "ErrorCode.h"
-#include "handler.h"
+#include "errorCode.h"
+#include "callbacksInterface.h"
 #include "state.h"
 #include "timer.h"
 #include "call.h"
@@ -28,7 +28,7 @@ class CallsClient {
 public:
     static CallsClient& get();
 
-    bool init(const std::string& host, const std::string& port, std::unique_ptr<Handler>&& handler);
+    bool init(const std::string& host, const std::string& port, std::unique_ptr<CallbacksInterface>&& callbacksHandler);
     void run();
     void stop();
 
@@ -46,6 +46,7 @@ public:
     bool isAuthorized() const;
     bool isCalling() const;
     bool isBusy() const;
+    bool isNetworkError() const;
     const std::string& getNickname() const;
     std::vector<std::string> getCallers();
     int getInputVolume() const;
@@ -111,6 +112,7 @@ private:
     void sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type);
 
 private:
+    std::atomic_bool m_networkError = false;
     bool m_running = false;
     State m_state = State::UNAUTHORIZED;
     mutable std::mutex m_dataMutex;
@@ -130,7 +132,7 @@ private:
     std::unique_ptr<AudioEngine> m_audioEngine;
     std::shared_ptr<PingManager> m_pingManager;
     std::unique_ptr<KeysManager> m_keysManager;
-    std::unique_ptr<Handler> m_callbackHandler;
+    std::unique_ptr<CallbacksInterface> m_callbackHandler;
 };
 
 }

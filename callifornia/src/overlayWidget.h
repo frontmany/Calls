@@ -5,6 +5,8 @@
 #include <QScreen>
 
 class OverlayWidget : public QWidget {
+    Q_OBJECT
+
 public:
     explicit OverlayWidget(QWidget* parent = nullptr);
 

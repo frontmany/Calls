@@ -67,20 +67,22 @@ namespace calls {
     void PingManager::checkPing() {
         if (m_pingResult) {
             if (m_error) {
+                LOG_INFO("Connection reestablished - ping successful");
                 m_onPingEstablishedAgain();
                 m_error = false;
             }
 
             m_pingResult = false;
-            DEBUG_LOG("ping success");
+            LOG_DEBUG("Ping successful");
         }
         else {
             if (!m_error) {
+                LOG_WARN("Ping failed - connection lost");
                 m_onPingFail();
             }
 
             m_error = true;
-            DEBUG_LOG("ping fail");
+            LOG_DEBUG("Ping timeout");
         }
     }
 }

@@ -28,6 +28,7 @@ struct StyleAuthorizationWidget {
     static const QColor m_glassBorderColor;
     static const QColor m_textDarkColor;
     static const QColor m_disabledColor;
+    static const QColor m_updateAvailableColor;
 
     // Style methods
     static QString glassButtonStyle();
@@ -38,6 +39,8 @@ struct StyleAuthorizationWidget {
     static QString glassSubTitleLabelStyle();
     static QString notificationRedLabelStyle();
     static QString notificationGreenLabelStyle();
+    static QString notificationLilacLabelStyle();
+    static QString notificationUpdateAvailableStyle();
 };
 
 class AuthorizationWidget : public QWidget {
@@ -45,6 +48,7 @@ class AuthorizationWidget : public QWidget {
 
 public:
     AuthorizationWidget(QWidget* parent = nullptr);
+    void setAuthorizationDisabled(bool disabled);
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void startBlurAnimation();
@@ -52,14 +56,20 @@ public:
     void showNetworkErrorNotification();
     void hideNetworkErrorNotification();
     void showConnectionRestoredNotification(int durationMs);
+    void showUpdatesCheckingNotification();
+    void hideUpdatesCheckingNotification();
+    void showUpdateAvailableNotification();
+    void hideUpdateAvailableNotification();
 
 private slots:
     void onAuthorizationClicked();
     void onTextChanged(const QString& text);
+    void onUpdateAvailableClicked();
 
 signals:
     void authorizationButtonClicked(const QString& friendNickname);
     void blurAnimationFinished();
+    void updateButtonClicked();
 
 private:
     void setupUI();
@@ -75,12 +85,19 @@ private:
     QLabel* m_errorLabel;
     QLineEdit* m_nicknameEdit;
     QPushButton* m_authorizeButton;
-    
+
     QWidget* m_notificationWidget;
     QHBoxLayout* m_notificationLayout;
     QLabel* m_notificationLabel;
 
+    // Update available notification as button
+    QPushButton* m_updateAvailableButton;
+    QWidget* m_updateAvailableWidget;
+    QHBoxLayout* m_updateAvailableLayout;
+
     QGraphicsBlurEffect* m_backgroundBlurEffect;
     QPropertyAnimation* m_blurAnimation;
     QTimer* m_notificationTimer;
+
+    QTimer* m_updatesNotificationTimer;
 };

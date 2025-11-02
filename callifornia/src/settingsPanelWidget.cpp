@@ -67,11 +67,12 @@ QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
     )")
         .arg(QString::fromStdString(std::to_string(scale(8))))
         .arg(QString::fromStdString(std::to_string(scale(4))))
-        .arg(QString::fromStdString(std::to_string(scale(16))))
-        .arg(QString::fromStdString(std::to_string(scale(16))))
+        .arg(QString::fromStdString(std::to_string(scale(17))))
+        .arg(QString::fromStdString(std::to_string(scale(17))))
         .arg(QString::fromStdString(std::to_string(scale(8))))
         .arg(QString::fromStdString(std::to_string(scale(4))));
 }
+
 
 QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
     return QString(
@@ -152,10 +153,8 @@ void SettingsPanel::setupUI() {
     QHBoxLayout* refreshLayout = new QHBoxLayout();
     refreshLayout->setContentsMargins(0, 0, 0, 0);
 
-    m_refreshButton = new QPushButton("  Refresh", this);
+    m_refreshButton = new QPushButton("Refresh devices", this);
     m_refreshButton->setFixedHeight(scale(60));
-    m_refreshButton->setIcon(QIcon(":/resources/reload.png"));
-    m_refreshButton->setIconSize(QSize(scale(32), scale(28)));
     m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
     QFont refreshButtonFont("Outfit", scale(13), QFont::Medium);
     m_refreshButton->setFont(refreshButtonFont);
@@ -256,7 +255,7 @@ void SettingsPanel::setupUI() {
     connect(m_refreshCooldownTimer, &QTimer::timeout, this, [this]() {
         m_refreshEnabled = true;
         m_refreshButton->setEnabled(true);
-        m_refreshButton->setText("  Refresh");
+        m_refreshButton->setText("Refresh devices");
         m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
     });
 

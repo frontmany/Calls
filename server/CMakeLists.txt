@@ -8,24 +8,39 @@ source_group("Source Files" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+endif()
 
 if(WIN32)
-    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        _WIN32_WINNT=0x0601
+        ASIO_STANDALONE
+    )
+endif()
+
+if(WIN32)
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output/Release")
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build/Release")
 else()
     set(CRYPTOPP_DIR "../vendor/cryptopp")
+    set(SPDLOG_DIR "../vendor/spdlog")
 endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${CRYPTOPP_DIR}"
+    "${SPDLOG_DIR}"
 )
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
+        cryptlib.lib
+        spdlog.lib
     )
 else()
     target_link_libraries(${PROJECT_NAME} PRIVATE
         libcryptopp.a
+        libspdlog.a
     )
 endif()
 
@@ -33,11 +48,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ../vendor/json/include                    
     ../vendor/cryptopp              
     ../vendor/asio/asio/include
+    ../vendor/spdlog/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-target_compile_definitions(${PROJECT_NAME}
-    PRIVATE 
-    $<$<CONFIG:Debug>:DEBUG>
-    $<$<CONFIG:RelWithDebInfo>:DEBUG>  
 )

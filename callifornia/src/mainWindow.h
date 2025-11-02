@@ -6,22 +6,28 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 #include <QFile>
+#include <QLabel>
+#include <QMovie>
+#include <QProcess>
 #include <QDialog>
 #include <QScreen>
 
+#include "updater.h"
 #include "calls.h"
-#include "callsClientHandler.h"
 
 class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
+class DialogsController;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget* parent, const std::string& host, const std::string& port);
+    MainWindow(QWidget* parent);
     ~MainWindow();
+    void init();
+    void connectCallifornia(const std::string& host, const std::string& port);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -37,9 +43,15 @@ private slots:
     void onRemoteUserEndedCall();
     void onIncomingCall(const QString& friendNicname);
     void onIncomingCallExpired(const QString& friendNickname);
-    void onNetworkError();
+    void onClientNetworkError();
+    void onUpdaterNetworkError();
     void onConnectionRestored();
 
+    void onUpdaterCheckResult(updater::UpdatesCheckResult checkResult);
+    void onUpdateLoaded(bool emptyUpdate);
+    void onLoadingProgress(double progress);
+
+    void onUpdateButtonClicked();
     void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
     void onAcceptCallButtonClicked(const QString& friendNickname);
@@ -54,7 +66,6 @@ private slots:
     void onBlurAnimationFinished();
 
 private:
-    void showInitializationErrorDialog();
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
@@ -65,15 +76,18 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
 
+    void launchUpdateApplier();
     void setupUI();
     void loadFonts();
+    std::string parseVersionFromConfig();
+    updater::OperationSystemType resolveOperationSystemType();
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
     void stopIncomingCallRingtone();
     void playIncomingCallRingtone();
     void playCallingRingtone();
     void stopCallingRingtone();
-    void playSoundEffect(const QString& soundPath);
+    void playSoundEffect(const QString& soundPath); 
 
 private:
     QMediaPlayer* m_ringtonePlayer;
@@ -86,4 +100,5 @@ private:
     AuthorizationWidget* m_authorizationWidget;
     MainMenuWidget* m_mainMenuWidget;
     CallWidget* m_callWidget;
+    DialogsController* m_dialogsController;
 };

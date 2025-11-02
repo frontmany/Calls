@@ -1,4 +1,5 @@
-#include "MainMenuWidget.h"
+#include "mainMenuWidget.h"
+
 #include <QResizeEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -6,6 +7,7 @@
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <QRegularExpressionValidator>
+
 #include "buttons.h"
 #include "scaleFactor.h"
 
@@ -182,17 +184,16 @@ QString StyleMainMenuWidget::notificationRedLabelStyle() {
         "}").arg(QString::fromStdString(std::to_string(scale(8))));
 }
 
-QString StyleMainMenuWidget::avatarStyle(const QColor& color) {
+QString StyleMainMenuWidget::avatarStyle() {
     return QString("QLabel {"
-        "   background-color: %1;"
-        "   border-radius: %2;"
+        "   background-color: black;"
+        "   border-radius: %1;"
         "   color: white;"
-        "   font-size: %3;"
+        "   font-size: %2;"
         "   font-weight: bold;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(color.name())
-        .arg(QString::fromStdString(std::to_string(scale(25))) + "px")
+        "}").arg(QString::fromStdString(std::to_string(scale(25))) + "px")
         .arg(QString::fromStdString(std::to_string(scale(18))) + "px");
 }
 
@@ -304,13 +305,28 @@ QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
         .arg(m_stopCallingButtonHoverColor.blue()).arg(m_stopCallingButtonHoverColor.alpha());
 }
 
+QString StyleMainMenuWidget::notificationBlueLabelStyle() {
+    return QString("QWidget {"
+        "   background-color: rgba(21, 119, 232, 80);"  // Синий цвет с прозрачностью
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   margin: 0px;"
+        "   padding: 0px;"
+        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+}
+
 MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
 
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
+    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
+
+    // Таймер для уведомления об обновлении
+    m_updateNotificationTimer = new QTimer(this);
+    m_updateNotificationTimer->setSingleShot(true);
+    connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableNotification);
 }
 
 void MainMenuWidget::setupUI() {
@@ -346,6 +362,37 @@ void MainMenuWidget::setupUI() {
     m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
 
     m_notificationLayout->addWidget(m_notificationLabel);
+
+    m_updateNotificationButton = new QPushButton(this);
+    m_updateNotificationButton->setMinimumSize(scale(295), scale(32));
+    m_updateNotificationButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_updateNotificationButton->hide();
+    m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
+
+    m_updateNotificationButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(21, 119, 232, 80);"
+        "   color: #1577E8;"
+        "   border: none;"
+        "   border-radius: 12px;"
+        "   padding: 8px 18px 8px 15px;"
+        "   margin: 0px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(21, 119, 232, 120);"
+        "   color: #0D6BC8;"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(21, 119, 232, 150);"
+        "   color: #0A5FC8;"
+        "}"
+    );
+
+    QFont updateFont("Outfit", scale(13), QFont::Medium);
+    m_updateNotificationButton->setFont(updateFont);
+    m_updateNotificationButton->setText("New version available! Click to update");
+    m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
+
 
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
@@ -508,6 +555,8 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
+    m_mainLayout->addWidget(m_updateNotificationButton, 0, Qt::AlignCenter);
+    m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
     m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
@@ -523,6 +572,7 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
+    connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableNotification(); });
 }
 
 void MainMenuWidget::setupAnimations() {
@@ -603,18 +653,16 @@ void MainMenuWidget::setNickname(const QString& nickname) {
     m_nicknameLabel->setText(nickname);
     m_nicknameLabel->setStyleSheet(StyleMainMenuWidget::nicknameStyle());
 
-    // Generate avatar
-    QColor avatarColor = generateRandomColor(nickname);
     QString firstLetter = nickname.left(1).toUpper();
 
     m_avatarLabel->setText(firstLetter);
-    m_avatarLabel->setStyleSheet(StyleMainMenuWidget::avatarStyle(avatarColor));
+    m_avatarLabel->setStyleSheet(StyleMainMenuWidget::avatarStyle());
 }
 
 void MainMenuWidget::setState(calls::State state) {
     if (state == calls::State::FREE) {
         m_statusLabel->setText("Online");
-        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_onlineColor.name()));
+        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_primaryColor.name()));
     }
     else if (state == calls::State::CALLING) {
         m_statusLabel->setText("Calling...");
@@ -728,6 +776,14 @@ void MainMenuWidget::updateCallingState(bool calling) {
     }
 }
 
+void MainMenuWidget::showUpdateAvailableNotification() {
+    m_updateNotificationButton->show();
+}
+
+void MainMenuWidget::hideUpdateAvailableNotification() {
+    m_updateNotificationButton->hide();
+}
+
 void MainMenuWidget::showErrorNotification(const QString& text, int durationMs) {
     m_notificationLabel->setText(text);
     m_notificationWidget->show();
@@ -760,6 +816,8 @@ void MainMenuWidget::setErrorMessage(const QString& errorText) {
     m_errorLabel->setText(errorText);
     m_errorLabel->show();
     m_friendNicknameEdit->setFocus();
+
+    QTimer::singleShot(2500, this, &MainMenuWidget::clearErrorMessage);
 }
 
 void MainMenuWidget::clearErrorMessage() {
@@ -805,9 +863,4 @@ void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
 
 void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
     emit declineCallButtonClicked(friendNickname);
-}
-
-QColor MainMenuWidget::generateRandomColor(const QString& seed) {
-    int hash = qHash(seed);
-    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
 }

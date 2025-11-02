@@ -5,6 +5,8 @@ namespace calls {
     static constexpr const char* PACKET_KEY = "packetKey";
     static constexpr const char* PUBLIC_KEY_SENDER = "publicKey";
     static constexpr const char* PUBLIC_KEY = "publicKey";
+    static constexpr const char* VERSION = "version";
+    static constexpr const char* VERSION_LOST = "versionLost";
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* NICKNAME_HASH_SENDER = "nicknameHashSender";
     static constexpr const char* NICKNAME_HASH_RECEIVER = "nicknameHashReceiver";

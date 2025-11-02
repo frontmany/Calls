@@ -21,7 +21,7 @@ struct StyleIncomingCallWidget {
     static QString nicknameStyle();
     static QString callTypeStyle();
     static QString timerStyle();
-    static QString avatarStyle(const QColor& color);
+    static QString avatarStyle();
 };
 
 class IncomingCallWidget : public QWidget {
@@ -43,7 +43,6 @@ private:
     void setupUI();
     void setupTimer();
     void paintEvent(QPaintEvent* event) override;
-    QColor generateRandomColor(const QString& seed);
 
     QString m_friendNickname;
     QTimer* m_timer;

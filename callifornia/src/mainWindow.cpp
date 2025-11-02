@@ -5,56 +5,66 @@
 #include <QApplication>
 #include <QSoundEffect>
 #include <QFileInfo>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 
-#include "AuthorizationWidget.h"
-#include "MainMenuWidget.h"
-#include "OverlayWidget.h"
-#include "CallWidget.h"
+#include "authorizationWidget.h"
+#include "mainMenuWidget.h"
+#include "overlayWidget.h"
+#include "callWidget.h"
+#include "dialogsController.h"
 
-MainWindow::MainWindow(QWidget* parent, const std::string& host, const std::string& port)
-    : QMainWindow(parent)
+#include "clientCallbacksHandler.h"
+#include "updaterCallbacksHandler.h"
+#include "logger.h"
+
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
-    setWindowIcon(QIcon(":/resources/callifornia.ico"));
-
-    // Единый плеер для всех мелодий
-    m_ringtonePlayer = new QMediaPlayer(this);
-    m_audioOutput = new QAudioOutput(this);
-    m_audioOutput->setVolume(0.4f);
-    m_ringtonePlayer->setAudioOutput(m_audioOutput);
-
-    // Настраиваем цикличное воспроизведение
-    connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
-        if (state == QMediaPlayer::StoppedState) {
-            // Автоматически перезапускаем если есть активные вызовы
-            if (calls::getIncomingCallsCount() != 0) {
-                m_ringtonePlayer->play();
-            }
-        }
-        });
-
-    loadFonts();
-    setupUI();
-
-    std::unique_ptr<CallsClientHandler> callsClientHandler = std::make_unique<CallsClientHandler>(this);
-
-    bool initialized = calls::init(host, port, std::move(callsClientHandler));
-
-    if (initialized) {
-        calls::run();
-    }
-    else {
-        QTimer::singleShot(0, this, [this]() {
-            showInitializationErrorDialog();
-        });
-    }
-
-    showMaximized();
 }
 
 MainWindow::~MainWindow() {
     if (m_ringtonePlayer) {
         m_ringtonePlayer->stop();
     }
+}
+
+void MainWindow::init() {
+    LOG_INFO("Initializing main window");
+    setWindowIcon(QIcon(":/resources/callifornia.ico"));
+
+    m_ringtonePlayer = new QMediaPlayer(this);
+    m_audioOutput = new QAudioOutput(this);
+    m_audioOutput->setVolume(0.4f);
+    m_ringtonePlayer->setAudioOutput(m_audioOutput);
+
+    connect(m_ringtonePlayer, &QMediaPlayer::playbackStateChanged, [this](QMediaPlayer::PlaybackState state) {
+        if (state == QMediaPlayer::StoppedState) {
+            if (calls::getIncomingCallsCount() != 0) {
+                m_ringtonePlayer->play();
+            }
+        }
+    });
+
+    loadFonts();
+    setupUI();
+    showMaximized();
+}
+
+void MainWindow::connectCallifornia(const std::string& host, const std::string& port) {
+    LOG_INFO("Connecting to Callifornia server: {}:{}", host, port);
+    
+    std::unique_ptr<UpdaterCallbacksHandler> updaterHandler = std::make_unique<UpdaterCallbacksHandler>(this);
+    updater::init(std::move(updaterHandler));
+    updater::connect(host, port);
+    
+    std::string currentVersion = parseVersionFromConfig();
+    LOG_INFO("Current application version: {}", currentVersion);
+    updater::checkUpdates(currentVersion);
+
+    std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
+    calls::init(host, port, std::move(callsClientHandler));
+    calls::run();
 }
 
 void MainWindow::playRingtone(const QUrl& ringtoneUrl) {
@@ -106,17 +116,166 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
         if (!effect->isPlaying()) {
             effect->deleteLater();
         }
-        });
+    });
 }
 
 void MainWindow::loadFonts() {
     if (QFontDatabase::addApplicationFont(":/resources/Pacifico-Regular.ttf") == -1) {
+        LOG_ERROR("Failed to load font: Pacifico-Regular.ttf");
         qWarning() << "Font load error:";
     }
 
     if (QFontDatabase::addApplicationFont(":/resources/Outfit-VariableFont_wght.ttf") == -1) {
+        LOG_ERROR("Failed to load font: Outfit-VariableFont_wght.ttf");
         qWarning() << "Font load error:";
     }
+    else {
+        LOG_DEBUG("Fonts loaded successfully");
+    }
+}
+
+std::string MainWindow::parseVersionFromConfig() {
+    const QString filename = "config.json";
+
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+        LOG_WARN("Failed to open config.json, version lost");
+        return "versionLost";
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (doc.isNull()) {
+        LOG_ERROR("Failed to parse config.json");
+        return "";
+    }
+
+    QJsonObject json = doc.object();
+    std::string version = json[calls::VERSION].toString().toStdString();
+
+    LOG_DEBUG("Parsed version from config: {}", version);
+    return version;
+}
+
+updater::OperationSystemType MainWindow::resolveOperationSystemType() {
+#if defined(Q_OS_WINDOWS)
+    return updater::OperationSystemType::WINDOWS;
+#elif defined(Q_OS_LINUX)
+    return updater::OperationSystemType::LINUX;
+#elif defined(Q_OS_MACOS)
+    return OperationSystemType::MAC;
+#else
+#if defined(_WIN32)
+    return updater::OperationSystemType::WINDOWS;
+#elif defined(__linux__)
+    return updater::OperationSystemType::LINUX;
+#elif defined(__APPLE__)
+    return updater::OperationSystemType::MAC;
+#else
+    qWarning() << "Unknown operating system";
+    return updater::OperationSystemType::WINDOWS;
+#endif
+#endif
+}
+
+void MainWindow::onUpdaterCheckResult(updater::UpdatesCheckResult checkResult) {
+    m_authorizationWidget->hideUpdatesCheckingNotification();
+
+    if (checkResult == updater::UpdatesCheckResult::POSSIBLE_UPDATE) {
+        if (!calls::isNetworkError()) {
+            m_authorizationWidget->setAuthorizationDisabled(false);
+        }
+
+        if (calls::isNetworkError()) {
+            m_authorizationWidget->hideNetworkErrorNotification();
+        }
+
+        m_authorizationWidget->showUpdateAvailableNotification();
+        m_mainMenuWidget->showUpdateAvailableNotification();
+    }
+    else if (checkResult == updater::UpdatesCheckResult::REQUIRED_UPDATE) {
+        updater::startUpdate(resolveOperationSystemType());
+        m_dialogsController->showUpdatingDialog();
+    }
+    else if (checkResult == updater::UpdatesCheckResult::UPDATE_NOT_NEEDED) {
+        updater::disconnect();
+
+        if (!calls::isNetworkError()) {
+            m_authorizationWidget->setAuthorizationDisabled(false);
+        }
+    }
+    else {
+        qWarning() << "error: unknown UpdatesCheckResult type";
+    }
+}
+
+
+void MainWindow::onUpdateButtonClicked() {
+    if (calls::isCalling()) {
+        calls::stopCalling();
+    }
+
+    auto callers = calls::getCallers();
+    for (const auto& nickname : callers) {
+        calls::declineCall(nickname);
+    }
+
+    stopRingtone();
+    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->clearIncomingCalls();
+
+    updater::startUpdate(resolveOperationSystemType());
+    m_dialogsController->showUpdatingDialog();
+}
+
+void MainWindow::onUpdateLoaded(bool emptyUpdate)
+{
+    if (!emptyUpdate) {
+        calls::logout();
+        m_dialogsController->swapUpdatingToRestarting();
+        qApp->processEvents();
+
+        QTimer::singleShot(1500, [this]() {
+            launchUpdateApplier();
+        });
+    }
+    else {
+        m_dialogsController->swapUpdatingToUpToDate();
+        updater::disconnect();
+
+        QTimer::singleShot(1500, [this]() {
+            m_dialogsController->hideUpdatingDialog();
+            m_authorizationWidget->hideUpdatesCheckingNotification();
+            m_authorizationWidget->setAuthorizationDisabled(false);
+        });
+    }
+}
+
+void MainWindow::launchUpdateApplier() {
+    qint64 currentPid = QCoreApplication::applicationPid();
+    QString appPath = QCoreApplication::applicationFilePath();
+
+    QString updateApplierName;
+#ifdef Q_OS_WIN
+    updateApplierName = "update_applier.exe";
+#else
+    updateApplierName = "update_applier";
+#endif
+
+    QFileInfo updateSupplierFile(updateApplierName);
+    if (!updateSupplierFile.exists()) {
+        qWarning() << "Update applier not found:" << updateApplierName;
+        return;
+    }
+
+    QStringList arguments;
+    arguments << QString::number(currentPid) << appPath;
+
+    QProcess::startDetached(updateApplierName, arguments);
+}
+
+void MainWindow::onLoadingProgress(double progress)
+{
+    m_dialogsController->updateLoadingProgress(progress);
 }
 
 void MainWindow::setupUI() {
@@ -130,13 +289,18 @@ void MainWindow::setupUI() {
     m_stackedLayout = new QStackedLayout();
     m_mainLayout->addLayout(m_stackedLayout);
 
+    m_dialogsController = new DialogsController(this);
+    connect(m_dialogsController, &DialogsController::exitButtonClicked, this, &MainWindow::close);
+
     m_authorizationWidget = new AuthorizationWidget(this);
+    connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
     connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, this, &MainWindow::onAuthorizationButtonClicked);
     connect(m_authorizationWidget, &AuthorizationWidget::blurAnimationFinished, this, &MainWindow::onBlurAnimationFinished);
 
     m_stackedLayout->addWidget(m_authorizationWidget);
 
     m_mainMenuWidget = new MainMenuWidget(this);
+    connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, this, &MainWindow::onStartCallingButtonClicked);
@@ -146,7 +310,7 @@ void MainWindow::setupUI() {
     connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
     connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
-    m_stackedLayout->addWidget(m_mainMenuWidget);
+    m_stackedLayout->addWidget(m_mainMenuWidget); 
 
     m_callWidget = new CallWidget(this);
     connect(m_callWidget, &CallWidget::hangupClicked, this, &MainWindow::onEndCallButtonClicked);
@@ -158,14 +322,15 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     m_stackedLayout->addWidget(m_callWidget);
 
+    m_authorizationWidget->showUpdatesCheckingNotification();
+    m_authorizationWidget->setAuthorizationDisabled(true);
+
     switchToAuthorizationWidget();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    if (calls::isAuthorized()) {
-        calls::stop();
-    }
-
+    calls::stop();
+    updater::disconnect();
     event->accept();
 }
 
@@ -336,7 +501,7 @@ void MainWindow::handleAcceptCallErrorNotificationAppearance() {
         m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to accept call from weird widget");
+        LOG_WARN("Trying to accept call from unexpected widget");
     }
 }
 
@@ -350,7 +515,7 @@ void MainWindow::handleDeclineCallErrorNotificationAppearance() {
         m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to decline call from weird widget");
+        LOG_WARN("Trying to decline call from unexpected widget");
     }
 }
 
@@ -361,7 +526,7 @@ void MainWindow::handleStartCallingErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to start calling from weird widget");
+        LOG_WARN("Trying to start calling from unexpected widget");
     }
 }
 
@@ -372,7 +537,7 @@ void MainWindow::handleStopCallingErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to stop calling from weird widget");
+        LOG_WARN("Trying to stop calling from unexpected widget");
     }
 }
 
@@ -383,7 +548,7 @@ void MainWindow::handleEndCallErrorNotificationAppearance() {
         m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
-        DEBUG_LOG("Trying to end call from weird widget");
+        LOG_WARN("Trying to end call from unexpected widget");
     }
 }
 
@@ -391,13 +556,16 @@ void MainWindow::onAuthorizationResult(calls::ErrorCode ec) {
     QString errorMessage;
 
     if (ec == calls::ErrorCode::OK) {
+        LOG_INFO("User authorization successful");
         return;
     }
     else if (ec == calls::ErrorCode::TAKEN_NICKNAME) {
         errorMessage = "Taken nickname";
+        LOG_WARN("Authorization failed: nickname already taken");
     }
     else if (ec == calls::ErrorCode::TIMEOUT) {
         errorMessage = "Timeout (please try again)";
+        LOG_ERROR("Authorization failed: timeout");
     }
 
     m_authorizationWidget->setErrorMessage(errorMessage);
@@ -407,6 +575,7 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
     QString errorMessage;
 
     if (ec == calls::ErrorCode::OK) {
+        LOG_INFO("Started calling user: {}", calls::getNicknameWhomCalling());
         m_mainMenuWidget->showCallingPanel(QString::fromStdString(calls::getNicknameWhomCalling()));
         m_mainMenuWidget->setState(calls::State::CALLING);
         playCallingRingtone();
@@ -414,9 +583,11 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
     }
     else if (ec == calls::ErrorCode::UNEXISTING_USER) {
         errorMessage = "User not found";
+        LOG_WARN("Start calling failed: user not found");
     }
     else if (ec == calls::ErrorCode::TIMEOUT) {
         errorMessage = "Timeout (please try again)";
+        LOG_ERROR("Start calling failed: timeout");
     }
 
     m_mainMenuWidget->setErrorMessage(errorMessage);
@@ -424,6 +595,7 @@ void MainWindow::onStartCallingResult(calls::ErrorCode ec) {
 
 void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname) {
     if (ec == calls::ErrorCode::OK) {
+        LOG_INFO("Call accepted successfully with: {}", nickname.toStdString());
         m_mainMenuWidget->removeCallingPanel();
 
         m_mainMenuWidget->clearIncomingCalls();
@@ -451,6 +623,7 @@ void MainWindow::onMaximumCallingTimeReached() {
 }
 
 void MainWindow::onCallingAccepted() {
+    LOG_INFO("Outgoing call accepted by user: {}", calls::getNicknameInCallWith());
     m_mainMenuWidget->clearIncomingCalls();
 
     stopRingtone();
@@ -461,6 +634,7 @@ void MainWindow::onCallingAccepted() {
 }
 
 void MainWindow::onCallingDeclined() {
+    LOG_INFO("Outgoing call was declined");
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setState(calls::State::FREE);
     stopRingtone();
@@ -468,6 +642,7 @@ void MainWindow::onCallingDeclined() {
 }
 
 void MainWindow::onRemoteUserEndedCall() {
+    LOG_INFO("Remote user ended the call");
     m_callWidget->clearIncomingCalls();
     switchToMainMenuWidget();
 
@@ -476,6 +651,7 @@ void MainWindow::onRemoteUserEndedCall() {
 }
 
 void MainWindow::onIncomingCall(const QString& friendNickName) {
+    LOG_INFO("Incoming call from: {}", friendNickName.toStdString());
     playIncomingCallRingtone();
 
     m_mainMenuWidget->addIncomingCall(friendNickName);
@@ -485,6 +661,7 @@ void MainWindow::onIncomingCall(const QString& friendNickName) {
 }
 
 void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
+    LOG_INFO("Incoming call from {} expired", friendNickName.toStdString());
     m_mainMenuWidget->removeIncomingCall(friendNickName);
 
     if (m_stackedLayout->currentWidget() == m_callWidget)
@@ -496,8 +673,10 @@ void MainWindow::onIncomingCallExpired(const QString& friendNickName) {
     playSoundEffect(":/resources/callingEnded.wav");
 }
 
-void MainWindow::onNetworkError() {
+void MainWindow::onClientNetworkError() {
+    LOG_ERROR("Client network error occurred");
     stopRingtone();
+
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->clearIncomingCalls();
 
@@ -506,104 +685,34 @@ void MainWindow::onNetworkError() {
     }
 
     m_authorizationWidget->resetBlur();
-    m_authorizationWidget->showNetworkErrorNotification();
+    m_authorizationWidget->setAuthorizationDisabled(true);
+
+    if (!updater::isAwaitingServerResponse())
+        m_authorizationWidget->showNetworkErrorNotification();
+}
+
+void MainWindow::onUpdaterNetworkError() {
+    LOG_ERROR("Updater network error occurred");
+    m_authorizationWidget->hideUpdateAvailableNotification();
+    m_mainMenuWidget->hideUpdateAvailableNotification();
+
+    m_dialogsController->hideUpdatingDialog();
+    if (!calls::isAuthorized() || updater::isAwaitingServerResponse()) {
+        m_dialogsController->showConnectionErrorDialog();
+    }
+
+    updater::disconnect();
 }
 
 void MainWindow::onConnectionRestored() {
+    LOG_INFO("Connection restored to server");
     m_authorizationWidget->resetBlur();
+    m_authorizationWidget->setAuthorizationDisabled(false);
     m_authorizationWidget->showConnectionRestoredNotification(1500);
-}
 
-void MainWindow::showInitializationErrorDialog()
-{
-    QFont font("Outfit", 16, QFont::Normal);
-
-    OverlayWidget* overlay = new OverlayWidget(this);
-    overlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
-    overlay->setAttribute(Qt::WA_TranslucentBackground);
-    overlay->showMaximized();
-
-    QDialog* dialog = new QDialog(overlay);
-    dialog->setWindowTitle("Initialization problem");
-    dialog->setMinimumWidth(500);
-    dialog->setMinimumHeight(270);
-    dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
-    dialog->setAttribute(Qt::WA_TranslucentBackground);
-
-    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-    shadowEffect->setBlurRadius(20);
-    shadowEffect->setXOffset(0);
-    shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 120));
-
-    QWidget* mainWidget = new QWidget(dialog);
-    mainWidget->setGraphicsEffect(shadowEffect);
-    mainWidget->setObjectName("mainWidget");
-
-    QString mainWidgetStyle =
-        "QWidget#mainWidget {"
-        "   background-color: rgb(229, 228, 226);"
-        "   border-radius: 12px;"
-        "}";
-    mainWidget->setStyleSheet(mainWidgetStyle);
-
-    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
-    mainLayout->addWidget(mainWidget);
-
-    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-    contentLayout->setContentsMargins(16, 16, 16, 16);
-    contentLayout->setSpacing(20);
-
-    QLabel* iconLabel = new QLabel();
-    iconLabel->setPixmap(QIcon(":/resources/error.png").pixmap(64, 64));
-    iconLabel->setAlignment(Qt::AlignCenter);
-
-    QLabel* messageLabel = new QLabel("Initialization Error!\nPlease close the existing instance and restart the app.");
-    messageLabel->setAlignment(Qt::AlignCenter);
-    messageLabel->setWordWrap(true);
-    messageLabel->setStyleSheet("color: black; font-size: 14px; font-family: 'Outfit';");
-    messageLabel->setFont(font);
-
-    QPushButton* closeButton = new QPushButton("Close Application");
-    closeButton->setMinimumHeight(40);
-    closeButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: rgb(220, 220, 220);"
-        "   color: black;"
-        "   border-radius: 6px;"
-        "   padding: 8px;"
-        "   font-family: 'Outfit';"
-        "   font-size: 14px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgb(200, 200, 200);"
-        "}"
-    );
-    closeButton->setFont(font);
-
-    contentLayout->addWidget(iconLabel);
-    contentLayout->addWidget(messageLabel);
-    contentLayout->addWidget(closeButton);
-
-    connect(closeButton, &QPushButton::clicked, this, []() {
-        calls::stop();
-        QApplication::quit();
-        });
-
-    QObject::connect(dialog, &QDialog::finished, overlay, &QWidget::deleteLater);
-
-    QScreen* targetScreen = this->screen();
-    if (!targetScreen) {
-        targetScreen = QGuiApplication::primaryScreen();
+    if (!updater::isConnected()) {
+        LOG_INFO("Reconnecting updater");
+        updater::connect(updater::getServerHost(), updater::getServerPort());
+        updater::checkUpdates(parseVersionFromConfig());
     }
-
-    QRect screenGeometry = targetScreen->availableGeometry();
-    dialog->adjustSize();
-    QSize dialogSize = dialog->size();
-
-    int x = screenGeometry.center().x() - dialogSize.width() / 2;
-    int y = screenGeometry.center().y() - dialogSize.height() / 2;
-    dialog->move(x, y);
-
-    dialog->exec();
 }

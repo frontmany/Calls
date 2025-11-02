@@ -47,15 +47,14 @@ QString StyleIncomingCallWidget::timerStyle() {
         .arg(QString::fromStdString(std::to_string(scale(16))));  // font-size
 }
 
-QString StyleIncomingCallWidget::avatarStyle(const QColor& color) {
+QString StyleIncomingCallWidget::avatarStyle() {
     return QString("QLabel {"
-        "   background-color: %1;"
-        "   border-radius: %2px;"
+        "   background-color: black;"
+        "   border-radius: %1px;"
         "   color: white;"
-        "   font-size: %3px;"
+        "   font-size: %2px;"
         "   font-weight: bold;"
-        "}").arg(color.name())
-        .arg(QString::fromStdString(std::to_string(scale(25))))  // border-radius
+        "}").arg(QString::fromStdString(std::to_string(scale(25))))  // border-radius
         .arg(QString::fromStdString(std::to_string(scale(18)))); // font-size
 }
 IncomingCallWidget::IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime)
@@ -89,8 +88,7 @@ void IncomingCallWidget::setupUI() {
     m_avatarLabel->setFixedSize(scale(50), scale(50));
     m_avatarLabel->setAlignment(Qt::AlignCenter);
 
-    QColor avatarColor = generateRandomColor(m_friendNickname);
-    m_avatarLabel->setStyleSheet(StyleIncomingCallWidget::avatarStyle(avatarColor));
+    m_avatarLabel->setStyleSheet(StyleIncomingCallWidget::avatarStyle());
 
     // Generate avatar letter
     QString firstLetter = m_friendNickname.isEmpty() ? "G" : m_friendNickname.left(1).toUpper();
@@ -177,11 +175,6 @@ void IncomingCallWidget::setupUI() {
 
     // Set widget style
     setStyleSheet(StyleIncomingCallWidget::widgetStyle());
-}
-
-QColor IncomingCallWidget::generateRandomColor(const QString& seed) {
-    int hash = qHash(seed);
-    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
 }
 
 const QString& IncomingCallWidget::getFriendNickname() const {
