@@ -224,10 +224,12 @@ void CallsClient::onEndCall(const nlohmann::json& jsonObject) {
     if (senderNicknameHash != m_call->getFriendNicknameHash()) return;
 
     LOG_INFO("Call ended by remote user");
-    m_audioEngine->stopStream();
     m_state = State::FREE;
     m_call = std::nullopt;
-    m_callbacksQueue.push([this]() {m_callbackHandler->onRemoteUserEndedCall(); });
+    m_callbacksQueue.push([this]() {
+        m_audioEngine->stopStream();
+        m_callbackHandler->onRemoteUserEndedCall();
+    });
 }
 
 void CallsClient::onIncomingCall(const nlohmann::json& jsonObject) {

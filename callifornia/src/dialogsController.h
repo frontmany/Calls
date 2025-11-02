@@ -21,6 +21,7 @@ public:
 
 	void updateLoadingProgress(double progress);
 	void swapUpdatingToRestarting();
+	void swapUpdatingToUpToDate();
 
 signals:
 	void exitButtonClicked();

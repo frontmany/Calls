@@ -190,8 +190,8 @@ QString StyleCallWidget::volumeSliderStyle() {
     )")
         .arg(QString::fromStdString(std::to_string(scale(8))))
         .arg(QString::fromStdString(std::to_string(scale(4))))
-        .arg(QString::fromStdString(std::to_string(scale(16))))
-        .arg(QString::fromStdString(std::to_string(scale(16))))
+        .arg(QString::fromStdString(std::to_string(scale(17))))
+        .arg(QString::fromStdString(std::to_string(scale(17))))
         .arg(QString::fromStdString(std::to_string(scale(8))))
         .arg(QString::fromStdString(std::to_string(scale(4))));
 }

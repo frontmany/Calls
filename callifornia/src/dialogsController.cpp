@@ -274,6 +274,24 @@ void DialogsController::swapUpdatingToRestarting()
 	}
 }
 
+void DialogsController::swapUpdatingToUpToDate()
+{
+	if (m_updatingGifLabel && m_updatingGifLabel->movie())
+	{
+		m_updatingGifLabel->movie()->stop();
+	}
+
+	if (m_updatingLabel)
+	{
+		m_updatingLabel->setText("Already up to date");
+	}
+
+	if (m_updatingProgressLabel)
+	{
+		m_updatingProgressLabel->setVisible(false);
+	}
+}
+
 QDialog* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 {
 	QFont font("Outfit", 14, QFont::Normal);

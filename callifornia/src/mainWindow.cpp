@@ -235,15 +235,18 @@ void MainWindow::onUpdateLoaded(bool emptyUpdate)
         qApp->processEvents();
 
         QTimer::singleShot(1500, [this]() {
-                launchUpdateApplier();
+            launchUpdateApplier();
         });
     }
     else {
-        m_dialogsController->hideUpdatingDialog();
+        m_dialogsController->swapUpdatingToUpToDate();
         updater::disconnect();
-        
-        m_authorizationWidget->hideUpdatesCheckingNotification();
-        m_authorizationWidget->setAuthorizationDisabled(false);
+
+        QTimer::singleShot(1500, [this]() {
+            m_dialogsController->hideUpdatingDialog();
+            m_authorizationWidget->hideUpdatesCheckingNotification();
+            m_authorizationWidget->setAuthorizationDisabled(false);
+        });
     }
 }
 

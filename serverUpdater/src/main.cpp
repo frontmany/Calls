@@ -225,8 +225,9 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet)
         std::unordered_map<std::filesystem::path, std::string> newVersionFiles;
 
         for (const auto& entry : std::filesystem::recursive_directory_iterator(osSpecificPath)) {
-            if (entry.is_regular_file() && entry.path().filename() != "version.json") {
+            if (entry.is_regular_file()) {
                 std::filesystem::path relativePath = std::filesystem::relative(entry.path(), osSpecificPath);
+                
                 std::string fileHash = calculateFileHash(entry.path());
                 newVersionFiles[relativePath] = fileHash;
             }
