@@ -3,17 +3,16 @@
 #include <string>
 #include <functional>
 
-#include "updatesCheckResult.h"
 #include "callsClient.h"
 #include "jsonTypes.h"
 
 namespace calls {
-    inline void init(
+    inline bool init(
         const std::string& host,
         const std::string& port,
         std::unique_ptr<CallbacksInterface>&& handler)
     {
-        CallsClient::get().init(
+        return CallsClient::get().init(
             host,
             port,
             std::move(handler));
@@ -89,7 +88,7 @@ namespace calls {
 
     inline bool isSpeakerMuted()
     {
-        return CallsClient::get().isMicrophoneMuted();
+        return CallsClient::get().isSpeakerMuted();
     }
 
     inline void setInputVolume(int volume)

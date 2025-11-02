@@ -5,100 +5,112 @@
 
 namespace py = pybind11;
 
-class PyHandler : public calls::Handler, public py::trampoline_self_life_support {
+class PyCallbacksInterface : public calls::CallbacksInterface, public py::trampoline_self_life_support
+{
 public:
-    using calls::Handler::Handler;
+    using calls::CallbacksInterface::CallbacksInterface;
 
-    void onAuthorizationResult(calls::ErrorCode ec) override {
+    void onAuthorizationResult(calls::ErrorCode ec) override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onAuthorizationResult,
             ec
         );
     }
 
-    void onStartCallingResult(calls::ErrorCode ec) override {
+    void onStartCallingResult(calls::ErrorCode ec) override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onStartCallingResult,
             ec
         );
     }
 
-    void onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname) override {
+    void onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname) override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onAcceptCallResult,
             ec,
             nickname
         );
     }
 
-    void onMaximumCallingTimeReached() override {
+    void onMaximumCallingTimeReached() override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onMaximumCallingTimeReached
         );
     }
 
-    void onCallingAccepted() override {
+    void onCallingAccepted() override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onCallingAccepted
         );
     }
 
-    void onCallingDeclined() override {
+    void onCallingDeclined() override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onCallingDeclined
         );
     }
 
-    void onIncomingCall(const std::string& friendNickname) override {
+    void onIncomingCall(const std::string& friendNickname) override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onIncomingCall,
             friendNickname
         );
     }
 
-    void onIncomingCallExpired(const std::string& friendNickname) override {
+    void onIncomingCallExpired(const std::string& friendNickname) override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onIncomingCallExpired,
             friendNickname
         );
     }
 
-    void onNetworkError() override {
+    void onNetworkError() override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onNetworkError
         );
     }
 
-    void onConnectionRestored() override {
+    void onConnectionRestored() override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onConnectionRestored
         );
     }
 
-    void onRemoteUserEndedCall() override {
+    void onRemoteUserEndedCall() override
+    {
         PYBIND11_OVERRIDE_PURE(
             void,
-            calls::Handler,
+            calls::CallbacksInterface,
             onRemoteUserEndedCall
         );
     }
@@ -106,7 +118,8 @@ public:
 
 bool init_wrapper(const std::string& host,
     const std::string& port,
-    std::unique_ptr<calls::Handler> handler) {
+    std::unique_ptr<calls::CallbacksInterface> handler)
+{
     return calls::init(host, port, std::move(handler));
 }
 
@@ -120,19 +133,19 @@ PYBIND11_MODULE(callsClientPy, m) {
         .value("UNEXISTING_USER", calls::ErrorCode::UNEXISTING_USER)
         .export_values();
 
-    py::class_<calls::Handler, PyHandler, py::smart_holder>(m, "Handler")
+    py::class_<calls::CallbacksInterface, PyCallbacksInterface, py::smart_holder>(m, "Handler")
         .def(py::init<>())
-        .def("onAuthorizationResult", &calls::Handler::onAuthorizationResult)
-        .def("onStartCallingResult", &calls::Handler::onStartCallingResult)
-        .def("onAcceptCallResult", &calls::Handler::onAcceptCallResult)
-        .def("onMaximumCallingTimeReached", &calls::Handler::onMaximumCallingTimeReached)
-        .def("onCallingAccepted", &calls::Handler::onCallingAccepted)
-        .def("onCallingDeclined", &calls::Handler::onCallingDeclined)
-        .def("onIncomingCall", &calls::Handler::onIncomingCall)
-        .def("onIncomingCallExpired", &calls::Handler::onIncomingCallExpired)
-        .def("onNetworkError", &calls::Handler::onNetworkError)
-        .def("onConnectionRestored", &calls::Handler::onConnectionRestored)
-        .def("onRemoteUserEndedCall", &calls::Handler::onRemoteUserEndedCall);
+        .def("onAuthorizationResult", &calls::CallbacksInterface::onAuthorizationResult)
+        .def("onStartCallingResult", &calls::CallbacksInterface::onStartCallingResult)
+        .def("onAcceptCallResult", &calls::CallbacksInterface::onAcceptCallResult)
+        .def("onMaximumCallingTimeReached", &calls::CallbacksInterface::onMaximumCallingTimeReached)
+        .def("onCallingAccepted", &calls::CallbacksInterface::onCallingAccepted)
+        .def("onCallingDeclined", &calls::CallbacksInterface::onCallingDeclined)
+        .def("onIncomingCall", &calls::CallbacksInterface::onIncomingCall)
+        .def("onIncomingCallExpired", &calls::CallbacksInterface::onIncomingCallExpired)
+        .def("onNetworkError", &calls::CallbacksInterface::onNetworkError)
+        .def("onConnectionRestored", &calls::CallbacksInterface::onConnectionRestored)
+        .def("onRemoteUserEndedCall", &calls::CallbacksInterface::onRemoteUserEndedCall);
 
     m.def("init", &init_wrapper,
         "Initialize calls client",
@@ -161,6 +174,7 @@ PYBIND11_MODULE(callsClientPy, m) {
     m.def("stop", &calls::stop, "Stop client");
     m.def("is_running", &calls::isRunning, "Check if client is running");
     m.def("is_authorized", &calls::isAuthorized, "Check if authorized");
+    m.def("is_network_error", &calls::isNetworkError, "Check if network error occurred");
     m.def("is_calling", &calls::isCalling, "Check if calling");
     m.def("is_busy", &calls::isBusy, "Check if busy");
     m.def("get_nickname_whom_calling", &calls::getNicknameWhomCalling, "Get nickname of person being called");

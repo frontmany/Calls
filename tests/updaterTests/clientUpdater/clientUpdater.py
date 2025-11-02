@@ -2,102 +2,102 @@ import sys
 sys.path.append('C:/prj/Callifornia/build/clientUpdaterPy/Debug')
 import clientUpdaterPy
 
+
+class UpdateCallbacksHandler(clientUpdaterPy.CallbacksInterface):
+    def __init__(self, manager):
+        super().__init__()
+        self.manager = manager
+
+    def onUpdatesCheckResult(self, result):
+        """Called when server responds to update check request"""
+        print(f"Received update check result: {result}")
+        
+        if result == clientUpdaterPy.UpdatesCheckResult.UPDATE_NOT_NEEDED:
+            print("✅ Your version is up to date!")
+            
+        elif result == clientUpdaterPy.UpdatesCheckResult.REQUIRED_UPDATE:
+            print("🔴 MANDATORY update required!")
+            print("Starting automatic update...")
+            self.manager.start_update()
+            
+        elif result == clientUpdaterPy.UpdatesCheckResult.POSSIBLE_UPDATE:
+            print("🟡 Optional update available")
+            if self.manager.ask_user_for_update():
+                self.manager.start_update()
+
+    def onLoadingProgress(self, progress):
+        """Called to report loading progress"""
+        print(f"📥 Loading progress: {progress * 100:.1f}%")
+
+    def onUpdateLoaded(self, emptyUpdate):
+        """Called when update is fully loaded"""
+        if emptyUpdate:
+            print("✅ Update loaded (no files changed)")
+        else:
+            print("✅ Update successfully loaded!")
+            print("Now you can install it or restart the application")
+            self.manager.install_update()
+
+    def onError(self):
+        """Called on ANY error during update process"""
+        print("❌ Error occurred during update!")
+        print("Possible causes:")
+        print("- No connection to server")
+        print("- File download error")
+        print("- Corrupted data")
+        self.manager.show_error_message()
+
+
 class UpdateManager:
     def __init__(self):
-        self.client = clientUpdaterPy.ClientUpdater(
-            self.on_check_result,    # Вызывается после checkUpdates()
-            self.on_update_loaded,   # Вызывается когда обновление ЗАГРУЖЕНО
-            self.on_error           # Вызывается при любой ошибке
-        )
         self.current_version = "1.0.0"
-    
-    def on_check_result(self, result):
-        """Вызывается когда сервер ответил на запрос проверки обновлений"""
-        print(f"Получен результат проверки: {result}")
-        
-        if result == clientUpdaterPy.CheckResult.UPDATE_NOT_NEEDED:
-            print("✅ Ваша версия актуальна!")
-            
-        elif result == clientUpdaterPy.CheckResult.REQUIRED_UPDATE:
-            print("🔴 Требуется ОБЯЗАТЕЛЬНОЕ обновление!")
-            print("Запускаем автоматическое обновление...")
-            self.start_update()
-            
-        elif result == clientUpdaterPy.CheckResult.POSSIBLE_UPDATE:
-            print("🟡 Доступно опциональное обновление")
-            # Здесь можно спросить пользователя
-            if self.ask_user_for_update():
-                self.start_update()
-            else:
-                self.decline_update()
-    
-    def on_update_loaded(self):
-        """Вызывается когда обновление полностью ЗАГРУЖЕНО на клиент"""
-        print("✅ Обновление успешно загружено!")
-        print("Теперь можно установить его или перезапустить приложение")
-        # Здесь можно, например, запустить установщик
-        self.install_update()
-    
-    def on_error(self):
-        """Вызывается при ЛЮБОЙ ошибке в процессе обновления"""
-        print("❌ Произошла ошибка при обновлении!")
-        print("Возможные причины:")
-        print("- Нет соединения с сервером")
-        print("- Ошибка загрузки файлов")
-        print("- Поврежденные данные")
-        # Здесь можно показать сообщение пользователю
-        self.show_error_message()
-    
-    def ask_user_for_update(self):
-        """Спросить пользователя об установке обновления"""
-        # В реальном приложении здесь будет GUI диалог
-        response = input("Установить обновление? (y/n): ")
-        return response.lower() == 'y'
-    
-    def start_update(self):
-        """Начать процесс загрузки обновления"""
-        print("📥 Начинаем загрузку обновления...")
-        os_type = clientUpdaterPy.OperationSystemType.WINDOWS
-        self.client.startUpdate(os_type)
-        # После этого будет вызван on_update_loaded при успехе
-        # или on_error при проблемах
-    
-    def decline_update(self):
-        """Отклонить обновление"""
-        self.client.declineUpdate()
-        print("Обновление отклонено")
-    
-    def install_update(self):
-        """Установить загруженное обновление"""
-        print("🔄 Устанавливаем обновление...")
-        # Здесь логика установки
-        # Например, запуск установщика, распаковка файлов и т.д.
-    
-    def show_error_message(self):
-        """Показать сообщение об ошибке"""
-        # В реальном приложении здесь будет GUI сообщение
-        print("Пожалуйста, проверьте соединение и попробуйте снова")
+        self.callbacks_handler = UpdateCallbacksHandler(self)
+        clientUpdaterPy.init(self.callbacks_handler)
 
-# Пример полного workflow
+    def ask_user_for_update(self):
+        """Ask user about installing update"""
+        response = input("Install update? (y/n): ")
+        return response.lower() == 'y'
+
+    def start_update(self):
+        """Start update download process"""
+        print("📥 Starting update download...")
+        os_type = clientUpdaterPy.OperationSystemType.WINDOWS
+        clientUpdaterPy.startUpdate(os_type)
+
+    def install_update(self):
+        """Install downloaded update"""
+        print("🔄 Installing update...")
+
+    def show_error_message(self):
+        """Show error message"""
+        print("Please check your connection and try again")
+
+
 def main():
     manager = UpdateManager()
     
     try:
-        # 1. Подключаемся к серверу
-        manager.client.connect("192.168.1.44", "8081")
+        # 1. Connect to server
+        if clientUpdaterPy.connect("192.168.1.44", "8081"):
+            print("✅ Connected to update server")
+        else:
+            print("❌ Failed to connect to update server")
+            return
         
-        # 2. Проверяем обновления
-        print("🔍 Проверяем наличие обновлений...")
-        #manager.client.checkUpdates(manager.current_version)
-        # → Будет вызван on_check_result с результатом
+        # 2. Check for updates
+        print("🔍 Checking for updates...")
+        clientUpdaterPy.checkUpdates(manager.current_version)
         
-        # Ждем обработки асинхронных событий
-        input("Нажмите Enter для завершения...")
+        # Wait for async events processing
+        input("Press Enter to exit...")
         
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Error: {e}")
     finally:
-        manager.client.disconnect()
+        clientUpdaterPy.disconnect()
+        print("Disconnected from server")
+
 
 if __name__ == "__main__":
     main()
