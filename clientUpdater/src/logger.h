@@ -46,3 +46,4 @@ namespace updater {
 #define LOG_ERROR(...) if (auto logger = getLogger()) { logger->error(__VA_ARGS__); }
 }
 
+

@@ -67,18 +67,19 @@ void DialogsController::showUpdatingDialog()
 
 void DialogsController::hideUpdatingDialog()
 {
+	if (m_updatingDialog)
+	{
+		m_updatingDialog->disconnect();
+		m_updatingDialog->close();
+		m_updatingDialog->deleteLater();
+		m_updatingDialog = nullptr;
+	}
+
 	if (m_updatingOverlay)
 	{
 		m_updatingOverlay->close();
 		m_updatingOverlay->deleteLater();
 		m_updatingOverlay = nullptr;
-	}
-
-	if (m_updatingDialog)
-	{
-		m_updatingDialog->close();
-		m_updatingDialog->deleteLater();
-		m_updatingDialog = nullptr;
 	}
 
 	m_updatingProgressLabel = nullptr;
@@ -126,18 +127,19 @@ void DialogsController::showConnectionErrorDialog()
 
 void DialogsController::hideUpdatingErrorDialog()
 {
+	if (m_connectionErrorDialog)
+	{
+		m_connectionErrorDialog->disconnect();
+		m_connectionErrorDialog->close();
+		m_connectionErrorDialog->deleteLater();
+		m_connectionErrorDialog = nullptr;
+	}
+
 	if (m_connectionErrorOverlay)
 	{
 		m_connectionErrorOverlay->close();
 		m_connectionErrorOverlay->deleteLater();
 		m_connectionErrorOverlay = nullptr;
-	}
-
-	if (m_connectionErrorDialog)
-	{
-		m_connectionErrorDialog->close();
-		m_connectionErrorDialog->deleteLater();
-		m_connectionErrorDialog = nullptr;
 	}
 }
 

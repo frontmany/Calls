@@ -20,9 +20,9 @@ inline void disconnect()
     ClientUpdater::get().disconnect();
 }
 
-inline bool checkUpdates(const std::string& currentVersionNumber)
+inline void checkUpdates(const std::string& currentVersionNumber)
 {
-    return ClientUpdater::get().checkUpdates(currentVersionNumber);
+    ClientUpdater::get().checkUpdates(currentVersionNumber);
 }
 
 inline bool startUpdate(OperationSystemType type)

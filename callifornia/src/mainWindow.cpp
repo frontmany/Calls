@@ -240,9 +240,11 @@ void MainWindow::onUpdateLoaded(bool emptyUpdate)
     }
     else {
         m_dialogsController->hideUpdatingDialog();
+        updater::disconnect();
+        
+        m_authorizationWidget->hideUpdatesCheckingNotification();
+        m_authorizationWidget->setAuthorizationDisabled(false);
     }
-
-    
 }
 
 void MainWindow::launchUpdateApplier() {

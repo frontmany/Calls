@@ -196,6 +196,7 @@ void NetworkController::readMetadataBody() {
 				parseMetadata();
 
 				if (m_expectedFiles.empty()) {
+					moveConfigFromTemp();
 					m_onAllFilesLoaded(true);
 					return;
 				}
@@ -413,4 +414,28 @@ void NetworkController::deleteTempDirectory() {
 	std::filesystem::remove_all(tempDirectory);
 	std::filesystem::remove(tempDirectory);
 }
+
+void NetworkController::moveConfigFromTemp() {
+	const std::filesystem::path tempDirectory = "update_temp";
+	const std::filesystem::path tempConfigPath = tempDirectory / "config.json";
+	const std::filesystem::path currentConfigPath = "config.json";
+
+	if (std::filesystem::exists(tempConfigPath)) {
+		try {
+			if (std::filesystem::exists(currentConfigPath)) {
+				std::filesystem::remove(currentConfigPath);
+			}
+			std::filesystem::rename(tempConfigPath, currentConfigPath);
+
+			if (std::filesystem::is_empty(tempDirectory)) {
+				std::filesystem::remove(tempDirectory);
+			}
+		}
+		catch (const std::exception& e) {
+			m_onError();
+			return;
+		}
+	}
+}
+
 }

@@ -67,26 +67,27 @@ void ClientUpdater::processQueue() {
 	}
 }
 
-bool ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
-	auto startTime = std::chrono::steady_clock::now();
-	auto timeout = std::chrono::seconds(5);
+void ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
+	m_checkUpdatesFuture = std::async(std::launch::async, [this, currentVersionNumber]() {
+		auto startTime = std::chrono::steady_clock::now();
+		auto timeout = std::chrono::seconds(5);
 
-	while (std::chrono::steady_clock::now() - startTime < timeout) {
-		if (m_state == State::AWAITING_UPDATES_CHECK) {
-			break;
+		while (std::chrono::steady_clock::now() - startTime < timeout) {
+			if (m_state == State::AWAITING_UPDATES_CHECK) {
+				break;
+			}
 		}
-	}
 
-	if (m_state != State::AWAITING_UPDATES_CHECK) return false;
+		if (m_state != State::AWAITING_UPDATES_CHECK) return;
 
-	nlohmann::json jsonObject;
-	jsonObject["version"] = currentVersionNumber;
-	Packet packet(static_cast<int>(PacketType::CHECK_UPDATES), jsonObject.dump());
+		nlohmann::json jsonObject;
+		jsonObject["version"] = currentVersionNumber;
+		Packet packet(static_cast<int>(PacketType::CHECK_UPDATES), jsonObject.dump());
 
-	m_networkController.sendPacket(packet);
+		m_networkController.sendPacket(packet);
 
-	m_state = State::AWAITING_SERVER_RESPONSE;
-	return true;
+		m_state = State::AWAITING_SERVER_RESPONSE;
+	});
 }
 
 bool ClientUpdater::startUpdate(OperationSystemType type) {
@@ -141,12 +142,21 @@ const::std::string& ClientUpdater::getServerPort() {
 	return m_serverPort;
 }
 
+std::string ClientUpdater::normalizePath(const std::filesystem::path& path) {
+	std::string normalized = path.generic_string();
+
+	if (normalized.find("./") == 0) {
+		normalized = normalized.substr(2);
+	}
+
+	return normalized;
+}
+
 std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFilePathsWithHashes() {
 	std::vector<std::pair<std::filesystem::path, std::string>> result;
 
 	try {
 		std::filesystem::path currentPath = std::filesystem::current_path();
-		std::filesystem::path tempDir = "update_temp";
 
 		for (const auto& entry : std::filesystem::recursive_directory_iterator(currentPath)) {
 			if (entry.is_regular_file()) {
@@ -156,12 +166,15 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 					continue;
 				}
 
-				if (relativePath.string().find("update_temp") == 0 || relativePath.string().find(".vs") == 0) {
+				if (relativePath.string().find("update_temp") == 0 || relativePath.string().find("logs") == 0) {
 					continue;
 				}
 
 				std::string hash = calculateFileHash(entry.path());
-				result.emplace_back(relativePath, std::move(hash));
+				std::string normalizedPathStr = normalizePath(relativePath);
+				std::filesystem::path normalizedPath(normalizedPathStr);
+
+				result.emplace_back(normalizedPath, std::move(hash));
 			}
 		}
 	}

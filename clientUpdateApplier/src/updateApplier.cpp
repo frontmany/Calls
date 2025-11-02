@@ -78,6 +78,11 @@ void copyDirectory(const QDir& source, const QDir& destination) {
     for (const auto& dir : source.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
         QDir sourceSubDir(source.filePath(dir));
         QDir destSubDir(destination.filePath(dir));
+
+        if (!destSubDir.exists()) {
+            QDir().mkpath(destSubDir.path());
+        }
+
         copyDirectory(sourceSubDir, destSubDir);
     }
 }

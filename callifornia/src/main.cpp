@@ -16,12 +16,8 @@ int main(int argc, char* argv[])
 
     QApplication app(argc, argv);
     MainWindow* mainWindow = new MainWindow(nullptr);
-
     mainWindow->init();
-
-    QTimer::singleShot(1000, [mainWindow]() {
-        mainWindow->connectCallifornia("192.168.1.44", "8081");
-    });
+    mainWindow->connectCallifornia("92.255.165.77", "8081");
 
     LOG_INFO("Entering Qt event loop");
     return app.exec();

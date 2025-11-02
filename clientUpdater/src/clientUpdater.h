@@ -8,6 +8,7 @@
 #include <atomic>
 #include <iomanip>
 #include <filesystem>
+#include <future>
 
 #include "utility.h"
 #include "callbacksInterface.h"
@@ -30,7 +31,7 @@ public:
 	void init(std::unique_ptr<CallbacksInterface>&& callbacksHandler);
 	bool connect(const std::string& host, const std::string& port);
 	void disconnect();
-	bool checkUpdates(const std::string& currentVersionNumber);
+	void checkUpdates(const std::string& currentVersionNumber);
 	bool startUpdate(OperationSystemType type);
 	bool isConnected();
 	bool isAwaitingServerResponse();
@@ -43,6 +44,7 @@ private:
 	ClientUpdater();
 	~ClientUpdater();
 	void processQueue();
+	std::string normalizePath(const std::filesystem::path& path);
 	std::vector<std::pair<std::filesystem::path, std::string>> getFilePathsWithHashes();
 
 private:
@@ -52,6 +54,7 @@ private:
 	std::atomic_bool m_running = false;
 	std::atomic_bool m_processingProgress = false;
 	std::atomic<State> m_state = State::DISCONNECTED;
+	std::future<void> m_checkUpdatesFuture;
 
 	NetworkController m_networkController;
 	std::unique_ptr<CallbacksInterface> m_callbacksHandler;

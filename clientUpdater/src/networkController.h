@@ -52,6 +52,7 @@ private:
 	void finalizeReceiving();
 	void openFile();
 	void deleteTempDirectory();
+	void moveConfigFromTemp();
 
 private:
 	static constexpr int c_chunkSize = 8192;
