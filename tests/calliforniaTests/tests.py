@@ -6,7 +6,7 @@ import inspect
 
 from test_runner_base import TestRunner
 
-sys.path.append('C:/prj/C++/Calls/build/clientPy/Release')
+sys.path.append('C:/prj/Callifornia/build/clientPy/Release')
 import callsClientPy
 
 

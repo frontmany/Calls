@@ -1,0 +1,285 @@
+[2025-11-03 02:13:46.895] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:13:46.896] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:13:46.896] [calls_client] [info] Starting calls client
+[2025-11-03 02:13:46.897] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:13:48.002] [calls_client] [info] User authorized successfully
+[2025-11-03 02:13:49.945] [calls_client] [debug] Ping successful
+[2025-11-03 02:13:51.477] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:13:51.477] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:13:57.167] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:13:57.168] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:13:57.168] [calls_client] [info] Starting calls client
+[2025-11-03 02:13:57.168] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:13:58.274] [calls_client] [info] User authorized successfully
+[2025-11-03 02:13:59.109] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:13:59.109] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:13:59.109] [calls_client] [info] Starting calls client
+[2025-11-03 02:13:59.110] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:00.218] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:00.234] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:00.432] [calls_client] [info] Incoming call from caller
+[2025-11-03 02:14:00.550] [calls_client] [info] Call accepted by responder
+[2025-11-03 02:14:03.271] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:03.619] [calls_client] [info] Call ended by remote user
+[2025-11-03 02:14:02.136] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:04.273] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:04.273] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:04.291] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:04.291] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:09.839] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:09.840] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:09.841] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:09.841] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:10.956] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:11.777] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:11.778] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:11.778] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:11.778] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:12.882] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:12.897] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:13.121] [calls_client] [info] Incoming call from caller
+[2025-11-03 02:14:13.250] [calls_client] [info] Call accepted by responder
+[2025-11-03 02:14:15.948] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:16.292] [calls_client] [info] Call ended by remote user
+[2025-11-03 02:14:16.976] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:16.976] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:14.854] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:16.995] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:16.995] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:22.584] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:22.585] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:22.585] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:22.586] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:23.689] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:24.571] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:24.571] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:24.571] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:24.571] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:25.681] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:25.649] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:25.895] [calls_client] [info] Incoming call from caller
+[2025-11-03 02:14:27.627] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:29.669] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:28.710] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:29.732] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:29.732] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:29.669] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:35.153] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:35.154] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:35.155] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:35.156] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:36.267] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:38.218] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:39.752] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:39.752] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:45.056] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:45.057] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:45.058] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:46.064] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:46.065] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:46.067] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:45.058] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:46.173] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:47.056] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:14:47.057] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:14:47.058] [calls_client] [info] Starting calls client
+[2025-11-03 02:14:46.068] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:47.178] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:47.405] [calls_client] [info] Incoming call from user_a
+[2025-11-03 02:14:47.530] [calls_client] [info] Call accepted by user_b
+[2025-11-03 02:14:47.058] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:14:48.172] [calls_client] [info] User authorized successfully
+[2025-11-03 02:14:49.132] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:51.402] [calls_client] [info] Incoming call from user_c
+[2025-11-03 02:14:48.134] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:51.192] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:51.495] [calls_client] [info] Call ended by remote user
+[2025-11-03 02:14:50.138] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:51.526] [calls_client] [info] Call accepted by user_a
+[2025-11-03 02:14:52.189] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:55.231] [calls_client] [warning] Ping failed - connection lost
+[2025-11-03 02:14:54.214] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:56.253] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:14:56.253] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:14:53.197] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:56.253] [calls_client] [debug] Ping successful
+[2025-11-03 02:14:59.333] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:00.451] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:00.451] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:05.852] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:05.853] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:05.853] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:06.779] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:06.780] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:06.780] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:05.853] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:06.962] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:06.780] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:07.884] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:08.005] [calls_client] [info] Incoming call from user_c
+[2025-11-03 02:15:08.125] [calls_client] [info] Call accepted by user_b
+[2025-11-03 02:15:08.800] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:08.802] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:08.803] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:08.804] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:09.920] [calls_client] [warning] Authorization failed - nickname already taken
+[2025-11-03 02:15:08.919] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:11.191] [calls_client] [info] Call ended by remote user
+[2025-11-03 02:15:09.872] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:12.020] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:12.020] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:11.864] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:14.920] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:14.920] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:11.975] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:15.031] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:17.068] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:17.068] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:22.133] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:22.134] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:22.134] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:22.134] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:23.250] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:24.189] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:24.189] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:24.189] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:25.290] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:25.290] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:25.291] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:24.189] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:25.303] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:26.400] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:26.400] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:26.400] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:25.291] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:26.402] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:25.191] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:27.513] [calls_client] [info] Incoming call from caller_0
+[2025-11-03 02:15:27.249] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:27.632] [calls_client] [info] Call accepted by popular_user
+[2025-11-03 02:15:26.401] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:27.663] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:28.258] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:28.615] [calls_client] [info] Incoming call from caller_1
+[2025-11-03 02:15:29.880] [calls_client] [info] Incoming call from caller_2
+[2025-11-03 02:15:30.700] [calls_client] [info] Call ended by remote user
+[2025-11-03 02:15:30.302] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:31.418] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:31.418] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:28.344] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:31.375] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:32.390] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:32.390] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:29.468] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:32.533] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:33.549] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:33.549] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:31.315] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:34.357] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:37.413] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:40.480] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:43.551] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:44.063] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:44.063] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:49.494] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:49.495] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:49.495] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:49.496] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:50.603] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:50.953] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:50.954] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:50.954] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:50.954] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:52.068] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:52.457] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:52.457] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:52.458] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:52.458] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:53.566] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:53.955] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:15:53.955] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:15:53.955] [calls_client] [info] Starting calls client
+[2025-11-03 02:15:53.955] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:15:55.064] [calls_client] [info] User authorized successfully
+[2025-11-03 02:15:54.010] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:55.781] [calls_client] [info] Incoming call from user_b
+[2025-11-03 02:15:52.546] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:55.607] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:57.281] [calls_client] [info] Incoming call from user_d
+[2025-11-03 02:15:58.676] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:01.746] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:04.304] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:16:04.304] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:15:57.078] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:00.134] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:03.203] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:05.747] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:16:05.747] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:55.511] [calls_client] [debug] Ping successful
+[2025-11-03 02:15:58.580] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:01.635] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:04.699] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:07.237] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:16:07.237] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:15:57.014] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:00.070] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:03.139] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:06.191] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:08.731] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:16:08.731] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:16:14.044] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:16:14.045] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:16:14.045] [calls_client] [info] Starting calls client
+[2025-11-03 02:16:14.960] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:16:14.961] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:16:14.961] [calls_client] [info] Starting calls client
+[2025-11-03 02:16:14.045] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:16:15.148] [calls_client] [info] User authorized successfully
+[2025-11-03 02:16:14.961] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:16:16.071] [calls_client] [info] User authorized successfully
+[2025-11-03 02:16:16.289] [calls_client] [info] Incoming call from persistent_caller
+[2025-11-03 02:16:17.108] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:19.288] [calls_client] [info] Incoming call from persistent_caller
+[2025-11-03 02:16:20.171] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:22.287] [calls_client] [info] Incoming call from persistent_caller
+[2025-11-03 02:16:18.020] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:21.080] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:24.146] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:27.214] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:30.285] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:33.353] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:35.912] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:16:35.912] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:16:41.160] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:16:41.161] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:16:41.162] [calls_client] [info] Starting calls client
+[2025-11-03 02:16:42.140] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:16:42.140] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:16:42.141] [calls_client] [info] Starting calls client
+[2025-11-03 02:16:41.162] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:16:42.264] [calls_client] [info] User authorized successfully
+[2025-11-03 02:16:42.141] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:16:43.252] [calls_client] [info] User authorized successfully
+[2025-11-03 02:16:44.102] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-03 02:16:44.103] [calls_client] [info] Calls client initialized successfully
+[2025-11-03 02:16:44.103] [calls_client] [info] Starting calls client
+[2025-11-03 02:16:44.103] [calls_client] [debug] RSA keys generated
+[2025-11-03 02:16:45.214] [calls_client] [info] User authorized successfully
+[2025-11-03 02:16:45.199] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:45.434] [calls_client] [info] Incoming call from user_a
+[2025-11-03 02:16:44.224] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:45.575] [calls_client] [info] Incoming call from user_b
+[2025-11-03 02:16:45.918] [calls_client] [info] Call accepted by user_c
+[2025-11-03 02:16:47.161] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:49.212] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:16:49.212] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:16:47.285] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:50.346] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:53.410] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:53.764] [calls_client] [info] Call ended by remote user
+[2025-11-03 02:16:48.261] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:51.306] [calls_client] [debug] Ping successful
+[2025-11-03 02:16:54.461] [calls_client] [debug] Network controller stopped
+[2025-11-03 02:16:54.461] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:16:54.938] [calls_client] [warning] Received packet too small: 0 bytes (minimum: 4)
+[2025-11-03 02:16:54.938] [calls_client] [debug] Network controller stopped
