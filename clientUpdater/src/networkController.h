@@ -9,7 +9,7 @@
 #include <string>
 #include <thread>
 
-#include "updatescheckResult.h"
+#include "updatesCheckResult.h"
 #include "safeDeque.h"
 #include "packet.h"
 

@@ -3,7 +3,7 @@
 #include <QMetaObject>
 #include <QApplication>
 
-#include "mainwindow.h"
+#include "mainWindow.h"
 
 UpdaterCallbacksHandler::UpdaterCallbacksHandler(MainWindow* mainWindow) 
 	: m_mainWindow(mainWindow)
