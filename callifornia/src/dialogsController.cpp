@@ -10,6 +10,7 @@
 #include <QScreen>
 #include <QGuiApplication>
 #include <QFont>
+#include <QTimer>
 
 DialogsController::DialogsController(QWidget* parent)
 	: QObject(parent), m_parent(parent), m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
@@ -32,46 +33,38 @@ void DialogsController::showUpdatingDialog()
 	}
 
 	m_updatingOverlay = new OverlayWidget(m_parent);
-	m_updatingOverlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
 	m_updatingOverlay->setAttribute(Qt::WA_TranslucentBackground);
-	m_updatingOverlay->showMaximized();
+    m_updatingOverlay->show();
+    m_updatingOverlay->raise();
 
 	m_updatingDialog = createUpdatingDialog(m_updatingOverlay);
 
-	QObject::connect(m_updatingDialog, &QDialog::finished, m_updatingOverlay, &QWidget::deleteLater);
-	QObject::connect(m_updatingDialog, &QDialog::finished, this, [this]()
-	{
-		m_updatingDialog = nullptr;
-		m_updatingOverlay = nullptr;
-		m_updatingProgressLabel = nullptr;
-		m_updatingLabel = nullptr;
-		m_updatingGifLabel = nullptr;
-	});
-
-	QScreen* targetScreen = qobject_cast<QWidget*>(parent())->screen();
-	if (!targetScreen)
-	{
-		targetScreen = QGuiApplication::primaryScreen();
-	}
-
-	QRect screenGeometry = targetScreen->availableGeometry();
-	m_updatingDialog->adjustSize();
-	QSize dialogSize = m_updatingDialog->size();
-
-	int x = screenGeometry.center().x() - dialogSize.width() / 2;
-	int y = screenGeometry.center().y() - dialogSize.height() / 2;
-	m_updatingDialog->move(x, y);
-
-	m_updatingDialog->exec();
+    // Center inside overlay (not across the whole screen). Do it now and once after layout pass.
+    auto centerUpdating = [this]()
+    {
+        if (!m_updatingDialog || !m_updatingOverlay)
+            return;
+        m_updatingDialog->adjustSize();
+        QSize dialogSize = m_updatingDialog->size();
+        QRect overlayRect = m_updatingOverlay->rect();
+        int x = overlayRect.center().x() - dialogSize.width() / 2;
+        int y = overlayRect.center().y() - dialogSize.height() / 2;
+        m_updatingDialog->move(x, y);
+        m_updatingDialog->raise();
+    };
+    centerUpdating();
+    m_updatingDialog->show();
+    QTimer::singleShot(0, this, centerUpdating);
+    QObject::connect(m_updatingOverlay, &OverlayWidget::geometryChanged, this, centerUpdating);
 }
 
 void DialogsController::hideUpdatingDialog()
 {
 	if (m_updatingDialog)
 	{
-		m_updatingDialog->disconnect();
-		m_updatingDialog->close();
-		m_updatingDialog->deleteLater();
+        m_updatingDialog->disconnect();
+        m_updatingDialog->hide();
+        m_updatingDialog->deleteLater();
 		m_updatingDialog = nullptr;
 	}
 
@@ -95,43 +88,38 @@ void DialogsController::showConnectionErrorDialog()
 	}
 
 	m_connectionErrorOverlay = new OverlayWidget(m_parent);
-	m_connectionErrorOverlay->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
 	m_connectionErrorOverlay->setAttribute(Qt::WA_TranslucentBackground);
-	m_connectionErrorOverlay->showMaximized();
+    m_connectionErrorOverlay->show();
+    m_connectionErrorOverlay->raise();
 
 	m_connectionErrorDialog = createConnectionErrorDialog(m_connectionErrorOverlay);
 
-	QObject::connect(m_connectionErrorDialog, &QDialog::finished, m_connectionErrorOverlay, &QWidget::deleteLater);
-	QObject::connect(m_connectionErrorDialog, &QDialog::finished, this, [this]()
-	{
-		m_connectionErrorDialog = nullptr;
-		m_connectionErrorOverlay = nullptr;
-	});
-
-	QScreen* targetScreen = qobject_cast<QWidget*>(parent())->screen();
-	if (!targetScreen)
-	{
-		targetScreen = QGuiApplication::primaryScreen();
-	}
-
-	QRect screenGeometry = targetScreen->availableGeometry();
-	m_connectionErrorDialog->adjustSize();
-	QSize dialogSize = m_connectionErrorDialog->size();
-
-	int x = screenGeometry.center().x() - dialogSize.width() / 2;
-	int y = screenGeometry.center().y() - dialogSize.height() / 2;
-	m_connectionErrorDialog->move(x, y);
-
-	m_connectionErrorDialog->exec();
+    // Center inside overlay (not across the whole screen). Do it now and once after layout pass.
+    auto centerError = [this]()
+    {
+        if (!m_connectionErrorDialog || !m_connectionErrorOverlay)
+            return;
+        m_connectionErrorDialog->adjustSize();
+        QSize dialogSize = m_connectionErrorDialog->size();
+        QRect overlayRect = m_connectionErrorOverlay->rect();
+        int x = overlayRect.center().x() - dialogSize.width() / 2;
+        int y = overlayRect.center().y() - dialogSize.height() / 2;
+        m_connectionErrorDialog->move(x, y);
+        m_connectionErrorDialog->raise();
+    };
+    centerError();
+    m_connectionErrorDialog->show();
+    QTimer::singleShot(0, this, centerError);
+    QObject::connect(m_connectionErrorOverlay, &OverlayWidget::geometryChanged, this, centerError);
 }
 
 void DialogsController::hideUpdatingErrorDialog()
 {
 	if (m_connectionErrorDialog)
 	{
-		m_connectionErrorDialog->disconnect();
-		m_connectionErrorDialog->close();
-		m_connectionErrorDialog->deleteLater();
+        m_connectionErrorDialog->disconnect();
+        m_connectionErrorDialog->hide();
+        m_connectionErrorDialog->deleteLater();
 		m_connectionErrorDialog = nullptr;
 	}
 
@@ -152,16 +140,14 @@ void DialogsController::updateLoadingProgress(double progress)
 	}
 }
 
-QDialog* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
+QWidget* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
 {
 	QFont font("Outfit", 14, QFont::Normal);
 
-	QDialog* dialog = new QDialog(overlay);
-	dialog->setWindowTitle("Updating");
-	dialog->setMinimumWidth(300);
-	dialog->setMinimumHeight(250);
-	dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
-	dialog->setAttribute(Qt::WA_TranslucentBackground);
+    QWidget* dialog = new QWidget(overlay);
+    dialog->setMinimumWidth(300);
+    dialog->setMinimumHeight(250);
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
 
 	QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
 	shadowEffect->setBlurRadius(30);
@@ -169,7 +155,7 @@ QDialog* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
 	shadowEffect->setYOffset(0);
 	shadowEffect->setColor(QColor(0, 0, 0, 150));
 
-	QWidget* mainWidget = new QWidget(dialog);
+    QWidget* mainWidget = new QWidget(dialog);
 	mainWidget->setGraphicsEffect(shadowEffect);
 	mainWidget->setObjectName("mainWidget");
 
@@ -181,7 +167,7 @@ QDialog* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
 		"}";
 	mainWidget->setStyleSheet(mainWidgetStyle);
 
-	QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
 	mainLayout->addWidget(mainWidget);
 
 	QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
@@ -251,7 +237,7 @@ QDialog* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
 	contentLayout->addWidget(m_updatingLabel);
 	contentLayout->addLayout(buttonLayout);
 
-	connect(exitButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
+    connect(exitButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
 
 	return dialog;
 }
@@ -292,16 +278,14 @@ void DialogsController::swapUpdatingToUpToDate()
 	}
 }
 
-QDialog* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
+QWidget* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 {
 	QFont font("Outfit", 14, QFont::Normal);
 
-	QDialog* dialog = new QDialog(overlay);
-	dialog->setWindowTitle("Update Error");
-	dialog->setMinimumWidth(520);
-	dialog->setMinimumHeight(360);
-	dialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
-	dialog->setAttribute(Qt::WA_TranslucentBackground);
+    QWidget* dialog = new QWidget(overlay);
+    dialog->setMinimumWidth(520);
+    dialog->setMinimumHeight(360);
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
 
 	QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
 	shadowEffect->setBlurRadius(30);
@@ -309,7 +293,7 @@ QDialog* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 	shadowEffect->setYOffset(0);
 	shadowEffect->setColor(QColor(0, 0, 0, 150));
 
-	QWidget* mainWidget = new QWidget(dialog);
+    QWidget* mainWidget = new QWidget(dialog);
 	mainWidget->setGraphicsEffect(shadowEffect);
 	mainWidget->setObjectName("mainWidget");
 
@@ -321,7 +305,7 @@ QDialog* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 		"}";
 	mainWidget->setStyleSheet(mainWidgetStyle);
 
-	QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
 	mainLayout->addWidget(mainWidget);
 
 	QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
@@ -387,7 +371,7 @@ QDialog* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 	contentLayout->addWidget(messageLabel);
 	contentLayout->addLayout(buttonLayout);
 
-	connect(closeButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
+    connect(closeButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
 
 	return dialog;
 }

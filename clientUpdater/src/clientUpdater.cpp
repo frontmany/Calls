@@ -162,7 +162,13 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 			if (entry.is_regular_file()) {
 				std::filesystem::path relativePath = std::filesystem::relative(entry.path(), currentPath);
 
-				if (entry.path().filename() == "config.json" || entry.path().filename() == "config" || entry.path().filename() == "update_applier.exe" || entry.path().filename() == "update_applier") {
+				if (entry.path().filename() == "config.json" ||
+					entry.path().filename() == "config" ||
+					entry.path().filename() == "update_applier.exe" ||
+					entry.path().filename() == "update_applier" ||
+					entry.path().filename() == "callifornia.exe.manifest" ||
+					entry.path().filename() == "unins000.dat" ||
+					entry.path().filename() == "unins000.exe") {
 					continue;
 				}
 

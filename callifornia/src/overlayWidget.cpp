@@ -1,11 +1,12 @@
 #include "overlayWidget.h"
+#include <QResizeEvent>
 
 OverlayWidget::OverlayWidget(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
-    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
+    // Make this a true child overlay so it does not become a separate top-level window
 
     if (parent) {
         parent->installEventFilter(this);
@@ -16,8 +17,10 @@ OverlayWidget::OverlayWidget(QWidget* parent)
 bool OverlayWidget::eventFilter(QObject* obj, QEvent* event) {
     if (obj == parentWidget()) {
         if (event->type() == QEvent::Move ||
-            event->type() == QEvent::Resize) {
+            event->type() == QEvent::Resize ||
+            event->type() == QEvent::WindowStateChange) {
             updateGeometryToParent();
+            emit geometryChanged();
         }
     }
     return QWidget::eventFilter(obj, event);
@@ -30,14 +33,14 @@ void OverlayWidget::paintEvent(QPaintEvent*) {
 
 void OverlayWidget::updateGeometryToParent() {
     if (auto* parent = parentWidget()) {
-        QRect globalRect(parent->mapToGlobal(QPoint(0, 0)),
-            parent->size());
-
-        if (auto* screen = parent->screen()) {
-            globalRect = globalRect.intersected(screen->geometry());
-        }
-
-        setGeometry(globalRect);
-        raise();  
+        // Cover the parent area only (not the native title bar)
+        setGeometry(parent->rect());
+        raise();
+        emit geometryChanged();
     }
+}
+
+void OverlayWidget::resizeEvent(QResizeEvent* e) {
+    QWidget::resizeEvent(e);
+    emit geometryChanged();
 }
