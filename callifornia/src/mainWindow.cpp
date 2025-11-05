@@ -322,8 +322,12 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     m_stackedLayout->addWidget(m_callWidget);
 
-    m_authorizationWidget->showUpdatesCheckingNotification();
-    m_authorizationWidget->setAuthorizationDisabled(true);
+    QTimer::singleShot(2000, [this]() {
+        if (updater::isAwaitingServerResponse()) {
+            m_authorizationWidget->showUpdatesCheckingNotification();
+            m_authorizationWidget->setAuthorizationDisabled(true);
+        }
+    });
 
     switchToAuthorizationWidget();
 }

@@ -34,6 +34,7 @@ bool ClientUpdater::connect(const std::string& host, const std::string& port) {
 
 	if (m_state != State::DISCONNECTED || m_running) return false;
 
+	m_state = State::AWAITING_SERVER_RESPONSE;
 	m_networkController.connect(host, port);
 
 	m_running = true;
