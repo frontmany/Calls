@@ -142,7 +142,7 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
         return;
     }
     else if (type == PacketType::PING){
-        m_networkController->send(PacketType::PING_SUCCESS);
+        m_networkController->sendPacket(PacketType::PING_SUCCESS);
         return;
     }
     else if (type == PacketType::PING_SUCCESS) {
@@ -750,7 +750,7 @@ void CallsClient::onInputVoice(const unsigned char* data, int length) {
         size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
         std::vector<CryptoPP::byte> cipherData(cipherDataLength);
         crypto::AESEncrypt(m_call.value().getCallKey(), data, length, cipherData.data(), cipherDataLength);
-        m_networkController->send(std::move(cipherData), PacketType::VOICE);
+        m_networkController->sendVoice(std::move(cipherData), PacketType::VOICE);
     }
 }
 
@@ -818,7 +818,7 @@ void CallsClient::sendLogoutPacket(bool createTask) {
         return;
     }
 
-    m_networkController->send(std::move(packet), PacketType::LOGOUT);
+    m_networkController->sendPacket(std::move(packet), PacketType::LOGOUT);
 }
 
 void CallsClient::sendRequestFriendInfoPacket(const std::string& friendNickname) {
@@ -909,7 +909,7 @@ void CallsClient::sendDeclineCallPacket(const std::string& friendNickname, bool 
         return;
     }
 
-    m_networkController->send(std::move(packet), PacketType::CALL_DECLINED);
+    m_networkController->sendPacket(std::move(packet), PacketType::CALL_DECLINED);
 }
 
 void CallsClient::sendStartCallingPacket(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey) {
@@ -970,7 +970,7 @@ void CallsClient::sendStopCallingPacket(bool createTask) {
         return;
     }
 
-    m_networkController->send(std::move(packet), PacketType::STOP_CALLING);
+    m_networkController->sendPacket(std::move(packet), PacketType::STOP_CALLING);
 }
 
 void CallsClient::sendEndCallPacket(bool createTask) {
@@ -1000,7 +1000,7 @@ void CallsClient::sendEndCallPacket(bool createTask) {
         return;
     }
 
-    m_networkController->send(std::move(packet), PacketType::END_CALL);
+    m_networkController->sendPacket(std::move(packet), PacketType::END_CALL);
 }
 
 void CallsClient::sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type) {
@@ -1008,5 +1008,5 @@ void CallsClient::sendConfirmationPacket(const nlohmann::json& jsonObject, Packe
     std::string nicknameHashTo = jsonObject[NICKNAME_HASH_SENDER];
     
     auto packet = PacketsFactory::getConfirmationPacket(m_myNickname, nicknameHashTo, uuid);
-    m_networkController->send(std::move(packet), type);
+    m_networkController->sendPacket(std::move(packet), type);
 }

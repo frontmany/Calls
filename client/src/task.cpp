@@ -23,7 +23,7 @@ namespace calls {
 
 	void Task::send() {
 		std::string packetCopy = m_packet;
-		m_networkController->send(std::move(packetCopy), m_type);
+		m_networkController->sendPacket(std::move(packetCopy), m_type);
 
 		m_timer.start(2s, [this]() {
 			m_attempts++;

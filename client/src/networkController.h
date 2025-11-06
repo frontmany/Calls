@@ -25,9 +25,9 @@ public:
     void run();
     void stop();
     bool stopped() const;
-    void send(std::vector<unsigned char>&& data, PacketType type);
-    void send(std::string&& data, PacketType type);
-    void send(PacketType type);
+    void sendVoice(std::vector<unsigned char>&& data, PacketType type);
+    void sendPacket(std::string&& data, PacketType type);
+    void sendPacket(PacketType type);
 
 private:
     void startReceive();

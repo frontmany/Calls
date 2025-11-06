@@ -56,7 +56,7 @@ namespace calls {
                 lastPing = now;
             }
             else if (timeSinceLastPing >= pingGap) {
-                m_networkController->send(PacketType::PING);
+                m_networkController->sendPacket(PacketType::PING);
                 lastPing = now;
             }
 

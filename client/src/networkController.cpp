@@ -79,7 +79,7 @@ bool NetworkController::stopped() const {
     return m_context.stopped();
 }
 
-void NetworkController::send(std::vector<unsigned char>&& data, PacketType type) {
+void NetworkController::sendVoice(std::vector<unsigned char>&& data, PacketType type) {
     asio::post(m_socket.get_executor(),
         [this, data = std::move(data), type, endpoint = m_serverEndpoint]() mutable {
             if (!m_socket.is_open()) {
@@ -109,7 +109,7 @@ void NetworkController::send(std::vector<unsigned char>&& data, PacketType type)
     );
 }
 
-void NetworkController::send(std::string&& data, PacketType type) {
+void NetworkController::sendPacket(std::string&& data, PacketType type) {
     asio::post(m_socket.get_executor(),
         [this, data = std::move(data), type, endpoint = m_serverEndpoint]() mutable {
             if (!m_socket.is_open()) {
@@ -139,7 +139,7 @@ void NetworkController::send(std::string&& data, PacketType type) {
     );
 }
 
-void NetworkController::send(PacketType type) {
+void NetworkController::sendPacket(PacketType type) {
     asio::post(m_socket.get_executor(),
         [this, type]() {
             if (!m_socket.is_open()) {
