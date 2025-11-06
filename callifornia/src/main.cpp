@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
     mainWindow->init();
 
     QTimer::singleShot(100, [mainWindow]() {
-        mainWindow->connectCallifornia("92.255.165.77", "8081"); 
+        mainWindow->connectCallifornia("192.168.1.48", "8081"); 
     });
 
     LOG_INFO("Entering Qt event loop");
