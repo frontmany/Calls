@@ -6,6 +6,8 @@
 ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidget* parent)
     : QWidget(parent), m_screenIndex(screenIndex), m_screen(screen), m_isSelected(false)
 {
+    setCursor(Qt::PointingHandCursor);
+
     if (m_screen) {
         m_screenSize = m_screen->size();
     }

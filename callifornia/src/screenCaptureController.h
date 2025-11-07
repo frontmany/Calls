@@ -31,6 +31,10 @@ public:
     void startCapture();
     void stopCapture();
 
+    // Controls whether to encode captured frames to JPEG and emit as imageData.
+    // Disable for local preview to avoid heavy per-frame encoding.
+    void setEncodeImageData(bool enable);
+
 signals:
     void captureStarted();
     void captureStopped();
@@ -50,6 +54,7 @@ private:
 
 private:
     QWidget* m_parent;
+    bool m_encodeImageData = false;
 
     OverlayWidget* m_captureOverlay;
     QWidget* m_captureDialog;

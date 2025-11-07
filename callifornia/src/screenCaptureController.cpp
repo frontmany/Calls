@@ -7,9 +7,11 @@
 #include <QBuffer>
 #include <QFont>
 #include <QTimer>
+#include "scaleFactor.h"
+#include <algorithm>
 
 ScreenCaptureController::ScreenCaptureController(QWidget* parent)
-    : QObject(parent), m_parent(parent), m_captureOverlay(nullptr), m_captureDialog(nullptr),
+    : QObject(parent), m_parent(parent), m_encodeImageData(false), m_captureOverlay(nullptr), m_captureDialog(nullptr),
     m_screensContainer(nullptr), m_screensLayout(nullptr), m_shareButton(nullptr),
     m_statusLabel(nullptr), m_isCapturing(false), m_selectedScreenIndex(-1)
 {
@@ -20,6 +22,11 @@ ScreenCaptureController::ScreenCaptureController(QWidget* parent)
 ScreenCaptureController::~ScreenCaptureController()
 {
     hideCaptureDialog();
+}
+
+void ScreenCaptureController::setEncodeImageData(bool enable)
+{
+    m_encodeImageData = enable;
 }
 
 void ScreenCaptureController::showCaptureDialog()
@@ -149,7 +156,11 @@ void ScreenCaptureController::captureScreen()
 
     QPixmap screenshot = screen->grabWindow(0);
 
-    std::string imageData = pixmapToString(screenshot);
+    std::string imageData;
+    if (m_encodeImageData)
+    {
+        imageData = pixmapToString(screenshot);
+    }
 
     emit screenCaptured(screenshot, imageData);
 }
@@ -201,16 +212,24 @@ void ScreenCaptureController::onScreenSelected(int screenIndex, bool currentlySe
 
 QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
 {
-    QFont font("Outfit", 12, QFont::Normal);
-    QFont titleFont("Outfit", 16, QFont::Bold);
+    QFont font("Outfit", scale(12), QFont::Normal);
+    QFont titleFont("Outfit", scale(16), QFont::Bold);
 
     QWidget* dialog = new QWidget(overlay);
-    dialog->setMinimumWidth(1200);
-    dialog->setMinimumHeight(800);
+    // Fit dialog into overlay viewport with scaled margins
+    const int margin = scale(40);
+    const QSize overlaySize = overlay->size();
+    const int maxW = std::max(0, overlaySize.width() - margin);
+    const int maxH = std::max(0, overlaySize.height() - margin);
+    const int desiredMinW = scale(1200);
+    const int desiredMinH = scale(800);
+    dialog->setMaximumSize(maxW, maxH);
+    dialog->setMinimumWidth(std::min(desiredMinW, maxW));
+    dialog->setMinimumHeight(std::min(desiredMinH, maxH));
     dialog->setAttribute(Qt::WA_TranslucentBackground);
 
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-    shadowEffect->setBlurRadius(30);
+    shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
     shadowEffect->setColor(QColor(0, 0, 0, 150));
@@ -219,61 +238,63 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
     mainWidget->setGraphicsEffect(shadowEffect);
     mainWidget->setObjectName("mainWidget");
 
-    QString mainWidgetStyle =
+    QString mainWidgetStyle = QString(
         "QWidget#mainWidget {"
         "   background-color: rgb(248, 250, 252);"
-        "   border-radius: 16px;"
-        "   border: 1px solid rgb(210, 210, 210);"
-        "}";
+        "   border-radius: %1px;"
+        "   border: %2px solid rgb(210, 210, 210);"
+        "}")
+        .arg(scale(16))
+        .arg(scale(1));
     mainWidget->setStyleSheet(mainWidgetStyle);
 
     QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
     mainLayout->addWidget(mainWidget);
 
     QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-    contentLayout->setContentsMargins(30, 30, 30, 30);
-    contentLayout->setSpacing(12);
+    contentLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
+    contentLayout->setSpacing(scale(12));
 
     // ���������
     m_titleLabel = new QLabel("Share Your Screen");
     m_titleLabel->setAlignment(Qt::AlignCenter);
-    m_titleLabel->setStyleSheet(
+    m_titleLabel->setStyleSheet(QString(
         "color: rgb(60, 60, 60);"
-        "font-size: 20px;"
+        "font-size: %1px;"
         "font-family: 'Outfit';"
         "font-weight: bold;"
-        "padding: 10px;"
-    );
+        "padding: %2px;"
+    ).arg(scale(20)).arg(scale(10)));
     m_titleLabel->setFont(titleFont);
 
     // ����������
     m_instructionLabel = new QLabel("Click on a screen to select it, then press Share to start streaming");
     m_instructionLabel->setAlignment(Qt::AlignCenter);
-    m_instructionLabel->setStyleSheet(
+    m_instructionLabel->setStyleSheet(QString(
         "color: rgb(100, 100, 100);"
         "font-family: 'Outfit';"
-        "font-size: 13px;"
-        "padding: 2px;"
-    );
+        "font-size: %1px;"
+        "padding: %2px;"
+    ).arg(scale(13)).arg(scale(2)));
 
     // Status (moved above screens)
     m_statusLabel = new QLabel("Select a screen to share");
     m_statusLabel->setAlignment(Qt::AlignCenter);
-    m_statusLabel->setStyleSheet(
+    m_statusLabel->setStyleSheet(QString(
         "color: rgb(100, 100, 100);"
         "font-family: 'Outfit';"
-        "font-size: 12px;"
-        "padding: 2px;"
+        "font-size: %1px;"
+        "padding: %2px;"
         "background-color: transparent;"
-        "border-radius: 8px;"
-    );
+        "border-radius: %3px;"
+    ).arg(scale(12)).arg(scale(2)).arg(scale(8)));
 
     // Screens area in Scroll Area
     QScrollArea* scrollArea = new QScrollArea();
     scrollArea->setWidgetResizable(true);
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setStyleSheet(
+    scrollArea->setStyleSheet(QString(
         "QScrollArea {"
         "   border: none;"
         "   background-color: transparent;"
@@ -281,27 +302,27 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
         "QScrollBar:vertical {"
         "   border: none;"
         "   background: rgb(240, 240, 240);"
-        "   width: 10px;"
+        "   width: %1px;"
         "   margin: 0px;"
         "}"
         "QScrollBar::handle:vertical {"
         "   background: rgb(200, 200, 200);"
-        "   border-radius: 5px;"
-        "   min-height: 20px;"
+        "   border-radius: %2px;"
+        "   min-height: %3px;"
         "}"
         "QScrollBar::handle:vertical:hover {"
         "   background: rgb(180, 180, 180);"
         "}"
-    );
+    ).arg(scale(10)).arg(scale(5)).arg(scale(20)));
 
     m_screensContainer = new QWidget();
     m_screensContainer->setStyleSheet("background-color: transparent;");
     m_screensLayout = new QGridLayout(m_screensContainer);
-    m_screensLayout->setSpacing(25);
+    m_screensLayout->setSpacing(scale(25));
     m_screensLayout->setAlignment(Qt::AlignCenter);
 
-    m_screensLayout->setHorizontalSpacing(25);
-    m_screensLayout->setVerticalSpacing(25);
+    m_screensLayout->setHorizontalSpacing(scale(25));
+    m_screensLayout->setVerticalSpacing(scale(25));
 
     QHBoxLayout* scrollLayout = new QHBoxLayout();
     scrollLayout->addStretch();
@@ -317,17 +338,18 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
     buttonLayout->setAlignment(Qt::AlignCenter);
 
     m_shareButton = new QPushButton("Share Screen");
-    m_shareButton->setFixedWidth(200);
-    m_shareButton->setMinimumHeight(44);
+    m_shareButton->setCursor(Qt::PointingHandCursor);
+    m_shareButton->setFixedWidth(scale(200));
+    m_shareButton->setMinimumHeight(scale(44));
     m_shareButton->setEnabled(false);
-    m_shareButton->setStyleSheet(
+    m_shareButton->setStyleSheet(QString(
         "QPushButton {"
         "   background-color: rgb(21, 119, 232);"
         "   color: white;"
-        "   border-radius: 10px;"
-        "   padding: 10px 20px;"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
         "   font-family: 'Outfit';"
-        "   font-size: 14px;"
+        "   font-size: %4px;"
         "   font-weight: bold;"
         "   border: none;"
         "}"
@@ -341,20 +363,21 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
         "   background-color: rgba(150, 150, 150, 0.20);"
         "   color: rgba(90, 90, 90, 0.75);"
         "}"
-    );
+    ).arg(scale(10)).arg(scale(10)).arg(scale(20)).arg(scale(14)));
     m_shareButton->setFont(font);
 
     QPushButton* closeButton = new QPushButton("Close");
-    closeButton->setFixedWidth(120);
-    closeButton->setMinimumHeight(44);
-    closeButton->setStyleSheet(
+    closeButton->setCursor(Qt::PointingHandCursor);
+    closeButton->setFixedWidth(scale(120));
+    closeButton->setMinimumHeight(scale(44));
+    closeButton->setStyleSheet(QString(
         "QPushButton {"
         "   background-color: rgba(21, 119, 232, 0.08);"
         "   color: rgb(21, 119, 232);"
-        "   border-radius: 10px;"
-        "   padding: 10px 20px;"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
         "   font-family: 'Outfit';"
-        "   font-size: 13px;"
+        "   font-size: %4px;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
@@ -365,11 +388,11 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
         "   background-color: rgba(21, 119, 232, 0.20);"
         "   color: rgb(16, 103, 202);"
         "}"
-    );
+    ).arg(scale(10)).arg(scale(10)).arg(scale(20)).arg(scale(13)));
     closeButton->setFont(font);
 
     buttonLayout->addWidget(m_shareButton);
-    buttonLayout->addSpacing(20);
+    buttonLayout->addSpacing(scale(20));
     buttonLayout->addWidget(closeButton);
 
     // �������� ��� ������
@@ -435,10 +458,20 @@ void ScreenCaptureController::refreshScreensPreview()
             delete item;
         }
 
-        // ������� ������ ��� ������� ������
+        // Determine responsive columns based on dialog width
         int row = 0;
         int col = 0;
-        const int maxCols = 3;
+        int maxCols = 3;
+        if (m_captureDialog)
+        {
+            const int w = m_captureDialog->width();
+            if (w < scale(700))
+                maxCols = 1;
+            else if (w < scale(1000))
+                maxCols = 2;
+            else
+                maxCols = 3;
+        }
 
         for (int i = 0; i < m_availableScreens.size(); ++i) {
             ScreenPreviewWidget* preview = new ScreenPreviewWidget(i, m_availableScreens[i], m_screensContainer);
