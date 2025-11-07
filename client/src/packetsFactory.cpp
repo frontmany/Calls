@@ -68,6 +68,29 @@ std::pair<std::string, std::string> PacketsFactory::getStopCallingPacket(const s
     return std::make_pair(uuid, jsonObject.dump());
 }
 
+std::pair<std::string, std::string> PacketsFactory::getStartScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash) {
+    std::string uuid = crypto::generateUUID();
+
+    nlohmann::json jsonObject;
+    jsonObject[UUID] = uuid;
+    jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
+    jsonObject[NICKNAME_HASH_RECEIVER] = friendNicknameHash;
+
+    return std::make_pair(uuid, jsonObject.dump());
+}
+
+std::pair<std::string, std::string> PacketsFactory::getStopScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation) {
+    std::string uuid = crypto::generateUUID();
+
+    nlohmann::json jsonObject;
+    jsonObject[UUID] = uuid;
+    jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
+    jsonObject[NICKNAME_HASH_RECEIVER] = friendNicknameHash;
+    jsonObject[NEED_CONFIRMATION] = needConfirmation;
+
+    return std::make_pair(uuid, jsonObject.dump());
+}
+
 std::pair<std::string, std::string> PacketsFactory::getDeclineCallPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     

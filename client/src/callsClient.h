@@ -40,6 +40,8 @@ public:
     void setOutputVolume(int volume);
 
     // GET
+    bool isScreenSharing();
+    bool isViewingRemoteScreen();
     bool isMicrophoneMuted();
     bool isSpeakerMuted();
     bool isRunning() const;
@@ -63,17 +65,20 @@ public:
     bool declineCall(const std::string& friendNickname);
     bool acceptCall(const std::string& friendNickname);
     bool endCall();
+    bool sendScreen(const std::string& data);
+    bool startScreenSharing();
+    bool stopScreenSharing();
 
 private:
     // received results handlers
+    void onPing();
+    void onPingSuccess();
+    void onVoice(const unsigned char* data, int length);
     void onAuthorizationSuccess(const nlohmann::json& jsonObject);
     void onAuthorizationFail(const nlohmann::json& jsonObject);
-
     void onLogoutOk(const nlohmann::json& jsonObject);
-
     void onFriendInfoSuccess(const nlohmann::json& jsonObject);
     void onFriendInfoFail(const nlohmann::json& jsonObject);
-
     void onStartCallingOk(const nlohmann::json& jsonObject);
     void onStartCallingFail(const nlohmann::json& jsonObject);
     void onEndCallOk(const nlohmann::json& jsonObject);
@@ -81,8 +86,14 @@ private:
     void onCallAcceptedOk(const nlohmann::json& jsonObject);
     void onCallAcceptedFail(const nlohmann::json& jsonObject);
     void onCallDeclinedOk(const nlohmann::json& jsonObject);
+    void onScreenSharingStartedOk(const nlohmann::json& jsonObject);
+    void onScreenSharingStartedFail(const nlohmann::json& jsonObject);
+    void onScreenSharingStoppedOk(const nlohmann::json& jsonObject);
+    void onScreen(const unsigned char* data, int length);
 
     // on received packets
+    void onIncomingScreenSharingStarted(const nlohmann::json& jsonObject);
+    void onIncomingScreenSharingStopped(const nlohmann::json& jsonObject);
     void onCallAccepted(const nlohmann::json& jsonObject);
     void onCallDeclined(const nlohmann::json& jsonObject);
     void onStopCalling(const nlohmann::json& jsonObject);
@@ -101,6 +112,8 @@ private:
     void reset();
 
     // essential senders
+    void sendStartScreenSharingPacket();
+    void sendStopScreenSharingPacket(bool createTask);
     void sendAuthorizationPacket();
     void sendLogoutPacket(bool createTask);
     void sendRequestFriendInfoPacket(const std::string& friendNickname);
@@ -113,8 +126,10 @@ private:
 
 private:
     std::atomic_bool m_networkError = false;
-    bool m_running = false;
-    State m_state = State::UNAUTHORIZED;
+    std::atomic_bool m_running = false;
+    std::atomic_bool m_screenSharing = false;
+    std::atomic_bool m_viewingRemoteScreen = false;
+    std::atomic<State> m_state = State::UNAUTHORIZED;
     mutable std::mutex m_dataMutex;
 
     std::optional<Call> m_call = std::nullopt;

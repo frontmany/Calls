@@ -25,6 +25,10 @@
 	 <file>speakerMuted.png</file>
 	 <file>speakerMutedHover.png</file>
 	 <file>speakerMutedActive.png</file>
+	 <file>screenShare.png</file>
+	 <file>screenShareHover.png</file>
+	 <file>screenShareActive.png</file>
+	 <file>screenShareActiveHover.png</file>
 	 <file>speakerMutedActiveHover.png</file>
 	 <file>arrowDown.png</file>
 	 <file>microphone.png</file>

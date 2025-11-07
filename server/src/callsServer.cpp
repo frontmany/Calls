@@ -16,6 +16,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
         handleVoicePacket(data, size, endpointFrom);
         return;
     }
+    else if (type == PacketType::SCREEN) {
+        handleScreenPacket(data, size, endpointFrom);
+        return;
+    }
 
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
 
@@ -47,7 +51,13 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleGetFriendInfoPacket(jsonObject, endpointFrom);
             break;
 
+        case PacketType::START_SCREEN_SHARING:
+            handleStartScreenSharingPacket(jsonObject, endpointFrom);
+            break;
 
+        case PacketType::STOP_SCREEN_SHARING:
+            handleStopScreenSharingPacket(jsonObject, endpointFrom);
+            break;
 
         case PacketType::START_CALLING:
             handleStartCallingPacket(jsonObject, endpointFrom);
@@ -87,6 +97,14 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
 
         case PacketType::START_CALLING_OK:
             redirectPacket(jsonObject, PacketType::START_CALLING_OK);
+            break;
+
+        case PacketType::START_SCREEN_SHARING_OK:
+            redirectPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
+            break;
+
+        case PacketType::STOP_SCREEN_SHARING_OK:
+            redirectPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
             break;
 
         default:
@@ -325,6 +343,54 @@ void CallsServer::handleGetFriendInfoPacket(const nlohmann::json& jsonObject, co
     }
 }
 
+void CallsServer::handleStartScreenSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    std::string uuid = jsonObject[UUID].get<std::string>();
+    std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+    std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+    
+    LOG_INFO("Screen sharing initiated from {} to {}", senderNicknameHash, receiverNicknameHash);
+
+    bool receiverOnline = false;
+    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+        auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+        m_networkController.sendToClient(userReceiver->getEndpoint(),
+            jsonObject.dump(),
+            PacketType::START_SCREEN_SHARING
+        );
+
+        receiverOnline = true;
+    }
+
+    if (m_nicknameHashToUser.contains(senderNicknameHash) && !receiverOnline) {
+        auto& userSenser = m_nicknameHashToUser.at(senderNicknameHash);
+        m_networkController.sendToClient(userSenser->getEndpoint(),
+            getPacketWithUuid(uuid),
+            PacketType::START_SCREEN_SHARING_FAIL
+        );
+
+        LOG_WARN("Screen sharing failed: receiver {} is offline", receiverNicknameHash);
+    }
+}
+
+void CallsServer::handleStopScreenSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+
+        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+            auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+
+            m_networkController.sendToClient(userReceiver->getEndpoint(),
+                jsonObject.dump(),
+                PacketType::STOP_SCREEN_SHARING
+            );
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error in stop sharing screen packet: {}", e.what());
+    }
+}
+
 void CallsServer::handleStartCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     std::string uuid = jsonObject[UUID].get<std::string>();
     std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
@@ -467,7 +533,6 @@ void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, cons
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
-        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
 
         if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
             auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
@@ -475,12 +540,6 @@ void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, cons
             m_networkController.sendToClient(userReceiver->getEndpoint(),
                 jsonObject.dump(),
                 PacketType::STOP_CALLING
-            );
-        }
-
-        else if (needConfirmation) {
-            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
-                PacketType::STOP_CALLING_OK
             );
         }
     }
@@ -500,6 +559,22 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
             if (m_nicknameHashToUser.contains(userNicknameHash)) {
                 UserPtr userTo = m_nicknameHashToUser.at(userNicknameHash);
                 m_networkController.sendVoiceToClient(userTo->getEndpoint(), data, size);
+            }
+        }
+    }
+}
+
+void CallsServer::handleScreenPacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
+    std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
+    if (m_endpointToUser.contains(endpointFrom)) {
+        UserPtr user = m_endpointToUser.at(endpointFrom);
+
+        if (user->inCall()) {
+            const std::string& userNicknameHash = user->inCallWith();
+
+            if (m_nicknameHashToUser.contains(userNicknameHash)) {
+                UserPtr userTo = m_nicknameHashToUser.at(userNicknameHash);
+                m_networkController.sendScreenToClient(userTo->getEndpoint(), data, size);
             }
         }
     }

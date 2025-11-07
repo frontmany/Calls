@@ -48,6 +48,16 @@ namespace calls {
         return CallsClient::get().stopCalling();
     }
 
+    inline bool startScreenSharing(const std::string& friendNickname)
+    {
+        return CallsClient::get().startScreenSharing();
+    }
+
+    inline bool stopScreenSharing(const std::string& friendNickname)
+    {
+        return CallsClient::get().stopScreenSharing();
+    }
+
     inline bool acceptCall(const std::string& friendNickname)
     {
         return CallsClient::get().acceptCall(friendNickname);
@@ -124,6 +134,16 @@ namespace calls {
     inline bool isRunning()
     {
         return CallsClient::get().isRunning();
+    }
+
+    inline bool isScreenSharing()
+    {
+        return CallsClient::get().isScreenSharing();
+    }
+
+    inline bool isViewingRemoteScreen()
+    {
+        return CallsClient::get().isViewingRemoteScreen();
     }
 
     inline bool isAuthorized()

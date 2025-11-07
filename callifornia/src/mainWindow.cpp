@@ -329,7 +329,10 @@ void MainWindow::setupUI() {
         }
     });
 
-    switchToAuthorizationWidget();
+    // Temporary: show CallWidget immediately for testing
+    m_callWidget->setCallInfo("Test User");
+    m_stackedLayout->setCurrentWidget(m_callWidget);
+    setWindowTitle("Call In Progress - Callifornia");
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

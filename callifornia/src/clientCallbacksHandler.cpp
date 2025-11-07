@@ -35,6 +35,34 @@ void ClientCallbacksHandler::onAcceptCallResult(calls::ErrorCode ec, const std::
     }
 }
 
+void ClientCallbacksHandler::onStartScreenSharingError() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onStartScreenSharingError",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingScreenSharingStarted() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreenSharingStarted",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingScreenSharingStopped() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreenSharingStopped",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingScreen(const std::string& data) {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreen",
+            Qt::QueuedConnection, Q_ARG(const std::string&, data));
+    }
+}
+
 void ClientCallbacksHandler::onMaximumCallingTimeReached()
 {
     if (m_mainWindow) {

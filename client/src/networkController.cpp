@@ -109,6 +109,36 @@ void NetworkController::sendVoice(std::vector<unsigned char>&& data, PacketType 
     );
 }
 
+void NetworkController::sendScreen(std::vector<unsigned char>&& data, PacketType type) {
+    asio::post(m_socket.get_executor(),
+        [this, data = std::move(data), type, endpoint = m_serverEndpoint]() mutable {
+            if (!m_socket.is_open()) {
+                return;
+            }
+
+            const size_t totalSize = data.size() + sizeof(PacketType);
+            if (totalSize > m_maxUdpPacketSize) {
+                LOG_WARN("Screen packet too large: {} bytes (max: {})", totalSize, m_maxUdpPacketSize);
+                return;
+            }
+
+            std::array<asio::const_buffer, 2> buffers = {
+                asio::buffer(data.data(), data.size()),
+                asio::buffer(&type, sizeof(PacketType))
+            };
+
+            m_socket.async_send_to(buffers, endpoint,
+                [this](const asio::error_code& error, std::size_t bytesSent) {
+                    if (error && error != asio::error::operation_aborted) {
+                        LOG_ERROR("Screen packet send error: {}", error.message());
+                        m_onErrorCallback();
+                    }
+                }
+            );
+        }
+    );
+}
+
 void NetworkController::sendPacket(std::string&& data, PacketType type) {
     asio::post(m_socket.get_executor(),
         [this, data = std::move(data), type, endpoint = m_serverEndpoint]() mutable {

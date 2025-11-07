@@ -20,6 +20,8 @@ namespace calls {
         static std::pair<std::string, std::string> getDeclineCallPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation);
         static std::pair<std::string, std::string> getAcceptCallPacket(const std::string& myNickname, const std::string& friendNicknameToAccept);
         static std::pair<std::string, std::string> getEndCallPacket(const std::string& myNickname, bool needConfirmation);
+        static std::pair<std::string, std::string> getStartScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash);
+        static std::pair<std::string, std::string> getStopScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation);
 
         static std::string getConfirmationPacket(const std::string& myNickname, const std::string& nicknameHashTo, const std::string& uuid);
     };

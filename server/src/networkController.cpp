@@ -99,6 +99,40 @@ void NetworkController::sendVoiceToClient(const asio::ip::udp::endpoint& clientE
     );
 }
 
+void NetworkController::sendScreenToClient(const asio::ip::udp::endpoint& clientEndpoint,
+    const unsigned char* data, int length) {
+    auto sharedData = std::make_shared<std::vector<unsigned char>>(data, data + length);
+
+    asio::post(m_socket.get_executor(),
+        [this, clientEndpoint, sharedData]() {
+            if (!m_isRunning || !m_socket.is_open()) {
+                return;
+            }
+
+            const size_t totalSize = sharedData->size() + sizeof(PacketType);
+            if (totalSize > m_receiveBuffer.size()) {
+                LOG_WARN("Screen packet too large: {} bytes (max: {})", totalSize, m_receiveBuffer.size());
+                return;
+            }
+
+            PacketType type = PacketType::SCREEN;
+
+            std::array<asio::const_buffer, 2> buffers = {
+                asio::buffer(sharedData->data(), sharedData->size()),
+                asio::buffer(&type, sizeof(PacketType))
+            };
+
+            m_socket.async_send_to(buffers, clientEndpoint,
+                [](const asio::error_code& error, std::size_t bytesSent) {
+                    if (error) {
+                        LOG_ERROR("Voice packet send error: {}", error.message());
+                    }
+                }
+            );
+        }
+    );
+}
+
 void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoint, PacketType type) {
     asio::post(m_socket.get_executor(),
         [this, clientEndpoint, type]() {

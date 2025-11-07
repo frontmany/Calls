@@ -31,6 +31,8 @@ private:
 	void handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom, bool logoutAndStop = false);
 	void handleGetFriendInfoPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 
+	void handleStartScreenSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+	void handleStopScreenSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleStartCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleEndCallPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 	void handleStopCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
@@ -39,6 +41,7 @@ private:
 	void handleCallAcceptedOkPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
 
 
+	void handleScreenPacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 	void handleVoicePacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
 	void handlePing(const asio::ip::udp::endpoint& endpointFrom);

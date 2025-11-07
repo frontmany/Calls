@@ -9,6 +9,9 @@ enum class PacketType : uint32_t {
 	GET_FRIEND_INFO,
 
 	// receive and redirect
+	START_SCREEN_SHARING,
+	STOP_SCREEN_SHARING,
+	SCREEN,
 	START_CALLING,
 	END_CALL,
 	STOP_CALLING,
@@ -19,9 +22,9 @@ enum class PacketType : uint32_t {
 	CALL_ACCEPTED_OK,
 	CALL_DECLINED_OK,
 	START_CALLING_OK,
-
-
-
+	START_SCREEN_SHARING_OK,
+	STOP_SCREEN_SHARING_OK,
+	START_SCREEN_SHARING_FAIL,
 
 	// confirmations only send
 	AUTHORIZE_SUCCESS,
@@ -31,7 +34,6 @@ enum class PacketType : uint32_t {
 	CALL_ACCEPTED_FAIL,
 	START_CALLING_FAIL,
 	LOGOUT_OK,
-
 
 	// special packets
 	VOICE,

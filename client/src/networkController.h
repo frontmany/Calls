@@ -25,6 +25,7 @@ public:
     void run();
     void stop();
     bool stopped() const;
+    void sendScreen(std::vector<unsigned char>&& data, PacketType type);
     void sendVoice(std::vector<unsigned char>&& data, PacketType type);
     void sendPacket(std::string&& data, PacketType type);
     void sendPacket(PacketType type);

@@ -12,6 +12,11 @@ public:
     void onStartCallingResult(calls::ErrorCode ec) override;
     void onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname) override;
 
+    void onStartScreenSharingError() override;
+    void onIncomingScreenSharingStarted() override;
+    void onIncomingScreenSharingStopped() override;
+    void onIncomingScreen(const std::string& data) override;
+
     void onMaximumCallingTimeReached() override;
     void onCallingAccepted() override;
     void onCallingDeclined() override;

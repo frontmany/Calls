@@ -1,5 +1,6 @@
 #include "callWidget.h"
 #include "incomingCallWidget.h"
+#include "screenCaptureController.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QGraphicsDropShadowEffect>
@@ -218,6 +219,8 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
     connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
+
+    // Screen capture controller will be created lazily on first use
 }
 
 void CallWidget::setupUI() {
@@ -287,6 +290,15 @@ void CallWidget::setupUI() {
     m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
     m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
+    // Share display label (hidden by default)
+    m_shareDisplayLabel = new QLabel(m_mainContainer);
+    m_shareDisplayLabel->setAlignment(Qt::AlignCenter);
+    m_shareDisplayLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_shareDisplayLabel->setMinimumHeight(scale(240));
+    m_shareDisplayLabel->setStyleSheet("background: transparent;");
+    m_shareDisplayLabel->setScaledContents(true);
+    m_shareDisplayLabel->hide();
+
     // Friend nickname
     m_friendNicknameLabel = new QLabel("Friend", m_mainContainer);
     m_friendNicknameLabel->setAlignment(Qt::AlignCenter);
@@ -305,16 +317,16 @@ void CallWidget::setupUI() {
     m_buttonsLayout->setContentsMargins(scale(20), scale(10), scale(20), scale(10));
     m_buttonsLayout->setAlignment(Qt::AlignCenter);
 
-    // Mute audio button
-    m_muteAudioButton = new ToggleButtonIcon(m_buttonsPanel,
-        QIcon(":/resources/speakerMuted.png"),
-        QIcon(":/resources/speakerMutedHover.png"),
-        QIcon(":/resources/speakerMutedActive.png"),
-        QIcon(":/resources/speakerMutedActiveHover.png"),
-        scale(40), scale(40));
-    m_muteAudioButton->setSize(scale(35), scale(35));
-    m_muteAudioButton->setToolTip("Mute audio");
-    m_muteAudioButton->setCursor(Qt::PointingHandCursor);
+    // Screen share button 
+    m_screenShareButton = new ToggleButtonIcon(m_buttonsPanel,
+        QIcon(":/resources/screenShare.png"),
+        QIcon(":/resources/screenShareHover.png"),
+        QIcon(":/resources/screenShareActive.png"),
+        QIcon(":/resources/screenShareActiveHover.png"),
+        scale(48), scale(48));
+    m_screenShareButton->setSize(scale(40), scale(40));
+    m_screenShareButton->setToolTip("Share screen");
+    m_screenShareButton->setCursor(Qt::PointingHandCursor);
 
     // Mute microphone button
     m_muteMicrophoneButton = new ToggleButtonIcon(m_buttonsPanel,
@@ -349,7 +361,7 @@ void CallWidget::setupUI() {
     m_hangupButton->setCursor(Qt::PointingHandCursor);
 
     // Add buttons to layout
-    m_buttonsLayout->addWidget(m_muteAudioButton);
+    m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(m_muteMicrophoneButton);
     m_buttonsLayout->addWidget(m_speakerButton);
     m_buttonsLayout->addWidget(m_hangupButton);
@@ -378,13 +390,15 @@ void CallWidget::setupUI() {
     m_micLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
     m_micLabelSliderLayout->setAlignment(Qt::AlignLeft);
 
-    // Mic label
-    m_micLabel = new ButtonIcon(m_micSliderWidget,
+    // Mic label (toggle mute)
+    m_micLabel = new ToggleButtonIcon(m_micSliderWidget,
         QIcon(":/resources/microphone.png"),
-        QIcon(":/resources/microphone.png"),
+        QIcon(":/resources/microphoneHover.png"),
+        QIcon(":/resources/mute-enabled-microphone.png"),
+        QIcon(":/resources/mute-enabled-microphoneHover.png"),
         scale(24), scale(24));
     m_micLabel->setSize(scale(24), scale(24));
-    m_micLabel->setToolTip("Microphone volume");
+    m_micLabel->setToolTip("Microphone mute");
 
     m_micVolumeSlider = new QSlider(Qt::Horizontal, m_micSliderWidget);
     m_micVolumeSlider->setRange(0, 100);
@@ -410,13 +424,15 @@ void CallWidget::setupUI() {
     m_speakerLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
     m_speakerLabelSliderLayout->setAlignment(Qt::AlignLeft);
 
-    // Speaker label
-    m_speakerLabel = new ButtonIcon(m_speakerSliderWidget,
+    // Speaker label (toggle mute)
+    m_speakerLabel = new ToggleButtonIcon(m_speakerSliderWidget,
         QIcon(":/resources/speaker.png"),
-        QIcon(":/resources/speaker.png"),
+        QIcon(":/resources/speakerHover.png"),
+        QIcon(":/resources/speakerMutedActive.png"),
+        QIcon(":/resources/speakerMutedActiveHover.png"),
         scale(22), scale(22));
     m_speakerLabel->setSize(scale(22), scale(22));
-    m_speakerLabel->setToolTip("Speaker volume");
+    m_speakerLabel->setToolTip("Speaker mute");
 
     m_speakerVolumeSlider = new QSlider(Qt::Horizontal, m_speakerSliderWidget);
     m_speakerVolumeSlider->setRange(0, 100);
@@ -439,6 +455,7 @@ void CallWidget::setupUI() {
     m_containerLayout->addWidget(m_incomingCallsContainer);
     m_containerLayout->addStretch();
     m_containerLayout->addWidget(m_timerLabel);
+    m_containerLayout->addWidget(m_shareDisplayLabel, 1);
     m_containerLayout->addWidget(m_friendNicknameLabel);
     m_containerLayout->addSpacing(scale(10));
     m_containerLayout->addWidget(m_buttonsPanel);
@@ -450,14 +467,15 @@ void CallWidget::setupUI() {
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
-    connect(m_muteAudioButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteAudioClicked);
+    // removed: mute audio button no longer exists
     connect(m_muteMicrophoneButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteMicrophoneClicked);
     connect(m_speakerButton, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerClicked);
     connect(m_hangupButton, &QPushButton::clicked, this, &CallWidget::onHangupClicked);
+    connect(m_screenShareButton, &ToggleButtonIcon::toggled, this, &CallWidget::onScreenShareToggled);
 
-    // Connect label buttons to toggle sliders
-    connect(m_micLabel, &ButtonIcon::clicked, this, &CallWidget::onSpeakerClicked);
-    connect(m_speakerLabel, &ButtonIcon::clicked, this, &CallWidget::onSpeakerClicked);
+    // Connect label toggles to mute actions
+    connect(m_micLabel, &ToggleButtonIcon::toggled, this, &CallWidget::onMicLabelToggled);
+    connect(m_speakerLabel, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerLabelToggled);
 
     connect(m_micVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onInputVolumeChanged);
     connect(m_speakerVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onOutputVolumeChanged);
@@ -466,8 +484,9 @@ void CallWidget::setupUI() {
 void CallWidget::setupShadowEffect() {
     setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
     setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_muteAudioButton, 10, QColor(0, 0, 0, 50));
+    // removed: mute audio button
     setupElementShadow(m_muteMicrophoneButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_screenShareButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_speakerButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_slidersContainer, 10, QColor(0, 0, 0, 50));
@@ -504,6 +523,15 @@ void CallWidget::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
 }
 
+void CallWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    if (m_localSharingActive || m_remoteSharingActive)
+    {
+        updateShareDisplayVisibility();
+    }
+}
+
 void CallWidget::setCallInfo(const QString& friendNickname) {
     m_friendNickname = friendNickname;
     m_friendNicknameLabel->setText(friendNickname);
@@ -518,6 +546,43 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
     m_timerLabel->setFont(timerFont);
 
     m_callTimer->start(1000); // Update every second
+}
+
+void CallWidget::onScreenShareToggled()
+{
+    bool toggled = m_screenShareButton->isToggled();
+
+    if (toggled)
+    {
+        if (m_remoteSharingActive)
+        {
+            showErrorNotification("Remote screen is being shared", 2000);
+            m_screenShareButton->setToggled(false);
+            return;
+        }
+
+        emit shareScreenClicked();
+        if (!m_screenCaptureController)
+        {
+            m_screenCaptureController = new ScreenCaptureController(this);
+            connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &CallWidget::onCaptureStarted);
+            connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &CallWidget::onCaptureStopped);
+            connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &CallWidget::onScreenCaptured);
+        }
+        m_screenCaptureController->showCaptureDialog();
+    }
+    else
+    {
+        // Immediately restore timer UI
+        m_localSharingActive = false;
+        if (m_shareDisplayLabel) m_shareDisplayLabel->clear();
+        updateShareDisplayVisibility();
+
+        if (m_screenCaptureController)
+        {
+            m_screenCaptureController->stopCapture();
+        }
+    }
 }
 
 void CallWidget::updateCallTimer() {
@@ -545,19 +610,7 @@ void CallWidget::updateCallTimer() {
     m_timerLabel->setText(m_callDuration->toString(timeFormat));
 }
 
-void CallWidget::onMuteAudioClicked()
-{
-    m_audioMuted = m_muteAudioButton->isToggled();
-
-    if (m_audioMuted) {
-        m_speakerVolumeSlider->setEnabled(false);
-    }
-    else {
-        m_speakerVolumeSlider->setEnabled(true);
-    }
-
-    emit muteSpeakerClicked(m_audioMuted);
-}
+// removed: onMuteAudioClicked (no separate mute audio button)
 
 void CallWidget::onMuteMicrophoneClicked()
 {
@@ -568,6 +621,11 @@ void CallWidget::onMuteMicrophoneClicked()
     }
     else {
         m_micVolumeSlider->setEnabled(true);
+    }
+
+    if (m_micLabel && m_micLabel->isToggled() != m_microphoneMuted)
+    {
+        m_micLabel->setToggled(m_microphoneMuted);
     }
 
     emit muteMicrophoneClicked(m_microphoneMuted);
@@ -603,6 +661,54 @@ void CallWidget::onHangupClicked() {
     emit hangupClicked();
 }
 
+void CallWidget::onMicLabelToggled(bool toggled)
+{
+    m_microphoneMuted = toggled;
+    m_micVolumeSlider->setEnabled(!toggled);
+    if (m_muteMicrophoneButton && m_muteMicrophoneButton->isToggled() != toggled)
+    {
+        m_muteMicrophoneButton->setToggled(toggled);
+    }
+    emit muteMicrophoneClicked(toggled);
+}
+
+void CallWidget::onSpeakerLabelToggled(bool toggled)
+{
+    m_audioMuted = toggled;
+    m_speakerVolumeSlider->setEnabled(!toggled);
+    emit muteSpeakerClicked(toggled);
+}
+
+void CallWidget::onCaptureStarted()
+{
+    m_localSharingActive = true;
+    updateShareDisplayVisibility();
+}
+
+void CallWidget::onCaptureStopped()
+{
+    m_localSharingActive = false;
+    emit shareScreenStopped();
+    if (m_screenShareButton && m_screenShareButton->isToggled())
+    {
+        m_screenShareButton->setToggled(false);
+    }
+    updateShareDisplayVisibility();
+}
+
+void CallWidget::onScreenCaptured(const QPixmap& pixmap, const std::string& /*imageData*/)
+{
+    if (!m_localSharingActive) return;
+
+    QPixmap processed = cropToHorizontal(pixmap);
+    if (!processed.isNull())
+    {
+        QSize labelSize = m_shareDisplayLabel->size();
+        QPixmap scaled = processed.scaled(labelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        m_shareDisplayLabel->setPixmap(scaled);
+    }
+}
+
 void CallWidget::setInputVolume(int newVolume) {
     m_micVolumeSlider->setValue(newVolume);
 }
@@ -615,23 +721,110 @@ void CallWidget::setMicrophoneMuted(bool muted) {
     if (m_muteMicrophoneButton->isToggled() != muted) {
         m_muteMicrophoneButton->setToggled(muted);
     }
+    if (m_micLabel && m_micLabel->isToggled() != muted)
+    {
+        m_micLabel->setToggled(muted);
+    }
 }
 
 void CallWidget::setSpeakerMuted(bool muted) {
-    if (m_muteAudioButton->isToggled() != muted) {
-        m_muteAudioButton->setToggled(muted);
+    if (m_speakerLabel && m_speakerLabel->isToggled() != muted)
+    {
+        m_speakerLabel->setToggled(muted);
     }
 }
 
 void CallWidget::setAudioMuted(bool muted) {
-    if (m_muteAudioButton->isToggled() != muted) {
-        m_muteAudioButton->setToggled(muted);
+    if (m_speakerLabel && m_speakerLabel->isToggled() != muted)
+    {
+        m_speakerLabel->setToggled(muted);
     }
 }
 
 QColor CallWidget::generateRandomColor(const QString& seed) {
     int hash = qHash(seed);
     return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
+}
+
+QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
+{
+    if (pixmap.isNull()) return pixmap;
+
+    int w = pixmap.width();
+    int h = pixmap.height();
+
+    if (h <= w)
+    {
+        return pixmap;
+    }
+
+    // Crop portrait to 16:9 horizontal area centered
+    int targetH = static_cast<int>(w * 9.0 / 16.0);
+    targetH = qMin(targetH, h);
+    int y = (h - targetH) / 2;
+    QRect cropRect(0, y, w, targetH);
+    return pixmap.copy(cropRect);
+}
+
+void CallWidget::updateShareDisplayVisibility()
+{
+    bool anySharing = m_localSharingActive || m_remoteSharingActive;
+    if (anySharing)
+    {
+        m_timerLabel->hide();
+
+        m_mainLayout->setContentsMargins(scale(10), scale(10), scale(10), scale(10));
+        m_containerLayout->setContentsMargins(scale(10), scale(10), scale(10), scale(10));
+
+        m_mainContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        m_mainContainer->setMinimumWidth(scale(900));
+        m_mainContainer->setMaximumWidth(QWIDGETSIZE_MAX);
+
+        // Let layout stretch allocate the remaining space without forcing parent to grow
+        m_shareDisplayLabel->setMinimumHeight(scale(480));
+        m_shareDisplayLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        m_shareDisplayLabel->show();
+    }
+    else
+    {
+        m_shareDisplayLabel->hide();
+        m_timerLabel->show();
+
+        m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
+        m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
+        m_mainContainer->setFixedWidth(scale(500));
+        m_mainContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    }
+}
+
+void CallWidget::setRemoteSharingActive(bool active)
+{
+    m_remoteSharingActive = active;
+
+    if (m_remoteSharingActive && m_localSharingActive)
+    {
+        if (m_screenCaptureController)
+        {
+            m_screenCaptureController->stopCapture();
+            m_screenCaptureController->hideCaptureDialog();
+        }
+        if (m_screenShareButton && m_screenShareButton->isToggled())
+        {
+            m_screenShareButton->setToggled(false);
+        }
+        m_localSharingActive = false;
+    }
+
+    updateShareDisplayVisibility();
+}
+
+void CallWidget::showRemoteShareFrame(const QPixmap& frame)
+{
+    if (!m_remoteSharingActive) return;
+    if (frame.isNull()) return;
+    QSize labelSize = m_shareDisplayLabel->size();
+    QPixmap scaled = frame.scaled(labelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    m_shareDisplayLabel->setPixmap(scaled);
 }
 
 void CallWidget::clearIncomingCalls() {

@@ -25,6 +25,8 @@ bool CallsClient::init(
 {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
+    m_handlers.emplace(PacketType::PING, [this](const nlohmann::json& json) { onPing(); });
+    m_handlers.emplace(PacketType::PING_SUCCESS, [this](const nlohmann::json& json) { onPingSuccess(); });
     m_handlers.emplace(PacketType::AUTHORIZE_SUCCESS, [this](const nlohmann::json& json) { onAuthorizationSuccess(json); });
     m_handlers.emplace(PacketType::AUTHORIZE_FAIL, [this](const nlohmann::json& json) { onAuthorizationFail(json); });
     m_handlers.emplace(PacketType::GET_FRIEND_INFO_SUCCESS, [this](const nlohmann::json& json) { onFriendInfoSuccess(json); });
@@ -42,6 +44,10 @@ bool CallsClient::init(
     m_handlers.emplace(PacketType::STOP_CALLING, [this](const nlohmann::json& json) { onStopCalling(json); });
     m_handlers.emplace(PacketType::END_CALL, [this](const nlohmann::json& json) { onEndCall(json); });
     m_handlers.emplace(PacketType::START_CALLING, [this](const nlohmann::json& json) { onIncomingCall(json); });
+    m_handlers.emplace(PacketType::START_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStarted(json); });
+    m_handlers.emplace(PacketType::STOP_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStopped(json); });
+    m_handlers.emplace(PacketType::START_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStartedOk(json); });
+    m_handlers.emplace(PacketType::STOP_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStoppedOk(json); });
 
     m_callbackHandler = std::move(callbacksHandler);
     m_networkController = std::make_shared<NetworkController>();
@@ -129,33 +135,45 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
     if (type == PacketType::VOICE) {
-        if (m_call && m_audioEngine && m_audioEngine->isStream()) {
-            size_t decryptedLength = static_cast<size_t>(length) - CryptoPP::AES::BLOCKSIZE;
-            std::vector<CryptoPP::byte> decryptedData(decryptedLength);
+        onVoice(data, length);
+    }
+    else if (type == PacketType::SCREEN) {
+        onScreen(data, length);
+    }
+    else if (m_handlers.contains(type)) {
+        nlohmann::json jsonObject;
 
-            crypto::AESDecrypt(m_call.value().getCallKey(), data, length,
-                decryptedData.data(), decryptedData.size()
-            );
-
-            m_audioEngine->playAudio(decryptedData.data(), static_cast<int>(decryptedLength));
+        if (type != PacketType::PING && type != PacketType::PING_SUCCESS) {
+            jsonObject = nlohmann::json::parse(data, data + length);
         }
-        return;
-    }
-    else if (type == PacketType::PING){
-        m_networkController->sendPacket(PacketType::PING_SUCCESS);
-        return;
-    }
-    else if (type == PacketType::PING_SUCCESS) {
-        m_pingManager->setPingSuccess();
-        return;
-    }
-
-    if (m_handlers.contains(type)) {
-        nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
 
         auto& handler = m_handlers.at(type);
         handler(jsonObject);
     }
+    else {
+        LOG_INFO("Unknown packet type");
+    }
+}
+
+void CallsClient::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
+    if (m_state != State::BUSY) return;
+
+    sendConfirmationPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
+    m_viewingRemoteScreen = true;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingScreenSharingStarted(); });
+}
+
+void CallsClient::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
+    if (m_state != State::BUSY) return;
+
+    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
+    if (needConfirmation)
+        sendConfirmationPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
+
+    m_viewingRemoteScreen = false;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingScreenSharingStopped(); });
 }
 
 void CallsClient::onCallAccepted(const nlohmann::json& jsonObject) {
@@ -222,6 +240,14 @@ void CallsClient::onEndCall(const nlohmann::json& jsonObject) {
 
     const std::string& senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
     if (senderNicknameHash != m_call->getFriendNicknameHash()) return;
+
+    if (m_screenSharing) {
+        stopScreenSharing();
+        m_screenSharing = false;
+    }
+
+    if (m_viewingRemoteScreen) 
+        m_viewingRemoteScreen = false;
 
     LOG_INFO("Call ended by remote user");
     m_state = State::FREE;
@@ -295,6 +321,14 @@ void CallsClient::muteMicrophone(bool isMute) {
 void CallsClient::muteSpeaker(bool isMute) {
     std::lock_guard<std::mutex> lock(m_dataMutex);
     m_audioEngine->muteSpeaker(isMute);
+}
+
+bool CallsClient::isScreenSharing() {
+    return m_screenSharing;
+}
+
+bool CallsClient::isViewingRemoteScreen() {
+    return m_viewingRemoteScreen;
 }
 
 bool CallsClient::isMicrophoneMuted() {
@@ -520,6 +554,14 @@ bool CallsClient::endCall() {
 
     if (m_state != State::BUSY) return false;
 
+    if (m_screenSharing) {
+        stopScreenSharing();
+        m_screenSharing = false;
+    }
+
+    if (m_viewingRemoteScreen)
+        m_viewingRemoteScreen = false;
+
     sendEndCallPacket(true);
 
     m_state = State::FREE;
@@ -619,9 +661,85 @@ bool CallsClient::acceptCall(const std::string& friendNickname) {
     return true;
 }
 
+bool CallsClient::startScreenSharing() {
+    std::lock_guard<std::mutex> lock(m_dataMutex);
+
+    if (m_state != State::BUSY || m_screenSharing || m_viewingRemoteScreen) return false;
+
+    m_screenSharing = true;
+    sendStartScreenSharingPacket();
+
+    return true;
+}
+
+bool CallsClient::stopScreenSharing() {
+    std::lock_guard<std::mutex> lock(m_dataMutex);
+
+    if (!m_screenSharing) return false;
+    if (m_state != State::BUSY) return false;
+
+    m_screenSharing = false;
+    sendStopScreenSharingPacket(true);
+
+    return true;
+}
+
+bool CallsClient::sendScreen(const std::string& data) {
+    const CryptoPP::SecByteBlock* callKey;
+    {
+        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_call) return false;
+
+        callKey = &m_call.value().getCallKey();
+    }
+
+    try {
+        size_t cipherDataLength = data.length() + CryptoPP::AES::BLOCKSIZE;
+        std::vector<CryptoPP::byte> cipherData(cipherDataLength);
+
+        crypto::AESEncrypt(*callKey,
+            reinterpret_cast<const CryptoPP::byte*>(data.data()),
+            data.length(),
+            cipherData.data(),
+            cipherDataLength);
+
+        m_networkController->sendScreen(std::move(cipherData), PacketType::SCREEN);
+        return true;
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error during screen sending");
+        return false;
+    }
+}
+
+
+
+
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
+
+void CallsClient::onPing() {
+    m_networkController->sendPacket(PacketType::PING_SUCCESS);
+}
+
+void CallsClient::onPingSuccess() {
+    m_pingManager->setPingSuccess();
+}
+
+void CallsClient::onVoice(const unsigned char* data, int length) {
+    if (m_call && m_audioEngine && m_audioEngine->isStream()) {
+        size_t decryptedLength = static_cast<size_t>(length) - CryptoPP::AES::BLOCKSIZE;
+        std::vector<CryptoPP::byte> decryptedData(decryptedLength);
+
+        crypto::AESDecrypt(m_call.value().getCallKey(), data, length,
+            decryptedData.data(), decryptedData.size()
+        );
+
+        m_audioEngine->playAudio(decryptedData.data(), static_cast<int>(decryptedLength));
+    }
+}
+
 void CallsClient::onAuthorizationSuccess(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
@@ -686,6 +804,27 @@ void CallsClient::onCallAcceptedFail(const nlohmann::json& jsonObject) {
 void CallsClient::onCallDeclinedOk(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
+}
+
+void CallsClient::onScreenSharingStartedFail(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onStartScreenSharingError(); });
+}
+
+void CallsClient::onScreenSharingStartedOk(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+}
+
+void CallsClient::onScreenSharingStoppedOk(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+}
+
+void CallsClient::onScreen(const unsigned char* data, int length) {
+    
 }
 
 void CallsClient::onStartCallingFail(const nlohmann::json& jsonObject) {
@@ -941,6 +1080,65 @@ void CallsClient::sendStartCallingPacket(const std::string& friendNickname, cons
     );
 
     m_tasks.emplace(uuid, task);
+}
+
+void CallsClient::sendStartScreenSharingPacket() {
+    auto [uuid, packet] = PacketsFactory::getStartScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash());
+
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::START_SCREEN_SHARING,
+        [this, uuid]() {
+            std::lock_guard<std::mutex> lock(m_dataMutex);
+
+            if (m_tasks.contains(uuid)) {
+                auto& task = m_tasks.at(uuid);
+                m_callbacksQueue.push([this, task]() {task->retry(); });
+            }
+        },
+        [this, uuid]() {
+            std::lock_guard<std::mutex> lock(m_dataMutex);
+
+            if (m_tasks.contains(uuid)) {
+                m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
+            }
+
+            m_callbacksQueue.push([this]() {
+                m_callbackHandler->onStartScreenSharingError();
+            });
+        },
+        3
+    );
+
+    m_tasks.emplace(uuid, task);
+}
+
+void CallsClient::sendStopScreenSharingPacket(bool createTask) {
+    auto [uuid, packet] = PacketsFactory::getStopScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash(), createTask);
+
+    if (createTask) {
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::START_SCREEN_SHARING,
+            [this, uuid]() {
+                std::lock_guard<std::mutex> lock(m_dataMutex);
+
+                if (m_tasks.contains(uuid)) {
+                    auto& task = m_tasks.at(uuid);
+                    m_callbacksQueue.push([this, task]() {task->retry(); });
+                }
+            },
+            [this, uuid]() {
+                std::lock_guard<std::mutex> lock(m_dataMutex);
+
+                if (m_tasks.contains(uuid)) {
+                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
+                }
+            },
+            3
+        );
+
+        m_tasks.emplace(uuid, task);
+        return;
+    }
+    
+    m_networkController->sendPacket(std::move(packet), PacketType::STOP_SCREEN_SHARING);
 }
 
 void CallsClient::sendStopCallingPacket(bool createTask) {
