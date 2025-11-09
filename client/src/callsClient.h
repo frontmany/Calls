@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <thread>
 #include <chrono>
+#include <vector>
+#include <cstdint>
 
 #include "networkController.h"
 #include "audioEngine.h"

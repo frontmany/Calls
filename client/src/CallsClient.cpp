@@ -3,8 +3,6 @@
 #include "logger.h"
 #include "jsonTypes.h"
 
-
-
 using namespace calls;
 using namespace std::chrono_literals;
 
@@ -824,7 +822,45 @@ void CallsClient::onScreenSharingStoppedOk(const nlohmann::json& jsonObject) {
 }
 
 void CallsClient::onScreen(const unsigned char* data, int length) {
-    
+    if (!m_viewingRemoteScreen) {
+        return;
+    }
+
+    if (!data || length <= 0) {
+        return;
+    }
+
+    if (!m_call) {
+        LOG_WARN("Screen frame received but call state is empty");
+        return;
+    }
+
+    if (length <= CryptoPP::AES::BLOCKSIZE) {
+        LOG_WARN("Screen frame too small to decrypt: {} bytes", length);
+        return;
+    }
+
+    std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
+
+    try {
+        crypto::AESDecrypt(m_call.value().getCallKey(),
+            data,
+            length,
+            decrypted.data(),
+            decrypted.size());
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Failed to decrypt screen frame: {}", e.what());
+        return;
+    }
+
+    std::string screenData(reinterpret_cast<const char*>(decrypted.data()), decrypted.size());
+
+    m_callbacksQueue.push([this, screenData = std::move(screenData)]() mutable {
+        if (m_callbackHandler) {
+            m_callbackHandler->onIncomingScreen(screenData);
+        }
+    });
 }
 
 void CallsClient::onStartCallingFail(const nlohmann::json& jsonObject) {

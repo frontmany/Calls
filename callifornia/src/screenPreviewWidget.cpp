@@ -12,7 +12,6 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
         m_screenSize = m_screen->size();
     }
 
-    // Рассчитываем размер на основе пропорций экрана
     QSize previewSize = calculatePreviewSize();
     setFixedSize(previewSize);
 
@@ -20,16 +19,15 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
     layout->setContentsMargins(8, 8, 8, 8);
     layout->setSpacing(0);
 
-    // Preview image - адаптивный размер
     m_previewLabel = new QLabel();
     m_previewLabel->setAlignment(Qt::AlignCenter);
     m_previewLabel->setMinimumSize(previewSize.width() - 16, previewSize.height() - 16); // Учитываем margins
     m_previewLabel->setStyleSheet(
         "background-color: rgb(230, 230, 230);"
-        "border: 2px solid rgb(200, 200, 200);"
-        "border-radius: 6px;"
+        "border: 4px solid rgb(230, 230, 230);"
+        "border-radius: 4px;"
     );
-    m_previewLabel->setScaledContents(true); // Включаем масштабирование содержимого
+    m_previewLabel->setScaledContents(true);
 
     layout->addWidget(m_previewLabel);
 
@@ -40,19 +38,18 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
 QSize ScreenPreviewWidget::calculatePreviewSize() const
 {
     if (!m_screen) {
-        return QSize(300, 200); // Размер по умолчанию
+        return QSize(300, 200);
     }
 
     QSize screenSize = m_screen->size();
-    const int maxWidth = 400;  // Максимальная ширина превью
-    const int maxHeight = 300; // Максимальная высота превью
+    const int maxWidth = 400;
+    const int maxHeight = 300;
 
     double aspectRatio = static_cast<double>(screenSize.width()) / screenSize.height();
 
     int width, height;
 
     if (aspectRatio > 1.0) {
-        // Горизонтальный экран
         width = maxWidth;
         height = static_cast<int>(maxWidth / aspectRatio);
         if (height > maxHeight) {
@@ -61,7 +58,6 @@ QSize ScreenPreviewWidget::calculatePreviewSize() const
         }
     }
     else {
-        // Вертикальный экран
         height = maxHeight;
         width = static_cast<int>(maxHeight * aspectRatio);
         if (width > maxWidth) {
@@ -70,7 +66,6 @@ QSize ScreenPreviewWidget::calculatePreviewSize() const
         }
     }
 
-    // Гарантируем минимальный размер
     width = qMax(width, 200);
     height = qMax(height, 150);
 
@@ -85,8 +80,7 @@ void ScreenPreviewWidget::setSelected(bool selected)
         setStyleSheet(
             "ScreenPreviewWidget {"
             "   background-color: rgb(225, 245, 254);"
-            "   border: 3px solid rgb(33, 150, 243);"
-            "   border-radius: 10px;"
+            "   border: none;"
             "}"
         );
 
@@ -100,8 +94,7 @@ void ScreenPreviewWidget::setSelected(bool selected)
         setStyleSheet(
             "ScreenPreviewWidget {"
             "   background-color: rgb(250, 250, 250);"
-            "   border: 2px solid rgb(220, 220, 220);"
-            "   border-radius: 10px;"
+            "   border: none;"
             "}"
         );
         setGraphicsEffect(nullptr);
@@ -110,33 +103,29 @@ void ScreenPreviewWidget::setSelected(bool selected)
     update();
 }
 
-void ScreenPreviewWidget::updatePreview()
-{
+void ScreenPreviewWidget::updatePreview() {
     if (!m_screen) return;
 
-    // Capture screen preview
     QPixmap screenshot = m_screen->grabWindow(0);
 
-    // Масштабируем с сохранением пропорций для отображения в превью
     QPixmap preview = screenshot.scaled(m_previewLabel->size(),
         Qt::KeepAspectRatio,
-        Qt::SmoothTransformation);
+        Qt::SmoothTransformation
+    );
+
     m_previewLabel->setPixmap(preview);
 }
 
-void ScreenPreviewWidget::mousePressEvent(QMouseEvent* event)
-{
+void ScreenPreviewWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         emit screenClicked(m_screenIndex, m_isSelected);
     }
     QWidget::mousePressEvent(event);
 }
 
-void ScreenPreviewWidget::paintEvent(QPaintEvent* event)
-{
+void ScreenPreviewWidget::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
 
-    // Draw selection indicator
     if (m_isSelected) {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);

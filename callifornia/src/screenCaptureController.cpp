@@ -11,7 +11,7 @@
 #include <algorithm>
 
 ScreenCaptureController::ScreenCaptureController(QWidget* parent)
-    : QObject(parent), m_parent(parent), m_encodeImageData(false), m_captureOverlay(nullptr), m_captureDialog(nullptr),
+    : QObject(parent), m_parent(parent), m_captureOverlay(nullptr), m_captureDialog(nullptr),
     m_screensContainer(nullptr), m_screensLayout(nullptr), m_shareButton(nullptr),
     m_statusLabel(nullptr), m_isCapturing(false), m_selectedScreenIndex(-1)
 {
@@ -22,11 +22,6 @@ ScreenCaptureController::ScreenCaptureController(QWidget* parent)
 ScreenCaptureController::~ScreenCaptureController()
 {
     hideCaptureDialog();
-}
-
-void ScreenCaptureController::setEncodeImageData(bool enable)
-{
-    m_encodeImageData = enable;
 }
 
 void ScreenCaptureController::showCaptureDialog()
@@ -155,9 +150,8 @@ void ScreenCaptureController::captureScreen()
     if (!screen) return;
 
     QPixmap screenshot = screen->grabWindow(0);
-
     std::string imageData;
-    if (m_encodeImageData)
+    if (!screenshot.isNull())
     {
         imageData = pixmapToString(screenshot);
     }
@@ -518,8 +512,7 @@ std::string ScreenCaptureController::pixmapToString(const QPixmap& pixmap)
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    // ������� � JPEG � ��������� 80%
-    pixmap.save(&buffer, "JPG", 80);
+    pixmap.save(&buffer, "JPG", 100);
 
     return std::string(byteArray.constData(), byteArray.size());
 }

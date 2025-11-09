@@ -1,5 +1,6 @@
 #include "callWidget.h"
 #include "incomingCallWidget.h"
+#include "logger.h"
 #include "screenCaptureController.h"
 #include <QPainter>
 #include <QPainterPath>
@@ -599,8 +600,6 @@ void CallWidget::onScreenShareToggled()
         if (!m_screenCaptureController)
         {
             m_screenCaptureController = new ScreenCaptureController(this);
-            // For local preview we do not need JPEG encoding each frame
-            m_screenCaptureController->setEncodeImageData(false);
             connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &CallWidget::onCaptureStarted);
             connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &CallWidget::onCaptureStopped);
             connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &CallWidget::onScreenCaptured);
@@ -840,8 +839,10 @@ void CallWidget::onCaptureStopped()
     updateIncomingCallsVisibility();
 }
 
-void CallWidget::onScreenCaptured(const QPixmap& pixmap, const std::string& /*imageData*/)
+void CallWidget::onScreenCaptured(const QPixmap& pixmap, const std::string& imageData)
 {
+    LOG_INFO(imageData.size());
+
     if (!m_localSharingActive) return;
 
     QPixmap processed = cropToHorizontal(pixmap);
