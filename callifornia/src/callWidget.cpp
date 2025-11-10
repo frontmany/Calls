@@ -886,11 +886,6 @@ void CallWidget::setAudioMuted(bool muted) {
     }
 }
 
-QColor CallWidget::generateRandomColor(const QString& seed) {
-    int hash = qHash(seed);
-    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
-}
-
 QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
 {
     if (pixmap.isNull()) return pixmap;

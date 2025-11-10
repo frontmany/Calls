@@ -110,7 +110,6 @@ private:
     void updateSlidersVisibility();
     void setupShadowEffect();
     void updateIncomingCallsVisibility();
-    QColor generateRandomColor(const QString& seed);
     QPixmap cropToHorizontal(const QPixmap& pixmap);
     void updateShareDisplayVisibility();
     void positionSlidersPopup();

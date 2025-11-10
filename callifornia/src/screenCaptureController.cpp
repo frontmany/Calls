@@ -500,7 +500,6 @@ void ScreenCaptureController::refreshScreensPreview()
         m_statusLabel->setText("Status: Select a screen to share");
     }
 
-    // ������������� ��������� layout
     if (m_screensContainer) {
         m_screensContainer->adjustSize();
     }
