@@ -252,7 +252,21 @@ void MainWindow::onUpdateLoaded(bool emptyUpdate)
 
 void MainWindow::launchUpdateApplier() {
     qint64 currentPid = QCoreApplication::applicationPid();
-    QString appPath = QCoreApplication::applicationFilePath();
+
+    QString appPath;
+#ifdef Q_OS_LINUX
+    QString appimagePath = qgetenv("APPIMAGE");
+    if (!appimagePath.isEmpty()) {
+        appPath = appimagePath;
+         LOG_INFO("Running as AppImage");
+    }
+    else {
+        LOG_INFO("Running not as as AppImage");
+        appPath = QCoreApplication::applicationFilePath();
+    }
+#else
+    appPath = QCoreApplication::applicationFilePath();
+#endif
 
     QString updateApplierName;
 #ifdef Q_OS_WIN
@@ -270,7 +284,8 @@ void MainWindow::launchUpdateApplier() {
     QStringList arguments;
     arguments << QString::number(currentPid) << appPath;
 
-    QProcess::startDetached(updateApplierName, arguments);
+    QString workingDir = QDir::currentPath();
+    QProcess::startDetached(updateApplierName, arguments, workingDir);
 }
 
 void MainWindow::onLoadingProgress(double progress)

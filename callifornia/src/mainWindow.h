@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QLabel>
 #include <QMovie>
+#include <QDir>
 #include <QProcess>
 #include <QDialog>
 #include <QScreen>
