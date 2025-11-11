@@ -379,9 +379,16 @@ void MainWindow::setupUI() {
     });
 
     // Temporary: show CallWidget immediately for testing
+    /*
     m_callWidget->setCallInfo("Test User");
     m_stackedLayout->setCurrentWidget(m_callWidget);
     setWindowTitle("Call In Progress - Callifornia");
+
+    QTimer::singleShot(2000, [this]() {
+        m_callWidget->addIncomingCall("Test User");
+    });
+
+    */
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
@@ -442,9 +449,20 @@ void MainWindow::onShareScreenStoppedByUser()
     m_callWidget->setShowingDisplayActive(false);
 }
 
+
+
+
+
+
+
+
+
+
+
+
 void MainWindow::onCaptureStarted()
 {
-    /*
+    
     const std::string friendNickname = calls::getNicknameInCallWith();
     if (friendNickname.empty())
     {
@@ -462,13 +480,13 @@ void MainWindow::onCaptureStarted()
         stopLocalScreenCapture();
         return;
     }
-    */
+    
 
     m_localScreenCaptureActive = true;
     m_screenSendErrorNotified = false;
     if (m_callWidget)
     {
-        //m_callWidget->setLocalSharingActive(true);
+        m_callWidget->setShowingDisplayActive(true);
     }
 }
 
@@ -489,7 +507,7 @@ void MainWindow::onCaptureStopped()
     if (m_callWidget)
     {
         m_callWidget->resetScreenShareToggle();
-        //m_callWidget->setLocalSharingActive(false);
+        m_callWidget->setShowingDisplayActive(false);
     }
 }
 
@@ -503,7 +521,7 @@ void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::string& imag
         m_callWidget->showFrame(pixmap);
     }
 
-    /*
+    
     if (imageData.empty()) return;
 
     if (!calls::sendScreen(imageData))
@@ -514,7 +532,7 @@ void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::string& imag
             m_screenSendErrorNotified = true;
         }
     }
-    */
+    
 }
 
 void MainWindow::onStartScreenSharingError()
@@ -526,36 +544,48 @@ void MainWindow::onStartScreenSharingError()
 void MainWindow::onIncomingScreenSharingStarted()
 {
     if (m_localScreenCaptureActive)
-    {
         stopLocalScreenCapture();
-    }
-
+    
     if (m_callWidget)
-    {
         m_callWidget->setShowingDisplayActive(true);
-    }
 }
 
 void MainWindow::onIncomingScreenSharingStopped()
 {
     if (m_callWidget)
-    {
         m_callWidget->setShowingDisplayActive(true);
-    }
 }
 
 void MainWindow::onIncomingScreen(const std::string& data)
 {
-    if (!m_callWidget) return;
-    if (data.empty()) return;
+    if (!m_callWidget || data.empty()) return;
 
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
+
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
-    {
         m_callWidget->setShowingDisplayActive(true);
-    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void MainWindow::onBlurAnimationFinished() {
     if (calls::isAuthorized()) {

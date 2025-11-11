@@ -8,6 +8,7 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QDialog>
+#include <QResizeEvent>
 #include <QSignalBlocker>
 #include <algorithm>
 #include <cmath>
@@ -244,7 +245,7 @@ void CallWidget::setupUI()
     m_incomingCallsScrollLayout = new QVBoxLayout(m_incomingCallsScrollWidget);
     m_incomingCallsScrollLayout->setContentsMargins(scale(2), scale(2), scale(2), scale(2));
     m_incomingCallsScrollLayout->setSpacing(scale(8));
-    m_incomingCallsScrollLayout->setAlignment(Qt::AlignTop);
+    m_incomingCallsScrollLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
     m_incomingCallsScrollArea->setWidget(m_incomingCallsScrollWidget);
 
@@ -259,7 +260,7 @@ void CallWidget::setupUI()
     // Share display label (hidden by default)
     m_displayLabel = new QLabel(this);
     m_displayLabel->setAlignment(Qt::AlignCenter);
-    m_displayLabel->setFixedSize(scale(1380), scale(820));
+    m_displayLabel->setFixedSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
     m_displayLabel->setStyleSheet("background: transparent;");
     m_displayLabel->setScaledContents(false);
     m_displayLabel->hide();
@@ -455,7 +456,6 @@ void CallWidget::setupUI()
 void CallWidget::setupShadowEffect() {
     setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
     setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
-    // removed: mute audio button
     setupElementShadow(m_muteMicrophoneButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_screenShareButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_speakerButton, 10, QColor(0, 0, 0, 50));
@@ -492,6 +492,12 @@ void CallWidget::paintEvent(QPaintEvent* event) {
     }
 
     QWidget::paintEvent(event);
+}
+
+void CallWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateIncomingCallWidths();
 }
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
@@ -645,92 +651,8 @@ void CallWidget::setAudioMuted(bool muted) {
 void CallWidget::setShowingDisplayActive(bool active)
 {
     m_showingDisplay = active;
-    updateDisplayVisibility();
-}
+    
 
-/*
-void CallWidget::updateShareScaleFactor()
-{
-    const bool anySharing = m_localSharingActive || m_remoteSharingActive;
-    const bool wasSharingBracketed = (m_displayLabel->minimumWidth() > 0 && m_displayLabel->minimumHeight() > 0);
-    const double targetScale = (anySharing && m_slidersVisible) ? 0.7 : 1.0;
-
-    if (!anySharing)
-    {
-        if (std::abs(m_shareScaleFactor - 1.0) > 0.001)
-        {
-            m_shareScaleFactor = 1.0;
-        }
-        return;
-    }
-
-    if (std::abs(targetScale - m_shareScaleFactor) > 0.001)
-    {
-        m_shareScaleFactor = targetScale;
-        refreshSharePresentation();
-    }
-}
-*/
-
-QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
-{
-    if (pixmap.isNull()) return pixmap;
-
-    int w = pixmap.width();
-    int h = pixmap.height();
-
-    if (h <= w)
-    {
-        return pixmap;
-    }
-
-    // Crop portrait to 16:9 horizontal area centered
-    int targetH = static_cast<int>(w * 9.0 / 16.0);
-    targetH = qMin(targetH, h);
-    int y = (h - targetH) / 2;
-    QRect cropRect(0, y, w, targetH);
-    return pixmap.copy(cropRect);
-}
-
-void CallWidget::applyDisplaySize()
-{
-    if (!m_displayLabel)
-    {
-        return;
-    }
-
-    const bool screenShareActive = m_screenShareButton && m_screenShareButton->isToggled();
-    const bool displayActive = m_showingDisplay;
-
-    QSize targetSize;
-    if (screenShareActive || displayActive)
-    {
-        targetSize = QSize(scale(1380), scale(820));
-    }
-    else
-    {
-        targetSize = QSize(scale(1080), scale(520));
-    }
-
-    if (m_slidersContainer && m_slidersContainer->isVisible())
-    {
-        int reservedHeight = m_slidersContainer->height();
-        if (reservedHeight <= 0)
-        {
-            reservedHeight = m_slidersContainer->sizeHint().height();
-        }
-        reservedHeight += scale(40);
-        int adjustedHeight = targetSize.height() - reservedHeight;
-        adjustedHeight = std::max(scale(360), adjustedHeight);
-        targetSize.setHeight(adjustedHeight);
-    }
-
-    m_displayLabel->setFixedSize(targetSize);
-    m_displayLabel->updateGeometry();
-}
-
-void CallWidget::updateDisplayVisibility()
-{
     if (m_showingDisplay)
     {
         m_timerLabel->hide();
@@ -760,6 +682,53 @@ void CallWidget::updateDisplayVisibility()
 
     applyDisplaySize();
     updateIncomingCallsVisibility();
+}
+
+QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
+{
+    if (pixmap.isNull()) return pixmap;
+
+    int w = pixmap.width();
+    int h = pixmap.height();
+
+    if (h <= w)
+    {
+        return pixmap;
+    }
+
+    // Crop portrait to 16:9 horizontal area centered
+    int targetH = static_cast<int>(w * 9.0 / 16.0);
+    targetH = qMin(targetH, h);
+    int y = (h - targetH) / 2;
+    QRect cropRect(0, y, w, targetH);
+    return pixmap.copy(cropRect);
+}
+
+void CallWidget::applyDisplaySize()
+{
+    if (!m_displayLabel) return;
+    
+    QSize targetSize;
+    if (m_showingDisplay)
+        targetSize = QSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
+    else
+        targetSize = QSize(scale(1080), scale(520));
+    
+    if (m_slidersContainer && m_slidersContainer->isVisible())
+    {
+        int reservedHeight = m_slidersContainer->height();
+        if (reservedHeight <= 0)
+        {
+            reservedHeight = m_slidersContainer->sizeHint().height();
+        }
+        reservedHeight += scale(40);
+        int adjustedHeight = targetSize.height() - reservedHeight;
+        adjustedHeight = std::max(scale(360), adjustedHeight);
+        targetSize.setHeight(adjustedHeight);
+    }
+
+    m_displayLabel->setFixedSize(targetSize);
+    m_displayLabel->updateGeometry();
 }
 
 void CallWidget::showFrame(const QPixmap& frame)
@@ -857,8 +826,9 @@ void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTim
 
     // Create new incoming call widget
     IncomingCallWidget* callWidget = new IncomingCallWidget(m_incomingCallsScrollWidget, friendNickName, remainingTime);
+    callWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     setupElementShadow(callWidget, 10, QColor(0, 0, 3, 50));
-    m_incomingCallsScrollLayout->addWidget(callWidget);
+    m_incomingCallsScrollLayout->addWidget(callWidget, 0, Qt::AlignHCenter);
     m_incomingCallWidgets[friendNickName] = callWidget;
 
     // Connect signals
@@ -867,6 +837,7 @@ void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTim
 
     // Show incoming calls section if hidden
     updateIncomingCallsVisibility();
+    updateIncomingCallWidths();
 }
 
 void CallWidget::removeIncomingCall(const QString& callerName) {
@@ -877,6 +848,7 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
         m_incomingCallWidgets.remove(callerName);
 
         updateIncomingCallsVisibility();
+        updateIncomingCallWidths();
     }
 }
 
@@ -982,6 +954,41 @@ void CallWidget::updateIncomingCallsVisibility() {
 		if (m_incomingCallsDialog) {
 			m_incomingCallsDialog->hide();
 		}
+    }
+
+    updateIncomingCallWidths();
+}
+
+void CallWidget::updateIncomingCallWidths()
+{
+    if (!m_incomingCallsScrollArea) return;
+
+    const int defaultWidth = scale(440);
+    const int horizontalPadding = scale(16);
+    const int viewportWidth = m_incomingCallsScrollArea->viewport()->width();
+
+    int targetWidth = defaultWidth;
+
+    if (viewportWidth > 0)
+    {
+        int availableWidth = viewportWidth - horizontalPadding;
+        if (availableWidth > 0)
+        {
+            targetWidth = std::min(defaultWidth, availableWidth);
+        }
+        else
+        {
+            targetWidth = std::min(defaultWidth, viewportWidth);
+        }
+    }
+
+    for (auto it = m_incomingCallWidgets.begin(); it != m_incomingCallWidgets.end(); ++it)
+    {
+        if (IncomingCallWidget* widget = it.value())
+        {
+            widget->setFixedWidth(targetWidth);
+            widget->updateGeometry();
+        }
     }
 }
 

@@ -4,6 +4,7 @@
 
 #include <QApplication>
 #include <QScreen>
+#include <QWindow>
 #include <QBuffer>
 #include <QFont>
 #include <QTimer>
@@ -40,18 +41,88 @@ void ScreenCaptureController::showCaptureDialog()
 
     m_captureDialog = createCaptureDialog(m_captureOverlay);
 
-    auto centerDialog = [this]()
+    auto centerDialog = [this]() {
+        if (!m_captureDialog || !m_captureOverlay)
         {
-            if (!m_captureDialog || !m_captureOverlay)
-                return;
-            m_captureDialog->adjustSize();
-            QSize dialogSize = m_captureDialog->size();
-            QRect overlayRect = m_captureOverlay->rect();
-            int x = overlayRect.center().x() - dialogSize.width() / 2;
-            int y = overlayRect.center().y() - dialogSize.height() / 2;
-            m_captureDialog->move(x, y);
-            m_captureDialog->raise();
-        };
+            return;
+        }
+
+        m_captureDialog->adjustSize();
+        const QSize dialogSize = m_captureDialog->size();
+
+        QWidget* referenceWidget = m_captureOverlay->window();
+        if (!referenceWidget && m_parent)
+        {
+            referenceWidget = m_parent->window();
+        }
+
+        QRect targetRect;
+        if (referenceWidget)
+        {
+            const QRect windowRect = referenceWidget->frameGeometry();
+            const QPoint windowCenter = windowRect.center();
+
+            QScreen* screen = QGuiApplication::screenAt(windowCenter);
+            if (!screen && referenceWidget->windowHandle())
+            {
+                screen = referenceWidget->windowHandle()->screen();
+            }
+            if (!screen)
+            {
+                screen = QGuiApplication::primaryScreen();
+            }
+            if (screen)
+            {
+                targetRect = screen->availableGeometry();
+            }
+        }
+
+        if (!targetRect.isValid())
+        {
+            if (QScreen* primaryScreen = QGuiApplication::primaryScreen())
+            {
+                targetRect = primaryScreen->availableGeometry();
+            }
+            else if (referenceWidget)
+            {
+                targetRect = referenceWidget->frameGeometry();
+            }
+            else
+            {
+                const QPoint overlayTopLeft = m_captureOverlay->mapToGlobal(QPoint(0, 0));
+                targetRect = QRect(overlayTopLeft, m_captureOverlay->size());
+            }
+        }
+
+        const QPoint desiredGlobal(
+            targetRect.x() + (targetRect.width() - dialogSize.width()) / 2,
+            targetRect.y() + (targetRect.height() - dialogSize.height()) / 2);
+
+        QPoint localPos = m_captureOverlay->mapFromGlobal(desiredGlobal);
+        const QRect overlayRect = m_captureOverlay->rect();
+        const QRect desiredLocalRect(localPos, dialogSize);
+
+        if (!overlayRect.contains(desiredLocalRect))
+        {
+            const int maxX = std::max(0, overlayRect.width() - dialogSize.width());
+            const int maxY = std::max(0, overlayRect.height() - dialogSize.height());
+
+            const int boundedX = std::clamp(localPos.x(), 0, maxX);
+            const int boundedY = std::clamp(localPos.y(), 0, maxY);
+
+            localPos = QPoint(boundedX, boundedY);
+
+            if (!overlayRect.contains(QRect(localPos, dialogSize)))
+            {
+                const QPoint overlayCenter = overlayRect.center();
+                localPos.setX(std::clamp(overlayCenter.x() - dialogSize.width() / 2, 0, maxX));
+                localPos.setY(std::clamp(overlayCenter.y() - dialogSize.height() / 2, 0, maxY));
+            }
+        }
+
+        m_captureDialog->move(localPos);
+        m_captureDialog->raise();
+    };
 
     centerDialog();
     m_captureDialog->show();
@@ -249,7 +320,6 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
     contentLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
     contentLayout->setSpacing(scale(12));
 
-    // ���������
     m_titleLabel = new QLabel("Share Your Screen");
     m_titleLabel->setAlignment(Qt::AlignCenter);
     m_titleLabel->setStyleSheet(QString(
@@ -261,7 +331,6 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
     ).arg(scale(20)).arg(scale(10)));
     m_titleLabel->setFont(titleFont);
 
-    // ����������
     m_instructionLabel = new QLabel("Click on a screen to select it, then press Share to start streaming");
     m_instructionLabel->setAlignment(Qt::AlignCenter);
     m_instructionLabel->setStyleSheet(QString(
@@ -389,14 +458,12 @@ QWidget* ScreenCaptureController::createCaptureDialog(OverlayWidget* overlay)
     buttonLayout->addSpacing(scale(20));
     buttonLayout->addWidget(closeButton);
 
-    // �������� ��� ������
     contentLayout->addWidget(m_titleLabel);
     contentLayout->addWidget(m_instructionLabel);
     contentLayout->addWidget(m_statusLabel);
     contentLayout->addWidget(scrollArea, 1);
     contentLayout->addLayout(buttonLayout);
 
-    // ���������� �������
     connect(m_shareButton, &QPushButton::clicked, this, &ScreenCaptureController::onShareButtonClicked);
     connect(closeButton, &QPushButton::clicked, this, &ScreenCaptureController::hideCaptureDialog);
 

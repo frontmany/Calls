@@ -13,6 +13,7 @@
 
 #include "buttons.h"
 class QDialog;
+class QResizeEvent;
 
 class IncomingCallWidget;
 
@@ -83,6 +84,7 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private slots:
     void onMuteMicrophoneClicked();
@@ -103,7 +105,7 @@ private:
     void setupUI();
     void setupShadowEffect();
     void updateIncomingCallsVisibility();
-    void updateDisplayVisibility();
+    void updateIncomingCallWidths();
     QPixmap cropToHorizontal(const QPixmap& pixmap);
     void applyDisplaySize();
 
