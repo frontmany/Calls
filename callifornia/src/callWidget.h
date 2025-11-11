@@ -10,11 +10,9 @@
 #include <QScrollArea>
 #include <QPixmap>
 #include <QIcon>
-#include <string>
 
 #include "buttons.h"
 class QDialog;
-class ScreenCaptureController;
 
 class IncomingCallWidget;
 
@@ -47,7 +45,6 @@ struct StyleCallWidget {
     static QString volumeLabelStyle();
     static QString scrollAreaStyle();
     static QString volumeSliderStyle();
-    static QString notificationRedLabelStyle();
     static QString sliderContainerStyle();
 };
 
@@ -68,9 +65,10 @@ public:
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
-    void showErrorNotification(const QString& text, int durationMs);
-    void setRemoteSharingActive(bool active);
-    void showRemoteShareFrame(const QPixmap& frame);
+    void setShowingDisplayActive(bool active);
+    void showFrame(const QPixmap& frame);
+    void disableStartScreenShareButton(bool disable);
+    void resetScreenShareToggle();
 
 signals:
     void hangupClicked();
@@ -85,7 +83,6 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
 
 private slots:
     void onMuteMicrophoneClicked();
@@ -98,28 +95,20 @@ private slots:
     void onIncomingCallDeclined(const QString& callerName);
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
     void onScreenShareToggled();
-    void onCaptureStarted();
-    void onCaptureStopped();
-    void onScreenCaptured(const QPixmap& pixmap, const std::string& imageData);
     void onMicLabelToggled(bool toggled);
     void onSpeakerLabelToggled(bool toggled);
     void onIncomingCallsDialogClosed();
 
 private:
     void setupUI();
-    void updateSlidersVisibility();
     void setupShadowEffect();
     void updateIncomingCallsVisibility();
+    void updateDisplayVisibility();
     QPixmap cropToHorizontal(const QPixmap& pixmap);
-    void updateShareDisplayVisibility();
-    void positionSlidersPopup();
-    void positionIncomingCallsPopup();
-    void positionIncomingCallsDialog();
+    void applyDisplaySize();
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
-    QWidget* m_mainContainer;
-    QVBoxLayout* m_containerLayout;
 
     // Incoming calls section
     QWidget* m_incomingCallsContainer;
@@ -131,7 +120,7 @@ private:
     // Call info section
     QLabel* m_timerLabel;
     QLabel* m_friendNicknameLabel;
-    QLabel* m_shareDisplayLabel;
+    QLabel* m_displayLabel;
 
     // Control panels
     QWidget* m_buttonsPanel;
@@ -157,6 +146,7 @@ private:
     ToggleButtonIcon* m_screenShareButton;
     ToggleButtonIcon* m_speakerButton;
     QPushButton* m_hangupButton;
+
     // Screen share button icons
     QIcon m_screenShareIconNormal;
     QIcon m_screenShareIconHover;
@@ -169,27 +159,13 @@ private:
     QTime* m_callDuration;
     QString m_friendNickname;
 
-    QWidget* m_notificationWidget;
-    QHBoxLayout* m_notificationLayout;
-    QLabel* m_notificationLabel;
-    QTimer* m_notificationTimer;
-
     // States
     bool m_microphoneMuted = false;
     bool m_audioMuted = false;
     bool m_slidersVisible = false;
-    bool m_localSharingActive = false;
-    bool m_remoteSharingActive = false;
-    bool m_captureDialogVisible = false;
-    bool m_restoreSlidersAfterDialog = false;
-    bool m_incomingCallsOverlay = false;
+    bool m_showingDisplay = false;
 
-    // Incoming calls dialog (used during screen sharing)
+    // Incoming calls
     QDialog* m_incomingCallsDialog = nullptr;
-
-    // Screen sharing
-    ScreenCaptureController* m_screenCaptureController = nullptr;
-
-    // Incoming calls management
     QMap<QString, IncomingCallWidget*> m_incomingCallWidgets;
 };

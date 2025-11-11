@@ -12,6 +12,8 @@
 #include <QProcess>
 #include <QDialog>
 #include <QScreen>
+#include <QPixmap>
+#include <memory>
 
 #include "updater.h"
 #include "calls.h"
@@ -20,6 +22,7 @@ class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
 class DialogsController;
+class ScreenCaptureController;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -65,6 +68,15 @@ private slots:
     void onMuteMicrophoneButtonClicked(bool mute);
     void onMuteSpeakerButtonClicked(bool mute);
     void onBlurAnimationFinished();
+    void onShareScreenRequested();
+    void onShareScreenStoppedByUser();
+    void onCaptureStarted();
+    void onCaptureStopped();
+    void onScreenCaptured(const QPixmap& pixmap, const std::string& imageData);
+    void onStartScreenSharingError();
+    void onIncomingScreenSharingStarted();
+    void onIncomingScreenSharingStopped();
+    void onIncomingScreen(const std::string& data);
 
 private:
     void switchToAuthorizationWidget();
@@ -89,6 +101,9 @@ private:
     void playCallingRingtone();
     void stopCallingRingtone();
     void playSoundEffect(const QString& soundPath); 
+    void ensureScreenCaptureController();
+    void stopLocalScreenCapture();
+    void showTransientStatusMessage(const QString& message, int durationMs);
 
 private:
     QMediaPlayer* m_ringtonePlayer;
@@ -102,4 +117,8 @@ private:
     MainMenuWidget* m_mainMenuWidget;
     CallWidget* m_callWidget;
     DialogsController* m_dialogsController;
+
+    std::unique_ptr<ScreenCaptureController> m_screenCaptureController;
+    bool m_localScreenCaptureActive = false;
+    bool m_screenSendErrorNotified = false;
 };

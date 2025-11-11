@@ -1,14 +1,17 @@
 #include "callWidget.h"
 #include "incomingCallWidget.h"
-#include "logger.h"
-#include "screenCaptureController.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QGraphicsDropShadowEffect>
 #include <QPixmap>
+#include <QSize>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QDialog>
+#include <QSignalBlocker>
+#include <algorithm>
+#include <cmath>
+#include <string>
 #include "scaleFactor.h"
 
 // Style definitions
@@ -201,65 +204,24 @@ QString StyleCallWidget::volumeSliderStyle() {
         .arg(QString::fromStdString(std::to_string(scale(4))));
 }
 
-QString StyleCallWidget::notificationRedLabelStyle() {
-    return QString("QWidget {"
-        "   background-color: rgba(220, 80, 80, 100);"
-        "   border: none;"
-        "   border-radius: %1px;"
-        "   margin: 0px;"
-        "   padding: 0px;"
-        "}").arg(QString::fromStdString(std::to_string(scale(8))));
-}
-
 CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupShadowEffect();
 
-    // Initialize timer
     m_callTimer = new QTimer(this);
     m_callDuration = new QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &CallWidget::updateCallTimer);
-
-    m_notificationTimer = new QTimer(this);
-    m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
-
-    // Screen capture controller will be created lazily on first use
 }
 
-void CallWidget::setupUI() {
+void CallWidget::setupUI()
+{
     m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
-
-    // Main container
-    m_mainContainer = new QWidget(this);
-    m_mainContainer->setFixedWidth(scale(500));
-    m_mainContainer->setStyleSheet(StyleCallWidget::containerStyle());
-
-    m_containerLayout = new QVBoxLayout(m_mainContainer);
-    m_containerLayout->setSpacing(scale(10));
-    m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-    m_containerLayout->setAlignment(Qt::AlignCenter);
-
-    // Create network error widget
-    m_notificationWidget = new QWidget(this);
-    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_notificationWidget->hide();
-    m_notificationWidget->setStyleSheet(StyleCallWidget::notificationRedLabelStyle());
-
-    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
-    m_notificationLayout->setAlignment(Qt::AlignCenter);
-    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
-
-    m_notificationLabel = new QLabel(m_notificationWidget);
-    QFont errorFont("Outfit", scale(12), QFont::Medium);
-    m_notificationLabel->setFont(errorFont);
-    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-
-    m_notificationLayout->addWidget(m_notificationLabel);
+    m_mainLayout->setSpacing(scale(10));
+    m_mainLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
+    m_mainLayout->setAlignment(Qt::AlignCenter);
 
     // Incoming calls container (initially hidden)
-    m_incomingCallsContainer = new QWidget(m_mainContainer);
+    m_incomingCallsContainer = new QWidget(this);
     m_incomingCallsContainer->setStyleSheet("background-color: transparent;");
     m_incomingCallsContainer->setFixedHeight(scale(0)); // Start collapsed
     m_incomingCallsContainer->hide();
@@ -288,23 +250,22 @@ void CallWidget::setupUI() {
 
     m_incomingCallsLayout->addWidget(m_incomingCallsScrollArea);
 
-    // Timer
-    m_timerLabel = new QLabel("00:00", m_mainContainer);
+    // Timer label
+    m_timerLabel = new QLabel("00:00", this);
     m_timerLabel->setAlignment(Qt::AlignCenter);
     m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
     m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
     // Share display label (hidden by default)
-    m_shareDisplayLabel = new QLabel(m_mainContainer);
-    m_shareDisplayLabel->setAlignment(Qt::AlignCenter);
-    m_shareDisplayLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_shareDisplayLabel->setMinimumHeight(scale(240));
-    m_shareDisplayLabel->setStyleSheet("background: transparent;");
-    m_shareDisplayLabel->setScaledContents(true);
-    m_shareDisplayLabel->hide();
+    m_displayLabel = new QLabel(this);
+    m_displayLabel->setAlignment(Qt::AlignCenter);
+    m_displayLabel->setFixedSize(scale(1380), scale(820));
+    m_displayLabel->setStyleSheet("background: transparent;");
+    m_displayLabel->setScaledContents(false);
+    m_displayLabel->hide();
 
     // Friend nickname
-    m_friendNicknameLabel = new QLabel("Friend", m_mainContainer);
+    m_friendNicknameLabel = new QLabel("Friend", this);
     m_friendNicknameLabel->setAlignment(Qt::AlignCenter);
     m_friendNicknameLabel->setStyleSheet(StyleCallWidget::titleStyle());
     m_friendNicknameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
@@ -312,7 +273,7 @@ void CallWidget::setupUI() {
     m_friendNicknameLabel->setFont(nicknameFont);
 
     // Buttons panel
-    m_buttonsPanel = new QWidget(m_mainContainer);
+    m_buttonsPanel = new QWidget(this);
     m_buttonsPanel->setStyleSheet(StyleCallWidget::panelStyle());
     m_buttonsPanel->setFixedHeight(scale(80));
 
@@ -377,11 +338,10 @@ void CallWidget::setupUI() {
     m_buttonsLayout->addWidget(m_hangupButton);
 
     // Sliders container (initially hidden)
-    m_slidersContainer = new QWidget(m_mainContainer);
-    m_slidersContainer->setParent(window());
-    //m_slidersContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    m_slidersContainer->setFixedWidth(extraScale(400, 3));
+    m_slidersContainer = new QWidget(this);
+    m_slidersContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     m_slidersContainer->setFixedHeight(scale(110));
+    m_slidersContainer->setFixedWidth(scale(400));
     m_slidersContainer->setObjectName("slidersContainer");
     m_slidersContainer->setStyleSheet(StyleCallWidget::sliderContainerStyle());
     m_slidersContainer->hide();
@@ -402,7 +362,7 @@ void CallWidget::setupUI() {
     m_micLabelSliderLayout = new QHBoxLayout();
     m_micLabelSliderLayout->setSpacing(scale(10));
     m_micLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_micLabelSliderLayout->setAlignment(Qt::AlignLeft);
+    m_micLabelSliderLayout->setAlignment(Qt::AlignCenter);
 
     // Mic label (toggle mute)
     m_micLabel = new ToggleButtonIcon(m_micSliderWidget,
@@ -437,7 +397,7 @@ void CallWidget::setupUI() {
     m_speakerLabelSliderLayout = new QHBoxLayout();
     m_speakerLabelSliderLayout->setSpacing(scale(10));
     m_speakerLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_speakerLabelSliderLayout->setAlignment(Qt::AlignLeft);
+    m_speakerLabelSliderLayout->setAlignment(Qt::AlignCenter);
 
     // Speaker label (toggle mute)
     m_speakerLabel = new ToggleButtonIcon(m_speakerSliderWidget,
@@ -468,18 +428,14 @@ void CallWidget::setupUI() {
     m_slidersLayout->addWidget(m_speakerSliderWidget);
 
     // Add widgets to main layout
-    m_containerLayout->addWidget(m_incomingCallsContainer);
-    m_containerLayout->addStretch();
-    m_containerLayout->addWidget(m_timerLabel);
-    m_containerLayout->addWidget(m_shareDisplayLabel, 1);
-    m_containerLayout->addWidget(m_friendNicknameLabel);
-    m_containerLayout->addSpacing(scale(10));
-    m_containerLayout->addWidget(m_buttonsPanel);
-    m_containerLayout->addStretch();
-
-    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
-    m_mainLayout->addSpacing(scale(20));
-    m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
+    m_mainLayout->addWidget(m_incomingCallsContainer);
+    m_mainLayout->addWidget(m_timerLabel);
+    m_mainLayout->addWidget(m_displayLabel, 1, Qt::AlignHCenter);
+    m_mainLayout->addWidget(m_friendNicknameLabel);
+    m_mainLayout->addSpacing(scale(10));
+    m_mainLayout->addWidget(m_buttonsPanel, 0, Qt::AlignHCenter);
+    m_mainLayout->addSpacing(scale(10));
+    m_mainLayout->addWidget(m_slidersContainer, 0, Qt::AlignHCenter);
 
     // Connect signals
     // removed: mute audio button no longer exists
@@ -538,30 +494,6 @@ void CallWidget::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
 }
 
-void CallWidget::resizeEvent(QResizeEvent* event)
-{
-	QWidget::resizeEvent(event);
-	if (m_slidersVisible && m_slidersContainer && !m_captureDialogVisible)
-	{
-		positionSlidersPopup();
-		m_slidersContainer->raise();
-	}
-
-	if (m_incomingCallsContainer && (m_localSharingActive || m_remoteSharingActive))
-	{
-		// Position dialog or fallback overlay depending on current mode
-		if (m_incomingCallsDialog && m_incomingCallsDialog->isVisible())
-		{
-			positionIncomingCallsDialog();
-		}
-		else if (m_incomingCallsOverlay)
-		{
-			positionIncomingCallsPopup();
-			m_incomingCallsContainer->raise();
-		}
-	}
-}
-
 void CallWidget::setCallInfo(const QString& friendNickname) {
     m_friendNickname = friendNickname;
     m_friendNicknameLabel->setText(friendNickname);
@@ -580,44 +512,16 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
 
 void CallWidget::onScreenShareToggled()
 {
-    bool toggled = m_screenShareButton->isToggled();
-
-    if (toggled)
+    if (m_screenShareButton->isToggled())
     {
-        if (m_remoteSharingActive)
-        {
-            showErrorNotification("Remote screen is being shared", 2000);
-            m_screenShareButton->setToggled(false);
-            return;
-        }
-
-		// Hide sliders while capture dialog is shown
-		m_captureDialogVisible = true;
-		m_restoreSlidersAfterDialog = (m_slidersContainer && m_slidersContainer->isVisible());
-		if (m_slidersContainer) m_slidersContainer->hide();
-
         emit shareScreenClicked();
-        if (!m_screenCaptureController)
-        {
-            m_screenCaptureController = new ScreenCaptureController(this);
-            connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &CallWidget::onCaptureStarted);
-            connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &CallWidget::onCaptureStopped);
-            connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &CallWidget::onScreenCaptured);
-        }
-        m_screenCaptureController->showCaptureDialog();
     }
     else
     {
-        // Immediately restore timer UI
-        m_localSharingActive = false;
-        if (m_shareDisplayLabel) m_shareDisplayLabel->clear();
-        updateShareDisplayVisibility();
-
-        if (m_screenCaptureController)
-        {
-            m_screenCaptureController->stopCapture();
-        }
+        emit shareScreenStopped();
     }
+
+    applyDisplaySize();
 }
 
 void CallWidget::updateCallTimer() {
@@ -669,87 +573,8 @@ void CallWidget::onMuteMicrophoneClicked()
 void CallWidget::onSpeakerClicked()
 {
     m_slidersVisible = m_speakerButton->isToggled();
-    updateSlidersVisibility();
-	if (m_slidersVisible && !m_captureDialogVisible) {
-        positionSlidersPopup();
-        m_slidersContainer->raise();
-    }
-}
-
-void CallWidget::updateSlidersVisibility() {
-	if (m_slidersVisible && !m_captureDialogVisible) {
-        m_slidersContainer->show();
-    }
-    else {
-        m_slidersContainer->hide();
-    }
-}
-
-void CallWidget::positionSlidersPopup()
-{
-    if (!m_slidersContainer || !m_speakerButton) return;
-
-    const QSize popupSize = m_slidersContainer->size();
-	int x = 0;
-	int y = 0;
-
-	const bool anySharing = m_localSharingActive || m_remoteSharingActive;
-
-	if (anySharing)
-	{
-		// Position from bottom-left corner of the window client area when sharing is active
-		const QWidget* win = window();
-		QPoint bottomLeftGlobal = win ? win->mapToGlobal(QPoint(0, win->height())) : QPoint(0, 0);
-
-		const int marginLeft = extraScale(390, 4);
-		const int marginBottom = scale(35);
-
-		x = bottomLeftGlobal.x() + marginLeft;
-		y = bottomLeftGlobal.y() - marginBottom - popupSize.height();
-	}
-	else
-	{
-		// Default positioning relative to the speaker button
-		const QRect buttonRect = m_speakerButton->rect();
-		const QPoint buttonBottomCenter = m_speakerButton->mapToGlobal(QPoint(buttonRect.center().x(), buttonRect.bottom()));
-		x = buttonBottomCenter.x() - popupSize.width() / 2;
-        x -= scale(15);
-
-		y = buttonBottomCenter.y() + scale(8);
-        y += scale(15);
-	}
-
-	QPoint screenAnchor = QPoint(x, y);
-	QScreen* screen = QGuiApplication::screenAt(screenAnchor);
-    if (!screen) screen = QGuiApplication::primaryScreen();
-    if (screen)
-    {
-        const QRect avail = screen->availableGeometry();
-		if (x + popupSize.width() > avail.right()) x = avail.right() - popupSize.width();
-		if (x < avail.left()) x = avail.left();
-		if (y + popupSize.height() > avail.bottom())
-        {
-			// For non-sharing fallback, place above anchor; for sharing, just clamp to bottom
-			if (!anySharing)
-			{
-				const QRect buttonRect = m_speakerButton->rect();
-				y = m_speakerButton->mapToGlobal(QPoint(buttonRect.center().x(), buttonRect.top())).y() - scale(8) - popupSize.height();
-			}
-			if (y < avail.top()) y = avail.top();
-        }
-		if (y < avail.top()) y = avail.top();
-    }
-
-	// Convert to parent (window) coordinates before moving
-	if (QWidget* win = window())
-	{
-		QPoint localPos = win->mapFromGlobal(QPoint(x, y));
-		m_slidersContainer->move(localPos);
-	}
-	else
-	{
-		m_slidersContainer->move(x, y);
-	}
+    m_slidersContainer->setVisible(m_slidersVisible);
+    applyDisplaySize();
 }
 
 void CallWidget::onInputVolumeChanged() {
@@ -785,75 +610,6 @@ void CallWidget::onSpeakerLabelToggled(bool toggled)
     emit muteSpeakerClicked(toggled);
 }
 
-void CallWidget::onCaptureStarted()
-{
-    m_localSharingActive = true;
-	// Dialog is now closed
-	m_captureDialogVisible = false;
-	// Hide incoming container from layout immediately
-	if (m_incomingCallsContainer)
-	{
-		m_incomingCallsContainer->hide();
-	}
-	if (m_restoreSlidersAfterDialog)
-	{
-		m_restoreSlidersAfterDialog = false;
-		if (m_slidersVisible)
-		{
-			updateSlidersVisibility();
-			if (m_slidersContainer->isVisible())
-			{
-				positionSlidersPopup();
-				m_slidersContainer->raise();
-			}
-		}
-	}
-    updateShareDisplayVisibility();
-    updateIncomingCallsVisibility();
-}
-
-void CallWidget::onCaptureStopped()
-{
-    m_localSharingActive = false;
-    emit shareScreenStopped();
-    if (m_screenShareButton && m_screenShareButton->isToggled())
-    {
-        m_screenShareButton->setToggled(false);
-    }
-	// Dialog may have been closed without starting capture
-	m_captureDialogVisible = false;
-	if (m_restoreSlidersAfterDialog)
-	{
-		m_restoreSlidersAfterDialog = false;
-		if (m_slidersVisible)
-		{
-			updateSlidersVisibility();
-			if (m_slidersContainer->isVisible())
-			{
-				positionSlidersPopup();
-				m_slidersContainer->raise();
-			}
-		}
-	}
-    updateShareDisplayVisibility();
-    updateIncomingCallsVisibility();
-}
-
-void CallWidget::onScreenCaptured(const QPixmap& pixmap, const std::string& imageData)
-{
-    LOG_INFO(imageData.size());
-
-    if (!m_localSharingActive) return;
-
-    QPixmap processed = cropToHorizontal(pixmap);
-    if (!processed.isNull())
-    {
-        QSize labelSize = m_shareDisplayLabel->size();
-        QPixmap scaled = processed.scaled(labelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        m_shareDisplayLabel->setPixmap(scaled);
-    }
-}
-
 void CallWidget::setInputVolume(int newVolume) {
     m_micVolumeSlider->setValue(newVolume);
 }
@@ -886,6 +642,36 @@ void CallWidget::setAudioMuted(bool muted) {
     }
 }
 
+void CallWidget::setShowingDisplayActive(bool active)
+{
+    m_showingDisplay = active;
+    updateDisplayVisibility();
+}
+
+/*
+void CallWidget::updateShareScaleFactor()
+{
+    const bool anySharing = m_localSharingActive || m_remoteSharingActive;
+    const bool wasSharingBracketed = (m_displayLabel->minimumWidth() > 0 && m_displayLabel->minimumHeight() > 0);
+    const double targetScale = (anySharing && m_slidersVisible) ? 0.7 : 1.0;
+
+    if (!anySharing)
+    {
+        if (std::abs(m_shareScaleFactor - 1.0) > 0.001)
+        {
+            m_shareScaleFactor = 1.0;
+        }
+        return;
+    }
+
+    if (std::abs(targetScale - m_shareScaleFactor) > 0.001)
+    {
+        m_shareScaleFactor = targetScale;
+        refreshSharePresentation();
+    }
+}
+*/
+
 QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
 {
     if (pixmap.isNull()) return pixmap;
@@ -906,167 +692,118 @@ QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
     return pixmap.copy(cropRect);
 }
 
-void CallWidget::updateShareDisplayVisibility()
+void CallWidget::applyDisplaySize()
 {
-    bool anySharing = m_localSharingActive || m_remoteSharingActive;
-    if (anySharing)
+    if (!m_displayLabel)
+    {
+        return;
+    }
+
+    const bool screenShareActive = m_screenShareButton && m_screenShareButton->isToggled();
+    const bool displayActive = m_showingDisplay;
+
+    QSize targetSize;
+    if (screenShareActive || displayActive)
+    {
+        targetSize = QSize(scale(1380), scale(820));
+    }
+    else
+    {
+        targetSize = QSize(scale(1080), scale(520));
+    }
+
+    if (m_slidersContainer && m_slidersContainer->isVisible())
+    {
+        int reservedHeight = m_slidersContainer->height();
+        if (reservedHeight <= 0)
+        {
+            reservedHeight = m_slidersContainer->sizeHint().height();
+        }
+        reservedHeight += scale(40);
+        int adjustedHeight = targetSize.height() - reservedHeight;
+        adjustedHeight = std::max(scale(360), adjustedHeight);
+        targetSize.setHeight(adjustedHeight);
+    }
+
+    m_displayLabel->setFixedSize(targetSize);
+    m_displayLabel->updateGeometry();
+}
+
+void CallWidget::updateDisplayVisibility()
+{
+    if (m_showingDisplay)
     {
         m_timerLabel->hide();
-
-        m_mainLayout->setContentsMargins(scale(10), scale(10), scale(10), scale(10));
-        m_containerLayout->setContentsMargins(scale(10), scale(10), scale(10), scale(10));
-
-        m_mainContainer->setMinimumWidth(extraScale(1450, 5));
-
-        // Let layout stretch allocate the remaining space without forcing parent to grow
-        m_shareDisplayLabel->setMinimumHeight(extraScale(820, 5));
-        m_shareDisplayLabel->show();
-		if (m_slidersVisible && !m_captureDialogVisible)
-		{
-			positionSlidersPopup();
-			m_slidersContainer->raise();
-		}
-        updateIncomingCallsVisibility();
-    }
-    else
-    {
-        m_shareDisplayLabel->hide();
-        m_timerLabel->show();
-
-        m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
-        m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-        m_mainContainer->setFixedWidth(scale(500));
-		if (m_slidersVisible && !m_captureDialogVisible)
-		{
-			positionSlidersPopup();
-			m_slidersContainer->raise();
-		}
-        updateIncomingCallsVisibility();
-    }
-}
-
-void CallWidget::setRemoteSharingActive(bool active)
-{
-    m_remoteSharingActive = active;
-
-    if (m_remoteSharingActive && m_localSharingActive)
-    {
-        if (m_screenCaptureController)
+        m_displayLabel->show();
+        if (m_mainLayout)
         {
-            m_screenCaptureController->stopCapture();
-            m_screenCaptureController->hideCaptureDialog();
-        }
-        if (m_screenShareButton && m_screenShareButton->isToggled())
-        {
-            m_screenShareButton->setToggled(false);
-        }
-        m_localSharingActive = false;
-    }
-
-    // Disable local share button while remote is sharing
-    if (m_screenShareButton)
-    {
-        m_screenShareButton->setEnabled(!m_remoteSharingActive);
-        if (m_remoteSharingActive)
-        {
-            if (m_screenShareButton->isToggled())
+            m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+            if (m_displayLabel && m_mainLayout->indexOf(m_displayLabel) != -1)
             {
-                m_screenShareButton->setToggled(false);
+                m_mainLayout->setStretchFactor(m_displayLabel, 1);
             }
-            m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
-            // Use disabled icon for all states
-            m_screenShareButton->setIcons(m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled);
         }
-        else
-        {
-            // Restore normal icons
-            m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
-            m_screenShareButton->setToolTip("Share screen");
-        }
-    }
-
-    updateShareDisplayVisibility();
-}
-
-void CallWidget::showRemoteShareFrame(const QPixmap& frame)
-{
-    if (!m_remoteSharingActive) return;
-    if (frame.isNull()) return;
-    QSize labelSize = m_shareDisplayLabel->size();
-    QPixmap scaled = frame.scaled(labelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    m_shareDisplayLabel->setPixmap(scaled);
-}
-
-void CallWidget::positionIncomingCallsPopup()
-{
-    if (!m_incomingCallsContainer) return;
-
-    const QSize popupSize = m_incomingCallsContainer->size();
-    int x = 0;
-    int y = 0;
-
-    const QWidget* win = window();
-    QPoint topLeftGlobal = win ? win->mapToGlobal(QPoint(0, 0)) : QPoint(0, 0);
-
-    const int marginLeft = scale(20);
-    const int marginTop = scale(20);
-
-    x = topLeftGlobal.x() + marginLeft;
-    y = topLeftGlobal.y() + marginTop;
-
-    QPoint screenAnchor = QPoint(x, y);
-    QScreen* screen = QGuiApplication::screenAt(screenAnchor);
-    if (!screen) screen = QGuiApplication::primaryScreen();
-    if (screen)
-    {
-        const QRect avail = screen->availableGeometry();
-        if (x + popupSize.width() > avail.right()) x = qMax(avail.left(), avail.right() - popupSize.width());
-        if (y + popupSize.height() > avail.bottom()) y = qMax(avail.top(), avail.bottom() - popupSize.height());
-        if (x < avail.left()) x = avail.left();
-        if (y < avail.top()) y = avail.top();
-    }
-
-    if (QWidget* winw = window())
-    {
-        QPoint localPos = winw->mapFromGlobal(QPoint(x, y));
-        m_incomingCallsContainer->move(localPos);
     }
     else
     {
-        m_incomingCallsContainer->move(x, y);
+        m_displayLabel->hide();
+        m_timerLabel->show();
+        if (m_mainLayout)
+        {
+            m_mainLayout->setAlignment(Qt::AlignCenter);
+            if (m_displayLabel && m_mainLayout->indexOf(m_displayLabel) != -1)
+            {
+                m_mainLayout->setStretchFactor(m_displayLabel, 0);
+            }
+        }
+    }
+
+    applyDisplaySize();
+    updateIncomingCallsVisibility();
+}
+
+void CallWidget::showFrame(const QPixmap& frame)
+{
+    if (frame.isNull() || !m_showingDisplay || !m_displayLabel) return;
+
+    QPixmap preparedFrame = cropToHorizontal(frame);
+    if (preparedFrame.isNull()) return;
+
+    QSize targetSize = m_displayLabel->size();
+    QPixmap scaledFrame = preparedFrame.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    
+    m_displayLabel->setPixmap(scaledFrame);
+}
+
+void CallWidget::disableStartScreenShareButton(bool disable) {
+    m_screenShareButton->setDisabled(disable);
+
+    if (disable) {    
+        m_screenShareButton->setToggled(false);
+        m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
+        m_screenShareButton->setIcons(m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled);
+    }
+    else {
+        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
+        m_screenShareButton->setToolTip("Share screen");
     }
 }
 
-void CallWidget::positionIncomingCallsDialog()
+void CallWidget::resetScreenShareToggle()
 {
-	if (!m_incomingCallsDialog) return;
+    if (!m_screenShareButton)
+    {
+        return;
+    }
 
-	const QWidget* win = window();
-	if (!win) return;
-
-	// Position near top-left of the main window with margins
-	const int marginLeft = scale(20);
-	const int marginTop = scale(20);
-
-	QPoint topLeftGlobal = win->mapToGlobal(QPoint(0, 0));
-	int x = topLeftGlobal.x() + marginLeft;
-	int y = topLeftGlobal.y() + marginTop;
-
-	// Ensure the dialog stays within available screen
-	QScreen* screen = QGuiApplication::screenAt(QPoint(x, y));
-	if (!screen) screen = QGuiApplication::primaryScreen();
-	if (screen)
-	{
-		const QRect avail = screen->availableGeometry();
-		QSize dlgSize = m_incomingCallsDialog->size();
-		if (x + dlgSize.width() > avail.right()) x = qMax(avail.left(), avail.right() - dlgSize.width());
-		if (y + dlgSize.height() > avail.bottom()) y = qMax(avail.top(), avail.bottom() - dlgSize.height());
-		if (x < avail.left()) x = avail.left();
-		if (y < avail.top()) y = avail.top();
-	}
-
-	m_incomingCallsDialog->move(x, y);
-	m_incomingCallsDialog->raise();
+    if (m_screenShareButton->isToggled())
+    {
+        m_screenShareButton->setToggled(false);
+    }
+    else
+    {
+        applyDisplaySize();
+    }
 }
 
 void CallWidget::clearIncomingCalls() {
@@ -1088,10 +825,10 @@ void CallWidget::onIncomingCallsDialogClosed()
 		{
 			m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
 		}
-		m_incomingCallsContainer->setParent(m_mainContainer);
-		if (m_containerLayout)
+		m_incomingCallsContainer->setParent(this);
+		if (m_mainLayout)
 		{
-			m_containerLayout->insertWidget(0, m_incomingCallsContainer);
+			m_mainLayout->insertWidget(0, m_incomingCallsContainer);
 		}
 	}
 
@@ -1113,11 +850,6 @@ void CallWidget::onIncomingCallsDialogClosed()
 	{
 		m_incomingCallsScrollArea->setFixedHeight(scale(0));
 	}
-}
-void CallWidget::showErrorNotification(const QString& text, int durationMs) {
-    m_notificationLabel->setText(text);
-    m_notificationWidget->show();
-    m_notificationTimer->start(durationMs);
 }
 
 void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTime) {
@@ -1149,15 +881,13 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
 }
 
 void CallWidget::updateIncomingCallsVisibility() {
-    const bool anySharing = m_localSharingActive || m_remoteSharingActive;
-
     if (!m_incomingCallWidgets.isEmpty()) {
         int callCount = m_incomingCallWidgets.size();
         int visibleCount = qMin(callCount, 3);
         int scrollAreaHeight = visibleCount * scale(90);
         int containerHeight = scrollAreaHeight + scale(40);
 
-        if (anySharing)
+        if (m_showingDisplay)
 		{
 			// Ensure dialog exists
 			if (!m_incomingCallsDialog)
@@ -1173,9 +903,9 @@ void CallWidget::updateIncomingCallsVisibility() {
 				dlgLayout->setSpacing(0);
 
 				// Ensure not in main layout anymore
-				if (m_containerLayout && m_incomingCallsContainer->parent() == m_mainContainer)
+				if (m_mainLayout && m_incomingCallsContainer->parent() == this)
 				{
-					m_containerLayout->removeWidget(m_incomingCallsContainer);
+					m_mainLayout->removeWidget(m_incomingCallsContainer);
 				}
 				m_incomingCallsContainer->setParent(m_incomingCallsDialog);
 				m_incomingCallsContainer->show();
@@ -1195,9 +925,9 @@ void CallWidget::updateIncomingCallsVisibility() {
 				// If dialog exists but container is not inside it, reparent it
 				if (m_incomingCallsContainer->parent() != m_incomingCallsDialog)
 				{
-					if (m_containerLayout && m_incomingCallsContainer->parent() == m_mainContainer)
+					if (m_mainLayout && m_incomingCallsContainer->parent() == this)
 					{
-						m_containerLayout->removeWidget(m_incomingCallsContainer);
+						m_mainLayout->removeWidget(m_incomingCallsContainer);
 					}
 					m_incomingCallsContainer->setParent(m_incomingCallsDialog);
 					m_incomingCallsContainer->show();
@@ -1219,7 +949,6 @@ void CallWidget::updateIncomingCallsVisibility() {
 			m_incomingCallsDialog->show();
 			m_incomingCallsDialog->raise();
 			m_incomingCallsDialog->activateWindow();
-			positionIncomingCallsDialog();
 		}
 		else
 		{
@@ -1229,12 +958,12 @@ void CallWidget::updateIncomingCallsVisibility() {
 				m_incomingCallsDialog->hide();
 			}
 
-			if (m_incomingCallsContainer->parent() != m_mainContainer)
+			if (m_incomingCallsContainer->parent() != this)
 			{
-				m_incomingCallsContainer->setParent(m_mainContainer);
-				if (m_containerLayout)
+				m_incomingCallsContainer->setParent(this);
+				if (m_mainLayout)
 				{
-					m_containerLayout->insertWidget(0, m_incomingCallsContainer);
+					m_mainLayout->insertWidget(0, m_incomingCallsContainer);
 				}
 			}
 

@@ -8,12 +8,14 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStatusBar>
 
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
 #include "overlayWidget.h"
 #include "callWidget.h"
 #include "dialogsController.h"
+#include "screenCaptureController.h"
 
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
@@ -117,6 +119,36 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
             effect->deleteLater();
         }
     });
+}
+
+void MainWindow::ensureScreenCaptureController()
+{
+    if (m_screenCaptureController) return;
+
+    m_screenCaptureController = std::make_unique<ScreenCaptureController>(this);
+
+    connect(m_screenCaptureController.get(), &ScreenCaptureController::captureStarted,
+        this, &MainWindow::onCaptureStarted);
+    connect(m_screenCaptureController.get(), &ScreenCaptureController::captureStopped,
+        this, &MainWindow::onCaptureStopped);
+    connect(m_screenCaptureController.get(), &ScreenCaptureController::screenCaptured,
+        this, &MainWindow::onScreenCaptured);
+}
+
+void MainWindow::stopLocalScreenCapture()
+{
+    if (!m_screenCaptureController) return;
+
+    m_screenCaptureController->hideCaptureDialog();
+    m_screenCaptureController->stopCapture();
+}
+
+void MainWindow::showTransientStatusMessage(const QString& message, int durationMs)
+{
+    if (QStatusBar* bar = statusBar())
+    {
+        bar->showMessage(message, durationMs);
+    }
 }
 
 void MainWindow::loadFonts() {
@@ -335,6 +367,8 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
+    connect(m_callWidget, &CallWidget::shareScreenClicked, this, &MainWindow::onShareScreenRequested);
+    connect(m_callWidget, &CallWidget::shareScreenStopped, this, &MainWindow::onShareScreenStoppedByUser);
     m_stackedLayout->addWidget(m_callWidget);
 
     QTimer::singleShot(2000, [this]() {
@@ -386,6 +420,141 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
 
     setWindowTitle("Call In Progress - Callifornia");
     m_callWidget->setCallInfo(friendNickname);
+}
+
+void MainWindow::onShareScreenRequested()
+{
+    ensureScreenCaptureController();
+    if (!m_screenCaptureController) return;
+
+    if (calls::isViewingRemoteScreen())
+    {
+        showTransientStatusMessage("Remote screen is already being shared", 3000);
+        return;
+    }
+
+    m_screenCaptureController->showCaptureDialog();
+}
+
+void MainWindow::onShareScreenStoppedByUser()
+{
+    stopLocalScreenCapture();
+    m_callWidget->setShowingDisplayActive(false);
+}
+
+void MainWindow::onCaptureStarted()
+{
+    /*
+    const std::string friendNickname = calls::getNicknameInCallWith();
+    if (friendNickname.empty())
+    {
+        
+        showTransientStatusMessage("No active call to share screen with", 3000);
+        
+        stopLocalScreenCapture();
+        return;
+    }
+    
+
+    if (!calls::startScreenSharing(friendNickname))
+    {
+        showTransientStatusMessage("Failed to start screen sharing", 3000);
+        stopLocalScreenCapture();
+        return;
+    }
+    */
+
+    m_localScreenCaptureActive = true;
+    m_screenSendErrorNotified = false;
+    if (m_callWidget)
+    {
+        //m_callWidget->setLocalSharingActive(true);
+    }
+}
+
+void MainWindow::onCaptureStopped()
+{
+    if (m_localScreenCaptureActive)
+    {
+        const std::string friendNickname = calls::getNicknameInCallWith();
+        if (!friendNickname.empty())
+        {
+            calls::stopScreenSharing(friendNickname);
+        }
+    }
+
+    m_localScreenCaptureActive = false;
+    m_screenSendErrorNotified = false;
+
+    if (m_callWidget)
+    {
+        m_callWidget->resetScreenShareToggle();
+        //m_callWidget->setLocalSharingActive(false);
+    }
+}
+
+void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::string& imageData)
+{
+    if (!m_localScreenCaptureActive) return;
+
+    if (m_callWidget && !pixmap.isNull())
+    {
+        m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->showFrame(pixmap);
+    }
+
+    /*
+    if (imageData.empty()) return;
+
+    if (!calls::sendScreen(imageData))
+    {
+        if (!m_screenSendErrorNotified)
+        {
+            showTransientStatusMessage("Failed to send screen frame", 2000);
+            m_screenSendErrorNotified = true;
+        }
+    }
+    */
+}
+
+void MainWindow::onStartScreenSharingError()
+{
+    showTransientStatusMessage("Screen sharing rejected by server", 3000);
+    stopLocalScreenCapture();
+}
+
+void MainWindow::onIncomingScreenSharingStarted()
+{
+    if (m_localScreenCaptureActive)
+    {
+        stopLocalScreenCapture();
+    }
+
+    if (m_callWidget)
+    {
+        m_callWidget->setShowingDisplayActive(true);
+    }
+}
+
+void MainWindow::onIncomingScreenSharingStopped()
+{
+    if (m_callWidget)
+    {
+        m_callWidget->setShowingDisplayActive(true);
+    }
+}
+
+void MainWindow::onIncomingScreen(const std::string& data)
+{
+    if (!m_callWidget) return;
+    if (data.empty()) return;
+
+    QPixmap frame;
+    const auto* raw = reinterpret_cast<const uchar*>(data.data());
+    if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
+    {
+        m_callWidget->setShowingDisplayActive(true);
+    }
 }
 
 void MainWindow::onBlurAnimationFinished() {
@@ -520,7 +689,7 @@ void MainWindow::handleAcceptCallErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
+        showTransientStatusMessage(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to accept call from unexpected widget");
@@ -534,7 +703,7 @@ void MainWindow::handleDeclineCallErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
+        showTransientStatusMessage(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to decline call from unexpected widget");
@@ -567,7 +736,7 @@ void MainWindow::handleEndCallErrorNotificationAppearance() {
     QString errorText = "Failed to end call. Please try again";
 
     if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
+        showTransientStatusMessage(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to end call from unexpected widget");

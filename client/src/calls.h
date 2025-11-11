@@ -58,6 +58,11 @@ namespace calls {
         return CallsClient::get().stopScreenSharing();
     }
 
+    inline bool sendScreen(const std::string& data)
+    {
+        return CallsClient::get().sendScreen(data);
+    }
+
     inline bool acceptCall(const std::string& friendNickname)
     {
         return CallsClient::get().acceptCall(friendNickname);
