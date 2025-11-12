@@ -1,6 +1,6 @@
 #include "networkController.h"
 #include "logger.h"
-#include "screenPacket.h"
+#include "screenChunk.h"
 #include <thread>
 #include <cstring>
 #include <iostream>
@@ -25,7 +25,7 @@ bool NetworkController::init(const std::string& host,
     std::function<void(const unsigned char*, int, PacketType type)> onReceiveCallback,
     std::function<void()> onErrorCallback)
 {
-    m_receiveBuffer.resize(m_maxUdpPacketSize);
+    m_receiveBuffer.resize(m_maxPacketSize);
     m_onErrorCallback = onErrorCallback;
     m_onReceiveCallback = onReceiveCallback;
 
@@ -83,19 +83,20 @@ bool NetworkController::stopped() const {
     return m_context.stopped();
 }
 
-void NetworkController::sendVoice(std::vector<unsigned char>&& data, PacketType type) {
+void NetworkController::sendVoice(std::vector<unsigned char>&& data) {
     asio::post(m_socket.get_executor(),
-        [this, data = std::move(data), type, endpoint = m_serverEndpoint]() mutable {
+        [this, data = std::move(data), endpoint = m_serverEndpoint]() mutable {
             if (!m_socket.is_open()) {
                 return;
             }
 
             const size_t totalSize = data.size() + sizeof(PacketType);
-            if (totalSize > m_maxUdpPacketSize) {
-                LOG_WARN("Voice packet too large: {} bytes (max: {})", totalSize, m_maxUdpPacketSize);
+            if (totalSize > m_maxPacketSize) {
+                LOG_WARN("Voice packet too large: {} bytes (max: {})", totalSize, m_maxPacketSize);
                 return;
             }
 
+            PacketType type = PacketType::VOICE;
             std::array<asio::const_buffer, 2> buffers = {
                 asio::buffer(data.data(), data.size()),
                 asio::buffer(&type, sizeof(PacketType))
@@ -113,26 +114,17 @@ void NetworkController::sendVoice(std::vector<unsigned char>&& data, PacketType 
     );
 }
 
-void NetworkController::sendScreen(std::vector<unsigned char>&& data, PacketType type) {
+void NetworkController::sendScreen(std::vector<unsigned char>&& data) {
     asio::post(m_socket.get_executor(),
-        [this, data = std::move(data), type]() mutable {
-            if (!m_socket.is_open()) {
-                return;
-            }
+        [this, data = std::move(data)]() mutable {
+            if (!m_socket.is_open()) return;
 
-            constexpr std::size_t headerSize = ScreenChunkHeader::serializedSize();
-            const std::size_t overhead = headerSize + sizeof(PacketType);
-            if (overhead >= m_maxUdpPacketSize) {
-                LOG_ERROR("Unable to send screen data: UDP packet size overhead exceeds limit ({} >= {})", overhead, m_maxUdpPacketSize);
-                return;
-            }
+            const bool wasEmpty = m_screenChunksQueue.empty();
 
-            const uint32_t frameId = m_nextScreenFrameId++;
-            enqueueScreenFrame(std::move(data), type, frameId);
+            splitAndEnqueueScreenFrames(std::move(data));
 
-            if (!m_screenSendInProgress) {
-                scheduleNextScreenDatagram();
-            }
+            if (wasEmpty && !m_screenChunksQueue.empty())
+                sendScreenChunk();
         }
     );
 }
@@ -146,8 +138,8 @@ void NetworkController::sendPacket(std::string&& data, PacketType type) {
             }
 
             const size_t totalSize = data.size() + sizeof(PacketType);
-            if (totalSize > m_maxUdpPacketSize) {
-                LOG_WARN("Data packet too large: {} bytes (max: {})", totalSize, m_maxUdpPacketSize);
+            if (totalSize > m_maxPacketSize) {
+                LOG_WARN("Data packet too large: {} bytes (max: {})", totalSize, m_maxPacketSize);
                 return;
             }
 
@@ -229,138 +221,152 @@ void NetworkController::handleReceive(std::size_t bytesTransferred) {
     startReceive();
 }
 
-void NetworkController::enqueueScreenFrame(std::vector<unsigned char>&& data, PacketType type, uint32_t frameId) {
-    const std::size_t headerSize = ScreenChunkHeader::serializedSize();
-    const std::size_t maxPayloadSize = m_maxUdpPacketSize - sizeof(PacketType) - headerSize;
+uint32_t NetworkController::generateChunkId() {
+    static std::atomic<uint32_t> s_counter{ 0 };
+    return s_counter++;
+}
 
-    if (maxPayloadSize == 0) {
-        LOG_ERROR("Unable to send screen data: max payload size resolved to zero");
+void NetworkController::splitAndEnqueueScreenFrames(std::vector<unsigned char>&& data) {
+    if (data.empty()) return;
+
+    const std::size_t headerAndTypeSize = sizeof(ScreenChunkHeader) + sizeof(PacketType);
+    if (m_maxPacketSize <= headerAndTypeSize) {
+        LOG_ERROR("Max packet size {} too small for screen packets", m_maxPacketSize);
         return;
     }
 
-    const std::size_t totalChunks = std::max<std::size_t>(1, (data.size() + maxPayloadSize - 1) / maxPayloadSize);
-    if (totalChunks > std::numeric_limits<uint16_t>::max()) {
-        LOG_WARN("Screen frame {} requires {} chunks which exceeds supported limit", frameId, totalChunks);
-        return;
-    }
+    const std::size_t maxPayloadSize = m_maxPacketSize - headerAndTypeSize;
+    const std::uint16_t totalChunks = static_cast<std::uint16_t>((data.size() + maxPayloadSize - 1) / maxPayloadSize);
 
-    for (std::size_t chunkIndex = 0; chunkIndex < totalChunks; ++chunkIndex) {
-        auto datagram = std::make_shared<ScreenDatagram>();
-        datagram->type = type;
-        datagram->header.frameId = frameId;
-        datagram->header.chunksCount = static_cast<uint16_t>(totalChunks);
-        datagram->header.chunkIndex = static_cast<uint16_t>(chunkIndex);
+    uint32_t chunkId = generateChunkId();
 
-        const std::size_t offset = chunkIndex * maxPayloadSize;
-        const std::size_t remaining = offset < data.size() ? data.size() - offset : 0;
-        const std::size_t chunkSize = std::min(maxPayloadSize, remaining);
+    for (std::uint16_t chunkNumber = 0; chunkNumber < totalChunks; ++chunkNumber) {
+        auto chunk = std::make_shared<ScreenChunk>();
+        chunk->header.id = chunkId;
+        chunk->header.chunksCount = totalChunks;
+        chunk->header.number = chunkNumber;
 
-        datagram->payload.resize(chunkSize);
-        if (chunkSize > 0) {
-            std::memcpy(datagram->payload.data(), data.data() + offset, chunkSize);
-        }
+        const std::size_t offset = static_cast<std::size_t>(chunkNumber) * maxPayloadSize;
+        const std::size_t chunkSize = std::min(maxPayloadSize, data.size() - offset);
 
-        datagram->header.payloadSize = static_cast<uint32_t>(chunkSize);
-        m_screenDatagramQueue.emplace_back(std::move(datagram));
+        chunk->payload.resize(chunkSize);
+        std::memcpy(chunk->payload.data(), data.data() + offset, chunkSize);
+
+        chunk->header.payloadSize = static_cast<uint32_t>(chunkSize);
+        m_screenChunksQueue.emplace(std::move(chunk));
     }
 }
 
-void NetworkController::scheduleNextScreenDatagram() {
-    if (m_screenDatagramQueue.empty()) {
-        m_screenSendInProgress = false;
-        return;
-    }
+void NetworkController::sendScreenChunk() {
+    auto chunk = m_screenChunksQueue.front();
+    m_screenChunksQueue.pop();
 
-    m_screenSendInProgress = true;
-    auto datagram = m_screenDatagramQueue.front();
-    m_screenDatagramQueue.pop_front();
+    static const PacketType packetType = PacketType::SCREEN;
 
-    std::array<asio::const_buffer, 3> buffers = {
-        asio::buffer(&datagram->header, sizeof(ScreenChunkHeader)),
-        asio::buffer(datagram->payload.data(), datagram->payload.size()),
-        asio::buffer(&datagram->type, sizeof(PacketType))
+    std::array<asio::const_buffer, 3> buffer = {
+        asio::buffer(chunk->payload.data(), chunk->payload.size()),
+        asio::buffer(&chunk->header, sizeof(ScreenChunkHeader)),
+        asio::buffer(&packetType, sizeof(PacketType))
     };
 
-    m_socket.async_send_to(buffers, m_serverEndpoint,
-        [this, datagram](const asio::error_code& error, std::size_t /*bytesSent*/) {
+    m_socket.async_send_to(buffer, m_serverEndpoint,
+        [this, chunk](const asio::error_code& error, std::size_t bytesSent) {
             if (error && error != asio::error::operation_aborted) {
                 LOG_ERROR("Screen packet send error: {}", error.message());
                 m_onErrorCallback();
             }
 
-            scheduleNextScreenDatagram();
+            if (!m_screenChunksQueue.empty()) {
+                sendScreenChunk();
+            }
         }
     );
 }
 
 void NetworkController::handleScreenChunk(const unsigned char* data, std::size_t length) {
-    if (!data || length == 0) {
-        return;
-    }
+    if (!data || length == 0) return;
 
-    constexpr std::size_t headerSize = ScreenChunkHeader::serializedSize();
-
+    constexpr std::size_t headerSize = sizeof(ScreenChunkHeader);
     if (length < headerSize) {
-        m_onReceiveCallback(data, static_cast<int>(length), PacketType::SCREEN);
+        LOG_WARN("Screen chunk too small: {} bytes, expected at least {}", length, headerSize);
         return;
     }
 
-    ScreenChunkHeader header{};
-    std::memcpy(&header, data, headerSize);
+    ScreenChunkHeader header;
+    const unsigned char* headerData = data + (length - headerSize);
+    std::memcpy(&header, headerData, headerSize);
 
-    const std::size_t payloadAvailable = length - headerSize;
+    const std::size_t headerAndTypeSize = sizeof(ScreenChunkHeader) + sizeof(PacketType);
+    if (m_maxPacketSize <= headerAndTypeSize) {
+        LOG_ERROR("Max packet size {} too small for screen packets", m_maxPacketSize);
+        return;
+    }
+
+    const std::size_t maxPayloadSize = m_maxPacketSize - headerAndTypeSize;
     const bool headerValid =
         header.chunksCount > 0 &&
-        header.chunkIndex < header.chunksCount &&
-        header.payloadSize <= payloadAvailable;
+        header.number < header.chunksCount &&
+        header.payloadSize <= maxPayloadSize &&
+        header.payloadSize > 0;
 
     if (!headerValid) {
-        LOG_WARN("Invalid screen chunk received (frame {}, chunk {}/{}, payload {}, available {})",
-            header.frameId,
-            header.chunkIndex,
+        LOG_WARN("Invalid screen chunk received (frame {}, chunk {}/{}, payload {}, max available {})",
+            header.id,
+            header.number,
             header.chunksCount,
             header.payloadSize,
-            payloadAvailable);
-
-        m_onReceiveCallback(data, static_cast<int>(length), PacketType::SCREEN);
+            maxPayloadSize);
         return;
     }
 
-    auto& frame = m_pendingScreenFrames[header.frameId];
+    auto& frame = m_pendingScreenFrames[header.id];
 
-    if (frame.totalChunks != header.chunksCount) {
+    if (frame.totalChunks == 0) {
         frame.totalChunks = header.chunksCount;
         frame.receivedChunks = 0;
         frame.totalSize = 0;
-        frame.chunks.assign(header.chunksCount, {});
+        frame.chunks.resize(header.chunksCount);
         frame.received.assign(header.chunksCount, false);
     }
 
-    if (header.chunkIndex >= frame.chunks.size()) {
-        LOG_WARN("Received screen chunk index {} exceeds total {}", header.chunkIndex, frame.chunks.size());
+    if (header.number >= frame.chunks.size()) {
+        LOG_WARN("Received screen chunk index {} exceeds total {}", header.number, frame.chunks.size());
         return;
     }
 
-    if (!frame.received[header.chunkIndex]) {
-        const unsigned char* chunkData = data + headerSize;
+    if (!frame.received[header.number]) {
+        const unsigned char* chunkData = data;
         const std::size_t chunkSize = static_cast<std::size_t>(header.payloadSize);
-        frame.chunks[header.chunkIndex].assign(chunkData, chunkData + chunkSize);
-        frame.received[header.chunkIndex] = true;
+        const std::size_t availablePayload = length - headerSize;
+
+        if (chunkSize > availablePayload) {
+            LOG_WARN("Screen chunk payload mismatch: declared {}, available {}", chunkSize, availablePayload);
+            return;
+        }
+
+        frame.chunks[header.number].assign(chunkData, chunkData + chunkSize);
+        frame.received[header.number] = true;
         frame.receivedChunks++;
         frame.totalSize += chunkSize;
+
+        LOG_INFO("Chunk {}/{} received (size: {} bytes)",
+            header.number + 1,
+            header.chunksCount,
+            chunkSize);
     }
 
     if (frame.receivedChunks == frame.totalChunks) {
+        LOG_INFO("All chunks received, total {}", frame.chunks.size());
+
         std::vector<unsigned char> aggregated;
         aggregated.reserve(frame.totalSize);
 
-        for (auto& chunk : frame.chunks) {
+        for (const auto& chunk : frame.chunks) {
             aggregated.insert(aggregated.end(), chunk.begin(), chunk.end());
         }
 
-        m_pendingScreenFrames.erase(header.frameId);
+        m_pendingScreenFrames.erase(header.id);
 
-        m_reassembledScreenFrame = std::move(aggregated);
-        m_onReceiveCallback(m_reassembledScreenFrame.data(), static_cast<int>(m_reassembledScreenFrame.size()), PacketType::SCREEN);
+        m_onReceiveCallback(aggregated.data(), static_cast<int>(aggregated.size()), PacketType::SCREEN);
     }
 }

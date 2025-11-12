@@ -2,6 +2,8 @@
 
 #include "calls.h"
 
+#include <vector>
+
 class MainWindow;
 
 class ClientCallbacksHandler : public calls::CallbacksInterface {
@@ -15,7 +17,7 @@ public:
     void onStartScreenSharingError() override;
     void onIncomingScreenSharingStarted() override;
     void onIncomingScreenSharingStopped() override;
-    void onIncomingScreen(const std::string& data) override;
+    void onIncomingScreen(const std::vector<unsigned char>& data) override;
 
     void onMaximumCallingTimeReached() override;
     void onCallingAccepted() override;

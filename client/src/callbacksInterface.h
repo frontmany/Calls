@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "errorCode.h"
 
@@ -16,7 +17,7 @@ namespace calls {
         virtual void onStartScreenSharingError() = 0;
         virtual void onIncomingScreenSharingStarted() = 0;
         virtual void onIncomingScreenSharingStopped() = 0;
-        virtual void onIncomingScreen(const std::string& data) = 0;
+        virtual void onIncomingScreen(const std::vector<unsigned char>& data) = 0;
 
         virtual void onMaximumCallingTimeReached() = 0;
         virtual void onCallingAccepted() = 0;

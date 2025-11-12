@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
@@ -15,6 +16,8 @@
 
 class NetworkController {
 public:
+    static constexpr std::size_t RECEIVE_BUFFER_SIZE = 8192;
+
     NetworkController(const std::string& port,
         std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> onReceiveCallback,
         std::function<void()> onNetworkErrorCallback);
@@ -37,7 +40,7 @@ private:
     asio::ip::udp::endpoint m_serverEndpoint;
     asio::ip::udp::endpoint m_receivedFromEndpoint;
 
-    std::array<unsigned char, 64000> m_receiveBuffer{};
+    std::array<unsigned char, RECEIVE_BUFFER_SIZE> m_receiveBuffer{};
     std::function<void(const unsigned char*, int, PacketType, const asio::ip::udp::endpoint&)> m_onReceiveCallback;
     std::function<void()> m_onNetworkErrorCallback;
 

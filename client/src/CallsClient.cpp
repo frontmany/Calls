@@ -682,7 +682,10 @@ bool CallsClient::stopScreenSharing() {
     return true;
 }
 
-bool CallsClient::sendScreen(const std::string& data) {
+bool CallsClient::sendScreen(const std::vector<unsigned char>& data) {
+    if (!m_screenSharing) return false;
+    if (m_state != State::BUSY) return false;
+
     const CryptoPP::SecByteBlock* callKey;
     {
         std::lock_guard<std::mutex> lock(m_dataMutex);
@@ -692,16 +695,16 @@ bool CallsClient::sendScreen(const std::string& data) {
     }
 
     try {
-        size_t cipherDataLength = data.length() + CryptoPP::AES::BLOCKSIZE;
+        size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
         std::vector<CryptoPP::byte> cipherData(cipherDataLength);
 
         crypto::AESEncrypt(*callKey,
             reinterpret_cast<const CryptoPP::byte*>(data.data()),
-            data.length(),
+            data.size(),
             cipherData.data(),
             cipherDataLength);
 
-        m_networkController->sendScreen(std::move(cipherData), PacketType::SCREEN);
+        m_networkController->sendScreen(std::move(cipherData));
         return true;
     }
     catch (const std::exception& e) {
@@ -854,7 +857,9 @@ void CallsClient::onScreen(const unsigned char* data, int length) {
         return;
     }
 
-    std::string screenData(reinterpret_cast<const char*>(decrypted.data()), decrypted.size());
+    std::vector<unsigned char> screenData(decrypted.begin(), decrypted.end());
+
+    LOG_INFO("Screen frame : {} bytes", screenData.size());
 
     m_callbacksQueue.push([this, screenData = std::move(screenData)]() mutable {
         if (m_callbackHandler) {
@@ -925,7 +930,7 @@ void CallsClient::onInputVoice(const unsigned char* data, int length) {
         size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
         std::vector<CryptoPP::byte> cipherData(cipherDataLength);
         crypto::AESEncrypt(m_call.value().getCallKey(), data, length, cipherData.data(), cipherDataLength);
-        m_networkController->sendVoice(std::move(cipherData), PacketType::VOICE);
+        m_networkController->sendVoice(std::move(cipherData));
     }
 }
 

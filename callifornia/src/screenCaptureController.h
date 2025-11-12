@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <QObject>
 #include <QTimer>
 #include <QPixmap>
@@ -34,7 +36,7 @@ public:
 signals:
     void captureStarted();
     void captureStopped();
-    void screenCaptured(const QPixmap& pixmap, const std::string& imageData);
+    void screenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
 
 private slots:
     void captureScreen();
@@ -44,7 +46,7 @@ private slots:
 private:
     QWidget* createCaptureDialog(OverlayWidget* overlay);
     void refreshScreensPreview();
-    std::string pixmapToString(const QPixmap& pixmap);
+    std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap);
     void updateSelectedScreen();
     void closeCaptureUIOnly();
 

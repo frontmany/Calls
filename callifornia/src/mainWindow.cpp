@@ -466,9 +466,7 @@ void MainWindow::onCaptureStarted()
     const std::string friendNickname = calls::getNicknameInCallWith();
     if (friendNickname.empty())
     {
-        
         showTransientStatusMessage("No active call to share screen with", 3000);
-        
         stopLocalScreenCapture();
         return;
     }
@@ -511,7 +509,7 @@ void MainWindow::onCaptureStopped()
     }
 }
 
-void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::string& imageData)
+void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
 {
     if (!m_localScreenCaptureActive) return;
 
@@ -532,7 +530,6 @@ void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::string& imag
             m_screenSendErrorNotified = true;
         }
     }
-    
 }
 
 void MainWindow::onStartScreenSharingError()
@@ -546,17 +543,22 @@ void MainWindow::onIncomingScreenSharingStarted()
     if (m_localScreenCaptureActive)
         stopLocalScreenCapture();
     
-    if (m_callWidget)
+    if (m_callWidget) {
         m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->disableStartScreenShareButton(true);
+
+    }
 }
 
 void MainWindow::onIncomingScreenSharingStopped()
 {
-    if (m_callWidget)
+    if (m_callWidget) {
         m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->disableStartScreenShareButton(false);
+    }
 }
 
-void MainWindow::onIncomingScreen(const std::string& data)
+void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
 {
     if (!m_callWidget || data.empty()) return;
 
@@ -564,7 +566,7 @@ void MainWindow::onIncomingScreen(const std::string& data)
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
-        m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->showFrame(frame);
 }
 
 

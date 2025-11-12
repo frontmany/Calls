@@ -14,6 +14,7 @@
 #include <QScreen>
 #include <QPixmap>
 #include <memory>
+#include <vector>
 
 #include "updater.h"
 #include "calls.h"
@@ -72,11 +73,11 @@ private slots:
     void onShareScreenStoppedByUser();
     void onCaptureStarted();
     void onCaptureStopped();
-    void onScreenCaptured(const QPixmap& pixmap, const std::string& imageData);
+    void onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     void onStartScreenSharingError();
     void onIncomingScreenSharingStarted();
     void onIncomingScreenSharingStopped();
-    void onIncomingScreen(const std::string& data);
+    void onIncomingScreen(const std::vector<unsigned char>& data);
 
 private:
     void switchToAuthorizationWidget();

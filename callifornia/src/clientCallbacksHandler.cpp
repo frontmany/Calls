@@ -1,11 +1,18 @@
 #include "clientCallbacksHandler.h"
-#include <QMetaObject>
 #include <QApplication>
+#include <QMetaObject>
+#include <QMetaType>
+
+#include <vector>
+
 #include "mainWindow.h"
+
+Q_DECLARE_METATYPE(std::vector<unsigned char>)
 
 ClientCallbacksHandler::ClientCallbacksHandler(MainWindow* mainWindow)
     : m_mainWindow(mainWindow)
 {
+    qRegisterMetaType<std::vector<unsigned char>>("std::vector<unsigned char>");
 }
 
 void ClientCallbacksHandler::onAuthorizationResult(calls::ErrorCode ec)
@@ -56,10 +63,10 @@ void ClientCallbacksHandler::onIncomingScreenSharingStopped() {
     }
 }
 
-void ClientCallbacksHandler::onIncomingScreen(const std::string& data) {
+void ClientCallbacksHandler::onIncomingScreen(const std::vector<unsigned char>& data) {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreen",
-            Qt::QueuedConnection, Q_ARG(const std::string&, data));
+            Qt::QueuedConnection, Q_ARG(const std::vector<unsigned char>&, data));
     }
 }
 

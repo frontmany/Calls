@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <functional>
 
 #include "callsClient.h"
@@ -58,7 +59,7 @@ namespace calls {
         return CallsClient::get().stopScreenSharing();
     }
 
-    inline bool sendScreen(const std::string& data)
+    inline bool sendScreen(const std::vector<unsigned char>& data)
     {
         return CallsClient::get().sendScreen(data);
     }

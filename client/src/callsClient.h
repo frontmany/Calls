@@ -67,7 +67,7 @@ public:
     bool declineCall(const std::string& friendNickname);
     bool acceptCall(const std::string& friendNickname);
     bool endCall();
-    bool sendScreen(const std::string& data);
+    bool sendScreen(const std::vector<unsigned char>& data);
     bool startScreenSharing();
     bool stopScreenSharing();
 

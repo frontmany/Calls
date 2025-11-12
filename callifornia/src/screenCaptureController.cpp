@@ -221,10 +221,10 @@ void ScreenCaptureController::captureScreen()
     if (!screen) return;
 
     QPixmap screenshot = screen->grabWindow(0);
-    std::string imageData;
+    std::vector<unsigned char> imageData;
     if (!screenshot.isNull())
     {
-        imageData = pixmapToString(screenshot);
+        imageData = pixmapToBytes(screenshot);
     }
 
     emit screenCaptured(screenshot, imageData);
@@ -572,15 +572,15 @@ void ScreenCaptureController::refreshScreensPreview()
     }
 }
 
-std::string ScreenCaptureController::pixmapToString(const QPixmap& pixmap)
+std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap& pixmap)
 {
     QByteArray byteArray;
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    pixmap.save(&buffer, "JPG", 100);
+    pixmap.save(&buffer, "JPG", 40);
 
-    return std::string(byteArray.constData(), byteArray.size());
+    return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }
 
 void ScreenCaptureController::updateSelectedScreen()
