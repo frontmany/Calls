@@ -947,7 +947,7 @@ void CallsClient::onInputVoice(const unsigned char* data, int length) {
 void CallsClient::sendAuthorizationPacket() {
     auto [uuid, packet] = PacketsFactory::getAuthorizationPacket(m_myNickname, m_keysManager->getPublicKey());
     
-    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::AUTHORIZE,
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::AUTHORIZE,
         [this, uuid]() { 
             std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -975,7 +975,7 @@ void CallsClient::sendLogoutPacket(bool createTask) {
     auto [uuid, packet] = PacketsFactory::getLogoutPacket(m_myNickname, createTask);
 
     if (createTask) {
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::LOGOUT,
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::LOGOUT,
             [this, uuid]() {
                 std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -998,13 +998,13 @@ void CallsClient::sendLogoutPacket(bool createTask) {
         return;
     }
 
-    m_networkController->send(std::move(std::vector<unsigned char>(packet.begin(), packet.end())), PacketType::LOGOUT);
+    m_networkController->send(std::move(packet), PacketType::LOGOUT);
 }
 
 void CallsClient::sendRequestFriendInfoPacket(const std::string& friendNickname) {
     auto [uuid, packet] = PacketsFactory::getRequestFriendInfoPacket(m_myNickname, friendNickname);
 
-    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::GET_FRIEND_INFO,
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::GET_FRIEND_INFO,
         [this, uuid]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1036,7 +1036,7 @@ void CallsClient::sendRequestFriendInfoPacket(const std::string& friendNickname)
 void CallsClient::sendAcceptCallPacket(const std::string& friendNickname) {
     auto [uuid, packet] = PacketsFactory::getAcceptCallPacket(m_myNickname, friendNickname);
 
-    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::CALL_ACCEPTED,
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::CALL_ACCEPTED,
         [this, uuid]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1066,7 +1066,7 @@ void CallsClient::sendDeclineCallPacket(const std::string& friendNickname, bool 
     auto [uuid, packet] = PacketsFactory::getDeclineCallPacket(m_myNickname, friendNickname, createTask);
 
     if (createTask) {
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::CALL_DECLINED,
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::CALL_DECLINED,
             [this, uuid]() {
                 std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1089,13 +1089,13 @@ void CallsClient::sendDeclineCallPacket(const std::string& friendNickname, bool 
         return;
     }
 
-    m_networkController->send(std::move(std::vector<unsigned char>(packet.begin(), packet.end())), PacketType::CALL_DECLINED);
+    m_networkController->send(std::move(packet), PacketType::CALL_DECLINED);
 }
 
 void CallsClient::sendStartCallingPacket(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey) {
     auto [uuid, packet] = PacketsFactory::getStartCallingPacket(m_myNickname, m_keysManager->getPublicKey(), friendNickname, friendPublicKey, callKey);
 
-    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::START_CALLING,
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_CALLING,
         [this, uuid]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1126,7 +1126,7 @@ void CallsClient::sendStartCallingPacket(const std::string& friendNickname, cons
 void CallsClient::sendStartScreenSharingPacket() {
     auto [uuid, packet] = PacketsFactory::getStartScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash());
 
-    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::START_SCREEN_SHARING,
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_SCREEN_SHARING,
         [this, uuid]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1156,7 +1156,7 @@ void CallsClient::sendStopScreenSharingPacket(bool createTask) {
     auto [uuid, packet] = PacketsFactory::getStopScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash(), createTask);
 
     if (createTask) {
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::START_SCREEN_SHARING,
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_SCREEN_SHARING,
             [this, uuid]() {
                 std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1179,14 +1179,14 @@ void CallsClient::sendStopScreenSharingPacket(bool createTask) {
         return;
     }
     
-    m_networkController->send(std::move(std::vector<unsigned char>(packet.begin(), packet.end())), PacketType::STOP_SCREEN_SHARING);
+    m_networkController->send(std::move(packet), PacketType::STOP_SCREEN_SHARING);
 }
 
 void CallsClient::sendStopCallingPacket(bool createTask) {
     auto [uuid, packet] = PacketsFactory::getStopCallingPacket(m_myNickname, m_nicknameWhomCalling, createTask);
 
     if (createTask) {
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::STOP_CALLING,
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::STOP_CALLING,
             [this, uuid]() {
                 std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1209,14 +1209,14 @@ void CallsClient::sendStopCallingPacket(bool createTask) {
         return;
     }
 
-    m_networkController->send(std::move(std::vector<unsigned char>(packet.begin(), packet.end())), PacketType::STOP_CALLING);
+    m_networkController->send(std::move(packet), PacketType::STOP_CALLING);
 }
 
 void CallsClient::sendEndCallPacket(bool createTask) {
     auto [uuid, packet] = PacketsFactory::getEndCallPacket(m_myNickname, createTask);
 
     if (createTask) {
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, packet, PacketType::END_CALL,
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::END_CALL,
             [this, uuid]() {
                 std::lock_guard<std::mutex> lock(m_dataMutex);
 
@@ -1239,7 +1239,7 @@ void CallsClient::sendEndCallPacket(bool createTask) {
         return;
     }
 
-    m_networkController->send(std::move(std::vector<unsigned char>(packet.begin(), packet.end())), PacketType::END_CALL);
+    m_networkController->send(std::move(packet), PacketType::END_CALL);
 }
 
 void CallsClient::sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type) {
@@ -1247,5 +1247,5 @@ void CallsClient::sendConfirmationPacket(const nlohmann::json& jsonObject, Packe
     std::string nicknameHashTo = jsonObject[NICKNAME_HASH_SENDER];
     
     auto packet = PacketsFactory::getConfirmationPacket(m_myNickname, nicknameHashTo, uuid);
-    m_networkController->send(std::move(std::vector<unsigned char>(packet.begin(), packet.end())), type);
+    m_networkController->send(std::move(packet), type);
 }

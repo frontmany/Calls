@@ -1,8 +1,8 @@
 #pragma once
 #include <functional>
 #include <memory>
-#include <string>
 #include <queue>
+#include <string>
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
@@ -39,6 +39,7 @@ public:
     void run();
     void stop();
     bool isRunning() const;
+    void send(const std::vector<unsigned char>& data, PacketType type);
     void send(std::vector<unsigned char>&& data, PacketType type);
     void send(PacketType type);
 
@@ -47,7 +48,6 @@ private:
     void handleReceive(std::size_t bytes_transferred);
     void handleChunk(const unsigned char* data, std::size_t length, PacketType type);
     uint32_t generateId();
-    std::vector<unsigned char> packetTypeToBytes(PacketType type);
 
 private:
     asio::io_context m_context;

@@ -5,7 +5,13 @@
 
 using namespace calls;
 
-std::pair<std::string, std::string> PacketsFactory::getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey) {
+namespace {
+    std::vector<unsigned char> toBytes(const std::string& value) {
+        return std::vector<unsigned char>(value.begin(), value.end());
+    }
+}
+
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey) {
     std::string uuid = crypto::generateUUID();
     
     nlohmann::json jsonObject;
@@ -13,19 +19,19 @@ std::pair<std::string, std::string> PacketsFactory::getAuthorizationPacket(const
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[PUBLIC_KEY_SENDER] = crypto::serializePublicKey(myPublicKey);
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getLogoutPacket(const std::string& myNickname, bool needConfirmation) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getLogoutPacket(const std::string& myNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[NEED_CONFIRMATION] = needConfirmation;
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getRequestFriendInfoPacket(const std::string& myNickname, const std::string& estimatedFriendNickname) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getRequestFriendInfoPacket(const std::string& myNickname, const std::string& estimatedFriendNickname) {
     std::string uuid = crypto::generateUUID();
 
     nlohmann::json jsonObject;
@@ -33,13 +39,13 @@ std::pair<std::string, std::string> PacketsFactory::getRequestFriendInfoPacket(c
     jsonObject[NICKNAME_HASH] = crypto::calculateHash(estimatedFriendNickname);
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
 
 
 
-std::pair<std::string, std::string> PacketsFactory::getStartCallingPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStartCallingPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey) {
     CryptoPP::SecByteBlock thisPacketKey;
     crypto::generateAESKey(thisPacketKey);
     std::string uuid = crypto::generateUUID();
@@ -53,10 +59,10 @@ std::pair<std::string, std::string> PacketsFactory::getStartCallingPacket(const 
     jsonObject[CALL_KEY] = crypto::RSAEncryptAESKey(friendPublicKey, callKey);
     jsonObject[PUBLIC_KEY_SENDER] = crypto::serializePublicKey(myPublicKey);
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getStopCallingPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStopCallingPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     
     nlohmann::json jsonObject;
@@ -65,10 +71,10 @@ std::pair<std::string, std::string> PacketsFactory::getStopCallingPacket(const s
     jsonObject[NICKNAME_HASH_RECEIVER] = crypto::calculateHash(friendNickname);
     jsonObject[NEED_CONFIRMATION] = needConfirmation;
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getStartScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStartScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash) {
     std::string uuid = crypto::generateUUID();
 
     nlohmann::json jsonObject;
@@ -76,10 +82,10 @@ std::pair<std::string, std::string> PacketsFactory::getStartScreenSharingPacket(
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[NICKNAME_HASH_RECEIVER] = friendNicknameHash;
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getStopScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStopScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
 
     nlohmann::json jsonObject;
@@ -88,10 +94,10 @@ std::pair<std::string, std::string> PacketsFactory::getStopScreenSharingPacket(c
     jsonObject[NICKNAME_HASH_RECEIVER] = friendNicknameHash;
     jsonObject[NEED_CONFIRMATION] = needConfirmation;
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getDeclineCallPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getDeclineCallPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     
     nlohmann::json jsonObject;
@@ -100,10 +106,10 @@ std::pair<std::string, std::string> PacketsFactory::getDeclineCallPacket(const s
     jsonObject[NICKNAME_HASH_RECEIVER] = crypto::calculateHash(friendNickname);
     jsonObject[NEED_CONFIRMATION] = needConfirmation;
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getAcceptCallPacket(const std::string& myNickname, const std::string& friendNicknameToAccept) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getAcceptCallPacket(const std::string& myNickname, const std::string& friendNicknameToAccept) {
     std::string uuid = crypto::generateUUID();
 
     nlohmann::json jsonObject;
@@ -111,10 +117,10 @@ std::pair<std::string, std::string> PacketsFactory::getAcceptCallPacket(const st
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[NICKNAME_HASH_RECEIVER] = crypto::calculateHash(friendNicknameToAccept);
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::pair<std::string, std::string> PacketsFactory::getEndCallPacket(const std::string& myNickname, bool needConfirmation) {
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getEndCallPacket(const std::string& myNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     
     nlohmann::json jsonObject;
@@ -122,13 +128,13 @@ std::pair<std::string, std::string> PacketsFactory::getEndCallPacket(const std::
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[NEED_CONFIRMATION] = needConfirmation;
 
-    return std::make_pair(uuid, jsonObject.dump());
+    return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
-std::string PacketsFactory::getConfirmationPacket(const std::string& myNickname, const std::string& nicknameHashTo, const std::string& uuid) {
+std::vector<unsigned char> PacketsFactory::getConfirmationPacket(const std::string& myNickname, const std::string& nicknameHashTo, const std::string& uuid) {
     nlohmann::json jsonObject;
     jsonObject[UUID] = uuid;
     jsonObject[NICKNAME_HASH_SENDER] = crypto::calculateHash(myNickname);
     jsonObject[NICKNAME_HASH_RECEIVER] = nicknameHashTo;
-    return jsonObject.dump();
+    return toBytes(jsonObject.dump());
 }

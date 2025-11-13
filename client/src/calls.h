@@ -54,7 +54,7 @@ namespace calls {
         return CallsClient::get().startScreenSharing();
     }
 
-    inline bool stopScreenSharing(const std::string& friendNickname)
+    inline bool stopScreenSharing()
     {
         return CallsClient::get().stopScreenSharing();
     }

@@ -247,7 +247,6 @@ void ScreenCaptureController::onScreenSelected(int screenIndex, bool currentlySe
 {
     if (screenIndex >= 0 && screenIndex < m_availableScreens.size()) {
         if (currentlySelected) {
-            // ���� ����� ��� ������� - ����������� ���
             m_selectedScreenIndex = -1;
             if (m_shareButton) {
                 m_shareButton->setEnabled(false);
@@ -257,7 +256,6 @@ void ScreenCaptureController::onScreenSelected(int screenIndex, bool currentlySe
             }
         }
         else {
-            // ���� ����� �� ������� - �������� ���
             m_selectedScreenIndex = screenIndex;
             if (m_shareButton) {
                 m_shareButton->setEnabled(true);
@@ -270,7 +268,6 @@ void ScreenCaptureController::onScreenSelected(int screenIndex, bool currentlySe
             }
         }
 
-        // ��������� ����������� ���������
         updateSelectedScreen();
     }
 }
@@ -503,23 +500,19 @@ void ScreenCaptureController::closeCaptureUIOnly()
 
 void ScreenCaptureController::refreshScreensPreview()
 {
-    // ������� ������ ������
     for (ScreenPreviewWidget* preview : m_previewWidgets) {
         preview->deleteLater();
     }
     m_previewWidgets.clear();
 
-    // �������� ��������� ������
     m_availableScreens = QGuiApplication::screens();
 
     if (m_screensLayout) {
-        // ������� layout
         QLayoutItem* item;
         while ((item = m_screensLayout->takeAt(0)) != nullptr) {
             delete item;
         }
 
-        // Determine responsive columns based on dialog width
         int row = 0;
         int col = 0;
         int maxCols = 3;
@@ -549,7 +542,6 @@ void ScreenCaptureController::refreshScreensPreview()
             }
         }
 
-        // ��������� ������������� �������� ��� ����������� ������������
         for (int c = 0; c < maxCols; c++) {
             m_screensLayout->setColumnStretch(c, 1);
         }
@@ -578,7 +570,7 @@ std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap&
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    pixmap.save(&buffer, "JPG", 40);
+    pixmap.save(&buffer, "JPG", 60);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }

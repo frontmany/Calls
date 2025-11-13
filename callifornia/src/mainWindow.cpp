@@ -491,13 +491,7 @@ void MainWindow::onCaptureStarted()
 void MainWindow::onCaptureStopped()
 {
     if (m_localScreenCaptureActive)
-    {
-        const std::string friendNickname = calls::getNicknameInCallWith();
-        if (!friendNickname.empty())
-        {
-            calls::stopScreenSharing(friendNickname);
-        }
-    }
+        calls::stopScreenSharing();
 
     m_localScreenCaptureActive = false;
     m_screenSendErrorNotified = false;

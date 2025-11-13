@@ -79,7 +79,7 @@ bool NetworkController::isRunning() const {
     return !m_context.stopped();
 }
 
-void NetworkController::send(std::vector<unsigned char>&& data, PacketType type) {
+void NetworkController::send(const std::vector<unsigned char>& data, PacketType type) {
     if (data.empty() || !m_socket.is_open()) return;
 
     const std::size_t maxPayloadSize = m_maxPacketSize - (sizeof(ChunkHeader) + sizeof(PacketType));
@@ -121,8 +121,27 @@ void NetworkController::send(std::vector<unsigned char>&& data, PacketType type)
     }
 }
 
+void NetworkController::send(std::vector<unsigned char>&& data, PacketType type) {
+    send(data, type);
+}
+
 void NetworkController::send(PacketType type) {
-    
+    asio::post(m_socket.get_executor(),
+        [this, type]() mutable {
+            std::array<asio::const_buffer, 1> buffer = {
+                asio::buffer(&type, sizeof(PacketType))
+            };
+
+            m_socket.async_send_to(buffer, m_serverEndpoint,
+                [this](const asio::error_code& error, std::size_t bytesSent) {
+                    if (error && error != asio::error::operation_aborted) {
+                        LOG_ERROR("Screen packet send error: {}", error.message());
+                        m_onErrorCallback();
+                    }
+                }
+            );
+        }
+    );
 }
 
 void NetworkController::startReceive() {
@@ -156,10 +175,11 @@ void NetworkController::handleReceive(std::size_t bytesTransferred) {
 
     if (payloadLength == 0) {
         m_onReceiveCallback(nullptr, 0, receivedType);
-        return;
+    }
+    else {
+        handleChunk(m_receiveBuffer.data(), payloadLength, receivedType);
     }
 
-    handleChunk(m_receiveBuffer.data(), payloadLength, receivedType);
     startReceive();
 }
 
@@ -198,22 +218,42 @@ void NetworkController::handleChunk(const unsigned char* data, std::size_t lengt
         return;
     }
 
-    if (m_pendingPacket.chunks.empty()) {
+    if (m_pendingPacket.chunks.empty() || m_pendingPacket.id != header.id) {
+        m_pendingPacket = ScreenFrame{};
+        m_pendingPacket.id = header.id;
+        m_pendingPacket.totalChunks = header.chunksCount;
+        m_pendingPacket.chunks.resize(header.chunksCount);
+    }
+    else if (m_pendingPacket.totalChunks != header.chunksCount) {
+        LOG_WARN("Chunk count mismatch for frame {}: expected {}, got {}. Resetting aggregation.",
+            header.id,
+            m_pendingPacket.totalChunks,
+            header.chunksCount);
+        m_pendingPacket = ScreenFrame{};
+        m_pendingPacket.id = header.id;
         m_pendingPacket.totalChunks = header.chunksCount;
         m_pendingPacket.chunks.resize(header.chunksCount);
     }
 
     const std::size_t chunkSize = static_cast<std::size_t>(header.payloadSize);
 
-    m_pendingPacket.chunks[header.number].assign(data, data + chunkSize);
-    m_pendingPacket.totalSize += chunkSize;
-    m_pendingPacket.receivedChunks++;
+    auto& slot = m_pendingPacket.chunks[header.number];
+    if (slot.empty()) {
+        slot.assign(data, data + chunkSize);
+        m_pendingPacket.totalSize += chunkSize;
+        m_pendingPacket.receivedChunks++;
+    }
+    else {
+        LOG_WARN("Duplicate chunk {}/{} received for frame {}", header.number + 1, header.chunksCount, header.id);
+    }
 
-    LOG_INFO("Chunk {}/{} received (size: {} bytes)",
+    LOG_INFO("Chunk {}/{} received (size: {} bytes), type: {}",
         header.number + 1,
         header.chunksCount,
-        chunkSize);
-    
+        chunkSize,
+        packetTypeToString(type)
+    );
+
 
     if (m_pendingPacket.receivedChunks == m_pendingPacket.totalChunks) {
         LOG_INFO("All chunks received, total {}", m_pendingPacket.chunks.size());
@@ -226,5 +266,7 @@ void NetworkController::handleChunk(const unsigned char* data, std::size_t lengt
         }
 
         m_onReceiveCallback(aggregated.data(), static_cast<int>(aggregated.size()), type);
+
+        m_pendingPacket = ScreenFrame{};
     }
 }
