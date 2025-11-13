@@ -9,7 +9,7 @@
 
 #include "packetTypes.h"
 #include "logger.h"
-#include "screenChunk.h"
+#include "chunk.h"
 
 #include "asio.hpp"
 #include "asio/ts/buffer.hpp"
@@ -21,10 +21,10 @@ class NetworkController {
 private:
     struct ScreenFrame {
         std::vector<std::vector<unsigned char>> chunks;
-        std::vector<bool> received;
+        uint32_t id = 0;
+        size_t totalSize = 0;
         uint16_t totalChunks = 0;
         uint16_t receivedChunks = 0;
-        std::size_t totalSize = 0;
     };
 
 public:
@@ -38,19 +38,16 @@ public:
 
     void run();
     void stop();
-    bool stopped() const;
-    void sendScreen(std::vector<unsigned char>&& data);
-    void sendVoice(std::vector<unsigned char>&& data);
-    void sendPacket(std::string&& data, PacketType type);
-    void sendPacket(PacketType type);
+    bool isRunning() const;
+    void send(std::vector<unsigned char>&& data, PacketType type);
+    void send(PacketType type);
 
 private:
     void startReceive();
     void handleReceive(std::size_t bytes_transferred);
-    void handleScreenChunk(const unsigned char* data, std::size_t length);
-    void splitAndEnqueueScreenFrames(std::vector<unsigned char>&& data);
-    void sendScreenChunk();
-    uint32_t generateChunkId();
+    void handleChunk(const unsigned char* data, std::size_t length, PacketType type);
+    uint32_t generateId();
+    std::vector<unsigned char> packetTypeToBytes(PacketType type);
 
 private:
     asio::io_context m_context;
@@ -62,9 +59,8 @@ private:
     asio::executor_work_guard<asio::io_context::executor_type> m_workGuard;
     std::thread m_asioThread;
 
-    const size_t m_maxPacketSize = 8192;
-    std::queue<std::shared_ptr<ScreenChunk>> m_screenChunksQueue;
-    std::unordered_map<uint32_t, ScreenFrame> m_pendingScreenFrames;
+    const size_t m_maxPacketSize = 508;
+    ScreenFrame m_pendingPacket;
 
     std::function<void(const unsigned char*, int, PacketType type)> m_onReceiveCallback;
     std::function<void()> m_onErrorCallback;
