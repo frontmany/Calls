@@ -570,7 +570,7 @@ std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap&
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    pixmap.save(&buffer, "JPG", 60);
+    pixmap.save(&buffer, "JPG", 5);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }

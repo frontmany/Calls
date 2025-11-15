@@ -5,6 +5,38 @@
 #include <algorithm>
 #include <atomic>
 #include <limits>
+#include <vector>
+
+namespace
+{
+    uint16_t readUint16(const unsigned char* data)
+    {
+        return static_cast<uint16_t>(
+            (static_cast<uint16_t>(data[0]) << 8) |
+            static_cast<uint16_t>(data[1]));
+    }
+
+    uint32_t readUint32(const unsigned char* data)
+    {
+        return (static_cast<uint32_t>(data[0]) << 24) |
+            (static_cast<uint32_t>(data[1]) << 16) |
+            (static_cast<uint32_t>(data[2]) << 8) |
+            static_cast<uint32_t>(data[3]);
+    }
+
+    uint64_t readUint64(const unsigned char* data)
+    {
+        uint64_t value = 0;
+
+        for (int index = 0; index < 8; ++index)
+        {
+            value = (value << 8) | static_cast<uint64_t>(data[index]);
+        }
+
+        return value;
+    }
+
+}
 
 std::string NetworkController::makeEndpointKey(const asio::ip::udp::endpoint& endpoint)
 {
@@ -32,6 +64,16 @@ NetworkController::NetworkController(const std::string& port,
     }
 
     m_serverEndpoint = *endpoints.begin();
+
+    m_packetSender.init(m_outgoingQueue,
+        m_socket,
+        m_maxPacketSize,
+        HEADER_SIZE,
+        [this]() {
+            if (m_onNetworkErrorCallback) {
+                m_onNetworkErrorCallback();
+            }
+        });
 }
 
 NetworkController::~NetworkController() {
@@ -45,6 +87,7 @@ bool NetworkController::start() {
 
         m_asioThread = std::thread([this]() { m_context.run(); });
         m_isRunning = true;
+        m_packetSender.start();
         startReceive();
 
         LOG_INFO("UDP Server started on {}:{}", m_serverEndpoint.address().to_string(), m_serverEndpoint.port());
@@ -60,6 +103,8 @@ bool NetworkController::start() {
 void NetworkController::stop() {
     m_isRunning = false;
     m_pendingPackets.clear();
+    m_packetSender.stop();
+    m_outgoingQueue.clear();
 
     if (m_socket.is_open()) {
         asio::error_code ec;
@@ -79,35 +124,16 @@ bool NetworkController::isRunning() const {
 
 void NetworkController::sendVoiceToClient(const asio::ip::udp::endpoint& clientEndpoint,
     const unsigned char* data, int length) {
-    forwardChunkToClient(clientEndpoint, data, static_cast<std::size_t>(length), PacketType::VOICE);
+    forwardDatagramToClient(clientEndpoint, data, static_cast<std::size_t>(length));
 }
 
 void NetworkController::sendScreenToClient(const asio::ip::udp::endpoint& clientEndpoint,
     const unsigned char* data, int length) {
-    forwardChunkToClient(clientEndpoint, data, static_cast<std::size_t>(length), PacketType::SCREEN);
+    forwardDatagramToClient(clientEndpoint, data, static_cast<std::size_t>(length));
 }
 
 void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoint, PacketType type) {
-    asio::post(m_socket.get_executor(),
-        [this, clientEndpoint, type]() {
-            if (!m_isRunning || !m_socket.is_open()) {
-                return;
-            }
-
-            std::array<asio::const_buffer, 1> buffer = {
-                asio::buffer(&type, sizeof(PacketType))
-            };
-
-            m_socket.async_send_to(buffer, clientEndpoint,
-                [this](const asio::error_code& error, std::size_t bytesSent) {
-                    if (error && error != asio::error::operation_aborted) {
-                        LOG_ERROR("Packet send error: {}", error.message());
-                        m_onNetworkErrorCallback();
-                    }
-                }
-            );
-        }
-    );
+    sendDataToClient(clientEndpoint, nullptr, 0, type);
 }
 
 void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoint,
@@ -123,8 +149,8 @@ void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoi
         type);
 }
 
-void NetworkController::forwardChunkToClient(const asio::ip::udp::endpoint& clientEndpoint,
-    const unsigned char* data, std::size_t length, PacketType type) {
+void NetworkController::forwardDatagramToClient(const asio::ip::udp::endpoint& clientEndpoint,
+    const unsigned char* data, std::size_t length) {
     if (!m_isRunning || !m_socket.is_open()) {
         return;
     }
@@ -133,28 +159,12 @@ void NetworkController::forwardChunkToClient(const asio::ip::udp::endpoint& clie
         return;
     }
 
-    auto chunkData = std::make_shared<std::vector<unsigned char>>(data, data + length);
+    OutgoingPacket packet;
+    packet.endpoint = clientEndpoint;
+    packet.rawDatagram = true;
+    packet.data.assign(data, data + length);
 
-    asio::post(m_socket.get_executor(),
-        [this, clientEndpoint, chunkData, type]() {
-            if (!m_isRunning || !m_socket.is_open()) {
-                return;
-            }
-
-            std::array<asio::const_buffer, 2> buffers = {
-                asio::buffer(chunkData->data(), chunkData->size()),
-                asio::buffer(&type, sizeof(PacketType))
-            };
-
-            m_socket.async_send_to(buffers, clientEndpoint,
-                [chunkData](const asio::error_code& error, std::size_t /*bytesSent*/) {
-                    if (error && error != asio::error::operation_aborted) {
-                        LOG_ERROR("Chunk forward error: {}", error.message());
-                    }
-                }
-            );
-        }
-    );
+    m_outgoingQueue.push(std::move(packet));
 }
 
 void NetworkController::sendDataToClient(const asio::ip::udp::endpoint& clientEndpoint,
@@ -163,70 +173,22 @@ void NetworkController::sendDataToClient(const asio::ip::udp::endpoint& clientEn
         return;
     }
 
-    if (data == nullptr || length == 0) {
-        sendToClient(clientEndpoint, type);
+    if (length > 0 && data == nullptr) {
+        LOG_ERROR("Cannot send packet with null data and non-zero length");
         return;
     }
 
-    const std::size_t maxPayloadSize = m_maxPacketSize - (sizeof(ChunkHeader) + sizeof(PacketType));
-    if (maxPayloadSize == 0) {
-        LOG_ERROR("Max payload size is zero, cannot send data");
-        return;
+    OutgoingPacket packet;
+    packet.id = generateId();
+    packet.type = type;
+    packet.endpoint = clientEndpoint;
+    packet.rawDatagram = false;
+
+    if (length > 0 && data != nullptr) {
+        packet.data.assign(data, data + length);
     }
 
-    const std::size_t chunksRequired = (length + maxPayloadSize - 1) / maxPayloadSize;
-    if (chunksRequired > std::numeric_limits<std::uint16_t>::max()) {
-        LOG_ERROR("Data packet requires too many chunks: {}", chunksRequired);
-        return;
-    }
-
-    const std::uint16_t totalChunks = static_cast<std::uint16_t>(chunksRequired);
-    const uint32_t chunkId = generateId();
-
-    for (std::uint16_t chunkNumber = 0; chunkNumber < totalChunks; ++chunkNumber) {
-        const std::size_t offset = static_cast<std::size_t>(chunkNumber) * maxPayloadSize;
-        const std::size_t chunkSize = std::min(maxPayloadSize, length - offset);
-
-        struct OutgoingChunk {
-            ChunkHeader header;
-            PacketType type;
-            std::vector<unsigned char> payload;
-        };
-
-        auto chunk = std::make_shared<OutgoingChunk>();
-        chunk->type = type;
-        chunk->header.id = chunkId;
-        chunk->header.number = chunkNumber;
-        chunk->header.chunksCount = totalChunks;
-        chunk->header.payloadSize = static_cast<uint32_t>(chunkSize);
-        chunk->payload.resize(chunkSize);
-
-        if (chunkSize > 0) {
-            std::memcpy(chunk->payload.data(), data + offset, chunkSize);
-        }
-
-        asio::post(m_socket.get_executor(),
-            [this, endpoint = clientEndpoint, chunk]() {
-                if (!m_isRunning || !m_socket.is_open()) {
-                    return;
-                }
-
-                std::array<asio::const_buffer, 3> buffers = {
-                    asio::buffer(chunk->payload.data(), chunk->payload.size()),
-                    asio::buffer(&chunk->header, sizeof(ChunkHeader)),
-                    asio::buffer(&chunk->type, sizeof(PacketType))
-                };
-
-                m_socket.async_send_to(buffers, endpoint,
-                    [chunk](const asio::error_code& error, std::size_t bytesSent) {
-                        if (error && error != asio::error::operation_aborted) {
-                            LOG_ERROR("Packet send error: {}", error.message());
-                        }
-                    }
-                );
-            }
-        );
-    }
+    m_outgoingQueue.push(std::move(packet));
 }
 
 void NetworkController::startReceive() {
@@ -250,70 +212,27 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
         }
     }
 
-    if (bytesTransferred < sizeof(PacketType)) {
-        LOG_WARN("Received packet too small: {} bytes (minimum: {})", bytesTransferred, sizeof(PacketType));
+    if (bytesTransferred < HEADER_SIZE) {
+        LOG_WARN("Received packet too small: {} bytes (minimum: {})", bytesTransferred, HEADER_SIZE);
         if (m_isRunning) {
             startReceive();
         }
         return;
     }
 
-    PacketType receivedType;
-    std::memcpy(&receivedType,
-        m_receiveBuffer.data() + bytesTransferred - sizeof(PacketType),
-        sizeof(PacketType));
+    const unsigned char* rawData = m_receiveBuffer.data();
+    const uint64_t frameId = readUint64(rawData);
+    const uint16_t chunkIndex = readUint16(rawData + 8);
+    const uint16_t chunksCount = readUint16(rawData + 10);
+    const uint16_t payloadLengthField = readUint16(rawData + 12);
+    const uint32_t typeRaw = readUint32(rawData + 14);
+    const PacketType receivedType = static_cast<PacketType>(typeRaw);
+    const std::size_t availablePayload = bytesTransferred - HEADER_SIZE;
 
-    const std::size_t payloadLength = bytesTransferred - sizeof(PacketType);
-    if (payloadLength == 0) {
-        if (m_onReceiveCallback) {
-            m_onReceiveCallback(nullptr, 0, receivedType, m_receivedFromEndpoint);
-        }
-
-        if (m_isRunning) {
-            startReceive();
-        }
-        return;
-    }
-
-    const std::size_t headerSize = sizeof(ChunkHeader);
-    if (payloadLength < headerSize) {
-        LOG_WARN("Received chunk too small: {} bytes, expected at least {}", payloadLength, headerSize);
-        if (m_isRunning) {
-            startReceive();
-        }
-        return;
-    }
-
-    ChunkHeader header;
-    std::memcpy(&header,
-        m_receiveBuffer.data() + payloadLength - headerSize,
-        headerSize);
-
-    const std::size_t maxPayloadSize = m_maxPacketSize - (sizeof(ChunkHeader) + sizeof(PacketType));
-    const bool headerValid =
-        header.chunksCount > 0 &&
-        header.number < header.chunksCount &&
-        header.payloadSize <= maxPayloadSize &&
-        header.payloadSize > 0;
-
-    if (!headerValid) {
-        LOG_WARN("Invalid chunk metadata (id {}, number {}, total {}, payload {}, max {})",
-            header.id,
-            header.number,
-            header.chunksCount,
-            header.payloadSize,
-            maxPayloadSize);
-        if (m_isRunning) {
-            startReceive();
-        }
-        return;
-    }
-
-    const std::size_t chunkSize = static_cast<std::size_t>(header.payloadSize);
-    if (chunkSize > payloadLength - headerSize) {
-        LOG_WARN("Declared payload size {} exceeds available data {}",
-            chunkSize,
-            payloadLength - headerSize);
+    if (payloadLengthField > availablePayload) {
+        LOG_WARN("Declared payload size {} exceeds available {}",
+            payloadLengthField,
+            availablePayload);
         if (m_isRunning) {
             startReceive();
         }
@@ -323,8 +242,8 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
     if (m_forwardWithoutAssembly.find(receivedType) != m_forwardWithoutAssembly.end()) {
         if (m_onReceiveCallback) {
             m_onReceiveCallback(
-                m_receiveBuffer.data(),
-                static_cast<int>(payloadLength),
+                rawData,
+                static_cast<int>(bytesTransferred),
                 receivedType,
                 m_receivedFromEndpoint);
         }
@@ -335,29 +254,96 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
         return;
     }
 
-    std::vector<unsigned char> chunk(chunkSize);
-    if (chunkSize > 0) {
-        std::memcpy(chunk.data(), m_receiveBuffer.data(), chunkSize);
+    if (chunksCount == 0) {
+        LOG_WARN("Received frame {} with zero chunk count", frameId);
+        if (m_isRunning) {
+            startReceive();
+        }
+        return;
+    }
+
+    if (chunkIndex >= chunksCount) {
+        LOG_WARN("Chunk index {} is out of range for frame {} (total {})",
+            chunkIndex,
+            frameId,
+            chunksCount);
+        const std::string endpointKeyInvalid = makeEndpointKey(m_receivedFromEndpoint);
+        auto endpointIt = m_pendingPackets.find(endpointKeyInvalid);
+        if (endpointIt != m_pendingPackets.end()) {
+            endpointIt->second.erase(frameId);
+            if (endpointIt->second.empty()) {
+                m_pendingPackets.erase(endpointIt);
+            }
+        }
+
+        if (m_isRunning) {
+            startReceive();
+        }
+        return;
+    }
+
+    if (m_maxPacketSize <= HEADER_SIZE) {
+        LOG_ERROR("Configured max packet size {} is not enough for header {}", m_maxPacketSize, HEADER_SIZE);
+        if (m_isRunning) {
+            startReceive();
+        }
+        return;
+    }
+
+    const std::size_t maxPayloadSize = m_maxPacketSize - HEADER_SIZE;
+    if (payloadLengthField > maxPayloadSize) {
+        LOG_WARN("Payload {} exceeds configured maximum {}", payloadLengthField, maxPayloadSize);
+        if (m_isRunning) {
+            startReceive();
+        }
+        return;
+    }
+
+    const unsigned char* payloadStart = rawData + HEADER_SIZE;
+    const std::size_t payloadLength = static_cast<std::size_t>(payloadLengthField);
+    std::vector<unsigned char> chunk(payloadLength);
+
+    if (payloadLength > 0) {
+        std::memcpy(chunk.data(), payloadStart, payloadLength);
     }
 
     const std::string endpointKey = makeEndpointKey(m_receivedFromEndpoint);
     auto& endpointPackets = m_pendingPackets[endpointKey];
-    auto& pendingPacket = endpointPackets[header.id];
+    auto& pendingPacket = endpointPackets[frameId];
 
     if (pendingPacket.chunks.empty()) {
-        pendingPacket.totalChunks = header.chunksCount;
-        pendingPacket.chunks.resize(header.chunksCount);
+        pendingPacket.totalChunks = chunksCount;
+        pendingPacket.chunks.resize(chunksCount);
     }
 
-    if (pendingPacket.totalChunks != header.chunksCount) {
+    if (pendingPacket.totalChunks != chunksCount) {
         pendingPacket = PendingPacket{};
-        pendingPacket.totalChunks = header.chunksCount;
-        pendingPacket.chunks.resize(header.chunksCount);
+        pendingPacket.totalChunks = chunksCount;
+        pendingPacket.chunks.resize(chunksCount);
     }
 
-    if (header.number >= pendingPacket.chunks.size()) {
-        LOG_WARN("Chunk number {} is out of range for total {}", header.number, pendingPacket.chunks.size());
-        endpointPackets.erase(header.id);
+    if (!pendingPacket.typeSet) {
+        pendingPacket.type = receivedType;
+        pendingPacket.typeSet = true;
+    }
+    else if (pendingPacket.type != receivedType) {
+        LOG_WARN("Packet type mismatch for frame {}: expected {}, got {}",
+            frameId,
+            static_cast<uint32_t>(pendingPacket.type),
+            typeRaw);
+        pendingPacket = PendingPacket{};
+        pendingPacket.type = receivedType;
+        pendingPacket.typeSet = true;
+        pendingPacket.totalChunks = chunksCount;
+        pendingPacket.chunks.resize(chunksCount);
+    }
+
+    if (chunkIndex >= pendingPacket.chunks.size()) {
+        LOG_WARN("Chunk index {} is out of range for frame {} (allocated {})",
+            chunkIndex,
+            frameId,
+            pendingPacket.chunks.size());
+        endpointPackets.erase(frameId);
         if (endpointPackets.empty()) {
             m_pendingPackets.erase(endpointKey);
         }
@@ -368,10 +354,13 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
         return;
     }
 
-    if (pendingPacket.chunks[header.number].empty()) {
-        pendingPacket.totalSize += chunk.size();
+    auto& chunkData = pendingPacket.chunks[chunkIndex];
+
+    if (!chunkData.received) {
+        chunkData.received = true;
+        chunkData.payload = std::move(chunk);
+        pendingPacket.totalSize += payloadLength;
         pendingPacket.receivedChunks++;
-        pendingPacket.chunks[header.number] = std::move(chunk);
     }
 
     if (pendingPacket.receivedChunks == pendingPacket.totalChunks) {
@@ -379,10 +368,10 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
         aggregated.reserve(pendingPacket.totalSize);
 
         for (const auto& part : pendingPacket.chunks) {
-            aggregated.insert(aggregated.end(), part.begin(), part.end());
+            aggregated.insert(aggregated.end(), part.payload.begin(), part.payload.end());
         }
 
-        endpointPackets.erase(header.id);
+        endpointPackets.erase(frameId);
         if (endpointPackets.empty()) {
             m_pendingPackets.erase(endpointKey);
         }
@@ -401,7 +390,7 @@ void NetworkController::handleReceive(const asio::error_code& error, std::size_t
     }
 }
 
-uint32_t NetworkController::generateId() {
-    static std::atomic<uint32_t> counter{ 0 };
-    return counter++;
+uint64_t NetworkController::generateId() {
+    static std::atomic<uint64_t> counter{ 0ULL };
+    return counter.fetch_add(1ULL, std::memory_order_relaxed);
 }

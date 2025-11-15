@@ -1,6 +1,8 @@
 #pragma once 
 
 #include <cstdint>
+#include <unordered_map>
+#include <string>
 
 namespace calls {
 enum class PacketType : uint32_t {

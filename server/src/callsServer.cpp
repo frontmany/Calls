@@ -206,7 +206,7 @@ void CallsServer::checkPing() {
             auto& userToErase = it->second;
             std::string nicknameHash = userToErase->getNicknameHash();
 
-            if (userToErase->inCall()) {
+            if (userToErase->isInCall()) {
                 const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
 
                 if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
@@ -429,7 +429,7 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
             auto& userSender = m_endpointToUser.at(endpointFrom);
 
             bool error = false;
-            if (userSender->inCall()) {
+            if (userSender->isInCall()) {
                 const std::string& userInCallWithNicknameHash = userSender->inCallWith();
 
                 if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
@@ -553,7 +553,7 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
     if (m_endpointToUser.contains(endpointFrom)) {
         UserPtr user = m_endpointToUser.at(endpointFrom);
 
-        if (user->inCall()) {
+        if (user->isInCall()) {
             const std::string& userNicknameHash = user->inCallWith();
 
             if (m_nicknameHashToUser.contains(userNicknameHash)) {
@@ -569,7 +569,7 @@ void CallsServer::handleScreenPacket(const unsigned char* data, int size, const 
     if (m_endpointToUser.contains(endpointFrom)) {
         UserPtr user = m_endpointToUser.at(endpointFrom);
 
-        if (user->inCall()) {
+        if (user->isInCall()) {
             const std::string& userNicknameHash = user->inCallWith();
 
             if (m_nicknameHashToUser.contains(userNicknameHash)) {

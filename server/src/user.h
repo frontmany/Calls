@@ -22,9 +22,8 @@ public:
 	const std::string& getNicknameHash() const;
 	const asio::ip::udp::endpoint& getEndpoint() const;
 
-
 	void setCall(std::shared_ptr<Call> callPtr, CallRole role);
-	bool inCall() const;
+	bool isInCall() const;
 	std::shared_ptr<Call> getCall();
 	void resetCall();
 	void setCallAccepted(bool accepted);

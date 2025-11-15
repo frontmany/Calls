@@ -3,6 +3,10 @@ project(calls_server VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(NOT DEFINED ROOT_DIR)
+    get_filename_component(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+endif()
+
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 source_group("Source Files" FILES ${SOURCES})
 
@@ -20,24 +24,22 @@ if(WIN32)
 endif()
 
 if(WIN32)
-    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output/Release")
-    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build/Release")
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        "$<IF:$<CONFIG:Debug>,${CRYPTOPP_DIR}/Debug/cryptlib.lib,${CRYPTOPP_DIR}/Release/cryptlib.lib>"
+        "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
+    )
 else()
     set(CRYPTOPP_DIR "../vendor/cryptopp")
     set(SPDLOG_DIR "../vendor/spdlog")
-endif()
 
-target_link_directories(${PROJECT_NAME} PRIVATE
-    "${CRYPTOPP_DIR}"
-    "${SPDLOG_DIR}"
-)
-
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        cryptlib.lib
-        spdlog.lib
+    target_link_directories(${PROJECT_NAME} PRIVATE
+        "${CRYPTOPP_DIR}"
+        "${SPDLOG_DIR}"
     )
-else()
+
     target_link_libraries(${PROJECT_NAME} PRIVATE
         libcryptopp.a
         libspdlog.a

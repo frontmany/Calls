@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
-option(DEPENDENCIES_FETCHED "Set to TRUE if dependencies are already fetched" FALSE)
+option(FETCH_DEPENDENCIES "Set to TRUE if need to fetch dependencies" FALSE)
 
-if(NOT DEPENDENCIES_FETCHED)
+if(FETCH_DEPENDENCIES)
     message(STATUS "Dependencies not fetched yet, including FetchDependencies.cmake")
     set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
     set(CMAKE_PREFIX_PATH ${VENDOR_DIR} ${CMAKE_PREFIX_PATH})
@@ -80,15 +80,12 @@ if(NOT DEPENDENCIES_FETCHED)
     FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio pybind11 spdlog)
 
     message(STATUS "Dependencies fetched successfully")
-
-else()
-    message(STATUS "Dependencies already fetched")
 endif()
 
-add_subdirectory(callifornia)
-add_subdirectory(server)
 add_subdirectory(client)
 add_subdirectory(clientUpdater)
+add_subdirectory(callifornia)
+add_subdirectory(server)
 add_subdirectory(clientUpdateApplier)
 add_subdirectory(serverUpdater)
 add_subdirectory(serverPy)

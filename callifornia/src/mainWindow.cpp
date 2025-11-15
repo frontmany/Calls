@@ -169,9 +169,26 @@ void MainWindow::loadFonts() {
 std::string MainWindow::parseVersionFromConfig() {
     const QString filename = "config.json";
 
+    // ������� ������� ������� �������
+    QString currentPath = QDir::currentPath();
+    LOG_DEBUG("Current working directory: {}", currentPath.toStdString());
+
+    // ������� ������ ���� � �����
+    QFileInfo fileInfo(filename);
+    QString absolutePath = fileInfo.absoluteFilePath();
+    LOG_DEBUG("Absolute file path: {}", absolutePath.toStdString());
+
+    // ��������� ������������� �����
+    if (!fileInfo.exists()) {
+        LOG_WARN("File does not exist: {}", absolutePath.toStdString());
+        LOG_WARN("Failed to open config.json, version lost");
+        return "versionLost";
+    }
+
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
         LOG_WARN("Failed to open config.json, version lost");
+        LOG_WARN("File error: {}", file.errorString().toStdString());
         return "versionLost";
     }
 
