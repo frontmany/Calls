@@ -224,7 +224,7 @@ void ScreenCaptureController::captureScreen()
     std::vector<unsigned char> imageData;
     if (!screenshot.isNull())
     {
-        imageData = pixmapToBytes(screenshot);
+        imageData = pixmapToBytes(screenshot, QSize(1280, 720));
     }
 
     emit screenCaptured(screenshot, imageData);
@@ -564,13 +564,17 @@ void ScreenCaptureController::refreshScreensPreview()
     }
 }
 
-std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap& pixmap)
+std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
 {
+    QPixmap scaledPixmap = pixmap.scaled(targetSize,
+        Qt::KeepAspectRatio,
+        Qt::SmoothTransformation);
+
     QByteArray byteArray;
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    pixmap.save(&buffer, "JPG", 5);
+    scaledPixmap.save(&buffer, "JPG", 45);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }

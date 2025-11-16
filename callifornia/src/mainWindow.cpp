@@ -530,7 +530,6 @@ void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsig
         m_callWidget->showFrame(pixmap);
     }
 
-    
     if (imageData.empty()) return;
 
     if (!calls::sendScreen(imageData))

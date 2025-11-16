@@ -46,7 +46,7 @@ private slots:
 private:
     QWidget* createCaptureDialog(OverlayWidget* overlay);
     void refreshScreensPreview();
-    std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap);
+    std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap, QSize targetSize);
     void updateSelectedScreen();
     void closeCaptureUIOnly();
 
