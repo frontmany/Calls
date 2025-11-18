@@ -307,7 +307,7 @@ QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
 
 QString StyleMainMenuWidget::notificationBlueLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(21, 119, 232, 80);"  // Синий цвет с прозрачностью
+        "   background-color: rgba(21, 119, 232, 80);"  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -323,7 +323,7 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     m_notificationTimer->setSingleShot(true);
     connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
 
-    // Таймер для уведомления об обновлении
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     m_updateNotificationTimer = new QTimer(this);
     m_updateNotificationTimer->setSingleShot(true);
     connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableNotification);

@@ -105,6 +105,7 @@ private:
     void setupShadowEffect();
     void updateIncomingCallsVisibility();
     void updateIncomingCallWidths();
+    void restoreIncomingCallsContainer();
     QPixmap cropToHorizontal(const QPixmap& pixmap);
     void applyDisplaySize();
 

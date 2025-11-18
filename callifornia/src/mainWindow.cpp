@@ -427,6 +427,9 @@ void MainWindow::switchToMainMenuWidget() {
 void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_stackedLayout->setCurrentWidget(m_callWidget);
 
+    m_callWidget->setShowingDisplayActive(false);
+    m_callWidget->disableStartScreenShareButton(false);
+
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
     m_callWidget->setMicrophoneMuted(calls::isMicrophoneMuted());
@@ -810,7 +813,6 @@ void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname
     if (ec == calls::ErrorCode::OK) {
         LOG_INFO("Call accepted successfully with: {}", nickname.toStdString());
         m_mainMenuWidget->removeCallingPanel();
-
         m_mainMenuWidget->clearIncomingCalls();
 
         if (m_stackedLayout->currentWidget() == m_callWidget)

@@ -239,8 +239,7 @@ void CallsClient::onEndCall(const nlohmann::json& jsonObject) {
     const std::string& senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
     if (senderNicknameHash != m_call->getFriendNicknameHash()) return;
 
-    if (m_viewingRemoteScreen) 
-        m_viewingRemoteScreen = false;
+    m_viewingRemoteScreen = false;
 
     LOG_INFO("Call ended by remote user");
     m_state = State::FREE;
@@ -544,11 +543,9 @@ bool CallsClient::endCall() {
 
     if (m_state != State::BUSY) return false;
 
-    if (m_viewingRemoteScreen)
-        m_viewingRemoteScreen = false;
-
     sendEndCallPacket(true);
 
+    m_viewingRemoteScreen = false;
     m_state = State::FREE;
     m_call = std::nullopt;
     m_audioEngine->stopStream();
@@ -773,6 +770,7 @@ void CallsClient::onCallAcceptedOk(const nlohmann::json& jsonObject) {
 
     m_state = State::BUSY;
     m_call = Call(it->second);
+    m_viewingRemoteScreen = false;
 
     m_incomingCalls.clear();
     const std::string friendNickname = m_call.value().getFriendNickname();

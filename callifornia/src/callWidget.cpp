@@ -501,9 +501,6 @@ void CallWidget::resizeEvent(QResizeEvent* event)
 }
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
-    setShowingDisplayActive(false);
-    disableStartScreenShareButton(false);
-
     m_friendNickname = friendNickname;
     m_friendNicknameLabel->setText(friendNickname);
 
@@ -834,6 +831,22 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
     }
 }
 
+void CallWidget::restoreIncomingCallsContainer() {
+    if (m_incomingCallsContainer->parent() != this) {
+        if (m_incomingCallsDialog && m_incomingCallsDialog->layout()) {
+            m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
+        }
+        m_incomingCallsContainer->setParent(this);
+        if (m_mainLayout) {
+            m_mainLayout->insertWidget(0, m_incomingCallsContainer);
+        }
+    }
+
+    m_incomingCallsContainer->setFixedHeight(0);
+    m_incomingCallsScrollArea->setFixedHeight(0);
+    m_incomingCallsContainer->hide();
+}
+
 void CallWidget::updateIncomingCallsVisibility() {
     if (!m_incomingCallWidgets.isEmpty()) {
         int callCount = m_incomingCallWidgets.size();
@@ -975,9 +988,17 @@ void CallWidget::updateIncomingCallWidths()
 }
 
 void CallWidget::onIncomingCallAccepted(const QString& callerName) {
+    if (m_showingDisplay) {
+        restoreIncomingCallsContainer();
+    }
+
     emit acceptCallButtonClicked(callerName);
 }
 
 void CallWidget::onIncomingCallDeclined(const QString& callerName) {
     emit declineCallButtonClicked(callerName);
+
+    if (m_showingDisplay) {
+        restoreIncomingCallsContainer();
+    }
 }
