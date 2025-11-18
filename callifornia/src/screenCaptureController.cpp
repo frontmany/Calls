@@ -4,6 +4,7 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QTimer>
+#include <QtGlobal>
 
 ScreenCaptureController::ScreenCaptureController(QObject* parent)
     : QObject(parent),
@@ -42,6 +43,7 @@ void ScreenCaptureController::stopCapture()
 
     m_isCapturing = false;
     m_captureTimer->stop();
+    m_previousImageData.clear();
 
     emit captureStopped();
 }
@@ -49,21 +51,25 @@ void ScreenCaptureController::stopCapture()
 void ScreenCaptureController::captureScreen()
 {
     if (m_selectedScreenIndex == -1 || m_selectedScreenIndex >= m_availableScreens.size())
-    {
         return;
-    }
-
+    
     QScreen* screen = m_availableScreens[m_selectedScreenIndex];
-    if (!screen)
-    {
-        return;
-    }
-
+    if (!screen) return;
+    
     QPixmap screenshot = screen->grabWindow(0);
     std::vector<unsigned char> imageData;
     if (!screenshot.isNull())
     {
-        imageData = pixmapToBytes(screenshot, QSize(1280, 720));
+        QPixmap croppedScreenshot = cropToHorizontal(screenshot);
+        
+        bool isVertical = screenshot.height() > screenshot.width();
+        QSize targetSize = isVertical ? QSize(1600, 900) : QSize(1280, 720);
+        
+        imageData = pixmapToBytes(croppedScreenshot, targetSize);
+        
+        if (imageData == m_previousImageData) return;
+        
+        m_previousImageData = imageData;
     }
 
     emit screenCaptured(screenshot, imageData);
@@ -108,6 +114,24 @@ void ScreenCaptureController::resetSelectedScreenIndex()
 bool ScreenCaptureController::isCapturing() const
 {
     return m_isCapturing;
+}
+
+QPixmap ScreenCaptureController::cropToHorizontal(const QPixmap& pixmap)
+{
+    if (pixmap.isNull()) return pixmap;
+
+    int w = pixmap.width();
+    int h = pixmap.height();
+
+    if (h <= w)
+    {
+        return pixmap;
+    }
+
+    int targetH = static_cast<int>(w * 9.0 / 16.0);
+    targetH = qMin(targetH, h);
+    QRect cropRect(0, 0, w, targetH);
+    return pixmap.copy(cropRect);
 }
 
 std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)

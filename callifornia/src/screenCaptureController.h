@@ -36,6 +36,7 @@ private slots:
     void captureScreen();
 
 private:
+    QPixmap cropToHorizontal(const QPixmap& pixmap);
     std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap, QSize targetSize);
 
 private:
@@ -43,4 +44,5 @@ private:
     bool m_isCapturing;
     QList<QScreen*> m_availableScreens;
     int m_selectedScreenIndex;
+    std::vector<unsigned char> m_previousImageData;
 };
