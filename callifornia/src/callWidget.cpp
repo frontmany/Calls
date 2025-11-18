@@ -14,6 +14,7 @@
 #include <cmath>
 #include <string>
 #include "scaleFactor.h"
+#include "screen.h"
 
 // Style definitions
 const QColor StyleCallWidget::m_primaryColor = QColor(21, 119, 232);
@@ -257,13 +258,12 @@ void CallWidget::setupUI()
     m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
     m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
-    // Share display label (hidden by default)
-    m_displayLabel = new QLabel(this);
-    m_displayLabel->setAlignment(Qt::AlignCenter);
-    m_displayLabel->setFixedSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
-    m_displayLabel->setStyleSheet("background: transparent;");
-    m_displayLabel->setScaledContents(false);
-    m_displayLabel->hide();
+    m_screenWidget = new Screen(this);
+    m_screenWidget->setFixedSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
+    m_screenWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_screenWidget->hide();
+
+
 
     // Friend nickname
     m_friendNicknameLabel = new QLabel("Friend", this);
@@ -431,7 +431,7 @@ void CallWidget::setupUI()
     // Add widgets to main layout
     m_mainLayout->addWidget(m_incomingCallsContainer);
     m_mainLayout->addWidget(m_timerLabel);
-    m_mainLayout->addWidget(m_displayLabel, 1, Qt::AlignHCenter);
+    m_mainLayout->addWidget(m_screenWidget, 1, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_friendNicknameLabel);
     m_mainLayout->addSpacing(scale(10));
     m_mainLayout->addWidget(m_buttonsPanel, 0, Qt::AlignHCenter);
@@ -516,17 +516,9 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
     m_callTimer->start(1000); // Update every second
 }
 
-void CallWidget::onScreenShareToggled()
+void CallWidget::onScreenShareToggled(bool toggled)
 {
-    if (m_screenShareButton->isToggled())
-    {
-        emit shareScreenClicked();
-    }
-    else
-    {
-        emit shareScreenStopped();
-    }
-
+    emit screenShareClicked(toggled);
     applyDisplaySize();
 }
 
@@ -594,6 +586,11 @@ void CallWidget::onOutputVolumeChanged() {
 }
 
 void CallWidget::onHangupClicked() {
+    if (m_showingDisplay) {
+        m_screenShareButton->setToggled(false);
+    }
+    
+
     m_callTimer->stop();
     emit hangupClicked();
 }
@@ -656,26 +653,29 @@ void CallWidget::setShowingDisplayActive(bool active)
     if (m_showingDisplay)
     {
         m_timerLabel->hide();
-        m_displayLabel->show();
+        m_friendNicknameLabel->hide();
+        m_screenWidget->show();
         if (m_mainLayout)
         {
             m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-            if (m_displayLabel && m_mainLayout->indexOf(m_displayLabel) != -1)
+            if (m_screenWidget && m_mainLayout->indexOf(m_screenWidget) != -1)
             {
-                m_mainLayout->setStretchFactor(m_displayLabel, 1);
+                m_mainLayout->setStretchFactor(m_screenWidget, 1);
             }
         }
     }
     else
     {
-        m_displayLabel->hide();
+        m_screenWidget->clear();
+        m_screenWidget->hide();
         m_timerLabel->show();
+        m_friendNicknameLabel->show();
         if (m_mainLayout)
         {
             m_mainLayout->setAlignment(Qt::AlignCenter);
-            if (m_displayLabel && m_mainLayout->indexOf(m_displayLabel) != -1)
+            if (m_screenWidget && m_mainLayout->indexOf(m_screenWidget) != -1)
             {
-                m_mainLayout->setStretchFactor(m_displayLabel, 0);
+                m_mainLayout->setStretchFactor(m_screenWidget, 0);
             }
         }
     }
@@ -696,21 +696,20 @@ QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
         return pixmap;
     }
 
-    // Crop portrait to 16:9 horizontal area centered
+    // Crop portrait to 16:9 horizontal area from top
     int targetH = static_cast<int>(w * 9.0 / 16.0);
     targetH = qMin(targetH, h);
-    int y = (h - targetH) / 2;
-    QRect cropRect(0, y, w, targetH);
+    QRect cropRect(0, 0, w, targetH);
     return pixmap.copy(cropRect);
 }
 
 void CallWidget::applyDisplaySize()
 {
-    if (!m_displayLabel) return;
+    if (!m_screenWidget) return;
     
     QSize targetSize;
     if (m_showingDisplay)
-        targetSize = QSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
+        targetSize = QSize(extraScale(1435, 4) - scale(15), extraScale(875, 4) - scale(15));
     else
         targetSize = QSize(scale(1080), scale(520));
     
@@ -727,51 +726,32 @@ void CallWidget::applyDisplaySize()
         targetSize.setHeight(adjustedHeight);
     }
 
-    m_displayLabel->setFixedSize(targetSize);
-    m_displayLabel->updateGeometry();
+    m_screenWidget->setFixedSize(targetSize);
+    m_screenWidget->updateGeometry(); 
 }
 
 void CallWidget::showFrame(const QPixmap& frame)
 {
-    if (frame.isNull() || !m_showingDisplay || !m_displayLabel) return;
+    if (frame.isNull() || !m_showingDisplay || !m_screenWidget) return;
 
     QPixmap preparedFrame = cropToHorizontal(frame);
     if (preparedFrame.isNull()) return;
 
-    QSize targetSize = m_displayLabel->size();
-    QPixmap scaledFrame = preparedFrame.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    
-    m_displayLabel->setPixmap(scaledFrame);
+    // Let Screen handle scaling with aspect ratio
+    m_screenWidget->setPixmap(preparedFrame);
 }
 
 void CallWidget::disableStartScreenShareButton(bool disable) {
     m_screenShareButton->setDisabled(disable);
 
     if (disable) {    
-        m_screenShareButton->setToggled(false);
         m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
         m_screenShareButton->setIcons(m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled);
     }
     else {
         m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
         m_screenShareButton->setToolTip("Share screen");
-    }
-}
-
-void CallWidget::resetScreenShareToggle()
-{
-    if (!m_screenShareButton)
-    {
-        return;
-    }
-
-    if (m_screenShareButton->isToggled())
-    {
         m_screenShareButton->setToggled(false);
-    }
-    else
-    {
-        applyDisplaySize();
     }
 }
 

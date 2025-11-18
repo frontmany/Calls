@@ -239,11 +239,6 @@ void CallsClient::onEndCall(const nlohmann::json& jsonObject) {
     const std::string& senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
     if (senderNicknameHash != m_call->getFriendNicknameHash()) return;
 
-    if (m_screenSharing) {
-        stopScreenSharing();
-        m_screenSharing = false;
-    }
-
     if (m_viewingRemoteScreen) 
         m_viewingRemoteScreen = false;
 
@@ -430,11 +425,9 @@ void CallsClient::stop() {
 
         if (m_state != State::UNAUTHORIZED) {
             sendLogoutPacket(false);
-            std::this_thread::sleep_for(250ms);
         }
 
         m_tasks.clear();
-
         m_myNickname.clear();
         m_nicknameWhomCalling.clear();
 
@@ -452,7 +445,6 @@ void CallsClient::stop() {
         m_state = State::UNAUTHORIZED;
 
         m_running = false;
-
     }
 
     if (m_pingManager) {
@@ -551,11 +543,6 @@ bool CallsClient::endCall() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
     if (m_state != State::BUSY) return false;
-
-    if (m_screenSharing) {
-        stopScreenSharing();
-        m_screenSharing = false;
-    }
 
     if (m_viewingRemoteScreen)
         m_viewingRemoteScreen = false;
@@ -663,6 +650,10 @@ bool CallsClient::startScreenSharing() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
     if (m_state != State::BUSY || m_screenSharing || m_viewingRemoteScreen) return false;
+    if (!m_call) {
+        LOG_WARN("Attempted to start screen sharing without active call context");
+        return false;
+    }
 
     m_screenSharing = true;
     sendStartScreenSharingPacket();
@@ -674,9 +665,15 @@ bool CallsClient::stopScreenSharing() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
     if (!m_screenSharing) return false;
-    if (m_state != State::BUSY) return false;
 
     m_screenSharing = false;
+
+    if (m_state != State::BUSY) return false;
+    if (!m_call) {
+        LOG_WARN("Screen sharing stop requested but call data is missing");
+        return false;
+    }
+
     sendStopScreenSharingPacket(true);
 
     return true;
@@ -686,19 +683,19 @@ bool CallsClient::sendScreen(const std::vector<unsigned char>& data) {
     if (!m_screenSharing) return false;
     if (m_state != State::BUSY) return false;
 
-    const CryptoPP::SecByteBlock* callKey;
+    CryptoPP::SecByteBlock callKey;
     {
         std::lock_guard<std::mutex> lock(m_dataMutex);
         if (!m_call) return false;
 
-        callKey = &m_call.value().getCallKey();
+        callKey = m_call.value().getCallKey();
     }
 
     try {
         size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
         std::vector<CryptoPP::byte> cipherData(cipherDataLength);
 
-        crypto::AESEncrypt(*callKey,
+        crypto::AESEncrypt(callKey,
             reinterpret_cast<const CryptoPP::byte*>(data.data()),
             data.size(),
             cipherData.data(),
@@ -1124,6 +1121,11 @@ void CallsClient::sendStartCallingPacket(const std::string& friendNickname, cons
 }
 
 void CallsClient::sendStartScreenSharingPacket() {
+    if (!m_call) {
+        LOG_WARN("Cannot send start screen sharing packet without active call");
+        return;
+    }
+
     auto [uuid, packet] = PacketsFactory::getStartScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash());
 
     std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_SCREEN_SHARING,
@@ -1153,10 +1155,15 @@ void CallsClient::sendStartScreenSharingPacket() {
 }
 
 void CallsClient::sendStopScreenSharingPacket(bool createTask) {
+    if (!m_call) {
+        LOG_WARN("Cannot send stop screen sharing packet without active call");
+        return;
+    }
+
     auto [uuid, packet] = PacketsFactory::getStopScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash(), createTask);
 
     if (createTask) {
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_SCREEN_SHARING,
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::STOP_SCREEN_SHARING,
             [this, uuid]() {
                 std::lock_guard<std::mutex> lock(m_dataMutex);
 

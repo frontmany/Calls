@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     // 92.255.165.77 server global ip
 
     QApplication app(argc, argv);
-    MainWindow* mainWindow = new MainWindow(nullptr);
+    MainWindow* mainWindow = new MainWindow();
     mainWindow->init();
 
     QTimer::singleShot(100, [mainWindow]() {

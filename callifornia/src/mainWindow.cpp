@@ -21,10 +21,6 @@
 #include "updaterCallbacksHandler.h"
 #include "logger.h"
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
-{
-}
-
 MainWindow::~MainWindow() {
     if (m_ringtonePlayer) {
         m_ringtonePlayer->stop();
@@ -121,25 +117,14 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
     });
 }
 
-void MainWindow::ensureScreenCaptureController()
-{
-    if (m_screenCaptureController) return;
-
-    m_screenCaptureController = std::make_unique<ScreenCaptureController>(this);
-
-    connect(m_screenCaptureController.get(), &ScreenCaptureController::captureStarted,
-        this, &MainWindow::onCaptureStarted);
-    connect(m_screenCaptureController.get(), &ScreenCaptureController::captureStopped,
-        this, &MainWindow::onCaptureStopped);
-    connect(m_screenCaptureController.get(), &ScreenCaptureController::screenCaptured,
-        this, &MainWindow::onScreenCaptured);
-}
-
 void MainWindow::stopLocalScreenCapture()
 {
     if (!m_screenCaptureController) return;
 
-    m_screenCaptureController->hideCaptureDialog();
+    if (m_dialogsController)
+    {
+        m_dialogsController->hideScreenShareDialog();
+    }
     m_screenCaptureController->stopCapture();
 }
 
@@ -353,9 +338,6 @@ void MainWindow::setupUI() {
     m_stackedLayout = new QStackedLayout();
     m_mainLayout->addLayout(m_stackedLayout);
 
-    m_dialogsController = new DialogsController(this);
-    connect(m_dialogsController, &DialogsController::exitButtonClicked, this, &MainWindow::close);
-
     m_authorizationWidget = new AuthorizationWidget(this);
     connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
     connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, this, &MainWindow::onAuthorizationButtonClicked);
@@ -384,9 +366,17 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
-    connect(m_callWidget, &CallWidget::shareScreenClicked, this, &MainWindow::onShareScreenRequested);
-    connect(m_callWidget, &CallWidget::shareScreenStopped, this, &MainWindow::onShareScreenStoppedByUser);
+    connect(m_callWidget, &CallWidget::screenShareClicked, this, &MainWindow::onScreenShareButtonClicked);
     m_stackedLayout->addWidget(m_callWidget);
+
+    m_screenCaptureController = new ScreenCaptureController(this);
+    connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &MainWindow::onCaptureStarted);
+    connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &MainWindow::onCaptureStopped);
+    connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &MainWindow::onScreenCaptured);
+
+    m_dialogsController = new DialogsController(this);
+    connect(m_dialogsController, &DialogsController::exitButtonClicked, this, &MainWindow::close);
+    connect(m_dialogsController, &DialogsController::screenSelected, this, &MainWindow::onScreenSelected);
 
     QTimer::singleShot(2000, [this]() {
         if (updater::isAwaitingServerResponse()) {
@@ -446,24 +436,38 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_callWidget->setCallInfo(friendNickname);
 }
 
-void MainWindow::onShareScreenRequested()
-{
-    ensureScreenCaptureController();
-    if (!m_screenCaptureController) return;
+void MainWindow::onScreenShareButtonClicked(bool toggled) {
+    if (toggled) {
+        m_screenCaptureController->refreshAvailableScreens();
+        m_screenCaptureController->resetSelectedScreenIndex();
+        m_dialogsController->showScreenShareDialog(m_screenCaptureController->availableScreens());
+    }
+    else {
+        stopLocalScreenCapture();
+        m_callWidget->disableStartScreenShareButton(false);
+        m_callWidget->setShowingDisplayActive(false);
+    }
+}
 
-    if (calls::isViewingRemoteScreen())
+
+void MainWindow::onScreenSelected(int screenIndex)
+{
+    if (!m_screenCaptureController)
     {
-        showTransientStatusMessage("Remote screen is already being shared", 3000);
+        showTransientStatusMessage("Unable to start screen sharing", 2000);
         return;
     }
 
-    m_screenCaptureController->showCaptureDialog();
-}
+    m_screenCaptureController->refreshAvailableScreens();
+    m_screenCaptureController->setSelectedScreenIndex(screenIndex);
 
-void MainWindow::onShareScreenStoppedByUser()
-{
-    stopLocalScreenCapture();
-    m_callWidget->setShowingDisplayActive(false);
+    if (m_screenCaptureController->selectedScreenIndex() == -1)
+    {
+        showTransientStatusMessage("Selected screen is no longer available", 3000);
+        return;
+    }
+
+    m_screenCaptureController->startCapture();
 }
 
 
@@ -479,7 +483,6 @@ void MainWindow::onShareScreenStoppedByUser()
 
 void MainWindow::onCaptureStarted()
 {
-    
     const std::string friendNickname = calls::getNicknameInCallWith();
     if (friendNickname.empty())
     {
@@ -489,41 +492,26 @@ void MainWindow::onCaptureStarted()
     }
     
 
-    if (!calls::startScreenSharing(friendNickname))
+    if (!calls::startScreenSharing())
     {
         showTransientStatusMessage("Failed to start screen sharing", 3000);
         stopLocalScreenCapture();
         return;
     }
-    
 
-    m_localScreenCaptureActive = true;
-    m_screenSendErrorNotified = false;
-    if (m_callWidget)
-    {
-        m_callWidget->setShowingDisplayActive(true);
-    }
+    m_callWidget->setShowingDisplayActive(true);
 }
 
 void MainWindow::onCaptureStopped()
 {
-    if (m_localScreenCaptureActive)
-        calls::stopScreenSharing();
+    calls::stopScreenSharing();
 
-    m_localScreenCaptureActive = false;
-    m_screenSendErrorNotified = false;
-
-    if (m_callWidget)
-    {
-        m_callWidget->resetScreenShareToggle();
-        m_callWidget->setShowingDisplayActive(false);
-    }
+    m_callWidget->disableStartScreenShareButton(false);
+    m_callWidget->setShowingDisplayActive(false);
 }
 
 void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
 {
-    if (!m_localScreenCaptureActive) return;
-
     if (m_callWidget && !pixmap.isNull())
     {
         m_callWidget->setShowingDisplayActive(true);
@@ -533,13 +521,7 @@ void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsig
     if (imageData.empty()) return;
 
     if (!calls::sendScreen(imageData))
-    {
-        if (!m_screenSendErrorNotified)
-        {
-            showTransientStatusMessage("Failed to send screen frame", 2000);
-            m_screenSendErrorNotified = true;
-        }
-    }
+        showTransientStatusMessage("Failed to send screen frame", 2000);
 }
 
 void MainWindow::onStartScreenSharingError()
@@ -550,20 +532,16 @@ void MainWindow::onStartScreenSharingError()
 
 void MainWindow::onIncomingScreenSharingStarted()
 {
-    if (m_localScreenCaptureActive)
-        stopLocalScreenCapture();
-    
     if (m_callWidget) {
         m_callWidget->setShowingDisplayActive(true);
         m_callWidget->disableStartScreenShareButton(true);
-
     }
 }
 
 void MainWindow::onIncomingScreenSharingStopped()
 {
     if (m_callWidget) {
-        m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->setShowingDisplayActive(false);
         m_callWidget->disableStartScreenShareButton(false);
     }
 }
@@ -638,6 +616,10 @@ void MainWindow::onEndCallButtonClicked() {
         handleEndCallErrorNotificationAppearance();
         return;
     }
+
+    stopLocalScreenCapture();
+    m_callWidget->disableStartScreenShareButton(false);
+    m_callWidget->setShowingDisplayActive(false);
 
     m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
@@ -875,8 +857,13 @@ void MainWindow::onCallingDeclined() {
 }
 
 void MainWindow::onRemoteUserEndedCall() {
+    if (m_screenCaptureController->isCapturing())
+        stopLocalScreenCapture();
+
     LOG_INFO("Remote user ended the call");
     m_callWidget->clearIncomingCalls();
+    m_callWidget->disableStartScreenShareButton(false);
+    m_callWidget->setShowingDisplayActive(false);
     switchToMainMenuWidget();
 
     m_mainMenuWidget->setState(calls::State::FREE);

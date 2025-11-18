@@ -97,7 +97,6 @@ public:
     bool isToggled() const { return m_toggled; }
 
 signals:
-    void clicked();
     void toggled(bool state);
 
 protected:

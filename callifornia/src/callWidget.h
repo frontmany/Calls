@@ -14,6 +14,7 @@
 #include "buttons.h"
 class QDialog;
 class QResizeEvent;
+class Screen;
 
 class IncomingCallWidget;
 
@@ -69,7 +70,6 @@ public:
     void setShowingDisplayActive(bool active);
     void showFrame(const QPixmap& frame);
     void disableStartScreenShareButton(bool disable);
-    void resetScreenShareToggle();
 
 signals:
     void hangupClicked();
@@ -79,8 +79,7 @@ signals:
     void muteSpeakerClicked(bool mute);
     void acceptCallButtonClicked(const QString& callerName);
     void declineCallButtonClicked(const QString& callerName);
-    void shareScreenClicked();
-    void shareScreenStopped();
+    void screenShareClicked(bool toggled);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -96,7 +95,7 @@ private slots:
     void onIncomingCallAccepted(const QString& callerName);
     void onIncomingCallDeclined(const QString& callerName);
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
-    void onScreenShareToggled();
+    void onScreenShareToggled(bool toggled);
     void onMicLabelToggled(bool toggled);
     void onSpeakerLabelToggled(bool toggled);
     void onIncomingCallsDialogClosed();
@@ -122,7 +121,7 @@ private:
     // Call info section
     QLabel* m_timerLabel;
     QLabel* m_friendNicknameLabel;
-    QLabel* m_displayLabel;
+    Screen* m_screenWidget;
 
     // Control panels
     QWidget* m_buttonsPanel;

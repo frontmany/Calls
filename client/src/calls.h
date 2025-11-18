@@ -49,7 +49,7 @@ namespace calls {
         return CallsClient::get().stopCalling();
     }
 
-    inline bool startScreenSharing(const std::string& friendNickname)
+    inline bool startScreenSharing()
     {
         return CallsClient::get().startScreenSharing();
     }
@@ -135,7 +135,7 @@ namespace calls {
     inline void stop()
     {
         CallsClient::get().stop();
-    }   
+    }
 
     inline bool isRunning()
     {
