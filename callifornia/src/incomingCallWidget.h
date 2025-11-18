@@ -47,6 +47,7 @@ private:
     QString m_friendNickname;
     QTimer* m_timer;
     int m_remainingSeconds;
+    int m_totalSeconds;
 
     // UI elements
     QLabel* m_avatarLabel;

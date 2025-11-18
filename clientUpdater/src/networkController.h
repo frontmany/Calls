@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <atomic>
 
 #include "updatesCheckResult.h"
 #include "safeDeque.h"
@@ -19,7 +20,7 @@
 
 namespace updater {
 
-class NetworkController {
+	class NetworkController {
 private:
 	struct FileMetadata {
 		std::filesystem::path relativeFilePath;
@@ -33,6 +34,7 @@ public:
 	void sendPacket(const Packet& packet);
 	void connect(const std::string& host, const std::string& port);
 	void disconnect();
+	void requestShutdown();
 
 private:
 	void writeHeader(const Packet& packet);
@@ -53,6 +55,7 @@ private:
 	void openFile();
 	void deleteTempDirectory();
 	void moveConfigFromTemp();
+	bool shouldIgnoreError(const std::error_code& ec) const;
 
 private:
 	static constexpr int c_chunkSize = 8192;
@@ -82,6 +85,8 @@ private:
 	std::function<void(bool)> m_onAllFilesLoaded;
 	std::function<void()> m_onConnected;
 	std::function<void()> m_onError;
+
+	std::atomic_bool m_shuttingDown = false;
 };
 
 }

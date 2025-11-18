@@ -44,6 +44,7 @@ bool ClientUpdater::connect(const std::string& host, const std::string& port) {
 }
 
 void ClientUpdater::disconnect() {
+	m_networkController.requestShutdown();
 	m_networkController.disconnect();
 	m_state = State::DISCONNECTED;
 
