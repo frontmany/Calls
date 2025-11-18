@@ -630,15 +630,15 @@ bool CallsClient::acceptCall(const std::string& friendNickname) {
     if (it == m_incomingCalls.end()) return false;
 
     if (m_state == State::CALLING)
-        sendStopCallingPacket(false);
+        sendStopCallingPacket(true);
 
     if (m_state == State::BUSY)
-        sendEndCallPacket(false);
+        sendEndCallPacket(true);
 
     for (auto& [timer, incomingCallData] : m_incomingCalls) {
         timer->stop();
         if (incomingCallData.friendNickname != friendNickname)
-            sendDeclineCallPacket(incomingCallData.friendNickname, false);
+            sendDeclineCallPacket(incomingCallData.friendNickname, true);
     }
 
     sendAcceptCallPacket(friendNickname);
@@ -775,10 +775,15 @@ void CallsClient::onCallAcceptedOk(const nlohmann::json& jsonObject) {
     m_call = Call(it->second);
 
     m_incomingCalls.clear();
-    m_audioEngine->refreshAudioDevices();
-    m_audioEngine->startStream();
-    
-    m_callbacksQueue.push([this]() {m_callbackHandler->onAcceptCallResult(ErrorCode::OK, m_call.value().getFriendNickname()); });
+    const std::string friendNickname = m_call.value().getFriendNickname();
+
+    m_callbacksQueue.push([this, friendNickname]() {
+        if (m_audioEngine) {
+            m_audioEngine->refreshAudioDevices();
+            m_audioEngine->startStream();
+        }
+        m_callbackHandler->onAcceptCallResult(ErrorCode::OK, friendNickname);
+    });
 }
 
 void CallsClient::onCallAcceptedFail(const nlohmann::json& jsonObject) {

@@ -501,6 +501,9 @@ void CallWidget::resizeEvent(QResizeEvent* event)
 }
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
+    setShowingDisplayActive(false);
+    disableStartScreenShareButton(false);
+
     m_friendNickname = friendNickname;
     m_friendNicknameLabel->setText(friendNickname);
 
@@ -807,7 +810,6 @@ void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTim
     // Create new incoming call widget
     IncomingCallWidget* callWidget = new IncomingCallWidget(m_incomingCallsScrollWidget, friendNickName, remainingTime);
     callWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    setupElementShadow(callWidget, 10, QColor(0, 0, 3, 50));
     m_incomingCallsScrollLayout->addWidget(callWidget, 0, Qt::AlignHCenter);
     m_incomingCallWidgets[friendNickName] = callWidget;
 

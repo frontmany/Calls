@@ -703,10 +703,8 @@ void MainMenuWidget::addIncomingCall(const QString& friendNickName, int remainin
     m_incomingCallsLayout->addWidget(callWidget);
     m_incomingCallWidgets[friendNickName] = callWidget;
 
-    connect(callWidget, &IncomingCallWidget::callAccepted,
-        this, &MainMenuWidget::onIncomingCallAccepted);
-    connect(callWidget, &IncomingCallWidget::callDeclined,
-        this, &MainMenuWidget::onIncomingCallDeclined);
+    connect(callWidget, &IncomingCallWidget::callAccepted, this, &MainMenuWidget::onIncomingCallAccepted);
+    connect(callWidget, &IncomingCallWidget::callDeclined, this, &MainMenuWidget::onIncomingCallDeclined);
 
     showIncomingCallsArea();
 }

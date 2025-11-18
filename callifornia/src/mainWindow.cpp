@@ -505,7 +505,6 @@ void MainWindow::onCaptureStarted()
 void MainWindow::onCaptureStopped()
 {
     calls::stopScreenSharing();
-
     m_callWidget->disableStartScreenShareButton(false);
     m_callWidget->setShowingDisplayActive(false);
 }
@@ -548,7 +547,7 @@ void MainWindow::onIncomingScreenSharingStopped()
 
 void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
 {
-    if (!m_callWidget || data.empty()) return;
+    if (!m_callWidget || data.empty() || !calls::isViewingRemoteScreen()) return;
 
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
@@ -618,8 +617,6 @@ void MainWindow::onEndCallButtonClicked() {
     }
 
     stopLocalScreenCapture();
-    m_callWidget->disableStartScreenShareButton(false);
-    m_callWidget->setShowingDisplayActive(false);
 
     m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
@@ -648,13 +645,14 @@ void MainWindow::onMuteSpeakerButtonClicked(bool mute) {
 }
 
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
+    if (m_screenCaptureController->isCapturing())
+        stopLocalScreenCapture();
+    
     bool requestSent = calls::acceptCall(friendNickname.toStdString());
     if (!requestSent) {
         handleAcceptCallErrorNotificationAppearance();
         return;
     }
-
-    playSoundEffect(":/resources/callJoined.wav");
 }
 
 void MainWindow::onDeclineCallButtonClicked(const QString& friendNickname) {
@@ -818,6 +816,7 @@ void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname
         if (m_stackedLayout->currentWidget() == m_callWidget)
             m_callWidget->clearIncomingCalls();
 
+        playSoundEffect(":/resources/callJoined.wav");
         switchToCallWidget(nickname);
         stopRingtone();
     }
