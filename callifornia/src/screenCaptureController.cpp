@@ -5,6 +5,9 @@
 #include <QScreen>
 #include <QTimer>
 #include <QtGlobal>
+#include <QImage>
+#include <QPainter>
+#include <algorithm>
 
 ScreenCaptureController::ScreenCaptureController(QObject* parent)
     : QObject(parent),
@@ -63,11 +66,9 @@ void ScreenCaptureController::captureScreen()
         QPixmap croppedScreenshot = cropToHorizontal(screenshot);
         
         bool isVertical = screenshot.height() > screenshot.width();
-        QSize targetSize = isVertical ? QSize(1600, 900) : QSize(1280, 720);
+        QSize targetSize = QSize(1600, 900);
         
         imageData = pixmapToBytes(croppedScreenshot, targetSize);
-        
-        if (imageData == m_previousImageData) return;
         
         m_previousImageData = imageData;
     }
@@ -136,16 +137,20 @@ QPixmap ScreenCaptureController::cropToHorizontal(const QPixmap& pixmap)
 
 std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
 {
-    QPixmap scaledPixmap = pixmap.scaled(targetSize,
-        Qt::KeepAspectRatio,
-        Qt::SmoothTransformation);
+    QImage image = pixmap.toImage();
+    
+    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32)
+    {
+        image = image.convertToFormat(QImage::Format_RGB32);
+    }
 
+    QImage scaledImage = image.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    
     QByteArray byteArray;
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    scaledPixmap.save(&buffer, "JPG", 50);
+    scaledImage.save(&buffer, "JPG", 50);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }
-
