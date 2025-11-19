@@ -558,7 +558,7 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
 
             if (m_nicknameHashToUser.contains(userNicknameHash)) {
                 UserPtr userTo = m_nicknameHashToUser.at(userNicknameHash);
-                m_networkController.sendVoiceToClient(userTo->getEndpoint(), data, size);
+                m_networkController.forwardDatagramToClient(userTo->getEndpoint(), data, size);
             }
         }
     }
@@ -574,7 +574,7 @@ void CallsServer::handleScreenPacket(const unsigned char* data, int size, const 
 
             if (m_nicknameHashToUser.contains(userNicknameHash)) {
                 UserPtr userTo = m_nicknameHashToUser.at(userNicknameHash);
-                m_networkController.sendScreenToClient(userTo->getEndpoint(), data, size);
+                m_networkController.forwardDatagramToClient(userTo->getEndpoint(), data, size);
             }
         }
     }

@@ -122,16 +122,6 @@ bool NetworkController::isRunning() const {
     return m_isRunning;
 }
 
-void NetworkController::sendVoiceToClient(const asio::ip::udp::endpoint& clientEndpoint,
-    const unsigned char* data, int length) {
-    forwardDatagramToClient(clientEndpoint, data, static_cast<std::size_t>(length));
-}
-
-void NetworkController::sendScreenToClient(const asio::ip::udp::endpoint& clientEndpoint,
-    const unsigned char* data, int length) {
-    forwardDatagramToClient(clientEndpoint, data, static_cast<std::size_t>(length));
-}
-
 void NetworkController::sendToClient(const asio::ip::udp::endpoint& clientEndpoint, PacketType type) {
     sendDataToClient(clientEndpoint, nullptr, 0, type);
 }
