@@ -14,9 +14,6 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override;
 
-private:
-    void updateGeometryWithAspectRatio();
-
     QPixmap m_pixmap;
     bool m_clearToWhite = false;
     static constexpr qreal m_cornerRadius = 4.0;
