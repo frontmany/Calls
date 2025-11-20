@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QEvent>
 #include <QMargins>
+#include <cmath>
 #include <algorithm>
 #include <string>
 #include "scaleFactor.h"
@@ -254,7 +255,7 @@ void CallWidget::setupUI()
     m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
     m_screenWidget = new Screen(this);
-    m_screenWidget->setFixedSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
+    m_screenWidget->setFixedSize(scaledScreenSize16by9(1440));
     m_screenWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_screenWidget->hide();
 
@@ -744,13 +745,13 @@ QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
 }
 
 void CallWidget::applyStandardSize() {
-    QSize targetSize = QSize(extraScale(1380, 4) - scale(15), extraScale(720, 4) - scale(15));
+    QSize targetSize = scaledScreenSize16by9(1440);
     m_screenWidget->setFixedSize(targetSize);
     m_screenWidget->updateGeometry();
 }
 
 void CallWidget::applyDecreasedSize() {
-    QSize targetSize = QSize(extraScale(1280, 4) - scale(15), extraScale(720, 4) - scale(15));
+    QSize targetSize = scaledScreenSize16by9(1280);
 
     m_screenWidget->setFixedSize(targetSize);
     m_screenWidget->updateGeometry();
@@ -779,6 +780,18 @@ void CallWidget::applyIncreasedSize()
 
     m_screenWidget->setFixedSize(availableSize);
     m_screenWidget->updateGeometry();
+}
+
+QSize CallWidget::scaledScreenSize16by9(int baseWidth)
+{
+    const int scaledWidth = extraScale(baseWidth, 4) - scale(15);
+    if (scaledWidth <= 0)
+    {
+        return QSize();
+    }
+
+    const int scaledHeight = std::max(1, static_cast<int>(std::lround(scaledWidth * 9.0 / 16.0)));
+    return QSize(scaledWidth, scaledHeight);
 }
 
 void CallWidget::showFrame(const QPixmap& frame)

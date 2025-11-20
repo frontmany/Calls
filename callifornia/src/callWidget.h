@@ -3,6 +3,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QSize>
 #include <QHBoxLayout>
 #include <QTimer>
 #include <QTime>
@@ -117,6 +118,7 @@ private:
     void applyStandardSize();
     void applyDecreasedSize();
     void applyIncreasedSize();
+    static QSize scaledScreenSize16by9(int baseWidth);
     void enterScreenFullscreen();
     void exitScreenFullscreen();
     void updateExitFullscreenButtonPosition();
