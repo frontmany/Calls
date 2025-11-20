@@ -10,6 +10,7 @@
 #include <QMovie>
 #include <QDir>
 #include <QProcess>
+#include <QRect>
 #include <QDialog>
 #include <QScreen>
 #include <QPixmap>
@@ -80,6 +81,8 @@ private slots:
     void onIncomingScreenSharingStarted();
     void onIncomingScreenSharingStopped();
     void onIncomingScreen(const std::vector<unsigned char>& data);
+    void onCallWidgetEnterFullscreenRequested();
+    void onCallWidgetExitFullscreenRequested();
 
 private:
     void switchToAuthorizationWidget();

@@ -61,13 +61,11 @@ void Screen::paintEvent(QPaintEvent* event)
         QRect sourceRect;
         if (scaledSize.width() > widgetRect.width())
         {
-            int xOffset = (scaledSize.width() - widgetRect.width()) / 2;
-            sourceRect = QRect(xOffset, 0, widgetRect.width(), scaledSize.height());
+            sourceRect = QRect(0, 0, widgetRect.width(), scaledSize.height());
         }
         else
         {
-            int yOffset = (scaledSize.height() - widgetRect.height()) / 2;
-            sourceRect = QRect(0, yOffset, scaledSize.width(), widgetRect.height());
+            sourceRect = QRect(0, 0, scaledSize.width(), widgetRect.height());
         }
         
         painter.drawPixmap(widgetRect, scaledPixmap, sourceRect);

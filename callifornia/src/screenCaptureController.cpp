@@ -66,7 +66,7 @@ void ScreenCaptureController::captureScreen()
         QPixmap croppedScreenshot = cropToHorizontal(screenshot);
         
         bool isVertical = screenshot.height() > screenshot.width();
-        QSize targetSize = QSize(1600, 900);
+        QSize targetSize = QSize(1920, 1080);
         
         imageData = pixmapToBytes(croppedScreenshot, targetSize);
         

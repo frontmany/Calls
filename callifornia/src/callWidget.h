@@ -10,6 +10,7 @@
 #include <QScrollArea>
 #include <QPixmap>
 #include <QIcon>
+#include <QKeyEvent>
 
 #include "buttons.h"
 class QDialog;
@@ -67,9 +68,10 @@ public:
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
-    void setShowingDisplayActive(bool active);
+    void setShowingDisplayActive(bool active, bool viewingRemoteDisplay = false);
     void showFrame(const QPixmap& frame);
     void disableStartScreenShareButton(bool disable);
+    void setFullscreenButtonState(bool fullscreen);
 
 signals:
     void hangupClicked();
@@ -80,13 +82,18 @@ signals:
     void acceptCallButtonClicked(const QString& callerName);
     void declineCallButtonClicked(const QString& callerName);
     void screenShareClicked(bool toggled);
+    void fullscreenClicked(bool toggled);
+    void requestEnterWindowFullscreen();
+    void requestExitWindowFullscreen();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 private slots:
-    void onMuteMicrophoneClicked();
+    void onFullscreenClicked(bool toggled);
     void onSpeakerClicked();
     void onHangupClicked();
     void onInputVolumeChanged();
@@ -107,7 +114,18 @@ private:
     void updateIncomingCallWidths();
     void restoreIncomingCallsContainer();
     QPixmap cropToHorizontal(const QPixmap& pixmap);
-    void applyDisplaySize();
+    void applyStandardSize();
+    void applyDecreasedSize();
+    void applyIncreasedSize();
+    void enterScreenFullscreen();
+    void exitScreenFullscreen();
+    void updateExitFullscreenButtonPosition();
+    void refreshMainLayoutGeometry();
+    void updateTopSpacerHeight();
+
+    // Spacers
+    QSpacerItem* m_topMainLayoutSpacer;
+    QSpacerItem* m_middleMainLayoutSpacer;
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
@@ -144,10 +162,11 @@ private:
     QSlider* m_speakerVolumeSlider;
 
     // Buttons
-    ToggleButtonIcon* m_muteMicrophoneButton;
+    ToggleButtonIcon* m_fullscreenButton;
     ToggleButtonIcon* m_screenShareButton;
     ToggleButtonIcon* m_speakerButton;
     QPushButton* m_hangupButton;
+    QPushButton* m_exitFullscreenButton;
 
     // Screen share button icons
     QIcon m_screenShareIconNormal;
@@ -155,6 +174,12 @@ private:
     QIcon m_screenShareIconActive;
     QIcon m_screenShareIconActiveHover;
     QIcon m_screenShareIconDisabled;
+
+    // Fullscreen button icons
+    QIcon m_fullscreenIconMaximize;
+    QIcon m_fullscreenIconMaximizeHover;
+    QIcon m_fullscreenIconMinimize;
+    QIcon m_fullscreenIconMinimizeHover;
 
     // Timer
     QTimer* m_callTimer;
@@ -166,6 +191,9 @@ private:
     bool m_audioMuted = false;
     bool m_slidersVisible = false;
     bool m_showingDisplay = false;
+    bool m_screenFullscreenActive = false;
+    bool m_viewingRemoteDisplay = false;
+    QList<QWidget*> m_spacerWidgets;
 
     // Incoming calls
     QDialog* m_incomingCallsDialog = nullptr;

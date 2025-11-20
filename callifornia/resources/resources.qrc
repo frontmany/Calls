@@ -30,6 +30,10 @@
 	 <file>screenShareHover.png</file>
 	 <file>screenShareActive.png</file>
 	 <file>screenShareActiveHover.png</file>
+	 <file>minimize.png</file>
+	 <file>minimizeHover.png</file>
+	 <file>maximize.png</file>
+	 <file>maximizeHover.png</file>
 	 <file>speakerMutedActiveHover.png</file>
 	 <file>arrowDown.png</file>
 	 <file>microphone.png</file>

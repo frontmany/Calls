@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStatusBar>
+#include <QEvent>
 
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
@@ -367,6 +368,8 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     connect(m_callWidget, &CallWidget::screenShareClicked, this, &MainWindow::onScreenShareButtonClicked);
+    connect(m_callWidget, &CallWidget::requestEnterWindowFullscreen, this, &MainWindow::onCallWidgetEnterFullscreenRequested);
+    connect(m_callWidget, &CallWidget::requestExitWindowFullscreen, this, &MainWindow::onCallWidgetExitFullscreenRequested);
     m_stackedLayout->addWidget(m_callWidget);
 
     m_screenCaptureController = new ScreenCaptureController(this);
@@ -535,7 +538,7 @@ void MainWindow::onStartScreenSharingError()
 void MainWindow::onIncomingScreenSharingStarted()
 {
     if (m_callWidget) {
-        m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->setShowingDisplayActive(true, true);
         m_callWidget->disableStartScreenShareButton(true);
     }
 }
@@ -557,6 +560,16 @@ void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
         m_callWidget->showFrame(frame);
+}
+
+void MainWindow::onCallWidgetEnterFullscreenRequested()
+{
+    showFullScreen();
+}
+
+void MainWindow::onCallWidgetExitFullscreenRequested()
+{
+    showMaximized(); 
 }
 
 
