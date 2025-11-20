@@ -3,6 +3,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QDialog>
 #include <QEvent>
+#include <QMargins>
 #include <algorithm>
 #include <string>
 #include "scaleFactor.h"
@@ -523,6 +524,11 @@ void CallWidget::resizeEvent(QResizeEvent* event)
     QWidget::resizeEvent(event);
     updateIncomingCallWidths();
     updateExitFullscreenButtonPosition();
+
+    if (m_screenFullscreenActive)
+    {
+        applyIncreasedSize();
+    }
 }
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
@@ -738,22 +744,13 @@ QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
 }
 
 void CallWidget::applyStandardSize() {
-    QSize targetSize = QSize(extraScale(1380, 4) - scale(15), extraScale(820, 4) - scale(15));
+    QSize targetSize = QSize(extraScale(1380, 4) - scale(15), extraScale(720, 4) - scale(15));
     m_screenWidget->setFixedSize(targetSize);
     m_screenWidget->updateGeometry();
 }
 
 void CallWidget::applyDecreasedSize() {
-    QSize targetSize = QSize(scale(1080), scale(520));
-
-    int reservedHeight = m_slidersContainer->height();
-    reservedHeight += scale(40);
-
-    int adjustedHeight = targetSize.height() - reservedHeight;
-    adjustedHeight = std::max(scale(360), adjustedHeight);
-
-    targetSize.setHeight(adjustedHeight);
-    
+    QSize targetSize = QSize(extraScale(1280, 4) - scale(15), extraScale(720, 4) - scale(15));
 
     m_screenWidget->setFixedSize(targetSize);
     m_screenWidget->updateGeometry();
@@ -761,8 +758,26 @@ void CallWidget::applyDecreasedSize() {
 
 void CallWidget::applyIncreasedSize()
 {
-    QSize targetSize = QSize(extraScale(1652, 4) - scale(15), extraScale(1092, 4) - scale(15));
-    m_screenWidget->setFixedSize(targetSize);
+    if (!m_screenWidget)
+    {
+        return;
+    }
+
+    QSize availableSize = size();
+
+    if (m_mainLayout)
+    {
+        const auto margins = m_mainLayout->contentsMargins();
+        availableSize.setWidth(std::max(0, availableSize.width() - (margins.left() + margins.right())));
+        availableSize.setHeight(std::max(0, availableSize.height() - (margins.top() + margins.bottom())));
+    }
+
+    if (availableSize.isEmpty())
+    {
+        return;
+    }
+
+    m_screenWidget->setFixedSize(availableSize);
     m_screenWidget->updateGeometry();
 }
 

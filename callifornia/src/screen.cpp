@@ -55,19 +55,11 @@ void Screen::paintEvent(QPaintEvent* event)
 
     if (!m_pixmap.isNull())
     {
-        QSize scaledSize = m_pixmap.size().scaled(widgetRect.size(), Qt::KeepAspectRatioByExpanding);
-        QPixmap scaledPixmap = m_pixmap.scaled(scaledSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-        
-        QRect sourceRect;
-        if (scaledSize.width() > widgetRect.width())
-        {
-            sourceRect = QRect(0, 0, widgetRect.width(), scaledSize.height());
-        }
-        else
-        {
-            sourceRect = QRect(0, 0, scaledSize.width(), widgetRect.height());
-        }
-        
-        painter.drawPixmap(widgetRect, scaledPixmap, sourceRect);
+        const QPixmap scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        const int x = widgetRect.x() + (widgetRect.width() - scaledPixmap.width()) / 2;
+        const int y = widgetRect.y();
+
+        painter.drawPixmap(QPoint(x, y), scaledPixmap);
     }
 }
