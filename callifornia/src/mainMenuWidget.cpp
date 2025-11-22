@@ -307,7 +307,7 @@ QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
 
 QString StyleMainMenuWidget::notificationBlueLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(21, 119, 232, 80);"  // Синий цвет с прозрачностью
+        "   background-color: rgba(21, 119, 232, 80);"  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -323,7 +323,7 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     m_notificationTimer->setSingleShot(true);
     connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
 
-    // Таймер для уведомления об обновлении
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     m_updateNotificationTimer = new QTimer(this);
     m_updateNotificationTimer->setSingleShot(true);
     connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableNotification);
@@ -479,8 +479,8 @@ void MainMenuWidget::setupUI() {
 
     // Set validator for nickname
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
-        QRegularExpression("^[a-zA-Z0-9_]+$"), this);
-    m_friendNicknameEdit->setValidator(validator);
+        QRegularExpression("[\\p{L}0-9_]{3,15}"), this);
+    m_friendNicknameEdit->setValidator(validator); 
 
     m_callButton = new QPushButton("Make Call", m_mainContainer);
     m_callButton->setFixedHeight(scale(50));
@@ -703,10 +703,8 @@ void MainMenuWidget::addIncomingCall(const QString& friendNickName, int remainin
     m_incomingCallsLayout->addWidget(callWidget);
     m_incomingCallWidgets[friendNickName] = callWidget;
 
-    connect(callWidget, &IncomingCallWidget::callAccepted,
-        this, &MainMenuWidget::onIncomingCallAccepted);
-    connect(callWidget, &IncomingCallWidget::callDeclined,
-        this, &MainMenuWidget::onIncomingCallDeclined);
+    connect(callWidget, &IncomingCallWidget::callAccepted, this, &MainMenuWidget::onIncomingCallAccepted);
+    connect(callWidget, &IncomingCallWidget::callDeclined, this, &MainMenuWidget::onIncomingCallDeclined);
 
     showIncomingCallsArea();
 }

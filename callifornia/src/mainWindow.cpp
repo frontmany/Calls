@@ -1,32 +1,58 @@
 #include "mainWindow.h"
-#include <QStackedLayout>
-#include <QHBoxLayout>
 #include <QFontDatabase>
 #include <QApplication>
 #include <QSoundEffect>
-#include <QFileInfo>
-#include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
-
+#include <QStatusBar>
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
-#include "overlayWidget.h"
 #include "callWidget.h"
 #include "dialogsController.h"
+#include "screenCaptureController.h"
+#include "prerequisites.h"
 
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
 #include "logger.h"
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
-{
-}
-
 MainWindow::~MainWindow() {
     if (m_ringtonePlayer) {
         m_ringtonePlayer->stop();
     }
+}
+
+void MainWindow::executePrerequisites() {
+    makeRemainingReplacements();
+
+    // 192.168.1.44 local machine 
+    // 192.168.1.48 server internal ip
+    // 92.255.165.77 server global ip
+
+    m_serverHost = getServerHost();
+    m_updaterHost = getUpdaterHost();
+    m_port = getPort();
+
+    if (m_serverHost.isEmpty())
+        m_serverHost = "92.255.165.77";
+
+    if (m_updaterHost.isEmpty())
+        m_updaterHost = "92.255.165.77";
+
+    if (m_port.isEmpty())
+        m_port = "8081";
+
+    QTimer::singleShot(0, [this]() 
+    {
+        bool multipleInstancesAllowed = isMultiInstanceAllowed();
+        bool alreadyRunning = isAlreadyRunning();
+
+        if (alreadyRunning && !multipleInstancesAllowed)
+            m_dialogsController->showAlreadyRunningDialog();
+        else {
+            m_started = true;
+            markAsRunning(true);
+            checkUpdates();
+        }
+    });
 }
 
 void MainWindow::init() {
@@ -51,20 +77,16 @@ void MainWindow::init() {
     showMaximized();
 }
 
-void MainWindow::connectCallifornia(const std::string& host, const std::string& port) {
-    LOG_INFO("Connecting to Callifornia server: {}:{}", host, port);
+void MainWindow::checkUpdates() {
+    LOG_INFO("Connecting to Callifornia server: {}:{}", m_serverHost.toStdString(), m_port.toStdString());
     
     std::unique_ptr<UpdaterCallbacksHandler> updaterHandler = std::make_unique<UpdaterCallbacksHandler>(this);
     updater::init(std::move(updaterHandler));
-    updater::connect(host, port);
+    updater::connect(m_updaterHost.toStdString(), m_port.toStdString());
     
     std::string currentVersion = parseVersionFromConfig();
     LOG_INFO("Current application version: {}", currentVersion);
     updater::checkUpdates(currentVersion);
-
-    std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
-    calls::init(host, port, std::move(callsClientHandler));
-    calls::run();
 }
 
 void MainWindow::playRingtone(const QUrl& ringtoneUrl) {
@@ -119,6 +141,25 @@ void MainWindow::playSoundEffect(const QString& soundPath) {
     });
 }
 
+void MainWindow::stopLocalScreenCapture()
+{
+    if (!m_screenCaptureController) return;
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->hideScreenShareDialog();
+    }
+    m_screenCaptureController->stopCapture();
+}
+
+void MainWindow::showTransientStatusMessage(const QString& message, int durationMs)
+{
+    if (QStatusBar* bar = statusBar())
+    {
+        bar->showMessage(message, durationMs);
+    }
+}
+
 void MainWindow::loadFonts() {
     if (QFontDatabase::addApplicationFont(":/resources/Pacifico-Regular.ttf") == -1) {
         LOG_ERROR("Failed to load font: Pacifico-Regular.ttf");
@@ -137,9 +178,26 @@ void MainWindow::loadFonts() {
 std::string MainWindow::parseVersionFromConfig() {
     const QString filename = "config.json";
 
+    // ������� ������� ������� �������
+    QString currentPath = QDir::currentPath();
+    LOG_DEBUG("Current working directory: {}", currentPath.toStdString());
+
+    // ������� ������ ���� � �����
+    QFileInfo fileInfo(filename);
+    QString absolutePath = fileInfo.absoluteFilePath();
+    LOG_DEBUG("Absolute file path: {}", absolutePath.toStdString());
+
+    // ��������� ������������� �����
+    if (!fileInfo.exists()) {
+        LOG_WARN("File does not exist: {}", absolutePath.toStdString());
+        LOG_WARN("Failed to open config.json, version lost");
+        return "versionLost";
+    }
+
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
         LOG_WARN("Failed to open config.json, version lost");
+        LOG_WARN("File error: {}", file.errorString().toStdString());
         return "versionLost";
     }
 
@@ -201,6 +259,12 @@ void MainWindow::onUpdaterCheckResult(updater::UpdatesCheckResult checkResult) {
 
         if (!calls::isNetworkError()) {
             m_authorizationWidget->setAuthorizationDisabled(false);
+
+            if (!calls::isRunning()) {
+                std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
+                calls::init(m_serverHost.toStdString(), m_port.toStdString(), std::move(callsClientHandler));
+                calls::run();
+            }
         }
     }
     else {
@@ -252,7 +316,21 @@ void MainWindow::onUpdateLoaded(bool emptyUpdate)
 
 void MainWindow::launchUpdateApplier() {
     qint64 currentPid = QCoreApplication::applicationPid();
-    QString appPath = QCoreApplication::applicationFilePath();
+
+    QString appPath;
+#ifdef Q_OS_LINUX
+    QString appimagePath = qgetenv("APPIMAGE");
+    if (!appimagePath.isEmpty()) {
+        appPath = appimagePath;
+         LOG_INFO("Running as AppImage");
+    }
+    else {
+        LOG_INFO("Running not as as AppImage");
+        appPath = QCoreApplication::applicationFilePath();
+    }
+#else
+    appPath = QCoreApplication::applicationFilePath();
+#endif
 
     QString updateApplierName;
 #ifdef Q_OS_WIN
@@ -270,7 +348,8 @@ void MainWindow::launchUpdateApplier() {
     QStringList arguments;
     arguments << QString::number(currentPid) << appPath;
 
-    QProcess::startDetached(updateApplierName, arguments);
+    QString workingDir = QDir::currentPath();
+    QProcess::startDetached(updateApplierName, arguments, workingDir);
 }
 
 void MainWindow::onLoadingProgress(double progress)
@@ -288,9 +367,6 @@ void MainWindow::setupUI() {
 
     m_stackedLayout = new QStackedLayout();
     m_mainLayout->addLayout(m_stackedLayout);
-
-    m_dialogsController = new DialogsController(this);
-    connect(m_dialogsController, &DialogsController::exitButtonClicked, this, &MainWindow::close);
 
     m_authorizationWidget = new AuthorizationWidget(this);
     connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
@@ -320,7 +396,20 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
+    connect(m_callWidget, &CallWidget::screenShareClicked, this, &MainWindow::onScreenShareButtonClicked);
+    connect(m_callWidget, &CallWidget::requestEnterWindowFullscreen, this, &MainWindow::onCallWidgetEnterFullscreenRequested);
+    connect(m_callWidget, &CallWidget::requestExitWindowFullscreen, this, &MainWindow::onCallWidgetExitFullscreenRequested);
     m_stackedLayout->addWidget(m_callWidget);
+
+    m_screenCaptureController = new ScreenCaptureController(this);
+    connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &MainWindow::onCaptureStarted);
+    connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &MainWindow::onCaptureStopped);
+    connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &MainWindow::onScreenCaptured);
+
+    m_dialogsController = new DialogsController(this);
+    connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
+    connect(m_dialogsController, &DialogsController::screenSelected, this, &MainWindow::onScreenSelected);
+    connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, m_callWidget, &CallWidget::resetScreenShareButton);
 
     QTimer::singleShot(2000, [this]() {
         if (updater::isAwaitingServerResponse()) {
@@ -329,10 +418,23 @@ void MainWindow::setupUI() {
         }
     });
 
-    switchToAuthorizationWidget();
+    // Temporary: show CallWidget immediately for testing
+    /*
+    m_callWidget->setCallInfo("Test User");
+    m_stackedLayout->setCurrentWidget(m_callWidget);
+    setWindowTitle("Call In Progress - Callifornia");
+
+    QTimer::singleShot(2000, [this]() {
+        m_callWidget->addIncomingCall("Test User");
+    });
+
+    */
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (m_started)
+        markAsRunning(false);
+
     calls::stop();
     updater::disconnect();
     event->accept();
@@ -361,6 +463,9 @@ void MainWindow::switchToMainMenuWidget() {
 void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_stackedLayout->setCurrentWidget(m_callWidget);
 
+    m_callWidget->setShowingDisplayActive(false);
+    m_callWidget->disableStartScreenShareButton(false);
+
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
     m_callWidget->setMicrophoneMuted(calls::isMicrophoneMuted());
@@ -369,6 +474,156 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
     setWindowTitle("Call In Progress - Callifornia");
     m_callWidget->setCallInfo(friendNickname);
 }
+
+void MainWindow::onScreenShareButtonClicked(bool toggled) {
+    if (toggled) {
+        m_screenCaptureController->refreshAvailableScreens();
+        m_screenCaptureController->resetSelectedScreenIndex();
+        m_dialogsController->showScreenShareDialog(m_screenCaptureController->availableScreens());
+    }
+    else {
+        stopLocalScreenCapture();
+        m_callWidget->disableStartScreenShareButton(false);
+        m_callWidget->setShowingDisplayActive(false);
+    }
+}
+
+
+void MainWindow::onScreenSelected(int screenIndex)
+{
+    if (!m_screenCaptureController)
+    {
+        showTransientStatusMessage("Unable to start screen sharing", 2000);
+        return;
+    }
+
+    m_screenCaptureController->refreshAvailableScreens();
+    m_screenCaptureController->setSelectedScreenIndex(screenIndex);
+
+    if (m_screenCaptureController->selectedScreenIndex() == -1)
+    {
+        showTransientStatusMessage("Selected screen is no longer available", 3000);
+        return;
+    }
+
+    m_screenCaptureController->startCapture();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+void MainWindow::onCaptureStarted()
+{
+    const std::string friendNickname = calls::getNicknameInCallWith();
+    if (friendNickname.empty())
+    {
+        showTransientStatusMessage("No active call to share screen with", 3000);
+        stopLocalScreenCapture();
+        return;
+    }
+    
+
+    if (!calls::startScreenSharing())
+    {
+        showTransientStatusMessage("Failed to start screen sharing", 3000);
+        stopLocalScreenCapture();
+        return;
+    }
+
+    m_callWidget->setShowingDisplayActive(true);
+}
+
+void MainWindow::onCaptureStopped()
+{
+    calls::stopScreenSharing();
+    m_callWidget->disableStartScreenShareButton(false);
+    m_callWidget->setShowingDisplayActive(false);
+}
+
+void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
+{
+    if (m_callWidget && !pixmap.isNull())
+    {
+        m_callWidget->setShowingDisplayActive(true);
+        m_callWidget->showFrame(pixmap);
+    }
+
+    if (imageData.empty()) return;
+
+    if (!calls::sendScreen(imageData))
+        showTransientStatusMessage("Failed to send screen frame", 2000);
+}
+
+void MainWindow::onStartScreenSharingError()
+{
+    showTransientStatusMessage("Screen sharing rejected by server", 3000);
+    stopLocalScreenCapture();
+}
+
+void MainWindow::onIncomingScreenSharingStarted()
+{
+    if (m_callWidget) {
+        m_callWidget->setShowingDisplayActive(true, true);
+        m_callWidget->disableStartScreenShareButton(true);
+    }
+}
+
+void MainWindow::onIncomingScreenSharingStopped()
+{
+    if (m_callWidget) {
+        m_callWidget->setShowingDisplayActive(false);
+        m_callWidget->disableStartScreenShareButton(false);
+    }
+}
+
+void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
+{
+    if (!m_callWidget || data.empty() || !calls::isViewingRemoteScreen()) return;
+
+    QPixmap frame;
+    const auto* raw = reinterpret_cast<const uchar*>(data.data());
+
+    if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
+        m_callWidget->showFrame(frame);
+}
+
+void MainWindow::onCallWidgetEnterFullscreenRequested()
+{
+    showFullScreen();
+}
+
+void MainWindow::onCallWidgetExitFullscreenRequested()
+{
+    showMaximized(); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void MainWindow::onBlurAnimationFinished() {
     if (calls::isAuthorized()) {
@@ -410,6 +665,8 @@ void MainWindow::onEndCallButtonClicked() {
         return;
     }
 
+    stopLocalScreenCapture();
+
     m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
     switchToMainMenuWidget();
@@ -437,13 +694,14 @@ void MainWindow::onMuteSpeakerButtonClicked(bool mute) {
 }
 
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
+    if (m_screenCaptureController->isCapturing())
+        stopLocalScreenCapture();
+    
     bool requestSent = calls::acceptCall(friendNickname.toStdString());
     if (!requestSent) {
         handleAcceptCallErrorNotificationAppearance();
         return;
     }
-
-    playSoundEffect(":/resources/callJoined.wav");
 }
 
 void MainWindow::onDeclineCallButtonClicked(const QString& friendNickname) {
@@ -502,7 +760,7 @@ void MainWindow::handleAcceptCallErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
+        showTransientStatusMessage(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to accept call from unexpected widget");
@@ -516,7 +774,7 @@ void MainWindow::handleDeclineCallErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
+        showTransientStatusMessage(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to decline call from unexpected widget");
@@ -549,7 +807,7 @@ void MainWindow::handleEndCallErrorNotificationAppearance() {
     QString errorText = "Failed to end call. Please try again";
 
     if (m_stackedLayout->currentWidget() == m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
+        showTransientStatusMessage(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to end call from unexpected widget");
@@ -601,12 +859,12 @@ void MainWindow::onAcceptCallResult(calls::ErrorCode ec, const QString& nickname
     if (ec == calls::ErrorCode::OK) {
         LOG_INFO("Call accepted successfully with: {}", nickname.toStdString());
         m_mainMenuWidget->removeCallingPanel();
-
         m_mainMenuWidget->clearIncomingCalls();
 
         if (m_stackedLayout->currentWidget() == m_callWidget)
             m_callWidget->clearIncomingCalls();
 
+        playSoundEffect(":/resources/callJoined.wav");
         switchToCallWidget(nickname);
         stopRingtone();
     }
@@ -646,8 +904,13 @@ void MainWindow::onCallingDeclined() {
 }
 
 void MainWindow::onRemoteUserEndedCall() {
+    if (m_screenCaptureController->isCapturing())
+        stopLocalScreenCapture();
+
     LOG_INFO("Remote user ended the call");
     m_callWidget->clearIncomingCalls();
+    m_callWidget->disableStartScreenShareButton(false);
+    m_callWidget->setShowingDisplayActive(false);
     switchToMainMenuWidget();
 
     m_mainMenuWidget->setState(calls::State::FREE);
@@ -716,7 +979,7 @@ void MainWindow::onConnectionRestored() {
 
     if (!updater::isConnected()) {
         LOG_INFO("Reconnecting updater");
-        updater::connect(updater::getServerHost(), updater::getServerPort());
+        updater::connect(m_updaterHost.toStdString(), m_port.toStdString());
         updater::checkUpdates(parseVersionFromConfig());
     }
 }

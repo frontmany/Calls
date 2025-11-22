@@ -1,8 +1,11 @@
 #pragma once
 #include <QLabel>
-#include <QWidget>
 
 class OverlayWidget;
+class QGridLayout;
+class QPushButton;
+class QScreen;
+class ScreenPreviewWidget;
 
 class DialogsController : public QObject
 {
@@ -14,20 +17,36 @@ public:
 
     void showUpdatingDialog();
     void hideUpdatingDialog();
+
+    void showScreenShareDialog(const QList<QScreen*>& screens);
+    void hideScreenShareDialog();
 	
 	void showConnectionErrorDialog();
 	void hideUpdatingErrorDialog();
+
+    void showAlreadyRunningDialog();
+    void hideAlreadyRunningDialog();
 
     void updateLoadingProgress(double progress);
 	void swapUpdatingToRestarting();
 	void swapUpdatingToUpToDate();
 
 signals:
-	void exitButtonClicked();
+	void closeRequested();
+    void screenSelected(int screenIndex);
+    void screenShareDialogCancelled();
+
+private slots:
+    void onScreenShareButtonClicked();
 
 private:
+    QWidget* createAlreadyRunningDialog(OverlayWidget* overlay);
     QWidget* createUpdatingDialog(OverlayWidget* overlay);
     QWidget* createConnectionErrorDialog(OverlayWidget* overlay);
+    QWidget* createScreenShareDialog(OverlayWidget* overlay);
+    void refreshScreenSharePreviews();
+    void handleScreenPreviewClick(int screenIndex, bool currentlySelected);
+    void updateScreenShareSelectionState();
 
 private:
     QWidget* m_parent;
@@ -40,5 +59,21 @@ private:
 
     OverlayWidget* m_connectionErrorOverlay;
     QWidget* m_connectionErrorDialog;
+
+    OverlayWidget* m_screenShareOverlay;
+    QWidget* m_screenShareDialog;
+    QWidget* m_screenShareScreensContainer;
+    QGridLayout* m_screenShareScreensLayout;
+    QPushButton* m_screenShareButton;
+    QLabel* m_screenShareStatusLabel;
+    QList<ScreenPreviewWidget*> m_screenSharePreviewWidgets;
+    QList<QScreen*> m_screenShareScreens;
+    int m_screenShareSelectedIndex;
+
+    OverlayWidget* m_alreadyRunningOverlay;
+    QWidget* m_alreadyRunningDialog;
+    QLabel* m_alreadyRunningImageLabel;
+    QLabel* m_alreadyRunningTitleLabel;
+    QLabel* m_alreadyRunningMessageLabel;
 };
 

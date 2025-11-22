@@ -58,8 +58,12 @@ QString StyleIncomingCallWidget::avatarStyle() {
         .arg(QString::fromStdString(std::to_string(scale(18)))); // font-size
 }
 IncomingCallWidget::IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime)
-    : QWidget(parent), m_friendNickname(friendNickname), m_remainingSeconds(remainingTime) {
-
+    : QWidget(parent)
+    , m_friendNickname(friendNickname)
+    , m_timer(nullptr)
+    , m_remainingSeconds(remainingTime > 0 ? remainingTime : 0)
+    , m_totalSeconds(remainingTime > 0 ? remainingTime : 1)
+{
     setupUI();
     setupTimer();
     setFixedHeight(scale(80));
@@ -203,32 +207,82 @@ void IncomingCallWidget::updateTimer() {
     update(); // Trigger repaint for the circle
 }
 
-void IncomingCallWidget::paintEvent(QPaintEvent* event) {
+void IncomingCallWidget::paintEvent(QPaintEvent* event)
+{
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Draw background first
     painter.setPen(Qt::NoPen);
     painter.setBrush(StyleIncomingCallWidget::m_backgroundColor);
     painter.drawRoundedRect(rect(), 15, 15);
 
-    // Draw timer circle
     QWidget* timerWidget = m_timerLabel->parentWidget();
-    if (timerWidget) {
+    if (timerWidget)
+    {
         QPoint timerPos = timerWidget->mapTo(this, QPoint(0, 0));
-
         int circleSize = qMin(timerWidget->width(), timerWidget->height()) - 4;
-        int x = timerPos.x() + (timerWidget->width() - circleSize) / 2;
-        int y = timerPos.y() + (timerWidget->height() - circleSize) / 2;
 
-        QRect circleRect(x, y, circleSize, circleSize);
+        if (circleSize > 0)
+        {
+            int x = timerPos.x() + (timerWidget->width() - circleSize) / 2;
+            int y = timerPos.y() + (timerWidget->height() - circleSize) / 2;
 
-        // Calculate progress angle (360 degrees for 32 seconds)
-        int progress = 360 - (m_remainingSeconds * 360 / 32);
+            QRect circleRect(x, y, circleSize, circleSize);
+            int basePenWidth = scale(2);
+            if (basePenWidth < 1)
+            {
+                basePenWidth = 1;
+            }
 
-        painter.setPen(QPen(StyleIncomingCallWidget::m_timerCircleColor, 3));
-        painter.setBrush(Qt::NoBrush);
-        painter.drawArc(circleRect, 90 * 16, -progress * 16);
+            int highlightPenWidth = scale(4);
+            if (highlightPenWidth <= basePenWidth)
+            {
+                highlightPenWidth = basePenWidth + 1;
+            }
+
+            QRectF arcRect(circleRect);
+            const qreal inset = static_cast<qreal>(highlightPenWidth) / 2.0;
+            arcRect.adjust(inset, inset, -inset, -inset);
+
+            if (arcRect.width() > 0.0 && arcRect.height() > 0.0)
+            {
+                painter.setBrush(Qt::NoBrush);
+
+                QColor baseColor = StyleIncomingCallWidget::m_timerCircleColor.lighter(150);
+                baseColor.setAlpha(140);
+                QPen basePen(baseColor, basePenWidth);
+                basePen.setCapStyle(Qt::RoundCap);
+                painter.setPen(basePen);
+                painter.drawEllipse(arcRect);
+
+                double progressRatio = 0.0;
+                if (m_totalSeconds > 0)
+                {
+                    progressRatio = 1.0 - static_cast<double>(m_remainingSeconds) / static_cast<double>(m_totalSeconds);
+                    if (progressRatio < 0.0)
+                    {
+                        progressRatio = 0.0;
+                    }
+                    else if (progressRatio > 1.0)
+                    {
+                        progressRatio = 1.0;
+                    }
+                }
+
+                if (progressRatio > 0.0)
+                {
+                    QColor highlightColor = StyleIncomingCallWidget::m_timerCircleColor;
+                    highlightColor.setAlpha(255);
+
+                    QPen highlightPen(highlightColor, highlightPenWidth);
+                    highlightPen.setCapStyle(Qt::RoundCap);
+                    painter.setPen(highlightPen);
+
+                    int spanAngle = static_cast<int>(progressRatio * 360.0);
+                    painter.drawArc(arcRect, 90 * 16, -spanAngle * 16);
+                }
+            }
+        }
     }
 
     QWidget::paintEvent(event);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <functional>
 
 #include "callsClient.h"
@@ -46,6 +47,21 @@ namespace calls {
     inline bool stopCalling()
     {
         return CallsClient::get().stopCalling();
+    }
+
+    inline bool startScreenSharing()
+    {
+        return CallsClient::get().startScreenSharing();
+    }
+
+    inline bool stopScreenSharing()
+    {
+        return CallsClient::get().stopScreenSharing();
+    }
+
+    inline bool sendScreen(const std::vector<unsigned char>& data)
+    {
+        return CallsClient::get().sendScreen(data);
     }
 
     inline bool acceptCall(const std::string& friendNickname)
@@ -119,11 +135,21 @@ namespace calls {
     inline void stop()
     {
         CallsClient::get().stop();
-    }   
+    }
 
     inline bool isRunning()
     {
         return CallsClient::get().isRunning();
+    }
+
+    inline bool isScreenSharing()
+    {
+        return CallsClient::get().isScreenSharing();
+    }
+
+    inline bool isViewingRemoteScreen()
+    {
+        return CallsClient::get().isViewingRemoteScreen();
     }
 
     inline bool isAuthorized()

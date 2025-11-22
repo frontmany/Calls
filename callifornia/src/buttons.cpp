@@ -474,7 +474,6 @@ void ToggleButtonIcon::setToggled(bool isToggled)
         m_toggled = isToggled;
         updateIcon();
         update();
-        emit toggled(m_toggled);
     }
 }
 
@@ -482,7 +481,7 @@ void ToggleButtonIcon::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-
+    
     if (m_currentIcon && !m_currentIcon->isNull())
     {
         int x = (width() - m_iconSize.width()) / 2;
@@ -513,7 +512,7 @@ void ToggleButtonIcon::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton && rect().contains(event->pos())) {
         setToggled(!m_toggled);
-        emit clicked();
+        emit toggled(m_toggled);
     }
 }
 

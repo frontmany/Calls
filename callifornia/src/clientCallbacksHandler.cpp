@@ -1,11 +1,18 @@
 #include "clientCallbacksHandler.h"
-#include <QMetaObject>
 #include <QApplication>
+#include <QMetaObject>
+#include <QMetaType>
+
+#include <vector>
+
 #include "mainWindow.h"
+
+Q_DECLARE_METATYPE(std::vector<unsigned char>)
 
 ClientCallbacksHandler::ClientCallbacksHandler(MainWindow* mainWindow)
     : m_mainWindow(mainWindow)
 {
+    qRegisterMetaType<std::vector<unsigned char>>("std::vector<unsigned char>");
 }
 
 void ClientCallbacksHandler::onAuthorizationResult(calls::ErrorCode ec)
@@ -32,6 +39,34 @@ void ClientCallbacksHandler::onAcceptCallResult(calls::ErrorCode ec, const std::
             Qt::QueuedConnection,
             Q_ARG(calls::ErrorCode, ec),
             Q_ARG(const QString&, qNickname));
+    }
+}
+
+void ClientCallbacksHandler::onStartScreenSharingError() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onStartScreenSharingError",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingScreenSharingStarted() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreenSharingStarted",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingScreenSharingStopped() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreenSharingStopped",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingScreen(const std::vector<unsigned char>& data) {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreen",
+            Qt::QueuedConnection, Q_ARG(const std::vector<unsigned char>&, data));
     }
 }
 

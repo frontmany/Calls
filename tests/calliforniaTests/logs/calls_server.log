@@ -77,3 +77,214 @@
 [2025-11-03 02:16:48.626] [calls_server] [info] User successfully logged out: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
 [2025-11-03 02:16:53.764] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
 [2025-11-03 02:16:54.321] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:39:31.683] [calls_server] [info] Starting calls server main loop
+[2025-11-23 01:39:31.685] [calls_server] [info] UDP Server started on 0.0.0.0:8081
+[2025-11-23 01:39:36.457] [calls_server] [info] User authorized: CE33AFF3EBFA44246BBA39FCF3CDE1DE5BCBCDDB002F58C96347BF8402F7C965 from 127.0.0.1:65454
+[2025-11-23 01:39:38.369] [calls_server] [info] User authorized: 6F780813C20B653C7136161BE70F2AFACEC1B4BF35B5D7D7527CDBA114D9619E from 127.0.0.1:65455
+[2025-11-23 01:39:38.690] [calls_server] [info] Call initiated from 6F780813C20B653C7136161BE70F2AFACEC1B4BF35B5D7D7527CDBA114D9619E to CE33AFF3EBFA44246BBA39FCF3CDE1DE5BCBCDDB002F58C96347BF8402F7C965
+[2025-11-23 01:39:38.910] [calls_server] [info] Call established between CE33AFF3EBFA44246BBA39FCF3CDE1DE5BCBCDDB002F58C96347BF8402F7C965 and 6F780813C20B653C7136161BE70F2AFACEC1B4BF35B5D7D7527CDBA114D9619E
+[2025-11-23 01:39:39.148] [calls_server] [info] Screen sharing initiated from CE33AFF3EBFA44246BBA39FCF3CDE1DE5BCBCDDB002F58C96347BF8402F7C965 to 6F780813C20B653C7136161BE70F2AFACEC1B4BF35B5D7D7527CDBA114D9619E
+[2025-11-23 01:39:43.876] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:39:43.877] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:39:44.338] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.366] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.386] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.401] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.426] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.446] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.466] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.486] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.507] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.526] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.546] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.559] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.586] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.606] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.626] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.638] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.666] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.686] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.701] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.717] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.746] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.766] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.781] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.797] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.826] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.846] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.861] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.877] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.906] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.926] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.939] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.966] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:44.986] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.006] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.026] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.039] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.066] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.086] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.106] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.119] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.146] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.166] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.181] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.197] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.226] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.246] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.260] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.286] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.306] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.326] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.339] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.366] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.386] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.406] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.418] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.447] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.466] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.481] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.506] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.526] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.546] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.559] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.586] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.606] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.626] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.639] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.666] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.686] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.701] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.717] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.746] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.766] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.780] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.797] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.826] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.846] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.859] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.886] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.906] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:39:45.907] [calls_server] [warning] Critical UDP receive error: Удаленный хост принудительно разорвал существующее подключение.
+[2025-11-23 01:39:45.908] [calls_server] [warning] Critical network error occurred (socket issue), but continuing server operation
+[2025-11-23 01:39:45.908] [calls_server] [debug] onNetworkError called - server will continue running
+[2025-11-23 01:39:49.989] [calls_server] [info] User disconnected due to ping timeout: 127.0.0.1
+[2025-11-23 01:39:49.990] [calls_server] [info] User disconnected due to ping timeout: 127.0.0.1
+[2025-11-23 01:41:54.823] [calls_server] [info] Starting calls server main loop
+[2025-11-23 01:41:54.824] [calls_server] [info] UDP Server started on 0.0.0.0:8081
+[2025-11-23 01:41:59.643] [calls_server] [info] User authorized: C71A9A78E4DABEF06705F4530273CAB443CE1A44987E36E052345F4FC76BA5A0 from 127.0.0.1:51527
+[2025-11-23 01:42:02.845] [calls_server] [info] User successfully logged out: C71A9A78E4DABEF06705F4530273CAB443CE1A44987E36E052345F4FC76BA5A0
+[2025-11-23 01:42:10.858] [calls_server] [info] User authorized: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 from 127.0.0.1:57874
+[2025-11-23 01:42:12.791] [calls_server] [info] User authorized: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 from 127.0.0.1:57875
+[2025-11-23 01:42:13.110] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:42:13.115] [calls_server] [info] Call initiated from 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 to 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-11-23 01:42:13.334] [calls_server] [info] Call established between 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 and 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-11-23 01:42:16.298] [calls_server] [info] User successfully logged out: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-11-23 01:42:16.472] [calls_server] [info] User successfully logged out: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-11-23 01:42:24.973] [calls_server] [info] User authorized: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 from 127.0.0.1:59127
+[2025-11-23 01:42:26.879] [calls_server] [info] User authorized: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 from 127.0.0.1:61621
+[2025-11-23 01:42:27.184] [calls_server] [info] Call initiated from 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 to 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-11-23 01:42:27.406] [calls_server] [info] Call established between 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 and 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-11-23 01:42:30.384] [calls_server] [info] User successfully logged out: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-11-23 01:42:30.613] [calls_server] [info] User successfully logged out: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-11-23 01:42:38.957] [calls_server] [info] User authorized: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 from 127.0.0.1:57072
+[2025-11-23 01:42:40.839] [calls_server] [info] User authorized: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 from 127.0.0.1:57073
+[2025-11-23 01:42:41.148] [calls_server] [info] Call initiated from 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 to 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-11-23 01:42:43.652] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:42:43.653] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:42:44.276] [calls_server] [info] User successfully logged out: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-11-23 01:42:44.345] [calls_server] [info] User successfully logged out: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-11-23 01:42:52.444] [calls_server] [info] User authorized: 44612433E03DBBC4A1FFEC0959D68E17A274E595CF5446F70FA42D70AA8E806B from 127.0.0.1:65472
+[2025-11-23 01:42:55.649] [calls_server] [info] User successfully logged out: 44612433E03DBBC4A1FFEC0959D68E17A274E595CF5446F70FA42D70AA8E806B
+[2025-11-23 01:43:04.058] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:49995
+[2025-11-23 01:43:04.995] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:59307
+[2025-11-23 01:43:05.318] [calls_server] [info] Call initiated from 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:43:05.537] [calls_server] [info] Call established between 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD and 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-11-23 01:43:06.004] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:64286
+[2025-11-23 01:43:08.089] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:08.090] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:08.090] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:09.309] [calls_server] [info] Call initiated from A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 to 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-11-23 01:43:09.532] [calls_server] [info] Call established between 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC and A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:43:13.679] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:43:14.164] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:14.165] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:17.522] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:43:20.265] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:20.438] [calls_server] [info] User successfully logged out: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-11-23 01:43:27.217] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:60889
+[2025-11-23 01:43:28.133] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:49758
+[2025-11-23 01:43:28.443] [calls_server] [info] Call initiated from A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:43:28.665] [calls_server] [info] Call established between 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD and A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:43:30.163] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:53596
+[2025-11-23 01:43:31.640] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:43:32.434] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:32.435] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:34.481] [calls_server] [info] Call initiated from 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:43:36.820] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:43:38.512] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:44.631] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:46.662] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:43:47.417] [calls_server] [info] User authorized: A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D from 127.0.0.1:60570
+[2025-11-23 01:43:48.696] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-11-23 01:43:49.478] [calls_server] [info] User authorized: A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36 from 127.0.0.1:65071
+[2025-11-23 01:43:50.595] [calls_server] [info] User authorized: E3176EE77C4115F7FC9AE7E85CE5782BF41F0A9CAE17D3EA7CAB7830E0C42CD4 from 127.0.0.1:65072
+[2025-11-23 01:43:50.723] [calls_server] [info] User disconnected due to ping timeout: 127.0.0.1
+[2025-11-23 01:43:50.724] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:51.713] [calls_server] [info] User authorized: 22F0FA1A5ADC276F512672D4FB7CAEA82BDC5E915886BB9C2B12BC9FE12984D1 from 127.0.0.1:65073
+[2025-11-23 01:43:51.793] [calls_server] [info] Call initiated from A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36 to A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-11-23 01:43:52.015] [calls_server] [info] Call established between A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D and A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36
+[2025-11-23 01:43:52.908] [calls_server] [info] Call initiated from E3176EE77C4115F7FC9AE7E85CE5782BF41F0A9CAE17D3EA7CAB7830E0C42CD4 to A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-11-23 01:43:54.030] [calls_server] [info] Call initiated from 22F0FA1A5ADC276F512672D4FB7CAEA82BDC5E915886BB9C2B12BC9FE12984D1 to A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-11-23 01:43:54.983] [calls_server] [info] User successfully logged out: A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36
+[2025-11-23 01:43:56.100] [calls_server] [info] User successfully logged out: E3176EE77C4115F7FC9AE7E85CE5782BF41F0A9CAE17D3EA7CAB7830E0C42CD4
+[2025-11-23 01:43:56.828] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:56.829] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:43:57.225] [calls_server] [info] User successfully logged out: 22F0FA1A5ADC276F512672D4FB7CAEA82BDC5E915886BB9C2B12BC9FE12984D1
+[2025-11-23 01:44:02.927] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:07.931] [calls_server] [info] User successfully logged out: A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-11-23 01:44:15.371] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:55841
+[2025-11-23 01:44:16.778] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:56246
+[2025-11-23 01:44:18.287] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:56247
+[2025-11-23 01:44:19.807] [calls_server] [info] User authorized: 0D92E948659123AFC7EC4C2B82F7CE8507835F86CC1AAF300A13B896DF4F9255 from 127.0.0.1:56248
+[2025-11-23 01:44:20.605] [calls_server] [info] Call initiated from 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD to A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:44:21.273] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:21.274] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:21.275] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:22.121] [calls_server] [info] Call initiated from 0D92E948659123AFC7EC4C2B82F7CE8507835F86CC1AAF300A13B896DF4F9255 to 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-11-23 01:44:27.383] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:27.384] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:27.384] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:27.385] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:28.609] [calls_server] [info] User successfully logged out: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-11-23 01:44:29.984] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:44:31.493] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:44:33.012] [calls_server] [info] User successfully logged out: 0D92E948659123AFC7EC4C2B82F7CE8507835F86CC1AAF300A13B896DF4F9255
+[2025-11-23 01:44:42.003] [calls_server] [info] User authorized: 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485 from 127.0.0.1:50893
+[2025-11-23 01:44:42.941] [calls_server] [info] User authorized: E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 from 127.0.0.1:50894
+[2025-11-23 01:44:43.155] [calls_server] [info] Call initiated from E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 to 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-11-23 01:44:45.722] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:45.723] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:46.155] [calls_server] [info] Call initiated from E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 to 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-11-23 01:44:49.155] [calls_server] [info] Call initiated from E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 to 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-11-23 01:44:51.846] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:51.846] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:57.977] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:44:57.978] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:02.049] [calls_server] [info] User successfully logged out: E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5
+[2025-11-23 01:45:04.101] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:06.510] [calls_server] [info] User successfully logged out: 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-11-23 01:45:10.951] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:55982
+[2025-11-23 01:45:11.932] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:55983
+[2025-11-23 01:45:13.947] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:54812
+[2025-11-23 01:45:14.263] [calls_server] [info] Call initiated from 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:45:14.355] [calls_server] [info] Call initiated from 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD to A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-11-23 01:45:14.837] [calls_server] [info] Call established between A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 and 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:45:16.318] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:16.318] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:16.319] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:17.454] [calls_server] [info] User successfully logged out: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-11-23 01:45:22.422] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:22.422] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-11-23 01:45:22.556] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-11-23 01:45:23.106] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5

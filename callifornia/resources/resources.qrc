@@ -25,6 +25,15 @@
 	 <file>speakerMuted.png</file>
 	 <file>speakerMutedHover.png</file>
 	 <file>speakerMutedActive.png</file>
+	 <file>screenShareDisabled.png</file>
+	 <file>screenShare.png</file>
+	 <file>screenShareHover.png</file>
+	 <file>screenShareActive.png</file>
+	 <file>screenShareActiveHover.png</file>
+	 <file>minimize.png</file>
+	 <file>minimizeHover.png</file>
+	 <file>maximize.png</file>
+	 <file>maximizeHover.png</file>
 	 <file>speakerMutedActiveHover.png</file>
 	 <file>arrowDown.png</file>
 	 <file>microphone.png</file>
@@ -33,5 +42,6 @@
 	 <file>mute-microphoneHover.png</file>
 	 <file>mute-enabled-microphone.png</file>
 	 <file>mute-enabled-microphoneHover.png</file>
+	 <file>multipleInstancesError.png</file>
     </qresource>
 </RCC>

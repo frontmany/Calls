@@ -31,7 +31,7 @@ void User::setCallAccepted(bool accepted) {
 	}
 }
 
-bool User::inCall() const {
+bool User::isInCall() const {
 	if (m_call) {
 		return true;
 	}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <functional>
 #include <chrono>
 
@@ -11,7 +12,7 @@
 namespace calls {
 	class Task {
 	public:
-		Task(std::shared_ptr<NetworkController> networkController, const std::string& uuid, const std::string& packet, PacketType type, std::function<void()>&& onAttemptFailed, std::function<void()>&& onAllAttemptsEnded, int maxAttempts);
+		Task(std::shared_ptr<NetworkController> networkController, const std::string& uuid, std::vector<unsigned char> packet, PacketType type, std::function<void()>&& onAttemptFailed, std::function<void()>&& onAllAttemptsEnded, int maxAttempts);
 		~Task();
 		void retry();
 		void setFinished();
@@ -26,7 +27,7 @@ namespace calls {
 		Timer m_timer;
 		PacketType m_type;
 		std::string m_uuid; 
-		std::string m_packet;
+		std::vector<unsigned char> m_packet;
 		int m_attempts = 0;
 		int m_maxAttempts;
 	};

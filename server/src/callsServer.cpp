@@ -16,6 +16,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
         handleVoicePacket(data, size, endpointFrom);
         return;
     }
+    else if (type == PacketType::SCREEN) {
+        handleScreenPacket(data, size, endpointFrom);
+        return;
+    }
 
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
 
@@ -47,7 +51,13 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleGetFriendInfoPacket(jsonObject, endpointFrom);
             break;
 
+        case PacketType::START_SCREEN_SHARING:
+            handleStartScreenSharingPacket(jsonObject, endpointFrom);
+            break;
 
+        case PacketType::STOP_SCREEN_SHARING:
+            handleStopScreenSharingPacket(jsonObject, endpointFrom);
+            break;
 
         case PacketType::START_CALLING:
             handleStartCallingPacket(jsonObject, endpointFrom);
@@ -89,6 +99,14 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             redirectPacket(jsonObject, PacketType::START_CALLING_OK);
             break;
 
+        case PacketType::START_SCREEN_SHARING_OK:
+            redirectPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
+            break;
+
+        case PacketType::STOP_SCREEN_SHARING_OK:
+            redirectPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
+            break;
+
         default:
             LOG_WARN("Unknown packet type: {}", static_cast<int>(type));
             break;
@@ -108,29 +126,39 @@ void CallsServer::run() {
     using namespace std::chrono_literals;
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    std::chrono::seconds pingGap = 10s;
-    std::chrono::seconds checkPingGap = 30s;
+    std::chrono::seconds pingGap = 2s;
+    std::chrono::seconds checkPingGap = 6s;
 
     std::chrono::steady_clock::time_point lastPing = begin;
     std::chrono::steady_clock::time_point lastCheck = begin;
 
     while (m_running) {
-        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        try {
+            std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
-        auto timeSinceLastCheck = now - lastCheck;
-        auto timeSinceLastPing = now - lastPing;
+            auto timeSinceLastCheck = now - lastCheck;
+            auto timeSinceLastPing = now - lastPing;
 
-        if (timeSinceLastCheck >= checkPingGap) {
-            checkPing();
-            lastCheck = now;
-            lastPing = now;
+            if (timeSinceLastCheck >= checkPingGap) {
+                checkPing();
+                lastCheck = now;
+                lastPing = now;
+            }
+            else if (timeSinceLastPing >= pingGap) {
+                broadcastPing();
+                lastPing = now;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-        else if (timeSinceLastPing >= pingGap) {
-            broadcastPing();
-            lastPing = now;
+        catch (const std::exception& e) {
+            LOG_ERROR("Error in server main loop: {}", e.what());
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        catch (...) {
+            LOG_ERROR("Unknown error in server main loop");
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
     }
 
     m_networkController.stop();
@@ -142,11 +170,22 @@ void CallsServer::stop() {
 }
 
 void CallsServer::redirectPacket(const nlohmann::json& jsonObject, PacketType type) {
-    const std::string& receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+    try {
+        const std::string& receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
 
-    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
-        auto& user = m_nicknameHashToUser.at(receiverNicknameHash);
-        m_networkController.sendToClient(user->getEndpoint(), jsonObject.dump(), type);
+        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+            auto& user = m_nicknameHashToUser.at(receiverNicknameHash);
+            try {
+                m_networkController.sendToClient(user->getEndpoint(), jsonObject.dump(), type);
+            }
+            catch (const std::exception& e) {
+                LOG_DEBUG("Failed to redirect packet to user {} (may have disconnected): {}", 
+                    receiverNicknameHash, e.what());
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_WARN("Error in redirectPacket: {}", e.what());
     }
 }
 
@@ -155,58 +194,84 @@ void CallsServer::broadcastPing() {
     std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
 
     for (auto& [endpoint, _] : m_endpointToUser) {
-        m_networkController.sendToClient(endpoint, PacketType::PING);
-        if (!m_pingResults.contains(endpoint)) {
-            m_pingResults.emplace(endpoint, false);
+        try {
+            m_networkController.sendToClient(endpoint, PacketType::PING);
+            if (!m_pingResults.contains(endpoint)) {
+                m_pingResults.emplace(endpoint, false);
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_DEBUG("Failed to send ping to {}:{} (may have disconnected): {}", 
+                endpoint.address().to_string(), endpoint.port(), e.what());
         }
     }
 }
 
 void CallsServer::checkPing() {
-    std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
-    std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
-
     std::vector<asio::ip::udp::endpoint> endpointsToLogout;
 
-    for (auto& [endpoint, result] : m_pingResults) {
-        if (result) {
-            m_pingResults.at(endpoint) = false;
-            LOG_DEBUG("Ping confirmed from {}", endpoint.address().to_string());
-        }
-        else {
-            endpointsToLogout.push_back(endpoint);
-            LOG_INFO("User disconnected due to ping timeout: {}", endpoint.address().to_string());
+    {
+        std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
+        std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
+
+        for (auto& [endpoint, result] : m_pingResults) {
+            if (result) {
+                m_pingResults.at(endpoint) = false;
+                LOG_DEBUG("Ping confirmed from {}", endpoint.address().to_string());
+            }
+            else {
+                endpointsToLogout.push_back(endpoint);
+                LOG_INFO("User disconnected due to ping timeout: {}", endpoint.address().to_string());
+            }
         }
     }
 
-
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
+    std::lock_guard<std::mutex> lockEndpoint(m_endpointToUserMutex);
+    std::lock_guard<std::mutex> lockPing(m_pingResultsMutex);
+
     for (const auto& endpoint : endpointsToLogout) {
-        auto it = m_endpointToUser.find(endpoint);
+        try {
+            auto it = m_endpointToUser.find(endpoint);
 
-        if (it != m_endpointToUser.end()) {
-            auto& userToErase = it->second;
-            std::string nicknameHash = userToErase->getNicknameHash();
+            if (it != m_endpointToUser.end()) {
+                auto& userToErase = it->second;
+                std::string nicknameHash = userToErase->getNicknameHash();
 
-            if (userToErase->inCall()) {
-                const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
+                if (userToErase->isInCall()) {
+                    const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
 
-                if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
-                    auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
+                    if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
+                        auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
 
-                    m_networkController.sendToClient(userInCallWith->getEndpoint(), getPacketEndCall(nicknameHash, false),
-                        PacketType::END_CALL
-                    );
+                        try {
+                            m_networkController.sendToClient(userInCallWith->getEndpoint(), getPacketEndCall(nicknameHash, false),
+                                PacketType::END_CALL
+                            );
+                        }
+                        catch (const std::exception& e) {
+                            LOG_WARN("Failed to send END_CALL to user {} (may have disconnected): {}", 
+                                userInCallWithNicknameHash, e.what());
+                        }
 
-                    m_calls.erase(userToErase->getCall());
-
-                    userToErase->resetCall();
-                    userInCallWith->resetCall();
+                        try {
+                            m_calls.erase(userToErase->getCall());
+                            userToErase->resetCall();
+                            userInCallWith->resetCall();
+                        }
+                        catch (const std::exception& e) {
+                            LOG_WARN("Error cleaning up call for user {}: {}", nicknameHash, e.what());
+                        }
+                    }
                 }
-            }
 
-            m_endpointToUser.erase(it);
-            m_nicknameHashToUser.erase(nicknameHash);
+                m_endpointToUser.erase(it);
+                m_nicknameHashToUser.erase(nicknameHash);
+                m_pingResults.erase(endpoint);
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Error processing logout for endpoint {}: {}", endpoint.address().to_string(), e.what());
             m_pingResults.erase(endpoint);
         }
     }
@@ -325,6 +390,54 @@ void CallsServer::handleGetFriendInfoPacket(const nlohmann::json& jsonObject, co
     }
 }
 
+void CallsServer::handleStartScreenSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    std::string uuid = jsonObject[UUID].get<std::string>();
+    std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+    std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+    
+    LOG_INFO("Screen sharing initiated from {} to {}", senderNicknameHash, receiverNicknameHash);
+
+    bool receiverOnline = false;
+    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+        auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+        m_networkController.sendToClient(userReceiver->getEndpoint(),
+            jsonObject.dump(),
+            PacketType::START_SCREEN_SHARING
+        );
+
+        receiverOnline = true;
+    }
+
+    if (m_nicknameHashToUser.contains(senderNicknameHash) && !receiverOnline) {
+        auto& userSenser = m_nicknameHashToUser.at(senderNicknameHash);
+        m_networkController.sendToClient(userSenser->getEndpoint(),
+            getPacketWithUuid(uuid),
+            PacketType::START_SCREEN_SHARING_FAIL
+        );
+
+        LOG_WARN("Screen sharing failed: receiver {} is offline", receiverNicknameHash);
+    }
+}
+
+void CallsServer::handleStopScreenSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+
+        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+            auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+
+            m_networkController.sendToClient(userReceiver->getEndpoint(),
+                jsonObject.dump(),
+                PacketType::STOP_SCREEN_SHARING
+            );
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error in stop sharing screen packet: {}", e.what());
+    }
+}
+
 void CallsServer::handleStartCallingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
     std::string uuid = jsonObject[UUID].get<std::string>();
     std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
@@ -363,20 +476,30 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
             auto& userSender = m_endpointToUser.at(endpointFrom);
 
             bool error = false;
-            if (userSender->inCall()) {
+            if (userSender->isInCall()) {
                 const std::string& userInCallWithNicknameHash = userSender->inCallWith();
 
                 if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
                     auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
 
-                    m_networkController.sendToClient(userInCallWith->getEndpoint(), jsonObject.dump(),
-                        PacketType::END_CALL
-                    );
+                    try {
+                        m_networkController.sendToClient(userInCallWith->getEndpoint(), jsonObject.dump(),
+                            PacketType::END_CALL
+                        );
+                    }
+                    catch (const std::exception& e) {
+                        LOG_DEBUG("Failed to send END_CALL to user {} (may have disconnected): {}", 
+                            userInCallWithNicknameHash, e.what());
+                    }
 
-                    m_calls.erase(userSender->getCall());
-
-                    userSender->resetCall();
-                    userInCallWith->resetCall();
+                    try {
+                        m_calls.erase(userSender->getCall());
+                        userSender->resetCall();
+                        userInCallWith->resetCall();
+                    }
+                    catch (const std::exception& e) {
+                        LOG_WARN("Error cleaning up call: {}", e.what());
+                    }
                 }
             }
 
@@ -467,7 +590,6 @@ void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, cons
     try {
         std::string uuid = jsonObject[UUID].get<std::string>();
         std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
-        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
 
         if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
             auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
@@ -475,12 +597,6 @@ void CallsServer::handleStopCallingPacket(const nlohmann::json& jsonObject, cons
             m_networkController.sendToClient(userReceiver->getEndpoint(),
                 jsonObject.dump(),
                 PacketType::STOP_CALLING
-            );
-        }
-
-        else if (needConfirmation) {
-            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
-                PacketType::STOP_CALLING_OK
             );
         }
     }
@@ -494,7 +610,7 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
     if (m_endpointToUser.contains(endpointFrom)) {
         UserPtr user = m_endpointToUser.at(endpointFrom);
 
-        if (user->inCall()) {
+        if (user->isInCall()) {
             const std::string& userNicknameHash = user->inCallWith();
 
             if (m_nicknameHashToUser.contains(userNicknameHash)) {
@@ -505,7 +621,24 @@ void CallsServer::handleVoicePacket(const unsigned char* data, int size, const a
     }
 }
 
+void CallsServer::handleScreenPacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
+    std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
+    if (m_endpointToUser.contains(endpointFrom)) {
+        UserPtr user = m_endpointToUser.at(endpointFrom);
+
+        if (user->isInCall()) {
+            const std::string& userNicknameHash = user->inCallWith();
+
+            if (m_nicknameHashToUser.contains(userNicknameHash)) {
+                UserPtr userTo = m_nicknameHashToUser.at(userNicknameHash);
+                m_networkController.sendScreenToClient(userTo->getEndpoint(), data, size);
+            }
+        }
+    }
+}
+
 void CallsServer::onNetworkError() {
-    LOG_ERROR("Network error occurred, stopping server");
-    m_running = false;
+    LOG_WARN("Critical network error occurred (socket issue), but continuing server operation");
+    LOG_DEBUG("onNetworkError called - server will continue running");
+    // DO NOT STOP SERVER - this is normal for UDP when clients crash
 }

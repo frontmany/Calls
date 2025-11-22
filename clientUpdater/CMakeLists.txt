@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 set(CMAKE_CXX_STANDARD 20)
 project(client_updater)
 
+if(NOT DEFINED ROOT_DIR)
+    get_filename_component(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+endif()
+
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 source_group("Source Files" FILES ${SOURCES})
 
@@ -19,9 +23,9 @@ if(WIN32)
 endif()
 
 if(WIN32)
-    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build/Release")
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
 else()
-    set(SPDLOG_DIR "../vendor/spdlog")
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
 endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
@@ -30,7 +34,7 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        spdlog.lib
+        "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
     )
 else()
     target_link_libraries(${PROJECT_NAME} PRIVATE

@@ -1,10 +1,14 @@
 #include "callWidget.h"
 #include "incomingCallWidget.h"
-#include <QPainter>
-#include <QPainterPath>
 #include <QGraphicsDropShadowEffect>
-#include <QPixmap>
+#include <QDialog>
+#include <QEvent>
+#include <QMargins>
+#include <cmath>
+#include <algorithm>
+#include <string>
 #include "scaleFactor.h"
+#include "screen.h"
 
 // Style definitions
 const QColor StyleCallWidget::m_primaryColor = QColor(21, 119, 232);
@@ -196,63 +200,26 @@ QString StyleCallWidget::volumeSliderStyle() {
         .arg(QString::fromStdString(std::to_string(scale(4))));
 }
 
-QString StyleCallWidget::notificationRedLabelStyle() {
-    return QString("QWidget {"
-        "   background-color: rgba(220, 80, 80, 100);"
-        "   border: none;"
-        "   border-radius: %1px;"
-        "   margin: 0px;"
-        "   padding: 0px;"
-        "}").arg(QString::fromStdString(std::to_string(scale(8))));
-}
-
 CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupShadowEffect();
 
-    // Initialize timer
     m_callTimer = new QTimer(this);
     m_callDuration = new QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &CallWidget::updateCallTimer);
-
-    m_notificationTimer = new QTimer(this);
-    m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() {m_notificationWidget->hide(); });
 }
 
-void CallWidget::setupUI() {
+void CallWidget::setupUI()
+{
+    setFocusPolicy(Qt::StrongFocus);
+
     m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
-
-    // Main container
-    m_mainContainer = new QWidget(this);
-    m_mainContainer->setFixedWidth(scale(500));
-    m_mainContainer->setStyleSheet(StyleCallWidget::containerStyle());
-
-    m_containerLayout = new QVBoxLayout(m_mainContainer);
-    m_containerLayout->setSpacing(scale(10));
-    m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-    m_containerLayout->setAlignment(Qt::AlignCenter);
-
-    // Create network error widget
-    m_notificationWidget = new QWidget(this);
-    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_notificationWidget->hide();
-    m_notificationWidget->setStyleSheet(StyleCallWidget::notificationRedLabelStyle());
-
-    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
-    m_notificationLayout->setAlignment(Qt::AlignCenter);
-    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
-
-    m_notificationLabel = new QLabel(m_notificationWidget);
-    QFont errorFont("Outfit", scale(12), QFont::Medium);
-    m_notificationLabel->setFont(errorFont);
-    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-
-    m_notificationLayout->addWidget(m_notificationLabel);
+    m_mainLayout->setSpacing(scale(10));
+    m_mainLayout->setContentsMargins(scale(0), scale(0), scale(0), scale(0));
+    m_mainLayout->setAlignment(Qt::AlignCenter);
 
     // Incoming calls container (initially hidden)
-    m_incomingCallsContainer = new QWidget(m_mainContainer);
+    m_incomingCallsContainer = new QWidget(this);
     m_incomingCallsContainer->setStyleSheet("background-color: transparent;");
     m_incomingCallsContainer->setFixedHeight(scale(0)); // Start collapsed
     m_incomingCallsContainer->hide();
@@ -275,20 +242,27 @@ void CallWidget::setupUI() {
     m_incomingCallsScrollLayout = new QVBoxLayout(m_incomingCallsScrollWidget);
     m_incomingCallsScrollLayout->setContentsMargins(scale(2), scale(2), scale(2), scale(2));
     m_incomingCallsScrollLayout->setSpacing(scale(8));
-    m_incomingCallsScrollLayout->setAlignment(Qt::AlignTop);
+    m_incomingCallsScrollLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
     m_incomingCallsScrollArea->setWidget(m_incomingCallsScrollWidget);
 
     m_incomingCallsLayout->addWidget(m_incomingCallsScrollArea);
 
-    // Timer
-    m_timerLabel = new QLabel("00:00", m_mainContainer);
+    // Timer label
+    m_timerLabel = new QLabel("00:00", this);
     m_timerLabel->setAlignment(Qt::AlignCenter);
     m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
     m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
+    m_screenWidget = new Screen(this);
+    m_screenWidget->setFixedSize(scaledScreenSize16by9(1440));
+    m_screenWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_screenWidget->hide();
+
+
+
     // Friend nickname
-    m_friendNicknameLabel = new QLabel("Friend", m_mainContainer);
+    m_friendNicknameLabel = new QLabel("Friend", this);
     m_friendNicknameLabel->setAlignment(Qt::AlignCenter);
     m_friendNicknameLabel->setStyleSheet(StyleCallWidget::titleStyle());
     m_friendNicknameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
@@ -296,7 +270,7 @@ void CallWidget::setupUI() {
     m_friendNicknameLabel->setFont(nicknameFont);
 
     // Buttons panel
-    m_buttonsPanel = new QWidget(m_mainContainer);
+    m_buttonsPanel = new QWidget(this);
     m_buttonsPanel->setStyleSheet(StyleCallWidget::panelStyle());
     m_buttonsPanel->setFixedHeight(scale(80));
 
@@ -305,27 +279,36 @@ void CallWidget::setupUI() {
     m_buttonsLayout->setContentsMargins(scale(20), scale(10), scale(20), scale(10));
     m_buttonsLayout->setAlignment(Qt::AlignCenter);
 
-    // Mute audio button
-    m_muteAudioButton = new ToggleButtonIcon(m_buttonsPanel,
-        QIcon(":/resources/speakerMuted.png"),
-        QIcon(":/resources/speakerMutedHover.png"),
-        QIcon(":/resources/speakerMutedActive.png"),
-        QIcon(":/resources/speakerMutedActiveHover.png"),
-        scale(40), scale(40));
-    m_muteAudioButton->setSize(scale(35), scale(35));
-    m_muteAudioButton->setToolTip("Mute audio");
-    m_muteAudioButton->setCursor(Qt::PointingHandCursor);
+    // Screen share button 
+    m_screenShareIconNormal = QIcon(":/resources/screenShare.png");
+    m_screenShareIconHover = QIcon(":/resources/screenShareHover.png");
+    m_screenShareIconActive = QIcon(":/resources/screenShareActive.png");
+    m_screenShareIconActiveHover = QIcon(":/resources/screenShareActiveHover.png");
+    m_screenShareIconDisabled = QIcon(":/resources/screenShareDisabled.png");
+    m_screenShareButton = new ToggleButtonIcon(m_buttonsPanel,
+        m_screenShareIconNormal,
+        m_screenShareIconHover,
+        m_screenShareIconActive,
+        m_screenShareIconActiveHover,
+        scale(48), scale(48));
+    m_screenShareButton->setSize(scale(40), scale(40));
+    m_screenShareButton->setToolTip("Share screen");
+    m_screenShareButton->setCursor(Qt::PointingHandCursor);
 
-    // Mute microphone button
-    m_muteMicrophoneButton = new ToggleButtonIcon(m_buttonsPanel,
-        QIcon(":/resources/mute-microphone.png"),
-        QIcon(":/resources/mute-microphoneHover.png"),
-        QIcon(":/resources/mute-enabled-microphone.png"),
-        QIcon(":/resources/mute-enabled-microphoneHover.png"),
-        scale(40), scale(40));
-    m_muteMicrophoneButton->setSize(scale(35), scale(35));
-    m_muteMicrophoneButton->setToolTip("Mute microphone");
-    m_muteMicrophoneButton->setCursor(Qt::PointingHandCursor);
+    // Fullscreen button
+    m_fullscreenIconMaximize = QIcon(":/resources/maximize.png");
+    m_fullscreenIconMaximizeHover = QIcon(":/resources/maximizeHover.png");
+    m_fullscreenIconMinimize = QIcon(":/resources/minimize.png");
+    m_fullscreenIconMinimizeHover = QIcon(":/resources/minimizeHover.png");
+    m_fullscreenButton = new ToggleButtonIcon(m_buttonsPanel,
+        m_fullscreenIconMaximize,
+        m_fullscreenIconMaximizeHover,
+        m_fullscreenIconMinimize,
+        m_fullscreenIconMinimizeHover,
+        scale(32), scale(32));
+    m_fullscreenButton->setSize(scale(28), scale(28));
+    m_fullscreenButton->setToolTip("Fullscreen");
+    m_fullscreenButton->setCursor(Qt::PointingHandCursor);
 
     // Speaker button (toggles sliders visibility)
     m_speakerButton = new ToggleButtonIcon(m_buttonsPanel,
@@ -349,13 +332,38 @@ void CallWidget::setupUI() {
     m_hangupButton->setCursor(Qt::PointingHandCursor);
 
     // Add buttons to layout
-    m_buttonsLayout->addWidget(m_muteAudioButton);
-    m_buttonsLayout->addWidget(m_muteMicrophoneButton);
+    m_buttonsLayout->addSpacing(scale(10));
+    m_buttonsLayout->addWidget(m_screenShareButton);
+    m_buttonsLayout->addWidget(m_fullscreenButton);
+    m_fullscreenButton->hide(); // Initially hidden, shown only when displaying screen
     m_buttonsLayout->addWidget(m_speakerButton);
     m_buttonsLayout->addWidget(m_hangupButton);
 
+    // Exit fullscreen button (positioned absolutely in top-right corner)
+    m_exitFullscreenButton = new QPushButton(this);
+    m_exitFullscreenButton->setFixedSize(scale(40), scale(40));
+    m_exitFullscreenButton->setStyleSheet(
+        QString("QPushButton {"
+            "   background-color: rgba(255, 255, 255, 180);"
+            "   border: none;"
+            "   border-radius: %1px;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: rgba(255, 255, 255, 220);"
+            "}").arg(QString::fromStdString(std::to_string(scale(20)))));
+    m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
+    m_exitFullscreenButton->setIcon(m_fullscreenIconMinimize);
+    m_exitFullscreenButton->setIconSize(QSize(scale(20), scale(20)));
+    m_exitFullscreenButton->setToolTip("Exit fullscreen");
+    m_exitFullscreenButton->hide();
+    m_exitFullscreenButton->installEventFilter(this);
+    connect(m_exitFullscreenButton, &QPushButton::clicked, this, &CallWidget::exitScreenFullscreen);
+
     // Sliders container (initially hidden)
-    m_slidersContainer = new QWidget(m_mainContainer);
+    m_slidersContainer = new QWidget(this);
+    m_slidersContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    m_slidersContainer->setFixedHeight(scale(110));
+    m_slidersContainer->setFixedWidth(scale(400));
     m_slidersContainer->setObjectName("slidersContainer");
     m_slidersContainer->setStyleSheet(StyleCallWidget::sliderContainerStyle());
     m_slidersContainer->hide();
@@ -376,15 +384,18 @@ void CallWidget::setupUI() {
     m_micLabelSliderLayout = new QHBoxLayout();
     m_micLabelSliderLayout->setSpacing(scale(10));
     m_micLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_micLabelSliderLayout->setAlignment(Qt::AlignLeft);
+    m_micLabelSliderLayout->setAlignment(Qt::AlignCenter);
 
-    // Mic label
-    m_micLabel = new ButtonIcon(m_micSliderWidget,
+    // Mic label (toggle mute)
+    m_micLabel = new ToggleButtonIcon(m_micSliderWidget,
         QIcon(":/resources/microphone.png"),
-        QIcon(":/resources/microphone.png"),
+        QIcon(":/resources/microphoneHover.png"),
+        QIcon(":/resources/mute-enabled-microphone.png"),
+        QIcon(":/resources/mute-enabled-microphoneHover.png"),
         scale(24), scale(24));
     m_micLabel->setSize(scale(24), scale(24));
-    m_micLabel->setToolTip("Microphone volume");
+    m_micLabel->setToolTip("Microphone mute");
+    m_micLabel->setCursor(Qt::PointingHandCursor);
 
     m_micVolumeSlider = new QSlider(Qt::Horizontal, m_micSliderWidget);
     m_micVolumeSlider->setRange(0, 100);
@@ -408,15 +419,18 @@ void CallWidget::setupUI() {
     m_speakerLabelSliderLayout = new QHBoxLayout();
     m_speakerLabelSliderLayout->setSpacing(scale(10));
     m_speakerLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_speakerLabelSliderLayout->setAlignment(Qt::AlignLeft);
+    m_speakerLabelSliderLayout->setAlignment(Qt::AlignCenter);
 
-    // Speaker label
-    m_speakerLabel = new ButtonIcon(m_speakerSliderWidget,
+    // Speaker label (toggle mute)
+    m_speakerLabel = new ToggleButtonIcon(m_speakerSliderWidget,
         QIcon(":/resources/speaker.png"),
-        QIcon(":/resources/speaker.png"),
+        QIcon(":/resources/speakerHover.png"),
+        QIcon(":/resources/speakerMutedActive.png"),
+        QIcon(":/resources/speakerMutedActiveHover.png"),
         scale(22), scale(22));
     m_speakerLabel->setSize(scale(22), scale(22));
-    m_speakerLabel->setToolTip("Speaker volume");
+    m_speakerLabel->setToolTip("Speaker mute");
+    m_speakerLabel->setCursor(Qt::PointingHandCursor);
 
     m_speakerVolumeSlider = new QSlider(Qt::Horizontal, m_speakerSliderWidget);
     m_speakerVolumeSlider->setRange(0, 100);
@@ -435,39 +449,41 @@ void CallWidget::setupUI() {
     m_slidersLayout->addSpacing(scale(4));
     m_slidersLayout->addWidget(m_speakerSliderWidget);
 
-    // Add widgets to main layout
-    m_containerLayout->addWidget(m_incomingCallsContainer);
-    m_containerLayout->addStretch();
-    m_containerLayout->addWidget(m_timerLabel);
-    m_containerLayout->addWidget(m_friendNicknameLabel);
-    m_containerLayout->addSpacing(scale(10));
-    m_containerLayout->addWidget(m_buttonsPanel);
-    m_containerLayout->addWidget(m_slidersContainer);
-    m_containerLayout->addStretch();
 
-    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
-    m_mainLayout->addSpacing(scale(20));
-    m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
+    m_topMainLayoutSpacer = new QSpacerItem(0, scale(0), QSizePolicy::Minimum, QSizePolicy::Fixed);
+    m_middleMainLayoutSpacer = new QSpacerItem(0, scale(15), QSizePolicy::Minimum, QSizePolicy::Fixed);
+
+    // Add widgets to main layout
+    m_mainLayout->addSpacerItem(m_topMainLayoutSpacer);
+    m_mainLayout->addWidget(m_incomingCallsContainer);
+    m_mainLayout->addWidget(m_timerLabel);
+    m_mainLayout->addWidget(m_screenWidget, 1, Qt::AlignHCenter);
+    m_mainLayout->addWidget(m_friendNicknameLabel);
+    m_mainLayout->addSpacerItem(m_middleMainLayoutSpacer);
+    m_mainLayout->addWidget(m_buttonsPanel, 0, Qt::AlignHCenter);
+    m_mainLayout->addWidget(m_slidersContainer, 0, Qt::AlignHCenter);
 
     // Connect signals
-    connect(m_muteAudioButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteAudioClicked);
-    connect(m_muteMicrophoneButton, &ToggleButtonIcon::toggled, this, &CallWidget::onMuteMicrophoneClicked);
+    connect(m_fullscreenButton, &ToggleButtonIcon::toggled, this, &CallWidget::onFullscreenClicked);
     connect(m_speakerButton, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerClicked);
     connect(m_hangupButton, &QPushButton::clicked, this, &CallWidget::onHangupClicked);
+    connect(m_screenShareButton, &ToggleButtonIcon::toggled, this, &CallWidget::onScreenShareToggled);
 
-    // Connect label buttons to toggle sliders
-    connect(m_micLabel, &ButtonIcon::clicked, this, &CallWidget::onSpeakerClicked);
-    connect(m_speakerLabel, &ButtonIcon::clicked, this, &CallWidget::onSpeakerClicked);
+    // Connect label toggles to mute actions
+    connect(m_micLabel, &ToggleButtonIcon::toggled, this, &CallWidget::onMicLabelToggled);
+    connect(m_speakerLabel, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerLabelToggled);
 
     connect(m_micVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onInputVolumeChanged);
     connect(m_speakerVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onOutputVolumeChanged);
+
+    updateTopSpacerHeight();
 }
 
 void CallWidget::setupShadowEffect() {
     setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
     setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_muteAudioButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_muteMicrophoneButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_fullscreenButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_screenShareButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_speakerButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_slidersContainer, 10, QColor(0, 0, 0, 50));
@@ -504,6 +520,18 @@ void CallWidget::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
 }
 
+void CallWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateIncomingCallWidths();
+    updateExitFullscreenButtonPosition();
+
+    if (m_screenFullscreenActive)
+    {
+        applyIncreasedSize();
+    }
+}
+
 void CallWidget::setCallInfo(const QString& friendNickname) {
     m_friendNickname = friendNickname;
     m_friendNicknameLabel->setText(friendNickname);
@@ -518,6 +546,10 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
     m_timerLabel->setFont(timerFont);
 
     m_callTimer->start(1000); // Update every second
+}
+
+void CallWidget::onScreenShareToggled(bool toggled) {
+    emit screenShareClicked(toggled);
 }
 
 void CallWidget::updateCallTimer() {
@@ -545,46 +577,30 @@ void CallWidget::updateCallTimer() {
     m_timerLabel->setText(m_callDuration->toString(timeFormat));
 }
 
-void CallWidget::onMuteAudioClicked()
+void CallWidget::onFullscreenClicked(bool toggled)
 {
-    m_audioMuted = m_muteAudioButton->isToggled();
-
-    if (m_audioMuted) {
-        m_speakerVolumeSlider->setEnabled(false);
+    if (toggled)
+    {
+        enterScreenFullscreen();
     }
-    else {
-        m_speakerVolumeSlider->setEnabled(true);
+    else
+    {
+        exitScreenFullscreen();
     }
-
-    emit muteSpeakerClicked(m_audioMuted);
-}
-
-void CallWidget::onMuteMicrophoneClicked()
-{
-    m_microphoneMuted = m_muteMicrophoneButton->isToggled();
-
-    if (m_microphoneMuted) {
-        m_micVolumeSlider->setEnabled(false);
-    }
-    else {
-        m_micVolumeSlider->setEnabled(true);
-    }
-
-    emit muteMicrophoneClicked(m_microphoneMuted);
 }
 
 void CallWidget::onSpeakerClicked()
 {
     m_slidersVisible = m_speakerButton->isToggled();
-    updateSlidersVisibility();
-}
-
-void CallWidget::updateSlidersVisibility() {
-    if (m_slidersVisible) {
-        m_slidersContainer->show();
+    m_slidersContainer->setVisible(m_slidersVisible);
+    
+    if (m_slidersVisible)
+    {
+        applyDecreasedSize();
     }
-    else {
-        m_slidersContainer->hide();
+    else
+    {
+        applyStandardSize();
     }
 }
 
@@ -599,8 +615,26 @@ void CallWidget::onOutputVolumeChanged() {
 }
 
 void CallWidget::onHangupClicked() {
+    if (m_showingDisplay) {
+        m_screenShareButton->setToggled(false);
+    }
+
     m_callTimer->stop();
     emit hangupClicked();
+}
+
+void CallWidget::onMicLabelToggled(bool toggled)
+{
+    m_microphoneMuted = toggled;
+    m_micVolumeSlider->setEnabled(!toggled);
+    emit muteMicrophoneClicked(toggled);
+}
+
+void CallWidget::onSpeakerLabelToggled(bool toggled)
+{
+    m_audioMuted = toggled;
+    m_speakerVolumeSlider->setEnabled(!toggled);
+    emit muteSpeakerClicked(toggled);
 }
 
 void CallWidget::setInputVolume(int newVolume) {
@@ -612,26 +646,284 @@ void CallWidget::setOutputVolume(int newVolume) {
 }
 
 void CallWidget::setMicrophoneMuted(bool muted) {
-    if (m_muteMicrophoneButton->isToggled() != muted) {
-        m_muteMicrophoneButton->setToggled(muted);
+    if (m_micLabel && m_micLabel->isToggled() != muted)
+    {
+        m_micLabel->setToggled(muted);
     }
+    m_microphoneMuted = muted;
+    m_micVolumeSlider->setEnabled(!muted);
 }
 
 void CallWidget::setSpeakerMuted(bool muted) {
-    if (m_muteAudioButton->isToggled() != muted) {
-        m_muteAudioButton->setToggled(muted);
+    if (m_speakerLabel && m_speakerLabel->isToggled() != muted)
+    {
+        m_speakerLabel->setToggled(muted);
     }
 }
 
 void CallWidget::setAudioMuted(bool muted) {
-    if (m_muteAudioButton->isToggled() != muted) {
-        m_muteAudioButton->setToggled(muted);
+    if (m_speakerLabel && m_speakerLabel->isToggled() != muted)
+    {
+        m_speakerLabel->setToggled(muted);
     }
 }
 
-QColor CallWidget::generateRandomColor(const QString& seed) {
-    int hash = qHash(seed);
-    return QColor::fromHsv(hash % 360, 150 + hash % 106, 150 + hash % 106);
+void CallWidget::setShowingDisplayActive(bool active, bool viewingRemoteDisplay)
+{
+    m_showingDisplay = active;
+    m_viewingRemoteDisplay = viewingRemoteDisplay;
+
+    const bool shouldShowFullscreenButton = m_showingDisplay && m_viewingRemoteDisplay;
+
+    if (m_fullscreenButton)
+    {
+        if (!shouldShowFullscreenButton)
+        {
+            setFullscreenButtonState(false);
+        }
+
+        m_fullscreenButton->setVisible(shouldShowFullscreenButton);
+    }
+
+    if (!shouldShowFullscreenButton && m_exitFullscreenButton && m_exitFullscreenButton->isVisible())
+    {
+        exitScreenFullscreen();
+    }
+
+    if (m_showingDisplay)
+    {
+        m_timerLabel->hide();
+        m_friendNicknameLabel->hide();
+        m_screenWidget->show();
+        if (m_mainLayout)
+        {
+            m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+            if (m_screenWidget && m_mainLayout->indexOf(m_screenWidget) != -1)
+            {
+                m_mainLayout->setStretchFactor(m_screenWidget, 1);
+            }
+        }
+    }
+    else
+    {
+        m_screenWidget->clear();
+        m_screenWidget->hide();
+        m_timerLabel->show();
+        m_friendNicknameLabel->show();
+        if (m_mainLayout)
+        {
+            m_mainLayout->setAlignment(Qt::AlignCenter);
+            if (m_screenWidget && m_mainLayout->indexOf(m_screenWidget) != -1)
+            {
+                m_mainLayout->setStretchFactor(m_screenWidget, 0);
+            }
+        }
+    }
+
+    updateIncomingCallsVisibility();
+    updateTopSpacerHeight();
+    refreshMainLayoutGeometry();
+}
+
+QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
+{
+    if (pixmap.isNull()) return pixmap;
+
+    int w = pixmap.width();
+    int h = pixmap.height();
+
+    if (h <= w)
+    {
+        return pixmap;
+    }
+
+    // Crop portrait to 16:9 horizontal area from top
+    int targetH = static_cast<int>(w * 9.0 / 16.0);
+    targetH = qMin(targetH, h);
+    QRect cropRect(0, 0, w, targetH);
+    return pixmap.copy(cropRect);
+}
+
+void CallWidget::applyStandardSize() {
+    QSize targetSize = scaledScreenSize16by9(1440);
+    m_screenWidget->setFixedSize(targetSize);
+    m_screenWidget->updateGeometry();
+}
+
+void CallWidget::applyDecreasedSize() {
+    QSize targetSize = scaledScreenSize16by9(scale(1280));
+
+    m_screenWidget->setFixedSize(targetSize);
+    m_screenWidget->updateGeometry();
+}
+
+void CallWidget::applyIncreasedSize()
+{
+    if (!m_screenWidget)
+    {
+        return;
+    }
+
+    QSize availableSize = size();
+
+    if (m_mainLayout)
+    {
+        const auto margins = m_mainLayout->contentsMargins();
+        availableSize.setWidth(std::max(0, availableSize.width() - (margins.left() + margins.right())));
+        availableSize.setHeight(std::max(0, availableSize.height() - (margins.top() + margins.bottom())));
+    }
+
+    if (availableSize.isEmpty())
+    {
+        return;
+    }
+
+    m_screenWidget->setFixedSize(availableSize);
+    m_screenWidget->updateGeometry();
+}
+
+QSize CallWidget::scaledScreenSize16by9(int baseWidth)
+{
+    const int scaledWidth = extraScale(baseWidth, 4) - scale(15);
+    if (scaledWidth <= 0)
+    {
+        return QSize();
+    }
+
+    const int scaledHeight = std::max(1, static_cast<int>(std::lround(scaledWidth * 9.0 / 16.0)));
+    return QSize(scaledWidth, scaledHeight);
+}
+
+void CallWidget::showFrame(const QPixmap& frame)
+{
+    if (frame.isNull() || !m_showingDisplay || !m_screenWidget) return;
+
+    QPixmap preparedFrame = cropToHorizontal(frame);
+    if (preparedFrame.isNull()) return;
+
+    // Let Screen handle scaling with aspect ratio
+    m_screenWidget->setPixmap(preparedFrame);
+}
+
+void CallWidget::disableStartScreenShareButton(bool disable) {
+    m_screenShareButton->setDisabled(disable);
+
+    if (disable) {    
+        m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
+        m_screenShareButton->setIcons(m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled, m_screenShareIconDisabled);
+    }
+    else {
+        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
+        m_screenShareButton->setToolTip("Share screen");
+        m_screenShareButton->setToggled(false);
+    }
+}
+
+void CallWidget::setFullscreenButtonState(bool fullscreen)
+{
+    if (m_fullscreenButton && m_fullscreenButton->isToggled() != fullscreen)
+    {
+        m_fullscreenButton->setToggled(fullscreen);
+    }
+}
+
+void CallWidget::resetScreenShareButton() {
+    if (m_screenShareButton->isToggled()) {
+        m_screenShareButton->setToggled(false);
+    }
+}
+
+void CallWidget::enterScreenFullscreen()
+{
+    m_screenFullscreenActive = true;
+    emit requestEnterWindowFullscreen();
+
+    if (m_topMainLayoutSpacer)
+    {
+        m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
+    }
+
+    if (m_buttonsPanel)
+    {
+        m_buttonsPanel->hide();
+    }
+
+    if (m_speakerButton)
+    {
+        m_speakerButton->setToggled(false);
+    }
+
+    if (m_slidersContainer)
+    {
+        m_slidersContainer->hide();
+    }
+
+    if (m_exitFullscreenButton)
+    {
+        m_exitFullscreenButton->show();
+    }
+
+    applyIncreasedSize();
+    updateTopSpacerHeight();
+    refreshMainLayoutGeometry();
+}
+
+void CallWidget::exitScreenFullscreen()
+{
+    m_screenFullscreenActive = false;
+
+    if (m_buttonsPanel)
+    {
+        m_buttonsPanel->show();
+    }
+
+    if (m_exitFullscreenButton)
+    {
+        m_exitFullscreenButton->hide();
+    }
+
+    updateTopSpacerHeight();
+    applyStandardSize();
+    setFullscreenButtonState(false);
+    refreshMainLayoutGeometry();
+
+    emit requestExitWindowFullscreen();
+}
+
+void CallWidget::updateExitFullscreenButtonPosition()
+{
+    if (!m_exitFullscreenButton || !m_exitFullscreenButton->isVisible())
+        return;
+
+    int buttonSize = scale(40);
+    int margin = scale(15);
+    int x = width() - buttonSize - margin;
+    int y = margin;
+
+    m_exitFullscreenButton->move(x, y);
+}
+
+void CallWidget::refreshMainLayoutGeometry()
+{
+    if (m_mainLayout)
+    {
+        m_mainLayout->invalidate();
+        m_mainLayout->activate();
+    }
+
+    updateGeometry();
+}
+
+void CallWidget::updateTopSpacerHeight()
+{
+    if (!m_topMainLayoutSpacer)
+    {
+        return;
+    }
+
+    const bool shouldReserveSpace = m_showingDisplay && !m_screenFullscreenActive;
+    const int targetHeight = shouldReserveSpace ? scale(40) : 0;
+    m_topMainLayoutSpacer->changeSize(0, targetHeight, QSizePolicy::Minimum, QSizePolicy::Fixed);
 }
 
 void CallWidget::clearIncomingCalls() {
@@ -643,10 +935,41 @@ void CallWidget::clearIncomingCalls() {
     updateIncomingCallsVisibility();
 }
 
-void CallWidget::showErrorNotification(const QString& text, int durationMs) {
-    m_notificationLabel->setText(text);
-    m_notificationWidget->show();
-    m_notificationTimer->start(durationMs);
+void CallWidget::onIncomingCallsDialogClosed()
+{
+	// Ensure the incoming container returns to main layout before dialog deletes children
+	if (m_incomingCallsContainer && m_incomingCallsContainer->parent() == m_incomingCallsDialog)
+	{
+		// Detach from dialog layout if present
+		if (m_incomingCallsDialog && m_incomingCallsDialog->layout())
+		{
+			m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
+		}
+		m_incomingCallsContainer->setParent(this);
+		if (m_mainLayout)
+		{
+			m_mainLayout->insertWidget(0, m_incomingCallsContainer);
+		}
+	}
+
+	// Decline and remove all incoming calls
+	const QList<QString> names = m_incomingCallWidgets.keys();
+	for (const QString& name : names)
+	{
+		emit declineCallButtonClicked(name);
+		removeIncomingCall(name);
+	}
+
+	// Ensure container hidden in layout
+	if (m_incomingCallsContainer)
+	{
+		m_incomingCallsContainer->hide();
+		m_incomingCallsContainer->setFixedHeight(scale(0));
+	}
+	if (m_incomingCallsScrollArea)
+	{
+		m_incomingCallsScrollArea->setFixedHeight(scale(0));
+	}
 }
 
 void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTime) {
@@ -654,8 +977,8 @@ void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTim
 
     // Create new incoming call widget
     IncomingCallWidget* callWidget = new IncomingCallWidget(m_incomingCallsScrollWidget, friendNickName, remainingTime);
-    setupElementShadow(callWidget, 10, QColor(0, 0, 3, 50));
-    m_incomingCallsScrollLayout->addWidget(callWidget);
+    callWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_incomingCallsScrollLayout->addWidget(callWidget, 0, Qt::AlignHCenter);
     m_incomingCallWidgets[friendNickName] = callWidget;
 
     // Connect signals
@@ -664,6 +987,7 @@ void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTim
 
     // Show incoming calls section if hidden
     updateIncomingCallsVisibility();
+    updateIncomingCallWidths();
 }
 
 void CallWidget::removeIncomingCall(const QString& callerName) {
@@ -674,32 +998,209 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
         m_incomingCallWidgets.remove(callerName);
 
         updateIncomingCallsVisibility();
+        updateIncomingCallWidths();
     }
+}
+
+void CallWidget::restoreIncomingCallsContainer() {
+    if (m_incomingCallsContainer->parent() != this) {
+        if (m_incomingCallsDialog && m_incomingCallsDialog->layout()) {
+            m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
+        }
+        m_incomingCallsContainer->setParent(this);
+        if (m_mainLayout) {
+            m_mainLayout->insertWidget(0, m_incomingCallsContainer);
+        }
+    }
+
+    m_incomingCallsContainer->setFixedHeight(0);
+    m_incomingCallsScrollArea->setFixedHeight(0);
+    m_incomingCallsContainer->hide();
 }
 
 void CallWidget::updateIncomingCallsVisibility() {
     if (!m_incomingCallWidgets.isEmpty()) {
-        // Calculate required height based on number of calls (max 3 visible)
         int callCount = m_incomingCallWidgets.size();
         int visibleCount = qMin(callCount, 3);
         int scrollAreaHeight = visibleCount * scale(90);
         int containerHeight = scrollAreaHeight + scale(40);
 
-        m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
-        m_incomingCallsContainer->setFixedHeight(containerHeight);
-        m_incomingCallsContainer->show();
+        if (m_showingDisplay)
+		{
+			// Ensure dialog exists
+			if (!m_incomingCallsDialog)
+			{
+				m_incomingCallsDialog = new QDialog(window(), Qt::Window);
+				m_incomingCallsDialog->setModal(false);
+				m_incomingCallsDialog->setStyleSheet("background-color: white;");
+				m_incomingCallsDialog->setAttribute(Qt::WA_DeleteOnClose, true);
+
+				// Create dialog layout and insert the container
+				QVBoxLayout* dlgLayout = new QVBoxLayout(m_incomingCallsDialog);
+				dlgLayout->setContentsMargins(0, 0, 0, 0);
+				dlgLayout->setSpacing(0);
+
+				// Ensure not in main layout anymore
+				if (m_mainLayout && m_incomingCallsContainer->parent() == this)
+				{
+					m_mainLayout->removeWidget(m_incomingCallsContainer);
+				}
+				m_incomingCallsContainer->setParent(m_incomingCallsDialog);
+				m_incomingCallsContainer->show();
+				dlgLayout->addWidget(m_incomingCallsContainer);
+
+				// Reasonable minimum width for readability
+				m_incomingCallsDialog->setMinimumWidth(scale(520));
+
+				// Close handlers: decline and clear all, null the pointer
+				connect(m_incomingCallsDialog, &QDialog::rejected, this, &CallWidget::onIncomingCallsDialogClosed);
+				connect(m_incomingCallsDialog, &QObject::destroyed, this, [this]() { m_incomingCallsDialog = nullptr; });
+			}
+			else
+			{
+				m_incomingCallsDialog->setStyleSheet("background-color: white;");
+
+				// If dialog exists but container is not inside it, reparent it
+				if (m_incomingCallsContainer->parent() != m_incomingCallsDialog)
+				{
+					if (m_mainLayout && m_incomingCallsContainer->parent() == this)
+					{
+						m_mainLayout->removeWidget(m_incomingCallsContainer);
+					}
+					m_incomingCallsContainer->setParent(m_incomingCallsDialog);
+					m_incomingCallsContainer->show();
+					if (QLayout* layout = m_incomingCallsDialog->layout())
+					{
+						layout->addWidget(m_incomingCallsContainer);
+					}
+				}
+				// Ensure connections exist
+				bool hasRejected = QMetaObject::Connection();
+				connect(m_incomingCallsDialog, &QDialog::rejected, this, &CallWidget::onIncomingCallsDialogClosed);
+				connect(m_incomingCallsDialog, &QObject::destroyed, this, [this]() { m_incomingCallsDialog = nullptr; });
+			}
+
+			// Size and show
+			m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
+			m_incomingCallsContainer->setFixedHeight(containerHeight);
+			m_incomingCallsDialog->adjustSize();
+			m_incomingCallsDialog->show();
+			m_incomingCallsDialog->raise();
+			m_incomingCallsDialog->activateWindow();
+		}
+		else
+		{
+			// Return to layout if dialog was used
+			if (m_incomingCallsDialog)
+			{
+				m_incomingCallsDialog->hide();
+			}
+
+			if (m_incomingCallsContainer->parent() != this)
+			{
+				m_incomingCallsContainer->setParent(this);
+				if (m_mainLayout)
+				{
+					m_mainLayout->insertWidget(0, m_incomingCallsContainer);
+				}
+			}
+
+			m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
+			m_incomingCallsContainer->setFixedHeight(containerHeight);
+			m_incomingCallsContainer->show();
+		}
+    } else {
+        if (m_incomingCallsContainer) {
+            m_incomingCallsContainer->hide();
+            m_incomingCallsContainer->setFixedHeight(scale(0));
+        }
+        if (m_incomingCallsScrollArea) {
+            m_incomingCallsScrollArea->setFixedHeight(scale(0));
+        }
+		if (m_incomingCallsDialog) {
+			m_incomingCallsDialog->hide();
+		}
     }
-    else {
-        m_incomingCallsContainer->hide();
-        m_incomingCallsContainer->setFixedHeight(scale(0));
-        m_incomingCallsScrollArea->setFixedHeight(scale(0));
+
+    updateIncomingCallWidths();
+}
+
+void CallWidget::updateIncomingCallWidths()
+{
+    if (!m_incomingCallsScrollArea) return;
+
+    const int defaultWidth = scale(440);
+    const int horizontalPadding = scale(16);
+    const int viewportWidth = m_incomingCallsScrollArea->viewport()->width();
+
+    int targetWidth = defaultWidth;
+
+    if (viewportWidth > 0)
+    {
+        int availableWidth = viewportWidth - horizontalPadding;
+        if (availableWidth > 0)
+        {
+            targetWidth = std::min(defaultWidth, availableWidth);
+        }
+        else
+        {
+            targetWidth = std::min(defaultWidth, viewportWidth);
+        }
+    }
+
+    for (auto it = m_incomingCallWidgets.begin(); it != m_incomingCallWidgets.end(); ++it)
+    {
+        if (IncomingCallWidget* widget = it.value())
+        {
+            widget->setFixedWidth(targetWidth);
+            widget->updateGeometry();
+        }
     }
 }
 
 void CallWidget::onIncomingCallAccepted(const QString& callerName) {
+    if (m_showingDisplay) {
+        restoreIncomingCallsContainer();
+    }
+
     emit acceptCallButtonClicked(callerName);
 }
 
 void CallWidget::onIncomingCallDeclined(const QString& callerName) {
     emit declineCallButtonClicked(callerName);
+
+    if (m_showingDisplay) {
+        restoreIncomingCallsContainer();
+    }
+}
+
+bool CallWidget::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == m_exitFullscreenButton)
+    {
+        if (event->type() == QEvent::Enter)
+        {
+            m_exitFullscreenButton->setIcon(m_fullscreenIconMinimizeHover);
+            return false;
+        }
+        else if (event->type() == QEvent::Leave)
+        {
+            m_exitFullscreenButton->setIcon(m_fullscreenIconMinimize);
+            return false;
+        }
+    }
+
+    return QWidget::eventFilter(obj, event);
+}
+
+void CallWidget::keyPressEvent(QKeyEvent* event)
+{
+    if (event && event->key() == Qt::Key_Escape && m_screenFullscreenActive)
+    {
+        exitScreenFullscreen();
+        event->accept();
+        return;
+    }
+
+    QWidget::keyPressEvent(event);
 }

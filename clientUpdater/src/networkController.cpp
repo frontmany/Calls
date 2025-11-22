@@ -55,6 +55,19 @@ void NetworkController::disconnect() {
 	}
 
 	reset(true);
+	m_shuttingDown = false;
+}
+
+void NetworkController::requestShutdown() {
+	m_shuttingDown = true;
+	if (!m_socket.is_open()) {
+		return;
+	}
+
+	asio::post(m_context, [this]() {
+		std::error_code ec;
+		m_socket.cancel(ec);
+	});
 }
 
 
@@ -66,7 +79,9 @@ void NetworkController::createConnection(const std::string& host, const uint16_t
 		asio::async_connect(m_socket, serverEndpoint,
 			[this](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
 				if (ec) {
-					m_onError();
+					if (!shouldIgnoreError(ec)) {
+						m_onError();
+					}
 				}
 				else {
 					readHandshake();
@@ -85,7 +100,9 @@ void NetworkController::writeHeader(const Packet& packet) {
 		[this, packet](std::error_code ec, std::size_t length) {
 			if (ec)
 			{
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else
 			{
@@ -102,7 +119,9 @@ void NetworkController::writeBody(const Packet& packet) {
 		asio::buffer(packet.body().data(), packet.body().size()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 		}
 	);
@@ -112,7 +131,9 @@ void NetworkController::readHandshake() {
 	asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				m_handshakeOut = scramble(m_handshakeIn);
@@ -125,7 +146,9 @@ void NetworkController::readHandshakeConfirmation() {
 	asio::async_read(m_socket, asio::buffer(&m_handshakeConfirmation, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				if (m_handshakeConfirmation == m_handshakeOut) {
@@ -133,7 +156,9 @@ void NetworkController::readHandshakeConfirmation() {
 					readCheckResult();
 				}
 				else {
-					m_onError();
+					if (!shouldIgnoreError(ec)) {
+						m_onError();
+					}
 				}
 			}
 		});
@@ -143,7 +168,9 @@ void NetworkController::writeHandshake() {
 	asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				readHandshakeConfirmation();
@@ -155,7 +182,9 @@ void NetworkController::readCheckResult() {
 	asio::async_read(m_socket, asio::buffer(&m_metadata.header_mut(), Packet::sizeOfHeader()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::POSSIBLE_UPDATE))
@@ -176,7 +205,9 @@ void NetworkController::readMetadataHeader() {
 	asio::async_read(m_socket, asio::buffer(&m_metadata.header_mut(), Packet::sizeOfHeader()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				m_metadata.body_mut().resize(m_metadata.size() - Packet::sizeOfHeader());
@@ -189,7 +220,9 @@ void NetworkController::readMetadataBody() {
 	asio::async_read(m_socket, asio::buffer(m_metadata.body_mut().data(), m_metadata.body().size()),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				deleteTempDirectory();
@@ -306,7 +339,9 @@ void NetworkController::readChunk() {
 			if (ec) {
 				reset(false);
 				deleteTempDirectory();
-				m_onError();
+				if (!shouldIgnoreError(ec)) {
+					m_onError();
+				}
 			}
 			else {
 				m_bytesReceived += bytesTransferred;
@@ -408,6 +443,14 @@ void NetworkController::reset(bool stopContext) {
 	m_bytesReceived = 0;
 
 	m_filesToDelete.clear();
+}
+
+bool NetworkController::shouldIgnoreError(const std::error_code& ec) const {
+	if (!m_shuttingDown) {
+		return false;
+	}
+
+	return ec == asio::error::operation_aborted || ec == asio::error::bad_descriptor;
 }
 void NetworkController::deleteTempDirectory() {
 	const std::filesystem::path tempDirectory = "update_temp";

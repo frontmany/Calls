@@ -2,15 +2,25 @@ cmake_minimum_required(VERSION 3.16)
 set(CMAKE_CXX_STANDARD 20)
 project(callifornia)
 
+if(NOT DEFINED ROOT_DIR)
+    get_filename_component(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+endif()
+
+if(NOT TARGET calls_client AND EXISTS "${ROOT_DIR}/client/CMakeLists.txt")
+    add_subdirectory("${ROOT_DIR}/client" "${CMAKE_BINARY_DIR}/client")
+endif()
+
+if(NOT TARGET client_updater AND EXISTS "${ROOT_DIR}/clientUpdater/CMakeLists.txt")
+    add_subdirectory("${ROOT_DIR}/clientUpdater" "${CMAKE_BINARY_DIR}/clientUpdater")
+endif()
+
 set(Vulkan_FOUND TRUE)
 
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 source_group("Source Files" FILES ${SOURCES})
 
 if(WIN32)
-    set(CMAKE_PREFIX_PATH "C:/Qt/6.9.3/msvc2022_64")
-else()
-    set(CMAKE_PREFIX_PATH "/home/vboxuser/Qt/6.9.3/gcc_64")
+    set(CMAKE_PREFIX_PATH "C:/Qt/6.9.3/msvc2022_64" CACHE PATH "Qt6 path" FORCE)
 endif()
 
 find_package(Qt6 COMPONENTS Widgets Core Multimedia REQUIRED)
@@ -22,7 +32,7 @@ set(RC_FILE resources/app_icon.rc)
 
 if(WIN32)
     set(RC_FILE resources/app_icon.rc)
-    add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${QRC_FILES} ${RC_FILE})
+    add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES} ${RC_FILE})
 else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES})
 endif()
@@ -39,18 +49,25 @@ if(WIN32)
 endif()
 
 if(WIN32)
-    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build/Release")
+    set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
 else()
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
 endif()
 
-target_link_directories(${PROJECT_NAME} PRIVATE
-    "${SPDLOG_DIR}"
-)
-
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater spdlog.lib)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt6::Widgets
+        Qt6::Core
+        Qt6::Multimedia
+        calls_client
+        client_updater
+        "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
+    )
 else()
+    target_link_directories(${PROJECT_NAME} PRIVATE
+        "${SPDLOG_DIR}"
+    )
+
     target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calls_client client_updater libspdlog.a)
 endif()
 

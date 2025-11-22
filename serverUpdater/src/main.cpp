@@ -86,7 +86,7 @@ std::pair<std::filesystem::path, std::string> findLatestVersion()
         }
     }
 
-    // Логируем итоговые результаты поиска
+    // Log summary of the version discovery process
     if (foundAnyVersions) {
         LOG_INFO("Latest version search completed: found version {} in {}",
             latestVersion, latestVersionPath.string());

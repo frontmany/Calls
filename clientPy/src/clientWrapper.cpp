@@ -114,6 +114,43 @@ public:
             onRemoteUserEndedCall
         );
     }
+
+    void onStartScreenSharingError() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onStartScreenSharingError
+        );
+    }
+
+    void onIncomingScreenSharingStarted() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onIncomingScreenSharingStarted
+        );
+    }
+
+    void onIncomingScreenSharingStopped() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onIncomingScreenSharingStopped
+        );
+    }
+
+    void onIncomingScreen(const std::vector<unsigned char>& data) override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onIncomingScreen,
+            data
+        );
+    }
 };
 
 bool init_wrapper(const std::string& host,
@@ -145,7 +182,11 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onIncomingCallExpired", &calls::CallbacksInterface::onIncomingCallExpired)
         .def("onNetworkError", &calls::CallbacksInterface::onNetworkError)
         .def("onConnectionRestored", &calls::CallbacksInterface::onConnectionRestored)
-        .def("onRemoteUserEndedCall", &calls::CallbacksInterface::onRemoteUserEndedCall);
+        .def("onRemoteUserEndedCall", &calls::CallbacksInterface::onRemoteUserEndedCall)
+        .def("onStartScreenSharingError", &calls::CallbacksInterface::onStartScreenSharingError)
+        .def("onIncomingScreenSharingStarted", &calls::CallbacksInterface::onIncomingScreenSharingStarted)
+        .def("onIncomingScreenSharingStopped", &calls::CallbacksInterface::onIncomingScreenSharingStopped)
+        .def("onIncomingScreen", &calls::CallbacksInterface::onIncomingScreen);
 
     m.def("init", &init_wrapper,
         "Initialize calls client",

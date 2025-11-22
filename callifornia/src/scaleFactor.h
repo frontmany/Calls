@@ -22,3 +22,13 @@ static int scale(int baseSize) {
         return baseSize / rawFactor;
     }
 }
+
+static int extraScale(int size, int count) {
+    int result = size;
+
+    for (int i = 0; i < count; i++) {
+        result = scale(result);
+    }
+
+    return result;
+}

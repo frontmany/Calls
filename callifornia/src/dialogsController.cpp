@@ -1,28 +1,37 @@
 #include "dialogsController.h"
 #include "overlayWidget.h"
+#include "scaleFactor.h"
+#include "screenPreviewWidget.h"
 
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QMovie>
-#include <QPixmap>
-#include <QGraphicsDropShadowEffect>
-#include <QScreen>
-#include <QGuiApplication>
-#include <QFont>
+#include <QWindow>
 #include <QTimer>
+#include <algorithm>
 
 DialogsController::DialogsController(QWidget* parent)
-	: QObject(parent), m_parent(parent), m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
-	m_updatingProgressLabel(nullptr), m_updatingLabel(nullptr), m_updatingGifLabel(nullptr),
-	m_connectionErrorOverlay(nullptr), m_connectionErrorDialog(nullptr)
+    : QObject(parent), m_parent(parent),
+    m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
+    m_updatingProgressLabel(nullptr), m_updatingLabel(nullptr), m_updatingGifLabel(nullptr),
+    m_connectionErrorOverlay(nullptr), m_connectionErrorDialog(nullptr),
+    m_screenShareOverlay(nullptr), m_screenShareDialog(nullptr),
+    m_screenShareScreensContainer(nullptr), m_screenShareScreensLayout(nullptr),
+    m_screenShareButton(nullptr), m_screenShareStatusLabel(nullptr),
+    m_screenShareSelectedIndex(-1),
+    m_alreadyRunningOverlay(nullptr), m_alreadyRunningDialog(nullptr),
+    m_alreadyRunningImageLabel(nullptr), m_alreadyRunningTitleLabel(nullptr),
+    m_alreadyRunningMessageLabel(nullptr)
 {
 }
 
 DialogsController::~DialogsController()
 {
-	hideUpdatingDialog();
-	hideUpdatingErrorDialog();
+    hideUpdatingDialog();
+    hideUpdatingErrorDialog();
+    hideScreenShareDialog();
+    hideAlreadyRunningDialog();
 }
 
 void DialogsController::showUpdatingDialog()
@@ -78,6 +87,151 @@ void DialogsController::hideUpdatingDialog()
 	m_updatingProgressLabel = nullptr;
 	m_updatingLabel = nullptr;
 	m_updatingGifLabel = nullptr;
+}
+
+void DialogsController::showScreenShareDialog(const QList<QScreen*>& screens)
+{
+    m_screenShareScreens = screens;
+    m_screenShareSelectedIndex = -1;
+
+    if (m_screenShareDialog)
+    {
+        m_screenShareDialog->raise();
+        refreshScreenSharePreviews();
+        updateScreenShareSelectionState();
+        return;
+    }
+
+    m_screenShareOverlay = new OverlayWidget(m_parent);
+    m_screenShareOverlay->setStyleSheet("background-color: transparent;");
+    m_screenShareOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_screenShareOverlay->show();
+    m_screenShareOverlay->raise();
+
+    m_screenShareDialog = createScreenShareDialog(m_screenShareOverlay);
+
+    auto centerDialog = [this]()
+    {
+        if (!m_screenShareDialog || !m_screenShareOverlay)
+        {
+            return;
+        }
+
+        m_screenShareDialog->adjustSize();
+        const QSize dialogSize = m_screenShareDialog->size();
+
+        QWidget* referenceWidget = m_screenShareOverlay->window();
+        if (!referenceWidget && m_parent)
+        {
+            referenceWidget = m_parent->window();
+        }
+
+        QRect targetRect;
+        if (referenceWidget)
+        {
+            const QRect windowRect = referenceWidget->frameGeometry();
+            const QPoint windowCenter = windowRect.center();
+
+            QScreen* screen = QGuiApplication::screenAt(windowCenter);
+            if (!screen && referenceWidget->windowHandle())
+            {
+                screen = referenceWidget->windowHandle()->screen();
+            }
+            if (!screen)
+            {
+                screen = QGuiApplication::primaryScreen();
+            }
+            if (screen)
+            {
+                targetRect = screen->availableGeometry();
+            }
+        }
+
+        if (!targetRect.isValid())
+        {
+            if (QScreen* primaryScreen = QGuiApplication::primaryScreen())
+            {
+                targetRect = primaryScreen->availableGeometry();
+            }
+            else if (referenceWidget)
+            {
+                targetRect = referenceWidget->frameGeometry();
+            }
+            else
+            {
+                const QPoint overlayTopLeft = m_screenShareOverlay->mapToGlobal(QPoint(0, 0));
+                targetRect = QRect(overlayTopLeft, m_screenShareOverlay->size());
+            }
+        }
+
+        const QPoint desiredGlobal(
+            targetRect.x() + (targetRect.width() - dialogSize.width()) / 2,
+            targetRect.y() + (targetRect.height() - dialogSize.height()) / 2);
+
+        QPoint localPos = m_screenShareOverlay->mapFromGlobal(desiredGlobal);
+        const QRect overlayRect = m_screenShareOverlay->rect();
+        const QRect desiredLocalRect(localPos, dialogSize);
+
+        if (!overlayRect.contains(desiredLocalRect))
+        {
+            const int maxX = std::max(0, overlayRect.width() - dialogSize.width());
+            const int maxY = std::max(0, overlayRect.height() - dialogSize.height());
+
+            const int boundedX = std::clamp(localPos.x(), 0, maxX);
+            const int boundedY = std::clamp(localPos.y(), 0, maxY);
+
+            localPos = QPoint(boundedX, boundedY);
+
+            if (!overlayRect.contains(QRect(localPos, dialogSize)))
+            {
+                const QPoint overlayCenter = overlayRect.center();
+                localPos.setX(std::clamp(overlayCenter.x() - dialogSize.width() / 2, 0, maxX));
+                localPos.setY(std::clamp(overlayCenter.y() - dialogSize.height() / 2, 0, maxY));
+            }
+        }
+
+        m_screenShareDialog->move(localPos);
+        m_screenShareDialog->raise();
+    };
+
+    centerDialog();
+    m_screenShareDialog->show();
+    QTimer::singleShot(0, this, centerDialog);
+    QObject::connect(m_screenShareOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
+
+    refreshScreenSharePreviews();
+    updateScreenShareSelectionState();
+}
+
+void DialogsController::hideScreenShareDialog()
+{
+    if (m_screenShareDialog)
+    {
+        m_screenShareDialog->disconnect();
+        m_screenShareDialog->hide();
+        m_screenShareDialog->deleteLater();
+        m_screenShareDialog = nullptr;
+    }
+
+    if (m_screenShareOverlay)
+    {
+        m_screenShareOverlay->close();
+        m_screenShareOverlay->deleteLater();
+        m_screenShareOverlay = nullptr;
+    }
+
+    for (ScreenPreviewWidget* preview : m_screenSharePreviewWidgets)
+    {
+        preview->deleteLater();
+    }
+    m_screenSharePreviewWidgets.clear();
+
+    m_screenShareScreensContainer = nullptr;
+    m_screenShareScreensLayout = nullptr;
+    m_screenShareButton = nullptr;
+    m_screenShareStatusLabel = nullptr;
+    m_screenShareScreens.clear();
+    m_screenShareSelectedIndex = -1;
 }
 
 void DialogsController::showConnectionErrorDialog()
@@ -138,6 +292,345 @@ void DialogsController::updateLoadingProgress(double progress)
 		QString progressText = QString("%1%").arg(progress, 0, 'f', 2);
 		m_updatingProgressLabel->setText(progressText);
 	}
+}
+
+QWidget* DialogsController::createScreenShareDialog(OverlayWidget* overlay)
+{
+    QFont font("Outfit", scale(12), QFont::Normal);
+    QFont titleFont("Outfit", scale(16), QFont::Bold);
+
+    QWidget* dialog = new QWidget(overlay);
+    const int margin = scale(40);
+    const QSize overlaySize = overlay->size();
+    const int maxW = std::max(0, overlaySize.width() - margin);
+    const int maxH = std::max(0, overlaySize.height() - margin);
+    const int desiredMinW = extraScale(1200, 3);
+    const int desiredMinH = extraScale(800, 3);
+    dialog->setMaximumSize(maxW, maxH);
+    dialog->setMinimumWidth(std::min(desiredMinW, maxW));
+    dialog->setMinimumHeight(std::min(desiredMinH, maxH));
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
+
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(scale(30));
+    shadowEffect->setXOffset(0);
+    shadowEffect->setYOffset(0);
+    shadowEffect->setColor(QColor(0, 0, 0, 150));
+
+    QWidget* mainWidget = new QWidget(dialog);
+    mainWidget->setGraphicsEffect(shadowEffect);
+    mainWidget->setObjectName("mainWidget");
+
+    QString mainWidgetStyle = QString(
+        "QWidget#mainWidget {"
+        "   background-color: rgb(248, 250, 252);"
+        "   border-radius: %1px;"
+        "   border: %2px solid rgb(210, 210, 210);"
+        "}")
+        .arg(scale(16))
+        .arg(scale(1));
+    mainWidget->setStyleSheet(mainWidgetStyle);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    mainLayout->addWidget(mainWidget);
+
+    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
+    contentLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
+    contentLayout->setSpacing(scale(12));
+
+    QLabel* titleLabel = new QLabel("Share Your Screen");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setStyleSheet(QString(
+        "color: rgb(60, 60, 60);"
+        "font-size: %1px;"
+        "font-family: 'Outfit';"
+        "font-weight: bold;"
+        "padding: %2px;"
+    ).arg(scale(20)).arg(scale(10)));
+    titleLabel->setFont(titleFont);
+
+    QLabel* instructionLabel = new QLabel("Click on a screen to select it, then press Share to start streaming");
+    instructionLabel->setAlignment(Qt::AlignCenter);
+    instructionLabel->setStyleSheet(QString(
+        "color: rgb(100, 100, 100);"
+        "font-family: 'Outfit';"
+        "font-size: %1px;"
+        "padding: %2px;"
+    ).arg(scale(13)).arg(scale(2)));
+
+    m_screenShareStatusLabel = new QLabel("Status: Select a screen to share");
+    m_screenShareStatusLabel->setAlignment(Qt::AlignCenter);
+    m_screenShareStatusLabel->setStyleSheet(QString(
+        "color: rgb(100, 100, 100);"
+        "font-family: 'Outfit';"
+        "font-size: %1px;"
+        "padding: %2px;"
+        "background-color: transparent;"
+        "border-radius: %3px;"
+    ).arg(scale(12)).arg(scale(2)).arg(scale(8)));
+
+    QScrollArea* scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setStyleSheet(QString(
+        "QScrollArea {"
+        "   border: none;"
+        "   background-color: transparent;"
+        "}"
+        "QScrollBar:vertical {"
+        "   border: none;"
+        "   background: rgb(240, 240, 240);"
+        "   width: %1px;"
+        "   margin: 0px;"
+        "}"
+        "QScrollBar::handle:vertical {"
+        "   background: rgb(200, 200, 200);"
+        "   border-radius: %2px;"
+        "   min-height: %3px;"
+        "}"
+        "QScrollBar::handle:vertical:hover {"
+        "   background-color: rgb(180, 180, 180);"
+        "}"
+    ).arg(scale(10)).arg(scale(5)).arg(scale(20)));
+
+    m_screenShareScreensContainer = new QWidget();
+    m_screenShareScreensContainer->setStyleSheet("background-color: transparent;");
+    m_screenShareScreensLayout = new QGridLayout(m_screenShareScreensContainer);
+    m_screenShareScreensLayout->setSpacing(scale(25));
+    m_screenShareScreensLayout->setAlignment(Qt::AlignCenter);
+    m_screenShareScreensLayout->setHorizontalSpacing(scale(25));
+    m_screenShareScreensLayout->setVerticalSpacing(scale(25));
+
+    QHBoxLayout* scrollLayout = new QHBoxLayout();
+    scrollLayout->addStretch();
+    scrollLayout->addWidget(m_screenShareScreensContainer);
+    scrollLayout->addStretch();
+
+    QWidget* scrollContent = new QWidget();
+    scrollContent->setLayout(scrollLayout);
+    scrollArea->setWidget(scrollContent);
+
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setAlignment(Qt::AlignCenter);
+
+    m_screenShareButton = new QPushButton("Share Screen");
+    m_screenShareButton->setCursor(Qt::PointingHandCursor);
+    m_screenShareButton->setFixedWidth(scale(200));
+    m_screenShareButton->setMinimumHeight(scale(44));
+    m_screenShareButton->setEnabled(false);
+    m_screenShareButton->setStyleSheet(QString(
+        "QPushButton {"
+        "   background-color: rgb(21, 119, 232);"
+        "   color: white;"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   font-family: 'Outfit';"
+        "   font-size: %4px;"
+        "   font-weight: bold;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgb(18, 113, 222);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgb(16, 103, 202);"
+        "}"
+        "QPushButton:disabled {"
+        "   background-color: rgba(150, 150, 150, 0.20);"
+        "   color: rgba(90, 90, 90, 0.75);"
+        "}"
+    ).arg(scale(10)).arg(scale(10)).arg(scale(20)).arg(scale(14)));
+    m_screenShareButton->setFont(font);
+
+    QPushButton* closeButton = new QPushButton("Close");
+    closeButton->setCursor(Qt::PointingHandCursor);
+    closeButton->setFixedWidth(scale(120));
+    closeButton->setMinimumHeight(scale(44));
+    closeButton->setStyleSheet(QString(
+        "QPushButton {"
+        "   background-color: rgba(21, 119, 232, 0.08);"
+        "   color: rgb(21, 119, 232);"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   font-family: 'Outfit';"
+        "   font-size: %4px;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(21, 119, 232, 0.14);"
+        "   color: rgb(18, 113, 222);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(21, 119, 232, 0.20);"
+        "   color: rgb(16, 103, 202);"
+        "}"
+    ).arg(scale(10)).arg(scale(10)).arg(scale(20)).arg(scale(13)));
+    closeButton->setFont(font);
+
+    buttonLayout->addWidget(m_screenShareButton);
+    buttonLayout->addSpacing(scale(20));
+    buttonLayout->addWidget(closeButton);
+
+    contentLayout->addWidget(titleLabel);
+    contentLayout->addWidget(instructionLabel);
+    contentLayout->addWidget(m_screenShareStatusLabel);
+    contentLayout->addWidget(scrollArea, 1);
+    contentLayout->addLayout(buttonLayout);
+
+    connect(m_screenShareButton, &QPushButton::clicked, this, &DialogsController::onScreenShareButtonClicked);
+    connect(closeButton, &QPushButton::clicked, this, [this]() {
+        emit screenShareDialogCancelled();
+        hideScreenShareDialog();
+    });
+
+    return dialog;
+}
+
+void DialogsController::refreshScreenSharePreviews()
+{
+    for (ScreenPreviewWidget* preview : m_screenSharePreviewWidgets)
+    {
+        preview->deleteLater();
+    }
+    m_screenSharePreviewWidgets.clear();
+
+    if (!m_screenShareScreensLayout)
+    {
+        return;
+    }
+
+    QLayoutItem* item = nullptr;
+    while ((item = m_screenShareScreensLayout->takeAt(0)) != nullptr)
+    {
+        delete item;
+    }
+
+    int row = 0;
+    int col = 0;
+    int maxCols = 3;
+    if (m_screenShareDialog)
+    {
+        const int width = m_screenShareDialog->width();
+        if (width < scale(700))
+        {
+            maxCols = 1;
+        }
+        else if (width < scale(1000))
+        {
+            maxCols = 2;
+        }
+    }
+
+    for (int i = 0; i < m_screenShareScreens.size(); ++i)
+    {
+        ScreenPreviewWidget* preview = new ScreenPreviewWidget(i, m_screenShareScreens[i], m_screenShareScreensContainer);
+        m_screenShareScreensLayout->addWidget(preview, row, col, Qt::AlignCenter);
+        m_screenSharePreviewWidgets.append(preview);
+
+        connect(preview, &ScreenPreviewWidget::screenClicked, this, [this](int index, bool currentlySelected)
+        {
+            handleScreenPreviewClick(index, currentlySelected);
+        });
+
+        ++col;
+        if (col >= maxCols)
+        {
+            col = 0;
+            ++row;
+        }
+    }
+
+    for (int c = 0; c < maxCols; ++c)
+    {
+        m_screenShareScreensLayout->setColumnStretch(c, 1);
+    }
+    for (int r = 0; r <= row; ++r)
+    {
+        m_screenShareScreensLayout->setRowStretch(r, 1);
+    }
+
+    if (m_screenShareScreensContainer)
+    {
+        m_screenShareScreensContainer->adjustSize();
+    }
+}
+
+void DialogsController::handleScreenPreviewClick(int screenIndex, bool currentlySelected)
+{
+    if (screenIndex < 0 || screenIndex >= m_screenShareScreens.size())
+    {
+        return;
+    }
+
+    if (currentlySelected)
+    {
+        m_screenShareSelectedIndex = -1;
+    }
+    else
+    {
+        m_screenShareSelectedIndex = screenIndex;
+    }
+
+    updateScreenShareSelectionState();
+}
+
+void DialogsController::updateScreenShareSelectionState()
+{
+    const bool hasSelection = m_screenShareSelectedIndex >= 0 && m_screenShareSelectedIndex < m_screenShareScreens.size();
+
+    if (!hasSelection)
+    {
+        if (m_screenShareStatusLabel)
+        {
+            if (m_screenShareScreens.isEmpty())
+            {
+                m_screenShareStatusLabel->setText("Status: No screens detected");
+            }
+            else
+            {
+                m_screenShareStatusLabel->setText("Status: Select a screen to share");
+            }
+        }
+
+        if (m_screenShareButton)
+        {
+            m_screenShareButton->setEnabled(false);
+        }
+    }
+    else
+    {
+        if (m_screenShareStatusLabel)
+        {
+            QString status = QString("Selected: Screen %1 - Click Share to start streaming")
+                .arg(m_screenShareSelectedIndex + 1);
+            m_screenShareStatusLabel->setText(status);
+        }
+
+        if (m_screenShareButton)
+        {
+            m_screenShareButton->setEnabled(true);
+        }
+    }
+
+    for (int i = 0; i < m_screenSharePreviewWidgets.size(); ++i)
+    {
+        if (m_screenSharePreviewWidgets[i])
+        {
+            m_screenSharePreviewWidgets[i]->setSelected(hasSelection && i == m_screenShareSelectedIndex);
+        }
+    }
+}
+
+void DialogsController::onScreenShareButtonClicked()
+{
+    if (m_screenShareSelectedIndex < 0 || m_screenShareSelectedIndex >= m_screenShareScreens.size())
+    {
+        return;
+    }
+
+    emit screenSelected(m_screenShareSelectedIndex);
+    hideScreenShareDialog();
 }
 
 QWidget* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
@@ -237,7 +730,7 @@ QWidget* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
 	contentLayout->addWidget(m_updatingLabel);
 	contentLayout->addLayout(buttonLayout);
 
-    connect(exitButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
+    connect(exitButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
 
 	return dialog;
 }
@@ -371,8 +864,190 @@ QWidget* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 	contentLayout->addWidget(messageLabel);
 	contentLayout->addLayout(buttonLayout);
 
-    connect(closeButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
+    connect(closeButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
 
 	return dialog;
 }
 
+void DialogsController::showAlreadyRunningDialog()
+{
+    if (m_alreadyRunningDialog)
+    {
+        m_alreadyRunningDialog->raise();
+        return;
+    }
+
+    m_alreadyRunningOverlay = new OverlayWidget(m_parent);
+    m_alreadyRunningOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_alreadyRunningOverlay->show();
+    m_alreadyRunningOverlay->raise();
+
+    m_alreadyRunningDialog = createAlreadyRunningDialog(m_alreadyRunningOverlay);
+
+    auto centerDialog = [this]()
+        {
+            if (!m_alreadyRunningDialog || !m_alreadyRunningOverlay)
+                return;
+
+            m_alreadyRunningDialog->adjustSize();
+            QSize dialogSize = m_alreadyRunningDialog->size();
+            QRect overlayRect = m_alreadyRunningOverlay->rect();
+            int x = overlayRect.center().x() - dialogSize.width() / 2;
+            int y = overlayRect.center().y() - dialogSize.height() / 2;
+            m_alreadyRunningDialog->move(x, y);
+            m_alreadyRunningDialog->raise();
+        };
+
+    centerDialog();
+    m_alreadyRunningDialog->show();
+    QTimer::singleShot(0, this, centerDialog);
+    QObject::connect(m_alreadyRunningOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
+}
+
+void DialogsController::hideAlreadyRunningDialog()
+{
+    if (m_alreadyRunningDialog)
+    {
+        m_alreadyRunningDialog->disconnect();
+        m_alreadyRunningDialog->hide();
+        m_alreadyRunningDialog->deleteLater();
+        m_alreadyRunningDialog = nullptr;
+    }
+
+    if (m_alreadyRunningOverlay)
+    {
+        m_alreadyRunningOverlay->close();
+        m_alreadyRunningOverlay->deleteLater();
+        m_alreadyRunningOverlay = nullptr;
+    }
+
+    m_alreadyRunningImageLabel = nullptr;
+    m_alreadyRunningTitleLabel = nullptr;
+    m_alreadyRunningMessageLabel = nullptr;
+}
+
+QWidget* DialogsController::createAlreadyRunningDialog(OverlayWidget* overlay)
+{
+    QFont font("Outfit", scale(14), QFont::Normal);
+    QFont titleFont("Outfit", scale(18), QFont::Bold);
+
+    QWidget* dialog = new QWidget(overlay);
+    dialog->setMinimumWidth(scale(400));
+    dialog->setMinimumHeight(scale(320));
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
+
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(scale(30));
+    shadowEffect->setXOffset(0);
+    shadowEffect->setYOffset(0);
+    shadowEffect->setColor(QColor(0, 0, 0, 150));
+
+    QWidget* mainWidget = new QWidget(dialog);
+    mainWidget->setGraphicsEffect(shadowEffect);
+    mainWidget->setObjectName("mainWidget");
+
+    QString mainWidgetStyle = QString(
+        "QWidget#mainWidget {"
+        "   background-color: rgb(255, 240, 240);"
+        "   border-radius: %1px;"
+        "   border: %2px solid rgb(210, 210, 210);"
+        "}")
+        .arg(scale(16))
+        .arg(scale(1));
+    mainWidget->setStyleSheet(mainWidgetStyle);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    mainLayout->addWidget(mainWidget);
+
+    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
+    contentLayout->setContentsMargins(scale(32), scale(32), scale(32), scale(32));
+    contentLayout->setSpacing(scale(20));
+
+    m_alreadyRunningImageLabel = new QLabel();
+    m_alreadyRunningImageLabel->setAlignment(Qt::AlignCenter);
+    m_alreadyRunningImageLabel->setMinimumHeight(scale(160));
+    m_alreadyRunningImageLabel->setStyleSheet("background-color: transparent;");
+
+    QPixmap warningPixmap(":/resources/multipleInstancesError.png");
+    if (warningPixmap.isNull()) {
+        QPixmap placeholder(scale(120), scale(120));
+        placeholder.fill(Qt::transparent);
+        QPainter painter(&placeholder);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setBrush(QColor(232, 53, 53));
+        painter.setPen(QPen(QColor(212, 43, 43), scale(3)));
+        painter.drawEllipse(placeholder.rect().adjusted(scale(5), scale(5), scale(-10), scale(-10)));
+        painter.setPen(QPen(Qt::white, scale(5)));
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "!");
+        m_alreadyRunningImageLabel->setPixmap(placeholder);
+    }
+    else {
+        m_alreadyRunningImageLabel->setPixmap(warningPixmap.scaled(
+            scale(120), scale(120), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
+
+    m_alreadyRunningTitleLabel = new QLabel("Already Running");
+    m_alreadyRunningTitleLabel->setAlignment(Qt::AlignCenter);
+    m_alreadyRunningTitleLabel->setStyleSheet(QString(
+        "color: rgb(232, 53, 53);"
+        "font-size: %1px;"
+        "font-family: 'Outfit';"
+        "font-weight: bold;"
+        "padding: %2px;"
+    ).arg(scale(18)).arg(scale(5)));
+    m_alreadyRunningTitleLabel->setFont(titleFont);
+
+    m_alreadyRunningMessageLabel = new QLabel(
+        "Callifornia is already running.\n"
+        "Please check your system tray or taskbar.\n\n"
+        "You cannot open multiple instances of the application.");
+    m_alreadyRunningMessageLabel->setAlignment(Qt::AlignCenter);
+    m_alreadyRunningMessageLabel->setWordWrap(true);
+    m_alreadyRunningMessageLabel->setStyleSheet(QString(
+        "color: rgb(100, 100, 100);"
+        "font-size: %1px;"
+        "font-family: 'Outfit';"
+        "line-height: %2px;"
+        "padding: %3px;"
+    ).arg(scale(14)).arg(scale(20)).arg(scale(5)));
+
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setAlignment(Qt::AlignCenter);
+
+    QPushButton* closeButton = new QPushButton("Close");
+    closeButton->setCursor(Qt::PointingHandCursor);
+    closeButton->setFixedWidth(scale(160));
+    closeButton->setMinimumHeight(scale(42));
+    closeButton->setStyleSheet(QString(
+        "QPushButton {"
+        "   background-color: rgba(232, 53, 53, 0.15);"
+        "   color: rgb(232, 53, 53);"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   font-family: 'Outfit';"
+        "   font-size: %4px;"
+        "   font-weight: bold;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(232, 53, 53, 0.25);"
+        "   color: rgb(212, 43, 43);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(232, 53, 53, 0.35);"
+        "}"
+    ).arg(scale(8)).arg(scale(10)).arg(scale(20)).arg(scale(13)));
+    closeButton->setFont(font);
+
+    buttonLayout->addWidget(closeButton);
+
+    contentLayout->addWidget(m_alreadyRunningImageLabel);
+    contentLayout->addWidget(m_alreadyRunningTitleLabel);
+    contentLayout->addWidget(m_alreadyRunningMessageLabel);
+    contentLayout->addStretch(1);
+    contentLayout->addLayout(buttonLayout);
+
+    connect(closeButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
+
+    return dialog;
+}

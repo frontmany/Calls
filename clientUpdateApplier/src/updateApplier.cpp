@@ -1,11 +1,3 @@
-#include <filesystem>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <chrono>
-#include <fstream>
-#include <vector>
-
 #include <QCoreApplication>
 #include <QProcess>
 #include <QThread>
@@ -14,6 +6,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QDebug>
+#include <QStandardPaths>
 
 bool killProcess(int pid) {
     QProcess process;
@@ -21,38 +15,63 @@ bool killProcess(int pid) {
 #ifdef Q_OS_WIN
     process.start("taskkill", { "/PID", QString::number(pid), "/F" });
 #else
+    // Для AppImage используем SIGTERM сначала, потом SIGKILL
     process.start("kill", { QString::number(pid) });
+    if (process.waitForFinished(2000)) {
+        return process.exitCode() == 0;
+    }
+
+    // Если мягкое завершение не сработало, используем SIGKILL
+    process.start("kill", { "-9", QString::number(pid) });
 #endif
 
     if (!process.waitForFinished(5000)) {
+        qWarning() << "Failed to wait for kill process";
         return false;
     }
 
     return process.exitCode() == 0;
 }
 
-void waitForProcessExit(int pid, int maxWaitMs = 5000) {
-    for (int i = 0; i < maxWaitMs / 100; ++i) {
-        QProcess process;
+bool isProcessRunning(int pid) {
+    QProcess process;
 
 #ifdef Q_OS_WIN
-        process.start("tasklist", { "/FI", QString("PID eq %1").arg(pid) });
+    process.start("tasklist", { "/FI", QString("PID eq %1").arg(pid) });
 #else
-        process.start("ps", { "-p", QString::number(pid) });
+    process.start("ps", { "-p", QString::number(pid) });
 #endif
 
-        if (process.waitForFinished(1000)) {
-            QString output = process.readAllStandardOutput();
-            if (!output.contains(QString::number(pid))) {
-                break;
-            }
+    if (!process.waitForFinished(1000)) {
+        return true;
+    }
+
+    QString output = process.readAllStandardOutput();
+    return output.contains(QString::number(pid));
+}
+
+void waitForProcessExit(int pid, int maxWaitMs = 15000) {
+    for (int i = 0; i < maxWaitMs / 100; ++i) {
+        if (!isProcessRunning(pid)) {
+            qDebug() << "Process" << pid << "terminated successfully";
+            break;
         }
         QThread::msleep(100);
     }
 }
 
+bool isAppImage(const QString& appPath) {
+    return appPath.endsWith(".AppImage") || appPath.contains("/tmp/.mount_");
+}
+
+QString getAppImageBasePath(const QString& appPath) {
+    QFileInfo appInfo(appPath);
+    return appInfo.absolutePath();
+}
+
 void copyDirectory(const QDir& source, const QDir& destination) {
     if (!source.exists()) {
+        qWarning() << "Source directory does not exist:" << source.path();
         return;
     }
 
@@ -72,29 +91,26 @@ void copyDirectory(const QDir& source, const QDir& destination) {
             QFile::remove(destFile);
         }
 
-        QFile::copy(sourceFile, destFile);
+        if (QFile::copy(sourceFile, destFile)) {
+            // Устанавливаем права на выполнение для исполняемых файлов
+            QFile::setPermissions(destFile,
+                QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+                QFile::ReadUser | QFile::WriteUser | QFile::ExeUser |
+                QFile::ReadGroup | QFile::ExeGroup |
+                QFile::ReadOther | QFile::ExeOther);
+        }
     }
 
     for (const auto& dir : source.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
         QDir sourceSubDir(source.filePath(dir));
         QDir destSubDir(destination.filePath(dir));
-
-        if (!destSubDir.exists()) {
-            QDir().mkpath(destSubDir.path());
-        }
-
         copyDirectory(sourceSubDir, destSubDir);
     }
 }
 
 void processRemoveJson(const QString& removeJsonPath) {
     QFile file(removeJsonPath);
-    if (!file.exists()) {
-        return;
-    }
-
     if (!file.open(QIODevice::ReadOnly)) {
-        std::cerr << "Failed to open remove.json" << std::endl;
         return;
     }
 
@@ -103,7 +119,6 @@ void processRemoveJson(const QString& removeJsonPath) {
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull() || !doc.isObject()) {
-        std::cerr << "Invalid JSON in remove.json" << std::endl;
         return;
     }
 
@@ -114,75 +129,126 @@ void processRemoveJson(const QString& removeJsonPath) {
             QString filePath = fileValue.toString();
             QFile fileToRemove(filePath);
             if (fileToRemove.exists()) {
-                if (!fileToRemove.remove()) {
-                    std::cerr << "Failed to remove: " << filePath.toStdString() << std::endl;
-                }
-            }
-
-            QDir dirToRemove(filePath);
-            if (dirToRemove.exists()) {
-                dirToRemove.removeRecursively();
+                fileToRemove.remove();
             }
         }
     }
 }
 
 bool launchApplication(const QString& appPath) {
-    return QProcess::startDetached(appPath);
+    QFileInfo appInfo(appPath);
+
+    if (!appInfo.exists()) {
+        qWarning() << "Application not found:" << appPath;
+        return false;
+    }
+
+    // Для AppImage убедимся, что файл исполняемый
+    if (isAppImage(appPath)) {
+        QFile::setPermissions(appPath,
+            QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+            QFile::ReadUser | QFile::WriteUser | QFile::ExeUser |
+            QFile::ReadGroup | QFile::ExeGroup |
+            QFile::ReadOther | QFile::ExeOther);
+    }
+
+    // Запускаем приложение
+    return QProcess::startDetached(appPath, QStringList(), appInfo.absolutePath());
 }
 
 int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
 
     if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <PID> <APP_PATH>" << std::endl;
+        qCritical() << "Usage: update_applier <PID> <APP_PATH>";
         return 1;
     }
 
     int pid = QString(argv[1]).toInt();
     QString appPath = argv[2];
 
+    qDebug() << "Updating application, PID:" << pid << "Path:" << appPath;
+
     QDir tempDirectory("update_temp");
     QDir currentDirectory(".");
     QString removeJsonPath = tempDirectory.filePath("remove.json");
 
     try {
-        std::cout << "Stopping process with PID: " << pid << std::endl;
-        if (!killProcess(pid)) {
-            std::cerr << "Failed to kill process, waiting for exit..." << std::endl;
+        // Для AppImage даем больше времени на завершение
+        if (isAppImage(appPath)) {
+            qDebug() << "Target is AppImage, using extended timeout";
         }
 
-        waitForProcessExit(pid);
+        qInfo() << "Stopping application...";
+        if (!killProcess(pid)) {
+            qWarning() << "Failed to kill process gracefully";
+        }
+
+        waitForProcessExit(pid, isAppImage(appPath) ? 20000 : 15000);
 
         if (tempDirectory.exists()) {
-            std::cout << "Copying files from update_temp to current directory..." << std::endl;
+            qInfo() << "Applying update...";
+
+            // Для AppImage обновляем сам AppImage файл
+            if (isAppImage(appPath)) {
+                QString appImagePath = appPath;
+                if (appPath.contains("/tmp/.mount_")) {
+                    // Если это временный путь AppImage, получаем оригинальный путь
+                    QFileInfo originalAppImage(qgetenv("APPIMAGE"));
+                    if (originalAppImage.exists()) {
+                        appImagePath = originalAppImage.absoluteFilePath();
+                    }
+                }
+
+                // Ищем новый AppImage в update_temp
+                QFileInfoList appImages = tempDirectory.entryInfoList({ "*.AppImage" }, QDir::Files);
+                if (!appImages.empty()) {
+                    QString newAppImage = appImages.first().absoluteFilePath();
+                    QString destAppImage = appImagePath;
+
+                    qDebug() << "Replacing AppImage:" << destAppImage;
+
+                    // Удаляем старый AppImage
+                    if (QFile::exists(destAppImage)) {
+                        QFile::remove(destAppImage);
+                    }
+
+                    // Копируем новый AppImage
+                    if (QFile::copy(newAppImage, destAppImage)) {
+                        QFile::setPermissions(destAppImage,
+                            QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+                            QFile::ReadUser | QFile::WriteUser | QFile::ExeUser);
+                        appPath = destAppImage;
+                    }
+                }
+            }
+
+            // Копируем остальные файлы (если есть)
             copyDirectory(tempDirectory, currentDirectory);
         }
         else {
-            std::cerr << "Update directory not found: update_temp" << std::endl;
+            qCritical() << "Update directory not found";
             return 1;
         }
 
         if (QFile::exists(removeJsonPath)) {
-            std::cout << "Processing remove.json..." << std::endl;
             processRemoveJson(removeJsonPath);
         }
 
-        std::cout << "Cleaning up temporary directory..." << std::endl;
         tempDirectory.removeRecursively();
 
-        std::cout << "Launching application: " << appPath.toStdString() << std::endl;
+        qInfo() << "Launching application...";
         if (!launchApplication(appPath)) {
-            std::cerr << "Failed to launch application: " << appPath.toStdString() << std::endl;
+            qCritical() << "Failed to launch application";
             return 1;
         }
 
-        std::cout << "Update completed successfully!" << std::endl;
+        qInfo() << "Update completed successfully";
         return 0;
 
     }
     catch (const std::exception& e) {
-        std::cerr << "Error during update: " << e.what() << std::endl;
+        qCritical() << "Update error:" << e.what();
         return 1;
     }
 }
