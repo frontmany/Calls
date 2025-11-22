@@ -31,6 +31,8 @@ public:
     void stop();
     bool isRunning() const;
     void forwardDatagramToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length);
+    void sendVoiceToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length);
+    void sendScreenToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length);
     void sendToClient(const asio::ip::udp::endpoint& clientEndpoint, const std::string& data, PacketType type);
     void sendToClient(const asio::ip::udp::endpoint& clientEndpoint, PacketType type);
    

@@ -150,11 +150,22 @@ void ServerPacketSender::sendRawDatagram(const OutgoingPacket& packet)
 
     if (ec && ec != asio::error::operation_aborted)
     {
-        LOG_ERROR("Failed to forward datagram: {}", ec.message());
-
-        if (m_onErrorCallback)
+        if (ec == asio::error::connection_refused || 
+            ec == asio::error::host_unreachable || 
+            ec == asio::error::network_unreachable ||
+            ec == asio::error::no_buffer_space)
         {
-            m_onErrorCallback();
+            LOG_DEBUG("Failed to forward datagram to {}:{} (client may have disconnected): {}", 
+                packet.endpoint.address().to_string(), packet.endpoint.port(), ec.message());
+        }
+        else
+        {
+            LOG_ERROR("Failed to forward datagram: {}", ec.message());
+
+            if (m_onErrorCallback)
+            {
+                m_onErrorCallback();
+            }
         }
     }
 }
@@ -226,14 +237,26 @@ void ServerPacketSender::sendStructuredPacket(const OutgoingPacket& packet)
 
         if (ec && ec != asio::error::operation_aborted)
         {
-            LOG_ERROR("Failed to send packet chunk: {}", ec.message());
-
-            if (m_onErrorCallback)
+            if (ec == asio::error::connection_refused || 
+                ec == asio::error::host_unreachable || 
+                ec == asio::error::network_unreachable ||
+                ec == asio::error::no_buffer_space)
             {
-                m_onErrorCallback();
+                LOG_DEBUG("Failed to send packet chunk to {}:{} (client may have disconnected): {}", 
+                    packet.endpoint.address().to_string(), packet.endpoint.port(), ec.message());
+                break;
             }
+            else
+            {
+                LOG_ERROR("Failed to send packet chunk: {}", ec.message());
 
-            break;
+                if (m_onErrorCallback)
+                {
+                    m_onErrorCallback();
+                }
+
+                break;
+            }
         }
     }
 }

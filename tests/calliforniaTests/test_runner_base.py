@@ -3,10 +3,10 @@ import threading
 import multiprocessing
 import sys
 
-sys.path.append('C:/prj/Callifornia/build/clientPy/Release')
+sys.path.append('C:/prj/Callifornia/out/build/x64-Release/clientPy')
 import callsClientPy
 
-sys.path.append('C:/prj/Callifornia/build/serverPy/Release')
+sys.path.append('C:/prj/Callifornia/out/build/x64-Release/serverPy')
 import callsServerPy
 
 

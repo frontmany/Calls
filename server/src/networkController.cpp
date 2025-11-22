@@ -157,6 +157,14 @@ void NetworkController::forwardDatagramToClient(const asio::ip::udp::endpoint& c
     m_outgoingQueue.push(std::move(packet));
 }
 
+void NetworkController::sendVoiceToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length) {
+    forwardDatagramToClient(clientEndpoint, data, length);
+}
+
+void NetworkController::sendScreenToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length) {
+    forwardDatagramToClient(clientEndpoint, data, length);
+}
+
 void NetworkController::sendDataToClient(const asio::ip::udp::endpoint& clientEndpoint,
     const unsigned char* data, std::size_t length, PacketType type) {
     if (!m_isRunning || !m_socket.is_open()) {
@@ -191,15 +199,28 @@ void NetworkController::startReceive() {
 
 void NetworkController::handleReceive(const asio::error_code& error, std::size_t bytesTransferred) {
     if (error) {
-        if (error != asio::error::operation_aborted) {
-            if (error == asio::error::connection_refused) {
-                startReceive();
-                return;
-            }
-
-            m_onNetworkErrorCallback();
+        if (error == asio::error::operation_aborted) {
             return;
         }
+
+        if (error == asio::error::connection_refused || 
+            error == asio::error::host_unreachable || 
+            error == asio::error::network_unreachable ||
+            error == asio::error::message_size ||
+            error == asio::error::timed_out)
+        {
+            LOG_DEBUG("UDP receive error (normal for UDP): {}", error.message());
+            if (m_isRunning) {
+                startReceive();
+            }
+            return;
+        }
+
+        LOG_WARN("Critical UDP receive error: {}", error.message());
+        if (m_onNetworkErrorCallback) {
+            m_onNetworkErrorCallback();
+        }
+        return;
     }
 
     if (bytesTransferred < HEADER_SIZE) {
