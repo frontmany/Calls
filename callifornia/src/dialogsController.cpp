@@ -4,36 +4,34 @@
 #include "screenPreviewWidget.h"
 
 #include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QGridLayout>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QMovie>
 #include <QWindow>
-#include <QPixmap>
-#include <QGraphicsDropShadowEffect>
-#include <QScreen>
-#include <QGuiApplication>
-#include <QFont>
 #include <QTimer>
 #include <algorithm>
 
 DialogsController::DialogsController(QWidget* parent)
-    : QObject(parent), m_parent(parent), m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
+    : QObject(parent), m_parent(parent),
+    m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
     m_updatingProgressLabel(nullptr), m_updatingLabel(nullptr), m_updatingGifLabel(nullptr),
     m_connectionErrorOverlay(nullptr), m_connectionErrorDialog(nullptr),
     m_screenShareOverlay(nullptr), m_screenShareDialog(nullptr),
     m_screenShareScreensContainer(nullptr), m_screenShareScreensLayout(nullptr),
     m_screenShareButton(nullptr), m_screenShareStatusLabel(nullptr),
-    m_screenShareSelectedIndex(-1)
+    m_screenShareSelectedIndex(-1),
+    m_alreadyRunningOverlay(nullptr), m_alreadyRunningDialog(nullptr),
+    m_alreadyRunningImageLabel(nullptr), m_alreadyRunningTitleLabel(nullptr),
+    m_alreadyRunningMessageLabel(nullptr)
 {
 }
 
 DialogsController::~DialogsController()
 {
-	hideUpdatingDialog();
-	hideUpdatingErrorDialog();
+    hideUpdatingDialog();
+    hideUpdatingErrorDialog();
     hideScreenShareDialog();
+    hideAlreadyRunningDialog();
 }
 
 void DialogsController::showUpdatingDialog()
@@ -306,8 +304,8 @@ QWidget* DialogsController::createScreenShareDialog(OverlayWidget* overlay)
     const QSize overlaySize = overlay->size();
     const int maxW = std::max(0, overlaySize.width() - margin);
     const int maxH = std::max(0, overlaySize.height() - margin);
-    const int desiredMinW = scale(1200);
-    const int desiredMinH = scale(800);
+    const int desiredMinW = extraScale(1200, 3);
+    const int desiredMinH = extraScale(800, 3);
     dialog->setMaximumSize(maxW, maxH);
     dialog->setMinimumWidth(std::min(desiredMinW, maxW));
     dialog->setMinimumHeight(std::min(desiredMinH, maxH));
@@ -481,7 +479,10 @@ QWidget* DialogsController::createScreenShareDialog(OverlayWidget* overlay)
     contentLayout->addLayout(buttonLayout);
 
     connect(m_screenShareButton, &QPushButton::clicked, this, &DialogsController::onScreenShareButtonClicked);
-    connect(closeButton, &QPushButton::clicked, this, &DialogsController::hideScreenShareDialog);
+    connect(closeButton, &QPushButton::clicked, this, [this]() {
+        emit screenShareDialogCancelled();
+        hideScreenShareDialog();
+    });
 
     return dialog;
 }
@@ -729,7 +730,7 @@ QWidget* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
 	contentLayout->addWidget(m_updatingLabel);
 	contentLayout->addLayout(buttonLayout);
 
-    connect(exitButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
+    connect(exitButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
 
 	return dialog;
 }
@@ -863,8 +864,190 @@ QWidget* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 	contentLayout->addWidget(messageLabel);
 	contentLayout->addLayout(buttonLayout);
 
-    connect(closeButton, &QPushButton::clicked, this, &DialogsController::exitButtonClicked);
+    connect(closeButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
 
 	return dialog;
 }
 
+void DialogsController::showAlreadyRunningDialog()
+{
+    if (m_alreadyRunningDialog)
+    {
+        m_alreadyRunningDialog->raise();
+        return;
+    }
+
+    m_alreadyRunningOverlay = new OverlayWidget(m_parent);
+    m_alreadyRunningOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_alreadyRunningOverlay->show();
+    m_alreadyRunningOverlay->raise();
+
+    m_alreadyRunningDialog = createAlreadyRunningDialog(m_alreadyRunningOverlay);
+
+    auto centerDialog = [this]()
+        {
+            if (!m_alreadyRunningDialog || !m_alreadyRunningOverlay)
+                return;
+
+            m_alreadyRunningDialog->adjustSize();
+            QSize dialogSize = m_alreadyRunningDialog->size();
+            QRect overlayRect = m_alreadyRunningOverlay->rect();
+            int x = overlayRect.center().x() - dialogSize.width() / 2;
+            int y = overlayRect.center().y() - dialogSize.height() / 2;
+            m_alreadyRunningDialog->move(x, y);
+            m_alreadyRunningDialog->raise();
+        };
+
+    centerDialog();
+    m_alreadyRunningDialog->show();
+    QTimer::singleShot(0, this, centerDialog);
+    QObject::connect(m_alreadyRunningOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
+}
+
+void DialogsController::hideAlreadyRunningDialog()
+{
+    if (m_alreadyRunningDialog)
+    {
+        m_alreadyRunningDialog->disconnect();
+        m_alreadyRunningDialog->hide();
+        m_alreadyRunningDialog->deleteLater();
+        m_alreadyRunningDialog = nullptr;
+    }
+
+    if (m_alreadyRunningOverlay)
+    {
+        m_alreadyRunningOverlay->close();
+        m_alreadyRunningOverlay->deleteLater();
+        m_alreadyRunningOverlay = nullptr;
+    }
+
+    m_alreadyRunningImageLabel = nullptr;
+    m_alreadyRunningTitleLabel = nullptr;
+    m_alreadyRunningMessageLabel = nullptr;
+}
+
+QWidget* DialogsController::createAlreadyRunningDialog(OverlayWidget* overlay)
+{
+    QFont font("Outfit", scale(14), QFont::Normal);
+    QFont titleFont("Outfit", scale(18), QFont::Bold);
+
+    QWidget* dialog = new QWidget(overlay);
+    dialog->setMinimumWidth(scale(400));
+    dialog->setMinimumHeight(scale(320));
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
+
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(scale(30));
+    shadowEffect->setXOffset(0);
+    shadowEffect->setYOffset(0);
+    shadowEffect->setColor(QColor(0, 0, 0, 150));
+
+    QWidget* mainWidget = new QWidget(dialog);
+    mainWidget->setGraphicsEffect(shadowEffect);
+    mainWidget->setObjectName("mainWidget");
+
+    QString mainWidgetStyle = QString(
+        "QWidget#mainWidget {"
+        "   background-color: rgb(255, 240, 240);"
+        "   border-radius: %1px;"
+        "   border: %2px solid rgb(210, 210, 210);"
+        "}")
+        .arg(scale(16))
+        .arg(scale(1));
+    mainWidget->setStyleSheet(mainWidgetStyle);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+    mainLayout->addWidget(mainWidget);
+
+    QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
+    contentLayout->setContentsMargins(scale(32), scale(32), scale(32), scale(32));
+    contentLayout->setSpacing(scale(20));
+
+    m_alreadyRunningImageLabel = new QLabel();
+    m_alreadyRunningImageLabel->setAlignment(Qt::AlignCenter);
+    m_alreadyRunningImageLabel->setMinimumHeight(scale(160));
+    m_alreadyRunningImageLabel->setStyleSheet("background-color: transparent;");
+
+    QPixmap warningPixmap(":/resources/multipleInstancesError.png");
+    if (warningPixmap.isNull()) {
+        QPixmap placeholder(scale(120), scale(120));
+        placeholder.fill(Qt::transparent);
+        QPainter painter(&placeholder);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setBrush(QColor(232, 53, 53));
+        painter.setPen(QPen(QColor(212, 43, 43), scale(3)));
+        painter.drawEllipse(placeholder.rect().adjusted(scale(5), scale(5), scale(-10), scale(-10)));
+        painter.setPen(QPen(Qt::white, scale(5)));
+        painter.drawText(placeholder.rect(), Qt::AlignCenter, "!");
+        m_alreadyRunningImageLabel->setPixmap(placeholder);
+    }
+    else {
+        m_alreadyRunningImageLabel->setPixmap(warningPixmap.scaled(
+            scale(120), scale(120), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
+
+    m_alreadyRunningTitleLabel = new QLabel("Already Running");
+    m_alreadyRunningTitleLabel->setAlignment(Qt::AlignCenter);
+    m_alreadyRunningTitleLabel->setStyleSheet(QString(
+        "color: rgb(232, 53, 53);"
+        "font-size: %1px;"
+        "font-family: 'Outfit';"
+        "font-weight: bold;"
+        "padding: %2px;"
+    ).arg(scale(18)).arg(scale(5)));
+    m_alreadyRunningTitleLabel->setFont(titleFont);
+
+    m_alreadyRunningMessageLabel = new QLabel(
+        "Callifornia is already running.\n"
+        "Please check your system tray or taskbar.\n\n"
+        "You cannot open multiple instances of the application.");
+    m_alreadyRunningMessageLabel->setAlignment(Qt::AlignCenter);
+    m_alreadyRunningMessageLabel->setWordWrap(true);
+    m_alreadyRunningMessageLabel->setStyleSheet(QString(
+        "color: rgb(100, 100, 100);"
+        "font-size: %1px;"
+        "font-family: 'Outfit';"
+        "line-height: %2px;"
+        "padding: %3px;"
+    ).arg(scale(14)).arg(scale(20)).arg(scale(5)));
+
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setAlignment(Qt::AlignCenter);
+
+    QPushButton* closeButton = new QPushButton("Close");
+    closeButton->setCursor(Qt::PointingHandCursor);
+    closeButton->setFixedWidth(scale(160));
+    closeButton->setMinimumHeight(scale(42));
+    closeButton->setStyleSheet(QString(
+        "QPushButton {"
+        "   background-color: rgba(232, 53, 53, 0.15);"
+        "   color: rgb(232, 53, 53);"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   font-family: 'Outfit';"
+        "   font-size: %4px;"
+        "   font-weight: bold;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(232, 53, 53, 0.25);"
+        "   color: rgb(212, 43, 43);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(232, 53, 53, 0.35);"
+        "}"
+    ).arg(scale(8)).arg(scale(10)).arg(scale(20)).arg(scale(13)));
+    closeButton->setFont(font);
+
+    buttonLayout->addWidget(closeButton);
+
+    contentLayout->addWidget(m_alreadyRunningImageLabel);
+    contentLayout->addWidget(m_alreadyRunningTitleLabel);
+    contentLayout->addWidget(m_alreadyRunningMessageLabel);
+    contentLayout->addStretch(1);
+    contentLayout->addLayout(buttonLayout);
+
+    connect(closeButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
+
+    return dialog;
+}

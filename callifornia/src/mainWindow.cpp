@@ -1,22 +1,14 @@
 #include "mainWindow.h"
-#include <QStackedLayout>
-#include <QHBoxLayout>
 #include <QFontDatabase>
 #include <QApplication>
 #include <QSoundEffect>
-#include <QFileInfo>
-#include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QStatusBar>
-#include <QEvent>
-
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
-#include "overlayWidget.h"
 #include "callWidget.h"
 #include "dialogsController.h"
 #include "screenCaptureController.h"
+#include "prerequisites.h"
 
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
@@ -26,6 +18,41 @@ MainWindow::~MainWindow() {
     if (m_ringtonePlayer) {
         m_ringtonePlayer->stop();
     }
+}
+
+void MainWindow::executePrerequisites() {
+    makeRemainingReplacements();
+
+    // 192.168.1.44 local machine 
+    // 192.168.1.48 server internal ip
+    // 92.255.165.77 server global ip
+
+    m_serverHost = getServerHost();
+    m_updaterHost = getUpdaterHost();
+    m_port = getPort();
+
+    if (m_serverHost.isEmpty())
+        m_serverHost = "92.255.165.77";
+
+    if (m_updaterHost.isEmpty())
+        m_updaterHost = "92.255.165.77";
+
+    if (m_port.isEmpty())
+        m_port = "8081";
+
+    QTimer::singleShot(0, [this]() 
+    {
+        bool multipleInstancesAllowed = isMultiInstanceAllowed();
+        bool alreadyRunning = isAlreadyRunning();
+
+        if (alreadyRunning && !multipleInstancesAllowed)
+            m_dialogsController->showAlreadyRunningDialog();
+        else {
+            m_started = true;
+            markAsRunning(true);
+            checkUpdates();
+        }
+    });
 }
 
 void MainWindow::init() {
@@ -50,20 +77,16 @@ void MainWindow::init() {
     showMaximized();
 }
 
-void MainWindow::connectCallifornia(const std::string& host, const std::string& port) {
-    LOG_INFO("Connecting to Callifornia server: {}:{}", host, port);
+void MainWindow::checkUpdates() {
+    LOG_INFO("Connecting to Callifornia server: {}:{}", m_serverHost.toStdString(), m_port.toStdString());
     
     std::unique_ptr<UpdaterCallbacksHandler> updaterHandler = std::make_unique<UpdaterCallbacksHandler>(this);
     updater::init(std::move(updaterHandler));
-    updater::connect(host, port);
+    updater::connect(m_updaterHost.toStdString(), m_port.toStdString());
     
     std::string currentVersion = parseVersionFromConfig();
     LOG_INFO("Current application version: {}", currentVersion);
     updater::checkUpdates(currentVersion);
-
-    std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
-    calls::init(host, port, std::move(callsClientHandler));
-    calls::run();
 }
 
 void MainWindow::playRingtone(const QUrl& ringtoneUrl) {
@@ -236,6 +259,12 @@ void MainWindow::onUpdaterCheckResult(updater::UpdatesCheckResult checkResult) {
 
         if (!calls::isNetworkError()) {
             m_authorizationWidget->setAuthorizationDisabled(false);
+
+            if (!calls::isRunning()) {
+                std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
+                calls::init(m_serverHost.toStdString(), m_port.toStdString(), std::move(callsClientHandler));
+                calls::run();
+            }
         }
     }
     else {
@@ -378,8 +407,9 @@ void MainWindow::setupUI() {
     connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &MainWindow::onScreenCaptured);
 
     m_dialogsController = new DialogsController(this);
-    connect(m_dialogsController, &DialogsController::exitButtonClicked, this, &MainWindow::close);
+    connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
     connect(m_dialogsController, &DialogsController::screenSelected, this, &MainWindow::onScreenSelected);
+    connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, m_callWidget, &CallWidget::resetScreenShareButton);
 
     QTimer::singleShot(2000, [this]() {
         if (updater::isAwaitingServerResponse()) {
@@ -402,6 +432,9 @@ void MainWindow::setupUI() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (m_started)
+        markAsRunning(false);
+
     calls::stop();
     updater::disconnect();
     event->accept();
@@ -946,7 +979,7 @@ void MainWindow::onConnectionRestored() {
 
     if (!updater::isConnected()) {
         LOG_INFO("Reconnecting updater");
-        updater::connect(updater::getServerHost(), updater::getServerPort());
+        updater::connect(m_updaterHost.toStdString(), m_port.toStdString());
         updater::checkUpdates(parseVersionFromConfig());
     }
 }

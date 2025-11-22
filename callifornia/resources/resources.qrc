@@ -42,5 +42,6 @@
 	 <file>mute-microphoneHover.png</file>
 	 <file>mute-enabled-microphone.png</file>
 	 <file>mute-enabled-microphoneHover.png</file>
+	 <file>multipleInstancesError.png</file>
     </qresource>
 </RCC>

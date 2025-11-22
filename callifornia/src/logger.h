@@ -1,10 +1,12 @@
 #pragma once
 
+#include <memory>
+#include <iostream>
+#include <filesystem>
+
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <memory>
-#include <iostream>
 
 inline std::shared_ptr<spdlog::logger> getLogger()
 {
@@ -14,6 +16,8 @@ inline std::shared_ptr<spdlog::logger> getLogger()
 	{
 		try
 		{
+			std::filesystem::create_directories("logs");
+
 			auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 			console_sink->set_level(spdlog::level::debug);
 
@@ -33,6 +37,10 @@ inline std::shared_ptr<spdlog::logger> getLogger()
 		{
 			std::cerr << "Log initialization failed: " << ex.what() << std::endl;
 		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << "Failed to create logs directory: " << ex.what() << std::endl;
+		}
 	}
 	
 	return logger;
@@ -43,32 +51,4 @@ inline std::shared_ptr<spdlog::logger> getLogger()
 #define LOG_INFO(...)  if (auto logger = getLogger()) { logger->info(__VA_ARGS__); }
 #define LOG_WARN(...)  if (auto logger = getLogger()) { logger->warn(__VA_ARGS__); }
 #define LOG_ERROR(...) if (auto logger = getLogger()) { logger->error(__VA_ARGS__); }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

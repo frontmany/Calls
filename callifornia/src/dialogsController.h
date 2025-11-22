@@ -1,8 +1,5 @@
 #pragma once
 #include <QLabel>
-#include <QList>
-#include <QPointer>
-#include <QWidget>
 
 class OverlayWidget;
 class QGridLayout;
@@ -27,18 +24,23 @@ public:
 	void showConnectionErrorDialog();
 	void hideUpdatingErrorDialog();
 
+    void showAlreadyRunningDialog();
+    void hideAlreadyRunningDialog();
+
     void updateLoadingProgress(double progress);
 	void swapUpdatingToRestarting();
 	void swapUpdatingToUpToDate();
 
 signals:
-	void exitButtonClicked();
+	void closeRequested();
     void screenSelected(int screenIndex);
+    void screenShareDialogCancelled();
 
 private slots:
     void onScreenShareButtonClicked();
 
 private:
+    QWidget* createAlreadyRunningDialog(OverlayWidget* overlay);
     QWidget* createUpdatingDialog(OverlayWidget* overlay);
     QWidget* createConnectionErrorDialog(OverlayWidget* overlay);
     QWidget* createScreenShareDialog(OverlayWidget* overlay);
@@ -67,5 +69,11 @@ private:
     QList<ScreenPreviewWidget*> m_screenSharePreviewWidgets;
     QList<QScreen*> m_screenShareScreens;
     int m_screenShareSelectedIndex;
+
+    OverlayWidget* m_alreadyRunningOverlay;
+    QWidget* m_alreadyRunningDialog;
+    QLabel* m_alreadyRunningImageLabel;
+    QLabel* m_alreadyRunningTitleLabel;
+    QLabel* m_alreadyRunningMessageLabel;
 };
 

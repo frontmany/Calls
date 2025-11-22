@@ -106,10 +106,10 @@ void AuthorizationWidget::setupUI() {
     m_nicknameEdit->setMinimumHeight(scale(40));
     m_nicknameEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_nicknameEdit->setFont(subTitleFont);
+    m_nicknameEdit->setAttribute(Qt::WA_InputMethodEnabled, true);
 
-    // Set validator for nickname
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
-        QRegularExpression("^[a-zA-Z0-9_]+$"), this);
+        QRegularExpression("[\\p{L}0-9_]{3,15}"), this);
     m_nicknameEdit->setValidator(validator);
 
     // Authorize button
@@ -179,7 +179,7 @@ bool AuthorizationWidget::validateNickname(const QString& nickname) {
     if (nickname.isEmpty()) {
         return false;
     }
-    QRegularExpression regex("^[a-zA-Z0-9_]+$");
+    QRegularExpression regex("[\\p{L}0-9_]{3,15}");
     return regex.match(nickname).hasMatch();
 }
 
@@ -194,15 +194,15 @@ void AuthorizationWidget::startBlurAnimation() {
 void AuthorizationWidget::onAuthorizationClicked() {
     QString nickname = m_nicknameEdit->text().trimmed();
 
-    if (validateNickname(nickname)) {
-        m_nicknameEdit->setDisabled(true);
-        m_authorizeButton->setDisabled(true);
-        clearErrorMessage();
-        emit authorizationButtonClicked(nickname);
-    }
-    else {
+    if (nickname.isEmpty()) {
         setErrorMessage("field cannot be empty");
+        return;
     }
+    
+    m_nicknameEdit->setDisabled(true);
+    m_authorizeButton->setDisabled(true);
+    clearErrorMessage();
+    emit authorizationButtonClicked(nickname);
 }
 
 void AuthorizationWidget::onUpdateAvailableClicked() {
@@ -210,9 +210,7 @@ void AuthorizationWidget::onUpdateAvailableClicked() {
 }
 
 void AuthorizationWidget::onTextChanged(const QString& text) {
-    if (validateNickname(text)) {
-        clearErrorMessage();
-    }
+    clearErrorMessage();
 }
 
 void AuthorizationWidget::setErrorMessage(const QString& errorText) {
@@ -227,7 +225,7 @@ void AuthorizationWidget::setAuthorizationDisabled(bool disabled) {
     m_nicknameEdit->setDisabled(disabled);
     m_authorizeButton->setDisabled(disabled);
 
-    // Добавляем визуальную индикацию отключенного состояния
+    // Р”РѕР±Р°РІР»СЏРµРј РІРёР·СѓР°Р»СЊРЅСѓСЋ РёРЅРґРёРєР°С†РёСЋ РѕС‚РєР»СЋС‡РµРЅРЅРѕРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ
     if (disabled) {
         m_nicknameEdit->setStyleSheet(
             "QLineEdit {"
@@ -255,7 +253,7 @@ void AuthorizationWidget::setAuthorizationDisabled(bool disabled) {
         );
     }
     else {
-        // Восстанавливаем обычные стили
+        // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РѕР±С‹С‡РЅС‹Рµ СЃС‚РёР»Рё
         m_nicknameEdit->setStyleSheet(StyleAuthorizationWidget::glassLineEditStyle());
         m_authorizeButton->setStyleSheet(StyleAuthorizationWidget::glassButtonStyle());
     }
@@ -464,7 +462,7 @@ QString StyleAuthorizationWidget::notificationGreenLabelStyle() {
 
 QString StyleAuthorizationWidget::notificationLilacLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(200, 180, 220, 80);"  // Нежный сиреневый для checking updates
+        "   background-color: rgba(200, 180, 220, 80);"  // РќРµР¶РЅС‹Р№ СЃРёСЂРµРЅРµРІС‹Р№ РґР»СЏ checking updates
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -474,7 +472,7 @@ QString StyleAuthorizationWidget::notificationLilacLabelStyle() {
 
 QString StyleAuthorizationWidget::notificationUpdateAvailableStyle() {
     return QString("QWidget {"
-        "   background-color: transparent;"  // Прозрачный фон, так как фон задан кнопке
+        "   background-color: transparent;"  // РџСЂРѕР·СЂР°С‡РЅС‹Р№ С„РѕРЅ, С‚Р°Рє РєР°Рє С„РѕРЅ Р·Р°РґР°РЅ РєРЅРѕРїРєРµ
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"

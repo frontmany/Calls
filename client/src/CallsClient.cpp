@@ -80,10 +80,20 @@ bool CallsClient::init(
 void CallsClient::run() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
+    if (m_running) {
+        LOG_WARN("Calls client is already running");
+        return;
+    }
+
     LOG_INFO("Starting calls client");
     m_running = true;
     m_keysManager->generateKeys();
     LOG_DEBUG("RSA keys generated");
+    
+    if (m_callbacksQueueProcessingThread.joinable()) {
+        m_callbacksQueueProcessingThread.join();
+    }
+    
     m_callbacksQueueProcessingThread = std::thread(&CallsClient::processQueue, this);
     m_networkController->run();
     m_pingManager->start();
@@ -113,11 +123,11 @@ void CallsClient::processQueue() {
             }
         }
 
-        if (callback) {
+        if (callback) 
             callback();
-        }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        if (m_state != State::BUSY) 
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 

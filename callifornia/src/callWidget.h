@@ -73,6 +73,7 @@ public:
     void showFrame(const QPixmap& frame);
     void disableStartScreenShareButton(bool disable);
     void setFullscreenButtonState(bool fullscreen);
+    void resetScreenShareButton();
 
 signals:
     void hangupClicked();

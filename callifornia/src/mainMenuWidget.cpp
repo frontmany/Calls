@@ -479,7 +479,7 @@ void MainMenuWidget::setupUI() {
 
     // Set validator for nickname
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
-        QRegularExpression("^[a-zA-Z0-9_]+$"), this);
+        QRegularExpression("[\\p{L}0-9_]{3,15}"), this);
     m_friendNicknameEdit->setValidator(validator);
 
     m_callButton = new QPushButton("Make Call", m_mainContainer);

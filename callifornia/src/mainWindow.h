@@ -33,7 +33,8 @@ public:
     MainWindow() = default;
     ~MainWindow();
     void init();
-    void connectCallifornia(const std::string& host, const std::string& port);
+    void executePrerequisites();
+    void checkUpdates();
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -111,6 +112,8 @@ private:
     void showTransientStatusMessage(const QString& message, int durationMs);
 
 private:
+    bool m_started = false;
+
     QMediaPlayer* m_ringtonePlayer ;
     QAudioOutput* m_audioOutput;
 
@@ -123,4 +126,8 @@ private:
     CallWidget* m_callWidget;
     DialogsController* m_dialogsController;
     ScreenCaptureController* m_screenCaptureController;
+
+    QString m_serverHost;
+    QString m_updaterHost;
+    QString m_port;
 };

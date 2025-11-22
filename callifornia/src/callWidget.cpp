@@ -751,7 +751,7 @@ void CallWidget::applyStandardSize() {
 }
 
 void CallWidget::applyDecreasedSize() {
-    QSize targetSize = scaledScreenSize16by9(1280);
+    QSize targetSize = scaledScreenSize16by9(scale(1280));
 
     m_screenWidget->setFixedSize(targetSize);
     m_screenWidget->updateGeometry();
@@ -824,6 +824,12 @@ void CallWidget::setFullscreenButtonState(bool fullscreen)
     if (m_fullscreenButton && m_fullscreenButton->isToggled() != fullscreen)
     {
         m_fullscreenButton->setToggled(fullscreen);
+    }
+}
+
+void CallWidget::resetScreenShareButton() {
+    if (m_screenShareButton->isToggled()) {
+        m_screenShareButton->setToggled(false);
     }
 }
 
