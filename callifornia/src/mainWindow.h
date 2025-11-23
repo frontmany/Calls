@@ -112,8 +112,6 @@ private:
     void showTransientStatusMessage(const QString& message, int durationMs);
 
 private:
-    bool m_started = false;
-
     QMediaPlayer* m_ringtonePlayer ;
     QAudioOutput* m_audioOutput;
 

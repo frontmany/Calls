@@ -40,16 +40,14 @@ void MainWindow::executePrerequisites() {
     if (m_port.isEmpty())
         m_port = "8081";
 
-    QTimer::singleShot(0, [this]() 
+    QTimer::singleShot(0, [this]()
     {
+        bool firstInstance = isFirstInstance();
         bool multipleInstancesAllowed = isMultiInstanceAllowed();
-        bool alreadyRunning = isAlreadyRunning();
 
-        if (alreadyRunning && !multipleInstancesAllowed)
+        if (!firstInstance && !multipleInstancesAllowed)
             m_dialogsController->showAlreadyRunningDialog();
         else {
-            m_started = true;
-            markAsRunning(true);
             checkUpdates();
         }
     });
@@ -432,9 +430,6 @@ void MainWindow::setupUI() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    if (m_started)
-        markAsRunning(false);
-
     calls::stop();
     updater::disconnect();
     event->accept();
