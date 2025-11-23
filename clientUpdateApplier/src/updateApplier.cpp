@@ -6,8 +6,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QDebug>
-#include <QStandardPaths>
 
 bool killProcess(int pid) {
     QProcess process;
@@ -15,13 +13,11 @@ bool killProcess(int pid) {
 #ifdef Q_OS_WIN
     process.start("taskkill", { "/PID", QString::number(pid), "/F" });
 #else
-    // Для AppImage используем SIGTERM сначала, потом SIGKILL
     process.start("kill", { QString::number(pid) });
     if (process.waitForFinished(2000)) {
         return process.exitCode() == 0;
     }
 
-    // Если мягкое завершение не сработало, используем SIGKILL
     process.start("kill", { "-9", QString::number(pid) });
 #endif
 
@@ -92,7 +88,6 @@ void copyDirectory(const QDir& source, const QDir& destination) {
         }
 
         if (QFile::copy(sourceFile, destFile)) {
-            // Устанавливаем права на выполнение для исполняемых файлов
             QFile::setPermissions(destFile,
                 QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
                 QFile::ReadUser | QFile::WriteUser | QFile::ExeUser |
@@ -143,7 +138,6 @@ bool launchApplication(const QString& appPath) {
         return false;
     }
 
-    // Для AppImage убедимся, что файл исполняемый
     if (isAppImage(appPath)) {
         QFile::setPermissions(appPath,
             QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
@@ -152,7 +146,6 @@ bool launchApplication(const QString& appPath) {
             QFile::ReadOther | QFile::ExeOther);
     }
 
-    // Запускаем приложение
     return QProcess::startDetached(appPath, QStringList(), appInfo.absolutePath());
 }
 
@@ -174,7 +167,6 @@ int main(int argc, char* argv[]) {
     QString removeJsonPath = tempDirectory.filePath("remove.json");
 
     try {
-        // Для AppImage даем больше времени на завершение
         if (isAppImage(appPath)) {
             qDebug() << "Target is AppImage, using extended timeout";
         }
@@ -189,18 +181,15 @@ int main(int argc, char* argv[]) {
         if (tempDirectory.exists()) {
             qInfo() << "Applying update...";
 
-            // Для AppImage обновляем сам AppImage файл
             if (isAppImage(appPath)) {
                 QString appImagePath = appPath;
                 if (appPath.contains("/tmp/.mount_")) {
-                    // Если это временный путь AppImage, получаем оригинальный путь
                     QFileInfo originalAppImage(qgetenv("APPIMAGE"));
                     if (originalAppImage.exists()) {
                         appImagePath = originalAppImage.absoluteFilePath();
                     }
                 }
 
-                // Ищем новый AppImage в update_temp
                 QFileInfoList appImages = tempDirectory.entryInfoList({ "*.AppImage" }, QDir::Files);
                 if (!appImages.empty()) {
                     QString newAppImage = appImages.first().absoluteFilePath();
@@ -208,12 +197,10 @@ int main(int argc, char* argv[]) {
 
                     qDebug() << "Replacing AppImage:" << destAppImage;
 
-                    // Удаляем старый AppImage
                     if (QFile::exists(destAppImage)) {
                         QFile::remove(destAppImage);
                     }
 
-                    // Копируем новый AppImage
                     if (QFile::copy(newAppImage, destAppImage)) {
                         QFile::setPermissions(destAppImage,
                             QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
@@ -223,7 +210,6 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            // Копируем остальные файлы (если есть)
             copyDirectory(tempDirectory, currentDirectory);
         }
         else {

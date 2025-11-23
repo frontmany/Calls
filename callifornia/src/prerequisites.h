@@ -2,6 +2,7 @@
 
 #include <QFile>
 #include <QJsonDocument>
+#include <QSharedMemory>
 #include <QJsonObject>
 
 #include "logger.h"
@@ -242,78 +243,16 @@ static bool isMultiInstanceAllowed(const QString& configPath = "config.json") {
     }
 }
 
-static bool isAlreadyRunning() {
-    const QString filename = "running.json";
+inline static bool isFirstInstance() {
+    static QSharedMemory sharedMemory("callifornia");
 
-    if (!QFile::exists(filename)) {
+    if (sharedMemory.attach()) {
         return false;
     }
 
-    QFile file(filename);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!sharedMemory.create(1)) {
         return false;
     }
 
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
-
-    if (parseError.error != QJsonParseError::NoError) {
-        return false;
-    }
-
-    if (!doc.isObject()) {
-        return false;
-    }
-
-    QJsonObject jsonObj = doc.object();
-    int runningCount = jsonObj["running"].toInt(0);
-
-    return (runningCount > 0);
-}
-
-static void markAsRunning(bool running) {
-    const QString filename = "running.json";
-    int currentCount = 0;
-
-    if (QFile::exists(filename)) {
-        QFile readFile(filename);
-        if (readFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QByteArray jsonData = readFile.readAll();
-            readFile.close();
-
-            QJsonParseError parseError;
-            QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
-
-            if (parseError.error == QJsonParseError::NoError && doc.isObject()) {
-                QJsonObject jsonObj = doc.object();
-                currentCount = jsonObj["running"].toInt(0);
-            }
-        }
-    }
-
-    if (running) {
-        currentCount++;
-    }
-    else {
-        if (currentCount > 0) {
-            currentCount--;
-        }
-    }
-
-    QJsonObject jsonObj;
-    jsonObj["running"] = currentCount;
-
-    QJsonDocument doc(jsonObj);
-
-    QFile file(filename);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to write running.json file");
-        return;
-    }
-
-    file.write(doc.toJson());
-    file.close();
+    return true;
 }
