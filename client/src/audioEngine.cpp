@@ -1,5 +1,6 @@
 #include "audioEngine.h"
 #include <iostream>
+#include <cmath>
 #include <cstring>
 #include <string>
 

@@ -21,6 +21,8 @@ source_group("Source Files" FILES ${SOURCES})
 
 if(WIN32)
     set(CMAKE_PREFIX_PATH "C:/Qt/6.9.3/msvc2022_64" CACHE PATH "Qt6 path" FORCE)
+else()
+    set(CMAKE_PREFIX_PATH "/home/vboxuser/Qt/6.9.3/gcc_64" CACHE PATH "Qt6 path" FORCE)
 endif()
 
 find_package(Qt6 COMPONENTS Widgets Core Multimedia REQUIRED)
