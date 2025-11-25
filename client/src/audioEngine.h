@@ -47,6 +47,7 @@ public:
 
 private:
     AudioEngine::InitializationStatus init();
+    float softClip(float x);
     void processInputAudio(const float* input, unsigned long frameCount);
     void processOutputAudio(float* output, unsigned long frameCount);
 
@@ -69,8 +70,8 @@ private:
     std::mutex m_inputAudioMutex;
     std::function<void(const unsigned char* data, int length)> m_encodedInputCallback;
 
-    float m_inputVolume = 0.8f;
-    float m_outputVolume = 0.8f;
+    float m_inputVolume = 1.0f;
+    float m_outputVolume = 1.0f;
     mutable std::mutex m_volumeMutex;
 
     int m_sampleRate = 48000;

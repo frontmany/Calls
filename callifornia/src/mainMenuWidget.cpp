@@ -1,12 +1,9 @@
 #include "mainMenuWidget.h"
 
 #include <QResizeEvent>
-#include <QPainter>
 #include <QPainterPath>
-#include <QFontDatabase>
-#include <QApplication>
-#include <QGraphicsDropShadowEffect>
 #include <QRegularExpressionValidator>
+#include <QShortcut>
 
 #include "buttons.h"
 #include "scaleFactor.h"
@@ -474,7 +471,7 @@ void MainMenuWidget::setupUI() {
     m_friendNicknameEdit->setFixedHeight(scale(50));
     m_friendNicknameEdit->setPlaceholderText("Enter friend's nickname");
     m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
-    QFont friendNicknameFont("Outfit", scale(12), QFont::Light);
+    QFont friendNicknameFont("Segoe UI", scale(12), QFont::Medium);
     m_friendNicknameEdit->setFont(friendNicknameFont);
 
     // Set validator for nickname
@@ -566,13 +563,18 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
     connect(m_stopCallingButton, &QPushButton::clicked, this, &MainMenuWidget::onStopCallingButtonClicked);
     connect(m_friendNicknameEdit, &QLineEdit::textChanged, this, &MainMenuWidget::clearErrorMessage);
-    connect(m_friendNicknameEdit, &QLineEdit::returnPressed, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsPanel, &SettingsPanel::refreshAudioDevicesButtonClicked, [this]() {emit refreshAudioDevicesButtonClicked(); });
     connect(m_settingsPanel, &SettingsPanel::inputVolumeChanged, [this](int newVolume) {emit inputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
     connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableNotification(); });
+
+    QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
+    QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
+
+    connect(enterShortcut, &QShortcut::activated, this, &MainMenuWidget::onCallButtonClicked);
+    connect(returnShortcut, &QShortcut::activated, this, &MainMenuWidget::onCallButtonClicked);
 }
 
 void MainMenuWidget::setupAnimations() {

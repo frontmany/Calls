@@ -207,6 +207,11 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_callTimer = new QTimer(this);
     m_callDuration = new QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &CallWidget::updateCallTimer);
+
+    m_exitFullscreenHideTimer = new QTimer(this);
+    m_exitFullscreenHideTimer->setSingleShot(true);
+    m_exitFullscreenHideTimer->setInterval(3000);
+    connect(m_exitFullscreenHideTimer, &QTimer::timeout, this, &CallWidget::onExitFullscreenHideTimerTimeout);
 }
 
 void CallWidget::setupUI()
@@ -398,8 +403,8 @@ void CallWidget::setupUI()
     m_micLabel->setCursor(Qt::PointingHandCursor);
 
     m_micVolumeSlider = new QSlider(Qt::Horizontal, m_micSliderWidget);
-    m_micVolumeSlider->setRange(0, 100);
-    m_micVolumeSlider->setValue(80);
+    m_micVolumeSlider->setRange(0, 200);
+    m_micVolumeSlider->setValue(100);
     m_micVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
     m_micVolumeSlider->setToolTip("Adjust microphone volume");
     m_micVolumeSlider->setTracking(false);
@@ -433,8 +438,8 @@ void CallWidget::setupUI()
     m_speakerLabel->setCursor(Qt::PointingHandCursor);
 
     m_speakerVolumeSlider = new QSlider(Qt::Horizontal, m_speakerSliderWidget);
-    m_speakerVolumeSlider->setRange(0, 100);
-    m_speakerVolumeSlider->setValue(80);
+    m_speakerVolumeSlider->setRange(0, 200);
+    m_speakerVolumeSlider->setValue(100);
     m_speakerVolumeSlider->setStyleSheet(StyleCallWidget::volumeSliderStyle());
     m_speakerVolumeSlider->setToolTip("Adjust speaker volume");
     m_speakerVolumeSlider->setTracking(false);
@@ -473,8 +478,8 @@ void CallWidget::setupUI()
     connect(m_micLabel, &ToggleButtonIcon::toggled, this, &CallWidget::onMicLabelToggled);
     connect(m_speakerLabel, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerLabelToggled);
 
-    connect(m_micVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onInputVolumeChanged);
-    connect(m_speakerVolumeSlider, &QSlider::sliderReleased, this, &CallWidget::onOutputVolumeChanged);
+    connect(m_micVolumeSlider, &QSlider::valueChanged, this, &CallWidget::onInputVolumeChanged);
+    connect(m_speakerVolumeSlider, &QSlider::valueChanged, this, &CallWidget::onOutputVolumeChanged);
 
     updateTopSpacerHeight();
 }
@@ -526,9 +531,19 @@ void CallWidget::resizeEvent(QResizeEvent* event)
     updateIncomingCallWidths();
     updateExitFullscreenButtonPosition();
 
-    if (m_screenFullscreenActive)
-    {
-        applyIncreasedSize();
+    if (m_screenWidget && m_screenWidget->isVisible()) {
+        if (m_screenFullscreenActive)
+        {
+            applyIncreasedSize();
+        }
+        else if (m_slidersVisible)
+        {
+            applyDecreasedSize();
+        }
+        else
+        {
+            applyStandardSize();
+        }
     }
 }
 
@@ -604,13 +619,11 @@ void CallWidget::onSpeakerClicked()
     }
 }
 
-void CallWidget::onInputVolumeChanged() {
-    int volume = m_micVolumeSlider->value();
+void CallWidget::onInputVolumeChanged(int volume) {
     emit inputVolumeChanged(volume);
 }
 
-void CallWidget::onOutputVolumeChanged() {
-    int volume = m_speakerVolumeSlider->value();
+void CallWidget::onOutputVolumeChanged(int volume) {
     emit outputVolumeChanged(volume);
 }
 
@@ -720,6 +733,7 @@ void CallWidget::setShowingDisplayActive(bool active, bool viewingRemoteDisplay)
         }
     }
 
+    applyStandardSize();
     updateIncomingCallsVisibility();
     updateTopSpacerHeight();
     refreshMainLayoutGeometry();
@@ -745,7 +759,16 @@ QPixmap CallWidget::cropToHorizontal(const QPixmap& pixmap)
 }
 
 void CallWidget::applyStandardSize() {
-    QSize targetSize = scaledScreenSize16by9(1440);
+    QSize targetSize;
+
+    QSize availableSize = size();
+    if (availableSize.width() > availableSize.height()) {
+        targetSize = scaledScreenSize16by9(1440);
+    }
+    else {
+        targetSize = scaledScreenSize16by9(1120);
+    }
+
     m_screenWidget->setFixedSize(targetSize);
     m_screenWidget->updateGeometry();
 }
@@ -759,10 +782,7 @@ void CallWidget::applyDecreasedSize() {
 
 void CallWidget::applyIncreasedSize()
 {
-    if (!m_screenWidget)
-    {
-        return;
-    }
+    if (!m_screenWidget) return;
 
     QSize availableSize = size();
 
@@ -863,6 +883,11 @@ void CallWidget::enterScreenFullscreen()
         m_exitFullscreenButton->show();
     }
 
+    setMouseTracking(true);
+    m_exitFullscreenHideTimer->start();
+
+    m_screenWidget->enableRoundedCorners(false);
+
     applyIncreasedSize();
     updateTopSpacerHeight();
     refreshMainLayoutGeometry();
@@ -881,6 +906,15 @@ void CallWidget::exitScreenFullscreen()
     {
         m_exitFullscreenButton->hide();
     }
+
+    if (m_exitFullscreenHideTimer)
+    {
+        m_exitFullscreenHideTimer->stop();
+    }
+
+    setMouseTracking(false);
+
+    m_screenWidget->enableRoundedCorners(false);
 
     updateTopSpacerHeight();
     applyStandardSize();
@@ -1203,4 +1237,22 @@ void CallWidget::keyPressEvent(QKeyEvent* event)
     }
 
     QWidget::keyPressEvent(event);
+}
+
+void CallWidget::mouseMoveEvent(QMouseEvent* event)
+{
+    if (m_screenFullscreenActive && m_exitFullscreenButton)
+    {
+        m_exitFullscreenButton->show();
+        if (m_exitFullscreenHideTimer)
+            m_exitFullscreenHideTimer->start();
+    }
+
+    QWidget::mouseMoveEvent(event);
+}
+
+void CallWidget::onExitFullscreenHideTimerTimeout()
+{
+    if (m_screenFullscreenActive && m_exitFullscreenButton)
+        m_exitFullscreenButton->hide();
 }

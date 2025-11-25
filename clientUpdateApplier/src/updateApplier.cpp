@@ -135,7 +135,7 @@ bool launchApplication(const QString& appPath) {
 
     if (!appInfo.exists()) {
         qWarning() << "Application not found:" << appPath;
-        return false;
+        return false; 
     }
 
     if (isAppImage(appPath)) {
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
     QString appPath = argv[2];
 
     qDebug() << "Updating application, PID:" << pid << "Path:" << appPath;
-
+     
     QDir tempDirectory("update_temp");
     QDir currentDirectory(".");
     QString removeJsonPath = tempDirectory.filePath("remove.json");

@@ -1,10 +1,7 @@
 #include "authorizationWidget.h"
 
-#include <QResizeEvent>
 #include <QRegularExpressionValidator>
-#include <QPainterPath>
-#include <QApplication>
-#include <QFontDatabase>
+#include <QShortcut>
 #include "scaleFactor.h"
 
 // AuthorizationWidget implementation
@@ -105,8 +102,10 @@ void AuthorizationWidget::setupUI() {
     m_nicknameEdit->setMaxLength(scale(20));
     m_nicknameEdit->setMinimumHeight(scale(40));
     m_nicknameEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    m_nicknameEdit->setFont(subTitleFont);
+    QFont segoeFont("Segoe UI", scale(12), QFont::Medium);
+    m_nicknameEdit->setFont(segoeFont);
     m_nicknameEdit->setAttribute(Qt::WA_InputMethodEnabled, true);
+    m_nicknameEdit->setFocus();
 
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
         QRegularExpression("[\\p{L}0-9_]{3,15}"), this);
@@ -141,6 +140,12 @@ void AuthorizationWidget::setupUI() {
     connect(m_nicknameEdit, &QLineEdit::textChanged, this, &AuthorizationWidget::onTextChanged);
     connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizationClicked);
     connect(m_updateAvailableButton, &QPushButton::clicked, this, &AuthorizationWidget::onUpdateAvailableClicked);
+
+    QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
+    QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
+
+    connect(enterShortcut, &QShortcut::activated, this, &AuthorizationWidget::onAuthorizationClicked);
+    connect(returnShortcut, &QShortcut::activated, this, &AuthorizationWidget::onAuthorizationClicked);
 }
 
 void AuthorizationWidget::resetBlur() {

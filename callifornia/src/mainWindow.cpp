@@ -12,38 +12,25 @@
 
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
+#include "configManager.h"
 #include "logger.h"
 
-MainWindow::~MainWindow() {
-    if (m_ringtonePlayer) {
-        m_ringtonePlayer->stop();
-    }
+MainWindow::MainWindow() {
+    m_configManager = new ConfigManager();
+    m_configManager->loadConfig();
+}
+
+MainWindow::~MainWindow() 
+{
 }
 
 void MainWindow::executePrerequisites() {
     makeRemainingReplacements();
 
-    // 192.168.1.44 local machine 
-    // 192.168.1.48 server internal ip
-    // 92.255.165.77 server global ip
-
-    m_serverHost = getServerHost();
-    m_updaterHost = getUpdaterHost();
-    m_port = getPort();
-
-    if (m_serverHost.isEmpty())
-        m_serverHost = "92.255.165.77";
-
-    if (m_updaterHost.isEmpty())
-        m_updaterHost = "92.255.165.77";
-
-    if (m_port.isEmpty())
-        m_port = "8081";
-
     QTimer::singleShot(0, [this]()
     {
         bool firstInstance = isFirstInstance();
-        bool multipleInstancesAllowed = isMultiInstanceAllowed();
+        bool multipleInstancesAllowed = m_configManager->isMultiInstanceAllowed();
 
         if (!firstInstance && !multipleInstancesAllowed)
             m_dialogsController->showAlreadyRunningDialog();
@@ -54,6 +41,14 @@ void MainWindow::executePrerequisites() {
 }
 
 void MainWindow::init() {
+
+    std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
+    calls::init(m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(), std::move(callsClientHandler));
+    calls::setOutputVolume(m_configManager->getOutputVolume());
+    calls::setInputVolume(m_configManager->getInputVolume());
+    calls::muteMicrophone(m_configManager->isMicrophoneMuted());
+    calls::muteSpeaker(m_configManager->isSpeakerMuted());
+
     LOG_INFO("Initializing main window");
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
@@ -76,11 +71,11 @@ void MainWindow::init() {
 }
 
 void MainWindow::checkUpdates() {
-    LOG_INFO("Connecting to Callifornia server: {}:{}", m_serverHost.toStdString(), m_port.toStdString());
+    LOG_INFO("Connecting to Callifornia server: {}:{}", m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
     
     std::unique_ptr<UpdaterCallbacksHandler> updaterHandler = std::make_unique<UpdaterCallbacksHandler>(this);
     updater::init(std::move(updaterHandler));
-    updater::connect(m_updaterHost.toStdString(), m_port.toStdString());
+    updater::connect(m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
     
     std::string currentVersion = parseVersionFromConfig();
     LOG_INFO("Current application version: {}", currentVersion);
@@ -176,16 +171,13 @@ void MainWindow::loadFonts() {
 std::string MainWindow::parseVersionFromConfig() {
     const QString filename = "config.json";
 
-    // ������� ������� ������� �������
     QString currentPath = QDir::currentPath();
     LOG_DEBUG("Current working directory: {}", currentPath.toStdString());
 
-    // ������� ������ ���� � �����
     QFileInfo fileInfo(filename);
     QString absolutePath = fileInfo.absoluteFilePath();
     LOG_DEBUG("Absolute file path: {}", absolutePath.toStdString());
 
-    // ��������� ������������� �����
     if (!fileInfo.exists()) {
         LOG_WARN("File does not exist: {}", absolutePath.toStdString());
         LOG_WARN("Failed to open config.json, version lost");
@@ -259,8 +251,6 @@ void MainWindow::onUpdaterCheckResult(updater::UpdatesCheckResult checkResult) {
             m_authorizationWidget->setAuthorizationDisabled(false);
 
             if (!calls::isRunning()) {
-                std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
-                calls::init(m_serverHost.toStdString(), m_port.toStdString(), std::move(callsClientHandler));
                 calls::run();
             }
         }
@@ -384,6 +374,10 @@ void MainWindow::setupUI() {
     connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
     connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
+
+    m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
+    m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
+    
     m_stackedLayout->addWidget(m_mainMenuWidget); 
 
     m_callWidget = new CallWidget(this);
@@ -397,6 +391,10 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::screenShareClicked, this, &MainWindow::onScreenShareButtonClicked);
     connect(m_callWidget, &CallWidget::requestEnterWindowFullscreen, this, &MainWindow::onCallWidgetEnterFullscreenRequested);
     connect(m_callWidget, &CallWidget::requestExitWindowFullscreen, this, &MainWindow::onCallWidgetExitFullscreenRequested);
+    
+    m_callWidget->setInputVolume(m_configManager->getInputVolume());
+    m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
+    
     m_stackedLayout->addWidget(m_callWidget);
 
     m_screenCaptureController = new ScreenCaptureController(this);
@@ -600,26 +598,6 @@ void MainWindow::onCallWidgetExitFullscreenRequested()
     showMaximized(); 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void MainWindow::onBlurAnimationFinished() {
     if (calls::isAuthorized()) {
         m_authorizationWidget->resetBlur();
@@ -674,18 +652,22 @@ void MainWindow::onRefreshAudioDevicesButtonClicked() {
 
 void MainWindow::onInputVolumeChanged(int newVolume) {
     calls::setInputVolume(newVolume);
+    m_configManager->setInputVolume(newVolume);
 }
 
 void MainWindow::onOutputVolumeChanged(int newVolume) {
     calls::setOutputVolume(newVolume);
+    m_configManager->setOutputVolume(newVolume);
 }
 
 void MainWindow::onMuteMicrophoneButtonClicked(bool mute) {
     calls::muteMicrophone(mute);
+    m_configManager->setMicrophoneMuted(mute);
 }
 
 void MainWindow::onMuteSpeakerButtonClicked(bool mute) {
     calls::muteSpeaker(mute);
+    m_configManager->setSpeakerMuted(mute);
 }
 
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
@@ -974,7 +956,7 @@ void MainWindow::onConnectionRestored() {
 
     if (!updater::isConnected()) {
         LOG_INFO("Reconnecting updater");
-        updater::connect(m_updaterHost.toStdString(), m_port.toStdString());
+        updater::connect(m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
         updater::checkUpdates(parseVersionFromConfig());
     }
 }

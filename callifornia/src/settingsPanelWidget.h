@@ -21,8 +21,8 @@ public:
     void setSpeakerMuted(bool muted);
 
 private slots:
-    void onMicVolumeChanged();
-    void onSpeakerVolumeChanged();
+    void onMicVolumeChanged(int volume);
+    void onSpeakerVolumeChanged(int volume);
     void onMicMuteClicked();
     void onSpeakerMuteClicked();
 

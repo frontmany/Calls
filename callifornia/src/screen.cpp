@@ -23,8 +23,18 @@ void Screen::clear()
 {
     m_pixmap = QPixmap();
     m_clearToWhite = true;
+    enableRoundedCorners(true);
     updateGeometry();
     update();
+}
+
+void Screen::enableRoundedCorners(bool enabled)
+{
+    if (m_roundedCornersEnabled != enabled)
+    {
+        m_roundedCornersEnabled = enabled;
+        update();
+    }
 }
 
 void Screen::paintEvent(QPaintEvent* event)
@@ -39,9 +49,12 @@ void Screen::paintEvent(QPaintEvent* event)
     if (widgetRect.isEmpty())
         return;
 
-    QPainterPath clipPath;
-    clipPath.addRoundedRect(widgetRect, m_cornerRadius, m_cornerRadius);
-    painter.setClipPath(clipPath);
+    if (m_roundedCornersEnabled)
+    {
+        QPainterPath clipPath;
+        clipPath.addRoundedRect(widgetRect, m_cornerRadius, m_cornerRadius);
+        painter.setClipPath(clipPath);
+    }
 
     if (m_pixmap.isNull() && m_clearToWhite)
     {

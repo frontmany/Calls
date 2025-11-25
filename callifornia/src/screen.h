@@ -10,11 +10,13 @@ public:
 
     void setPixmap(const QPixmap& pixmap);
     void clear();
+    void enableRoundedCorners(bool enabled);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
     QPixmap m_pixmap;
     bool m_clearToWhite = false;
+    bool m_roundedCornersEnabled = true; 
     static constexpr qreal m_cornerRadius = 4.0;
 };

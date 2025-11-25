@@ -167,7 +167,7 @@ void AudioEngine::refreshAudioDevices() {
 
 void AudioEngine::setInputVolume(int volume) {
     std::lock_guard<std::mutex> lock(m_volumeMutex);
-    volume = std::max(0, std::min(100, volume));
+    volume = std::max(0, std::min(200, volume));
     m_inputVolume = static_cast<float>(volume) / 100.0f;
 }
 
@@ -189,7 +189,7 @@ bool AudioEngine::isSpeakerMuted() {
 
 void AudioEngine::setOutputVolume(int volume) {
     std::lock_guard<std::mutex> lock(m_volumeMutex);
-    volume = std::max(0, std::min(100, volume));
+    volume = std::max(0, std::min(200, volume));
     m_outputVolume = static_cast<float>(volume) / 100.0f;
 }
 
@@ -222,6 +222,10 @@ void AudioEngine::playAudio(const unsigned char* data, int length) {
     }
 }
 
+float AudioEngine::softClip(float x) {
+    return std::tanh(x);
+}
+
 void AudioEngine::processInputAudio(const float* input, unsigned long frameCount) {
     std::lock_guard<std::mutex> lock(m_inputAudioMutex);
     std::lock_guard<std::mutex> volumeLock(m_volumeMutex);
@@ -230,7 +234,7 @@ void AudioEngine::processInputAudio(const float* input, unsigned long frameCount
         if (m_inputVolume != 1.0f) {
             std::vector<float> adjustedInput(frameCount * m_inputChannels);
             for (unsigned long i = 0; i < frameCount * m_inputChannels; ++i) {
-                adjustedInput[i] = input[i] * m_inputVolume;
+                adjustedInput[i] = softClip(input[i] * m_inputVolume);
             }
 
             int encodedSize = m_encoder->encode(adjustedInput.data(), m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
@@ -260,8 +264,15 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
 
             if (!m_speakerMuted) {
                 if (size_t samplesToCopy = currentPacket.audioData.size(); samplesToCopy > 0) {
-                    for (size_t i = 0; i < samplesToCopy; ++i) {
-                        output[i] = currentPacket.audioData[i] * m_outputVolume;
+                    if (m_outputVolume != 1.0f) {
+                        for (size_t i = 0; i < samplesToCopy; ++i) {
+                            output[i] = softClip(currentPacket.audioData[i] * m_outputVolume);
+                        }
+                    }
+                    else {
+                        for (size_t i = 0; i < samplesToCopy; ++i) {
+                            output[i] = currentPacket.audioData[i];
+                        }
                     }
                 }
             }
@@ -270,7 +281,6 @@ void AudioEngine::processOutputAudio(float* output, unsigned long frameCount) {
         }
     }
 }
-
 bool AudioEngine::startStream() {
     std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 

@@ -12,6 +12,7 @@
 #include <QPixmap>
 #include <QIcon>
 #include <QKeyEvent>
+#include <QMouseEvent>
 
 #include "buttons.h"
 class QDialog;
@@ -93,13 +94,14 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
     bool eventFilter(QObject* obj, QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
 
 private slots:
     void onFullscreenClicked(bool toggled);
     void onSpeakerClicked();
     void onHangupClicked();
-    void onInputVolumeChanged();
-    void onOutputVolumeChanged();
+    void onInputVolumeChanged(int volume);
+    void onOutputVolumeChanged(int volume);
     void updateCallTimer();
     void onIncomingCallAccepted(const QString& callerName);
     void onIncomingCallDeclined(const QString& callerName);
@@ -108,6 +110,7 @@ private slots:
     void onMicLabelToggled(bool toggled);
     void onSpeakerLabelToggled(bool toggled);
     void onIncomingCallsDialogClosed();
+    void onExitFullscreenHideTimerTimeout();
 
 private:
     void setupUI();
@@ -119,7 +122,7 @@ private:
     void applyStandardSize();
     void applyDecreasedSize();
     void applyIncreasedSize();
-    static QSize scaledScreenSize16by9(int baseWidth);
+    QSize scaledScreenSize16by9(int baseWidth);
     void enterScreenFullscreen();
     void exitScreenFullscreen();
     void updateExitFullscreenButtonPosition();
@@ -187,6 +190,7 @@ private:
     // Timer
     QTimer* m_callTimer;
     QTime* m_callDuration;
+    QTimer* m_exitFullscreenHideTimer;
     QString m_friendNickname;
 
     // States

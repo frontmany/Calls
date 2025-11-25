@@ -25,12 +25,13 @@ class MainMenuWidget;
 class CallWidget;
 class DialogsController;
 class ScreenCaptureController;
+class ConfigManager;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow() = default;
+    MainWindow();
     ~MainWindow();
     void init();
     void executePrerequisites();
@@ -112,20 +113,17 @@ private:
     void showTransientStatusMessage(const QString& message, int durationMs);
 
 private:
-    QMediaPlayer* m_ringtonePlayer ;
-    QAudioOutput* m_audioOutput;
+    QMediaPlayer* m_ringtonePlayer = nullptr;
+    QAudioOutput* m_audioOutput = nullptr;
 
-    QWidget* m_centralWidget;
-    QHBoxLayout* m_mainLayout;
-    QStackedLayout* m_stackedLayout;
+    QWidget* m_centralWidget = nullptr;
+    QHBoxLayout* m_mainLayout = nullptr;
+    QStackedLayout* m_stackedLayout = nullptr;
 
-    AuthorizationWidget* m_authorizationWidget;
-    MainMenuWidget* m_mainMenuWidget;
-    CallWidget* m_callWidget;
-    DialogsController* m_dialogsController;
-    ScreenCaptureController* m_screenCaptureController;
-
-    QString m_serverHost;
-    QString m_updaterHost;
-    QString m_port;
+    AuthorizationWidget* m_authorizationWidget = nullptr;
+    MainMenuWidget* m_mainMenuWidget = nullptr;
+    CallWidget* m_callWidget = nullptr;
+    DialogsController* m_dialogsController = nullptr;
+    ScreenCaptureController* m_screenCaptureController = nullptr;
+    ConfigManager* m_configManager = nullptr;
 };

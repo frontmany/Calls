@@ -28,7 +28,7 @@ class ClientUpdater {
 public:
 	static ClientUpdater& get();
 
-	void init(std::unique_ptr<CallbacksInterface>&& callbacksHandler);
+	void init(std::unique_ptr<CallbacksInterface>&& callbacksHandler); 
 	bool connect(const std::string& host, const std::string& port);
 	void disconnect();
 	void checkUpdates(const std::string& currentVersionNumber);
