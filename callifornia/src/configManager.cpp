@@ -6,18 +6,23 @@
 #include <QJsonObject>
 #include <QJsonValue>
 
-ConfigManager::ConfigManager(QString configPath) 
+ConfigManager::ConfigManager(QString configPath)
     : m_configPath(configPath)
 {
-    // 192.168.1.44 local machine 
-    // 192.168.1.48 server internal ip
-    // 92.255.165.77 server global ip
+    setDefaultValues();
+}
+
+ConfigManager::~ConfigManager()
+{
+    saveConfig();
 }
 
 void ConfigManager::loadConfig() {
     try {
+        m_version = getApplicationVersionFromConfig();
         m_updaterHost = getUpdaterHostFromConfig();
         m_isSpeakerMuted = isSpeakerMutedFromConfig();
+        m_isCameraEnabled = isCameraEnabledFromConfig();
         m_isMicrophoneMuted = isMicrophoneMutedFromConfig();
         m_outputVolume = getOutputVolumeFromConfig();
         m_inputVolume = getInputVolumeFromConfig();
@@ -39,7 +44,7 @@ void ConfigManager::saveConfig() {
     try {
         QJsonObject configObject;
 
-        configObject["version"] = "1.1.0";
+        configObject["version"] = m_version;
         configObject["updaterHost"] = m_updaterHost;
         configObject["serverHost"] = m_serverHost;
         configObject["port"] = m_port;
@@ -48,6 +53,7 @@ void ConfigManager::saveConfig() {
         configObject["outputVolume"] = m_outputVolume;
         configObject["microphoneMuted"] = m_isMicrophoneMuted ? "1" : "0";
         configObject["speakerMuted"] = m_isSpeakerMuted ? "1" : "0";
+        configObject["cameraEnabled"] = m_isCameraEnabled ? "1" : "0";
 
         QJsonDocument configDoc(configObject);
 
@@ -78,15 +84,12 @@ void ConfigManager::setDefaultValues() {
     m_isSpeakerMuted = false;
     m_isMicrophoneMuted = false;
     m_isMultiInstanceAllowed = false;
+    m_isCameraEnabled = false;
     m_outputVolume = 100;
     m_inputVolume = 100;
     m_port = "8081";
     m_serverHost = "92.255.165.77";
     m_updaterHost = "92.255.165.77";
-}
-
-ConfigManager::~ConfigManager()
-{
 }
 
 QString ConfigManager::getUpdaterHost() const {
@@ -95,6 +98,10 @@ QString ConfigManager::getUpdaterHost() const {
 
 bool ConfigManager::isSpeakerMuted() const {
     return m_isSpeakerMuted;
+}
+
+bool ConfigManager::isCameraEnabled() const {
+    return m_isCameraEnabled;
 }
 
 bool ConfigManager::isMicrophoneMuted() const {
@@ -142,6 +149,13 @@ void ConfigManager::setMicrophoneMuted(bool muted) {
     }
 }
 
+void ConfigManager::setCameraEnabled(bool enabled) {
+    if (m_isCameraEnabled != enabled) {
+        m_isCameraEnabled = enabled;
+        saveConfig();
+    }
+}
+
 void ConfigManager::setOutputVolume(int volume) {
     if (volume < 0) volume = 0;
     if (volume > 200) volume = 200;
@@ -181,6 +195,42 @@ void ConfigManager::setServerHost(const QString& host) {
         m_serverHost = host;
         saveConfig();
     }
+}
+
+QString ConfigManager::getApplicationVersionFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return QString();
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
+        return QString();
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return QString();
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QString version = jsonObj["version"].toString();
+
+    if (version.isEmpty()) {
+        LOG_WARN("version not found or empty in config file");
+    }
+    else {
+        LOG_DEBUG("Retrieved version: {}", version.toStdString());
+    }
+
+    return version;
 }
 
 QString ConfigManager::getUpdaterHostFromConfig() {
@@ -547,6 +597,60 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
     }
     else {
         LOG_WARN("speakerMuted has unsupported type, defaulting to false");
+        return false;
+    }
+}
+
+bool ConfigManager::isCameraEnabledFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return false;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error in config file: {}", parseError.errorString().toStdString());
+        return false;
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return false;
+    }
+
+    QJsonObject jsonObj = doc.object();
+
+    if (!jsonObj.contains("cameraEnabled")) {
+        LOG_DEBUG("cameraEnabled key not found in config, defaulting to false");
+        return false;
+    }
+
+    QJsonValue enabledValue = jsonObj["cameraEnabled"];
+
+    if (enabledValue.isString()) {
+        QString value = enabledValue.toString().toLower().trimmed();
+        bool result = (value == "1" || value == "true" || value == "yes" || value == "on");
+        LOG_DEBUG("cameraEnabled string value: '{}' -> {}", value.toStdString(), result);
+        return result;
+    }
+    else if (enabledValue.isBool()) {
+        bool result = enabledValue.toBool();
+        LOG_DEBUG("cameraEnabled bool value: {}", result);
+        return result;
+    }
+    else if (enabledValue.isDouble()) {
+        bool result = (enabledValue.toInt() == 1);
+        LOG_DEBUG("cameraEnabled numeric value: {} -> {}", enabledValue.toInt(), result);
+        return result;
+    }
+    else {
+        LOG_WARN("cameraEnabled has unsupported type, defaulting to false");
         return false;
     }
 }

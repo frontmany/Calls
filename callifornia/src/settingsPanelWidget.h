@@ -19,12 +19,14 @@ public:
     void setOutputVolume(int volume);
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
+    void setCameraEnabled(bool enabled);
 
 private slots:
     void onMicVolumeChanged(int volume);
     void onSpeakerVolumeChanged(int volume);
     void onMicMuteClicked();
     void onSpeakerMuteClicked();
+    void onCameraButtonClicked(bool enabled);
 
 signals:
     void refreshAudioDevicesButtonClicked();
@@ -32,6 +34,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
+    void cameraButtonClicked(bool mute);
 
 private:
     void setupUI();
@@ -41,9 +44,9 @@ private:
     QLabel* m_speakerValueLabel;
     QPushButton* m_refreshButton;
     QTimer* m_refreshCooldownTimer = nullptr;
-    ButtonIcon* m_micMuteButton = nullptr;
-    ToggleButtonIcon* m_muteMicrophoneButton = nullptr;
-    ToggleButtonIcon* m_muteSpeakerButton = nullptr;
+    ToggleButtonIcon* m_cameraButton = nullptr;
+    ToggleButtonIcon* m_micMuteButton = nullptr;
+    ToggleButtonIcon* m_speakerMuteButton = nullptr;
     bool m_isMicMuted = false;
     bool m_isSpeakerMuted = false;
     bool m_refreshEnabled = false;

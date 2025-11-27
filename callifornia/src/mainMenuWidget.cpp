@@ -568,6 +568,7 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
+    connect(m_settingsPanel, &SettingsPanel::cameraButtonClicked, [this](bool enabled) {emit enableCameraClicked(enabled); });
     connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableNotification(); });
 
     QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
@@ -855,6 +856,10 @@ void MainMenuWidget::setMicrophoneMuted(bool muted) {
 
 void MainMenuWidget::setSpeakerMuted(bool muted) {
     m_settingsPanel->setSpeakerMuted(muted);
+}
+
+void MainMenuWidget::setCameraEnabled(bool enabled) {
+    m_settingsPanel->setCameraEnabled(enabled);
 }
 
 void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {

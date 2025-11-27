@@ -701,3 +701,164 @@
 [2025-11-26 01:44:57.862] [calls_client] [info] ping success
 [2025-11-26 01:44:58.881] [calls_client] [info] ping success
 [2025-11-26 01:44:59.888] [calls_client] [info] ping success
+[2025-11-26 01:45:01.919] [calls_client] [info] ping success
+[2025-11-26 01:45:02.931] [calls_client] [info] ping success
+[2025-11-26 01:45:03.291] [calls_client] [info] Call ended by remote user
+[2025-11-26 01:45:04.969] [calls_client] [info] ping success
+[2025-11-26 01:45:10.517] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:10.517] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:10.518] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:11.413] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:11.414] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:11.414] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:10.518] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:11.620] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:11.414] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:12.522] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:12.730] [calls_client] [info] Incoming call from user_c
+[2025-11-26 01:45:12.851] [calls_client] [info] Call accepted by user_b
+[2025-11-26 01:45:13.445] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:13.445] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:13.445] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:13.554] [calls_client] [info] ping success
+[2025-11-26 01:45:14.439] [calls_client] [info] ping success
+[2025-11-26 01:45:13.446] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:14.569] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:15.921] [calls_client] [info] Call ended by remote user
+[2025-11-26 01:45:16.471] [calls_client] [info] ping success
+[2025-11-26 01:45:16.587] [calls_client] [info] ping success
+[2025-11-26 01:45:18.770] [calls_client] [info] Incoming call from user_a
+[2025-11-26 01:45:19.519] [calls_client] [info] ping success
+[2025-11-26 01:45:19.620] [calls_client] [info] ping success
+[2025-11-26 01:45:22.565] [calls_client] [info] ping success
+[2025-11-26 01:45:25.605] [calls_client] [info] ping success
+[2025-11-26 01:45:30.705] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:30.706] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:30.706] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:30.707] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:31.818] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:32.757] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:32.757] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:32.758] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:33.759] [calls_client] [info] ping success
+[2025-11-26 01:45:33.869] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:33.869] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:33.869] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:32.758] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:33.870] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:33.869] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:34.970] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:35.120] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:35.120] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:35.121] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:35.787] [calls_client] [info] ping success
+[2025-11-26 01:45:36.078] [calls_client] [info] Incoming call from caller_0
+[2025-11-26 01:45:36.200] [calls_client] [info] Call accepted by popular_user
+[2025-11-26 01:45:35.122] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:36.228] [calls_client] [info] User authorized successfully
+[2025-11-26 01:45:36.794] [calls_client] [info] ping success
+[2025-11-26 01:45:36.920] [calls_client] [info] ping success
+[2025-11-26 01:45:37.193] [calls_client] [info] Incoming call from caller_1
+[2025-11-26 01:45:38.170] [calls_client] [info] ping success
+[2025-11-26 01:45:38.444] [calls_client] [info] Incoming call from caller_2
+[2025-11-26 01:45:38.826] [calls_client] [info] ping success
+[2025-11-26 01:45:39.265] [calls_client] [info] Call ended by remote user
+[2025-11-26 01:45:39.836] [calls_client] [info] ping success
+[2025-11-26 01:45:39.966] [calls_client] [info] ping success
+[2025-11-26 01:45:41.213] [calls_client] [info] ping success
+[2025-11-26 01:45:42.883] [calls_client] [info] ping success
+[2025-11-26 01:45:45.935] [calls_client] [info] ping success
+[2025-11-26 01:45:48.952] [calls_client] [info] ping success
+[2025-11-26 01:45:52.004] [calls_client] [info] ping success
+[2025-11-26 01:45:58.825] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:45:58.826] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:45:58.826] [calls_client] [info] Starting calls client
+[2025-11-26 01:45:58.826] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:45:59.930] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:00.276] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:00.276] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:00.276] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:00.277] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:01.379] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:01.793] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:01.793] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:01.794] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:01.859] [calls_client] [info] ping success
+[2025-11-26 01:46:01.794] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:02.903] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:03.278] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:03.279] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:03.279] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:03.318] [calls_client] [info] ping success
+[2025-11-26 01:46:03.279] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:04.386] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:04.840] [calls_client] [info] ping success
+[2025-11-26 01:46:04.902] [calls_client] [info] ping success
+[2025-11-26 01:46:05.117] [calls_client] [info] Incoming call from user_b
+[2025-11-26 01:46:06.334] [calls_client] [info] ping success
+[2025-11-26 01:46:06.366] [calls_client] [info] ping success
+[2025-11-26 01:46:06.596] [calls_client] [info] Incoming call from user_d
+[2025-11-26 01:46:07.889] [calls_client] [info] ping success
+[2025-11-26 01:46:07.952] [calls_client] [info] ping success
+[2025-11-26 01:46:09.398] [calls_client] [info] ping success
+[2025-11-26 01:46:09.429] [calls_client] [info] ping success
+[2025-11-26 01:46:10.955] [calls_client] [info] ping success
+[2025-11-26 01:46:11.003] [calls_client] [info] ping success
+[2025-11-26 01:46:12.452] [calls_client] [info] ping success
+[2025-11-26 01:46:12.484] [calls_client] [info] ping success
+[2025-11-26 01:46:13.987] [calls_client] [info] ping success
+[2025-11-26 01:46:15.481] [calls_client] [info] ping success
+[2025-11-26 01:46:24.042] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:24.043] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:24.044] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:24.953] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:24.953] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:24.953] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:24.044] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:25.156] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:24.954] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:26.057] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:26.277] [calls_client] [info] Incoming call from persistent_caller
+[2025-11-26 01:46:27.086] [calls_client] [info] ping success
+[2025-11-26 01:46:27.988] [calls_client] [info] ping success
+[2025-11-26 01:46:29.283] [calls_client] [info] Incoming call from persistent_caller
+[2025-11-26 01:46:30.129] [calls_client] [info] ping success
+[2025-11-26 01:46:31.008] [calls_client] [info] ping success
+[2025-11-26 01:46:32.269] [calls_client] [info] Incoming call from persistent_caller
+[2025-11-26 01:46:33.172] [calls_client] [info] ping success
+[2025-11-26 01:46:34.064] [calls_client] [info] ping success
+[2025-11-26 01:46:36.229] [calls_client] [info] ping success
+[2025-11-26 01:46:37.101] [calls_client] [info] ping success
+[2025-11-26 01:46:39.271] [calls_client] [info] ping success
+[2025-11-26 01:46:40.140] [calls_client] [info] ping success
+[2025-11-26 01:46:42.302] [calls_client] [info] ping success
+[2025-11-26 01:46:43.185] [calls_client] [info] ping success
+[2025-11-26 01:46:45.341] [calls_client] [info] ping success
+[2025-11-26 01:46:48.393] [calls_client] [info] ping success
+[2025-11-26 01:46:51.853] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:51.854] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:51.854] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:52.725] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:52.725] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:52.725] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:51.854] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:52.961] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:52.726] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:53.832] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:54.785] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-11-26 01:46:54.785] [calls_client] [info] Calls client initialized successfully
+[2025-11-26 01:46:54.786] [calls_client] [info] Starting calls client
+[2025-11-26 01:46:54.895] [calls_client] [info] ping success
+[2025-11-26 01:46:55.766] [calls_client] [info] ping success
+[2025-11-26 01:46:54.786] [calls_client] [debug] RSA keys generated
+[2025-11-26 01:46:55.894] [calls_client] [info] User authorized successfully
+[2025-11-26 01:46:56.108] [calls_client] [info] Incoming call from user_a
+[2025-11-26 01:46:56.249] [calls_client] [info] Incoming call from user_b
+[2025-11-26 01:46:56.369] [calls_client] [info] Call accepted by user_c
+[2025-11-26 01:46:57.825] [calls_client] [info] ping success
+[2025-11-26 01:46:57.945] [calls_client] [info] ping success
+[2025-11-26 01:46:58.831] [calls_client] [info] ping success
+[2025-11-26 01:47:01.004] [calls_client] [info] ping success
+[2025-11-26 01:47:01.891] [calls_client] [info] ping success
+[2025-11-26 01:47:04.065] [calls_client] [info] ping success
+[2025-11-26 01:47:04.444] [calls_client] [info] Call ended by remote user

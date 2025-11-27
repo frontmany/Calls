@@ -18,6 +18,23 @@
 #include "asio/ts/internet.hpp"
 
 class NetworkController {
+private:
+    struct PendingPacket
+    {
+        struct ChunkData
+        {
+            bool received = false;
+            std::vector<unsigned char> payload;
+        };
+
+        std::vector<ChunkData> chunks;
+        std::size_t totalSize = 0;
+        uint16_t totalChunks = 0;
+        uint16_t receivedChunks = 0;
+        PacketType type = PacketType::PING;
+        bool typeSet = false;
+    };
+
 public:
     static constexpr std::size_t RECEIVE_BUFFER_SIZE = 8192;
     static constexpr std::size_t HEADER_SIZE = 18;
@@ -37,29 +54,13 @@ public:
     void sendToClient(const asio::ip::udp::endpoint& clientEndpoint, PacketType type);
    
 private:
-
-    struct PendingPacket
-    {
-        struct ChunkData
-        {
-            bool received = false;
-            std::vector<unsigned char> payload;
-        };
-
-        std::vector<ChunkData> chunks;
-        std::size_t totalSize = 0;
-        uint16_t totalChunks = 0;
-        uint16_t receivedChunks = 0;
-        PacketType type = PacketType::PING;
-        bool typeSet = false;
-    };
-
     void startReceive();
     void handleReceive(const asio::error_code& error, std::size_t bytesTransferred);
     void sendDataToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length, PacketType type);
     std::string makeEndpointKey(const asio::ip::udp::endpoint& endpoint);
     uint64_t generateId();
 
+private:
     asio::io_context m_context;
     asio::ip::udp::socket m_socket;
     asio::ip::udp::endpoint m_serverEndpoint;

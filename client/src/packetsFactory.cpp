@@ -97,6 +97,14 @@ std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStopScreen
     return std::make_pair(uuid, toBytes(jsonObject.dump()));
 }
 
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStartCameraSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash) {
+    return getStartScreenSharingPacket(myNickname, friendNicknameHash);
+}
+
+std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getStopCameraSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation) {
+    return getStopScreenSharingPacket(myNickname, friendNicknameHash, needConfirmation);
+}
+
 std::pair<std::string, std::vector<unsigned char>> PacketsFactory::getDeclineCallPacket(const std::string& myNickname, const std::string& friendNickname, bool needConfirmation) {
     std::string uuid = crypto::generateUUID();
     

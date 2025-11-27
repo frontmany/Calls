@@ -151,6 +151,43 @@ public:
             data
         );
     }
+
+    void onStartCameraSharingError() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onStartCameraSharingError
+        );
+    }
+
+    void onIncomingCameraSharingStarted() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onIncomingCameraSharingStarted
+        );
+    }
+
+    void onIncomingCameraSharingStopped() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onIncomingCameraSharingStopped
+        );
+    }
+
+    void onIncomingCamera(const std::vector<unsigned char>& data) override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onIncomingCamera,
+            data
+        );
+    }
 };
 
 bool init_wrapper(const std::string& host,
@@ -186,7 +223,11 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onStartScreenSharingError", &calls::CallbacksInterface::onStartScreenSharingError)
         .def("onIncomingScreenSharingStarted", &calls::CallbacksInterface::onIncomingScreenSharingStarted)
         .def("onIncomingScreenSharingStopped", &calls::CallbacksInterface::onIncomingScreenSharingStopped)
-        .def("onIncomingScreen", &calls::CallbacksInterface::onIncomingScreen);
+        .def("onIncomingScreen", &calls::CallbacksInterface::onIncomingScreen)
+        .def("onStartCameraSharingError", &calls::CallbacksInterface::onStartCameraSharingError)
+        .def("onIncomingCameraSharingStarted", &calls::CallbacksInterface::onIncomingCameraSharingStarted)
+        .def("onIncomingCameraSharingStopped", &calls::CallbacksInterface::onIncomingCameraSharingStopped)
+        .def("onIncomingCamera", &calls::CallbacksInterface::onIncomingCamera);
 
     m.def("init", &init_wrapper,
         "Initialize calls client",

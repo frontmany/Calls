@@ -22,10 +22,8 @@
 	 <file>speakerHover.png</file>
 	 <file>speakerActive.png</file>
 	 <file>speakerActiveHover.png</file>
-	 <file>speakerMuted.png</file>
-	 <file>speakerMutedHover.png</file>
 	 <file>speakerMutedActive.png</file>
-	 <file>screenShareDisabled.png</file>
+	 <file>screenShareRestricted.png</file>
 	 <file>screenShare.png</file>
 	 <file>screenShareHover.png</file>
 	 <file>screenShareActive.png</file>
@@ -38,10 +36,15 @@
 	 <file>arrowDown.png</file>
 	 <file>microphone.png</file>
 	 <file>microphoneHover.png</file>
-	 <file>mute-microphone.png</file>
-	 <file>mute-microphoneHover.png</file>
 	 <file>mute-enabled-microphone.png</file>
 	 <file>mute-enabled-microphoneHover.png</file>
 	 <file>multipleInstancesError.png</file>
+	 <file>camera.png</file>
+	 <file>cameraHover.png</file>
+	 <file>cameraActive.png</file>
+	 <file>cameraActiveHover.png</file>
+	 <file>cameraDisabled.png</file>
+	 <file>cameraDisabledHover.png</file>
+	 <file>cameraRestricted.png</file>
     </qresource>
 </RCC>

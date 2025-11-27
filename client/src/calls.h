@@ -64,6 +64,21 @@ namespace calls {
         return CallsClient::get().sendScreen(data);
     }
 
+    inline bool startCameraSharing()
+    {
+        return CallsClient::get().startCameraSharing();
+    }
+
+    inline bool stopCameraSharing()
+    {
+        return CallsClient::get().stopCameraSharing();
+    }
+
+    inline bool sendCamera(const std::vector<unsigned char>& data)
+    {
+        return CallsClient::get().sendCamera(data);
+    }
+
     inline bool acceptCall(const std::string& friendNickname)
     {
         return CallsClient::get().acceptCall(friendNickname);
@@ -150,6 +165,16 @@ namespace calls {
     inline bool isViewingRemoteScreen()
     {
         return CallsClient::get().isViewingRemoteScreen();
+    }
+
+    inline bool isCameraSharing()
+    {
+        return CallsClient::get().isCameraSharing();
+    }
+
+    inline bool isViewingRemoteCamera()
+    {
+        return CallsClient::get().isViewingRemoteCamera();
     }
 
     inline bool isAuthorized()

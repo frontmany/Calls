@@ -9,7 +9,7 @@ static qreal getDeviceScaleFactor() {
     return screen->devicePixelRatio();
 }
 
-static int scale(int baseSize) {
+static inline int scale(int baseSize) {
     qreal rawFactor = getDeviceScaleFactor();
 
     if (rawFactor > 1) {

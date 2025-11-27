@@ -90,6 +90,8 @@ public:
     void setOutputVolume(int volume);
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
+    void setCameraEnabled(bool enabled);
+
 
 signals:
     void startCallingButtonClicked(const QString& friendNickname);
@@ -101,6 +103,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
+    void enableCameraClicked(bool enabled);
     void updateButtonClicked();
 
 private slots:

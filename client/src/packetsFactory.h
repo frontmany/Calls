@@ -23,6 +23,9 @@ namespace calls {
         static std::pair<std::string, std::vector<unsigned char>> getEndCallPacket(const std::string& myNickname, bool needConfirmation);
         static std::pair<std::string, std::vector<unsigned char>> getStartScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash);
         static std::pair<std::string, std::vector<unsigned char>> getStopScreenSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation);
+        static std::pair<std::string, std::vector<unsigned char>> getStartCameraSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash);
+        static std::pair<std::string, std::vector<unsigned char>> getStopCameraSharingPacket(const std::string& myNickname, const std::string& friendNicknameHash, bool needConfirmation);
+
 
         static std::vector<unsigned char> getConfirmationPacket(const std::string& myNickname, const std::string& nicknameHashTo, const std::string& uuid);
     };

@@ -13,6 +13,7 @@ public:
     const QString& getConfigPath();
     bool isConfigLoaded();
     
+    bool isCameraEnabled() const;
     bool isSpeakerMuted() const;
     bool isMicrophoneMuted() const;
     int getOutputVolume() const; // speaker
@@ -30,8 +31,10 @@ public:
     void setMultiInstanceAllowed(bool allowed);
     void setPort(const QString& port);
     void setServerHost(const QString& host);
+    void setCameraEnabled(bool enabled);
 
 private:
+    bool isCameraEnabledFromConfig();
     bool isSpeakerMutedFromConfig();
     bool isMicrophoneMutedFromConfig();
     int getOutputVolumeFromConfig();
@@ -40,11 +43,13 @@ private:
     QString getPortFromConfig();
     QString getServerHostFromConfig();
     QString getUpdaterHostFromConfig();
+    QString getApplicationVersionFromConfig();
 
 private:
     const QString m_configPath = "config.json";
     bool m_isConfigLoaded = false;
 
+    bool m_isCameraEnabled;
     bool m_isSpeakerMuted;
     bool m_isMicrophoneMuted;
     bool m_isMultiInstanceAllowed;
@@ -53,4 +58,5 @@ private:
     QString m_port;
     QString m_serverHost;
     QString m_updaterHost;
+    QString m_version;
 };

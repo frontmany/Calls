@@ -19,6 +19,11 @@ public:
     void onIncomingScreenSharingStopped() override;
     void onIncomingScreen(const std::vector<unsigned char>& data) override;
 
+    void onStartCameraSharingError() override;
+    void onIncomingCameraSharingStarted() override;
+    void onIncomingCameraSharingStopped() override;
+    void onIncomingCamera(const std::vector<unsigned char>& data) override;
+
     void onMaximumCallingTimeReached() override;
     void onCallingAccepted() override;
     void onCallingDeclined() override;

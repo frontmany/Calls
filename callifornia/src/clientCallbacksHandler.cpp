@@ -70,6 +70,34 @@ void ClientCallbacksHandler::onIncomingScreen(const std::vector<unsigned char>& 
     }
 }
 
+void ClientCallbacksHandler::onStartCameraSharingError() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onStartCameraSharingError",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingCameraSharingStarted() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingCameraSharingStarted",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingCameraSharingStopped() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingCameraSharingStopped",
+            Qt::QueuedConnection);
+    }
+}
+
+void ClientCallbacksHandler::onIncomingCamera(const std::vector<unsigned char>& data) {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onIncomingCamera",
+            Qt::QueuedConnection, Q_ARG(const std::vector<unsigned char>&, data));
+    }
+}
+
 void ClientCallbacksHandler::onMaximumCallingTimeReached()
 {
     if (m_mainWindow) {

@@ -25,6 +25,7 @@ class MainMenuWidget;
 class CallWidget;
 class DialogsController;
 class ScreenCaptureController;
+class CameraController; 
 class ConfigManager;
 
 class MainWindow : public QMainWindow {
@@ -71,18 +72,31 @@ private slots:
     void onOutputVolumeChanged(int newVolume);
     void onMuteMicrophoneButtonClicked(bool mute);
     void onMuteSpeakerButtonClicked(bool mute);
+    void onEnableCameraButtonClicked(bool enabled);
     void onBlurAnimationFinished();
 
     void onScreenSelected(int screenIndex);
     void onScreenShareButtonClicked(bool toggled);
-    void onCaptureStarted();
-    void onCaptureStopped();
+    void onScreenCaptureStarted();
+    void onScreenCaptureStopped();
     void onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     
     void onStartScreenSharingError();
     void onIncomingScreenSharingStarted();
     void onIncomingScreenSharingStopped();
     void onIncomingScreen(const std::vector<unsigned char>& data);
+
+    void onStartCameraSharingError();
+    void onIncomingCameraSharingStarted();
+    void onIncomingCameraSharingStopped();
+    void onIncomingCamera(const std::vector<unsigned char>& data);
+    void onCameraButtonClicked(bool toggled);
+
+    void onCameraCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
+    void onCameraCaptureStarted();
+    void onCameraCaptureStopped();
+    void onCameraErrorOccurred(const QString& errorMessage);
+
     void onCallWidgetEnterFullscreenRequested();
     void onCallWidgetExitFullscreenRequested();
 
@@ -97,6 +111,7 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
 
+    void setAudioSettingsFromConfig();
     void launchUpdateApplier();
     void setupUI();
     void loadFonts();
@@ -110,6 +125,7 @@ private:
     void stopCallingRingtone();
     void playSoundEffect(const QString& soundPath); 
     void stopLocalScreenCapture();
+    void stopLocalCameraCapture();
     void showTransientStatusMessage(const QString& message, int durationMs);
 
 private:
@@ -125,5 +141,6 @@ private:
     CallWidget* m_callWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
+    CameraController* m_cameraController = nullptr;
     ConfigManager* m_configManager = nullptr;
 };

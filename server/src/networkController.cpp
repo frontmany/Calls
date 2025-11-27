@@ -53,7 +53,8 @@ NetworkController::NetworkController(const std::string& port,
     m_onNetworkErrorCallback(onNetworkErrorCallback),
     m_forwardWithoutAssembly{
         PacketType::VOICE,
-        PacketType::SCREEN
+        PacketType::SCREEN,
+        PacketType::CAMERA
     }
 {
     asio::ip::udp::resolver resolver(m_context);

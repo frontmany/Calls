@@ -51,6 +51,7 @@ struct StyleCallWidget {
     static QString scrollAreaStyle();
     static QString volumeSliderStyle();
     static QString sliderContainerStyle();
+    static QString notificationRedLabelStyle();
 };
 
 class CallWidget : public QWidget {
@@ -61,20 +62,27 @@ public:
     ~CallWidget() = default;
 
     void setCallInfo(const QString& friendNickname);
-    void updateTimer();
     void setInputVolume(int newVolume);
     void setOutputVolume(int newVolume);
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
-    void setAudioMuted(bool muted);
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
-    void setShowingDisplayActive(bool active, bool viewingRemoteDisplay = false);
-    void showFrame(const QPixmap& frame);
-    void disableStartScreenShareButton(bool disable);
-    void setFullscreenButtonState(bool fullscreen);
-    void resetScreenShareButton();
+
+    void hidePreviewDisplay();
+    void hideMainDisplay();
+    void enterFullscreen();
+    void exitFullscreen();
+    void showFrameInMainDisplay(const QPixmap& frame);
+    void showFrameInPrewievDisplay(const QPixmap& frame);
+    void restrictScreenShareButton();
+    void setScreenShareButtonActive(bool active);
+    void restrictCameraButton();
+    void setCameraButtonActive(bool active);
+    void showEnterFullscreenButton();
+    void hideEnterFullscreenButton();
+    void showErrorNotification(const QString& text, int durationMs);
 
 signals:
     void hangupClicked();
@@ -82,33 +90,24 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
+    void requestEnterFullscreen();
+    void requestExitFullscreen();
     void acceptCallButtonClicked(const QString& callerName);
     void declineCallButtonClicked(const QString& callerName);
     void screenShareClicked(bool toggled);
-    void fullscreenClicked(bool toggled);
-    void requestEnterWindowFullscreen();
-    void requestExitWindowFullscreen();
+    void cameraClicked(bool toggled);
+
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
-    bool eventFilter(QObject* obj, QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
-    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
 
 private slots:
-    void onFullscreenClicked(bool toggled);
     void onSpeakerClicked();
-    void onHangupClicked();
-    void onInputVolumeChanged(int volume);
-    void onOutputVolumeChanged(int volume);
     void updateCallTimer();
-    void onIncomingCallAccepted(const QString& callerName);
-    void onIncomingCallDeclined(const QString& callerName);
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
-    void onScreenShareToggled(bool toggled);
-    void onMicLabelToggled(bool toggled);
-    void onSpeakerLabelToggled(bool toggled);
     void onIncomingCallsDialogClosed();
     void onExitFullscreenHideTimerTimeout();
 
@@ -123,15 +122,16 @@ private:
     void applyDecreasedSize();
     void applyIncreasedSize();
     QSize scaledScreenSize16by9(int baseWidth);
-    void enterScreenFullscreen();
-    void exitScreenFullscreen();
     void updateExitFullscreenButtonPosition();
+    void updateCameraPreviewPosition();
     void refreshMainLayoutGeometry();
     void updateTopSpacerHeight();
+    void updateCameraButtonState();
 
     // Spacers
     QSpacerItem* m_topMainLayoutSpacer;
     QSpacerItem* m_middleMainLayoutSpacer;
+    QList<QWidget*> m_spacerWidgets;
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
@@ -146,7 +146,8 @@ private:
     // Call info section
     QLabel* m_timerLabel;
     QLabel* m_friendNicknameLabel;
-    Screen* m_screenWidget;
+    Screen* m_mainScreen;
+    Screen* m_previewScreen;
 
     // Control panels
     QWidget* m_buttonsPanel;
@@ -168,11 +169,13 @@ private:
     QSlider* m_speakerVolumeSlider;
 
     // Buttons
-    ToggleButtonIcon* m_fullscreenButton;
+    ButtonIcon* m_enterFullscreenButton;
+    QWidget* m_exitFullscreenButtonContainer;
+    ButtonIcon* m_exitFullscreenButton;
     ToggleButtonIcon* m_screenShareButton;
+    ToggleButtonIcon* m_cameraButton;
     ToggleButtonIcon* m_speakerButton;
     QPushButton* m_hangupButton;
-    QPushButton* m_exitFullscreenButton;
 
     // Screen share button icons
     QIcon m_screenShareIconNormal;
@@ -180,6 +183,13 @@ private:
     QIcon m_screenShareIconActive;
     QIcon m_screenShareIconActiveHover;
     QIcon m_screenShareIconDisabled;
+
+    // Camera button icons
+    QIcon m_cameraIconActive;
+    QIcon m_cameraIconActiveHover;
+    QIcon m_cameraIconRestricted;
+    QIcon m_cameraIconDisabled;
+    QIcon m_cameraIconDisabledHover;
 
     // Fullscreen button icons
     QIcon m_fullscreenIconMaximize;
@@ -197,12 +207,15 @@ private:
     bool m_microphoneMuted = false;
     bool m_audioMuted = false;
     bool m_slidersVisible = false;
-    bool m_showingDisplay = false;
     bool m_screenFullscreenActive = false;
-    bool m_viewingRemoteDisplay = false;
-    QList<QWidget*> m_spacerWidgets;
 
     // Incoming calls
     QDialog* m_incomingCallsDialog = nullptr;
     QMap<QString, IncomingCallWidget*> m_incomingCallWidgets;
+
+    // Error notification
+    QWidget* m_notificationWidget = nullptr;
+    QLabel* m_notificationLabel = nullptr;
+    QHBoxLayout* m_notificationLayout = nullptr;
+    QTimer* m_notificationTimer = nullptr;
 };

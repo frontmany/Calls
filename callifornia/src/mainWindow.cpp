@@ -3,13 +3,14 @@
 #include <QApplication>
 #include <QSoundEffect>
 #include <QStatusBar>
+
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
 #include "callWidget.h"
 #include "dialogsController.h"
 #include "screenCaptureController.h"
+#include "cameraController.h"
 #include "prerequisites.h"
-
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
 #include "configManager.h"
@@ -41,7 +42,6 @@ void MainWindow::executePrerequisites() {
 }
 
 void MainWindow::init() {
-
     std::unique_ptr<ClientCallbacksHandler> callsClientHandler = std::make_unique<ClientCallbacksHandler>(this);
     calls::init(m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(), std::move(callsClientHandler));
     calls::setOutputVolume(m_configManager->getOutputVolume());
@@ -67,6 +67,7 @@ void MainWindow::init() {
 
     loadFonts();
     setupUI();
+    setAudioSettingsFromConfig();
     showMaximized();
 }
 
@@ -145,6 +146,16 @@ void MainWindow::stopLocalScreenCapture()
     m_screenCaptureController->stopCapture();
 }
 
+void MainWindow::stopLocalCameraCapture()
+{
+    if (!m_cameraController) return;
+
+    if (m_cameraController->isCapturing())
+    {
+        m_cameraController->stopCapture();
+    }
+}
+
 void MainWindow::showTransientStatusMessage(const QString& message, int durationMs)
 {
     if (QStatusBar* bar = statusBar())
@@ -166,6 +177,16 @@ void MainWindow::loadFonts() {
     else {
         LOG_DEBUG("Fonts loaded successfully");
     }
+}
+
+
+void MainWindow::setAudioSettingsFromConfig() {
+    m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
+    m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
+    m_mainMenuWidget->setCameraEnabled(m_configManager->isCameraEnabled());
+
+    m_callWidget->setInputVolume(m_configManager->getInputVolume());
+    m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
 }
 
 std::string MainWindow::parseVersionFromConfig() {
@@ -374,10 +395,7 @@ void MainWindow::setupUI() {
     connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
     connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
-
-    m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
-    m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
-    
+    connect(m_mainMenuWidget, &MainMenuWidget::enableCameraClicked, this, &MainWindow::onEnableCameraButtonClicked);
     m_stackedLayout->addWidget(m_mainMenuWidget); 
 
     m_callWidget = new CallWidget(this);
@@ -389,23 +407,26 @@ void MainWindow::setupUI() {
     connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
     connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
     connect(m_callWidget, &CallWidget::screenShareClicked, this, &MainWindow::onScreenShareButtonClicked);
-    connect(m_callWidget, &CallWidget::requestEnterWindowFullscreen, this, &MainWindow::onCallWidgetEnterFullscreenRequested);
-    connect(m_callWidget, &CallWidget::requestExitWindowFullscreen, this, &MainWindow::onCallWidgetExitFullscreenRequested);
-    
-    m_callWidget->setInputVolume(m_configManager->getInputVolume());
-    m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
-    
+    connect(m_callWidget, &CallWidget::cameraClicked, this, &MainWindow::onCameraButtonClicked);
+    connect(m_callWidget, &CallWidget::requestEnterFullscreen, this, &MainWindow::onCallWidgetEnterFullscreenRequested);
+    connect(m_callWidget, &CallWidget::requestExitFullscreen, this, &MainWindow::onCallWidgetExitFullscreenRequested);
     m_stackedLayout->addWidget(m_callWidget);
 
     m_screenCaptureController = new ScreenCaptureController(this);
-    connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &MainWindow::onCaptureStarted);
-    connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &MainWindow::onCaptureStopped);
+    connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &MainWindow::onScreenCaptureStarted);
+    connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &MainWindow::onScreenCaptureStopped);
     connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &MainWindow::onScreenCaptured);
+
+    m_cameraController = new CameraController(this);
+    connect(m_cameraController, &CameraController::cameraCaptured, this, &MainWindow::onCameraCaptured);
+    connect(m_cameraController, &CameraController::captureStarted, this, &MainWindow::onCameraCaptureStarted);
+    connect(m_cameraController, &CameraController::captureStopped, this, &MainWindow::onCameraCaptureStopped);
+    connect(m_cameraController, &CameraController::errorOccurred, this, &MainWindow::onCameraErrorOccurred);
 
     m_dialogsController = new DialogsController(this);
     connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
     connect(m_dialogsController, &DialogsController::screenSelected, this, &MainWindow::onScreenSelected);
-    connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, m_callWidget, &CallWidget::resetScreenShareButton);
+    connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {m_callWidget->setScreenShareButtonActive(false); });
 
     QTimer::singleShot(2000, [this]() {
         if (updater::isAwaitingServerResponse()) {
@@ -456,8 +477,10 @@ void MainWindow::switchToMainMenuWidget() {
 void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_stackedLayout->setCurrentWidget(m_callWidget);
 
-    m_callWidget->setShowingDisplayActive(false);
-    m_callWidget->disableStartScreenShareButton(false);
+    m_callWidget->hideMainDisplay();
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->setCameraButtonActive(m_configManager->isCameraEnabled() && m_cameraController->isCameraAvailable());
+
 
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
@@ -476,8 +499,9 @@ void MainWindow::onScreenShareButtonClicked(bool toggled) {
     }
     else {
         stopLocalScreenCapture();
-        m_callWidget->disableStartScreenShareButton(false);
-        m_callWidget->setShowingDisplayActive(false);
+        m_callWidget->setScreenShareButtonActive(false);
+        m_callWidget->setCameraButtonActive(false);
+        m_callWidget->hideMainDisplay();
     }
 }
 
@@ -513,7 +537,7 @@ void MainWindow::onScreenSelected(int screenIndex)
 
 
 
-void MainWindow::onCaptureStarted()
+void MainWindow::onScreenCaptureStarted()
 {
     const std::string friendNickname = calls::getNicknameInCallWith();
     if (friendNickname.empty())
@@ -528,25 +552,25 @@ void MainWindow::onCaptureStarted()
     {
         showTransientStatusMessage("Failed to start screen sharing", 3000);
         stopLocalScreenCapture();
+        m_callWidget->setScreenShareButtonActive(true);
+        m_callWidget->restrictCameraButton();
         return;
     }
-
-    m_callWidget->setShowingDisplayActive(true);
 }
 
-void MainWindow::onCaptureStopped()
+void MainWindow::onScreenCaptureStopped()
 {
     calls::stopScreenSharing();
-    m_callWidget->disableStartScreenShareButton(false);
-    m_callWidget->setShowingDisplayActive(false);
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->setCameraButtonActive(false);
+    m_callWidget->hideMainDisplay();
 }
 
 void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
 {
     if (m_callWidget && !pixmap.isNull())
     {
-        m_callWidget->setShowingDisplayActive(true);
-        m_callWidget->showFrame(pixmap);
+        m_callWidget->showFrameInMainDisplay(pixmap);
     }
 
     if (imageData.empty()) return;
@@ -559,42 +583,169 @@ void MainWindow::onStartScreenSharingError()
 {
     showTransientStatusMessage("Screen sharing rejected by server", 3000);
     stopLocalScreenCapture();
+    m_callWidget->setScreenShareButtonActive(false);
 }
 
 void MainWindow::onIncomingScreenSharingStarted()
 {
     if (m_callWidget) {
-        m_callWidget->setShowingDisplayActive(true, true);
-        m_callWidget->disableStartScreenShareButton(true);
+        m_callWidget->restrictScreenShareButton();
+        m_callWidget->showEnterFullscreenButton();
     }
 }
 
 void MainWindow::onIncomingScreenSharingStopped()
 {
     if (m_callWidget) {
-        m_callWidget->setShowingDisplayActive(false);
-        m_callWidget->disableStartScreenShareButton(false);
+        m_callWidget->setScreenShareButtonActive(false);
+        m_callWidget->hideEnterFullscreenButton();
+        m_callWidget->hideMainDisplay();
     }
 }
 
 void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
 {
-    if (!m_callWidget || data.empty() || !calls::isViewingRemoteScreen()) return;
+    if (!m_callWidget || data.empty() || !calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()) return;
 
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
-        m_callWidget->showFrame(frame);
+        m_callWidget->showFrameInMainDisplay(frame);
+}
+
+void MainWindow::onCameraButtonClicked(bool toggled)
+{
+    if (toggled)
+    {
+        // Check if cameras are available before starting camera transmission
+        if (!m_cameraController || !m_cameraController->isCameraAvailable())
+        {
+            // TODO: Handle case when no cameras are available
+            m_callWidget->showErrorNotification("No cameras available", 1500);
+            m_callWidget->setCameraButtonActive(false);
+            return;
+        }
+
+        if (!calls::startCameraSharing())
+        {
+            m_callWidget->showErrorNotification("Failed to start camera sharing", 1500);
+            m_callWidget->setCameraButtonActive(false);
+            return;
+        }
+        m_callWidget->restrictScreenShareButton();
+        m_cameraController->startCapture();
+    }
+    else
+    {
+        if (m_cameraController && m_cameraController->isCapturing())
+        {
+            m_cameraController->stopCapture();
+        }
+        calls::stopCameraSharing();
+        m_callWidget->hidePreviewDisplay();
+    }
+}
+
+void MainWindow::onStartCameraSharingError()
+{
+    showTransientStatusMessage("Camera sharing rejected by server", 3000);
+    m_callWidget->setCameraButtonActive(false);
+}
+
+void MainWindow::onIncomingCameraSharingStarted()
+{
+    if (m_callWidget)
+    {
+        m_callWidget->restrictCameraButton();
+        m_callWidget->restrictScreenShareButton();
+    }
+}
+
+void MainWindow::onIncomingCameraSharingStopped()
+{
+    if (m_callWidget)
+    {
+        if (calls::isScreenSharing() || calls::isCameraSharing())
+            m_callWidget->hidePreviewDisplay();
+        else 
+            m_callWidget->hideMainDisplay();
+    }
+}
+
+void MainWindow::onIncomingCamera(const std::vector<unsigned char>& data)
+{
+    if (!m_callWidget || data.empty() || !calls::isViewingRemoteCamera()) return;
+
+    QPixmap frame;
+    const auto* raw = reinterpret_cast<const uchar*>(data.data());
+
+    if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG")) {
+        if (calls::isScreenSharing())
+            m_callWidget->showFrameInPrewievDisplay(frame);
+        else 
+            m_callWidget->showFrameInMainDisplay(frame);
+    }
+}
+
+void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
+{
+    if (m_callWidget && !pixmap.isNull())
+    {
+        if (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera())
+            m_callWidget->showFrameInPrewievDisplay(pixmap);
+        else
+            m_callWidget->showFrameInMainDisplay(pixmap);
+    }
+
+    if (imageData.empty()) return;
+
+    if (!calls::sendCamera(imageData))
+        showTransientStatusMessage("Failed to send camera frame", 2000);
+}
+
+void MainWindow::onCameraCaptureStarted()
+{
+    const std::string friendNickname = calls::getNicknameInCallWith();
+    if (friendNickname.empty())
+    {
+        showTransientStatusMessage("No active call to share camera with", 3000);
+        if (m_cameraController)
+            m_cameraController->stopCapture();
+        return;
+    }
+}
+
+void MainWindow::onCameraCaptureStopped()
+{
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->setCameraButtonActive(false);
+
+    if (calls::isViewingRemoteCamera() || calls::isViewingRemoteScreen())
+        m_callWidget->hidePreviewDisplay();
+    else
+        m_callWidget->hideMainDisplay();
+}
+
+void MainWindow::onCameraErrorOccurred(const QString& errorMessage)
+{
+    showTransientStatusMessage(errorMessage, 3000);
+    if (m_cameraController && m_cameraController->isCapturing())
+    {
+        m_cameraController->stopCapture();
+    }
+    m_callWidget->setCameraButtonActive(false);
 }
 
 void MainWindow::onCallWidgetEnterFullscreenRequested()
 {
+    m_callWidget->enterFullscreen();
     showFullScreen();
 }
 
 void MainWindow::onCallWidgetExitFullscreenRequested()
 {
+    m_callWidget->exitFullscreen();
     showMaximized(); 
 }
 
@@ -639,7 +790,9 @@ void MainWindow::onEndCallButtonClicked() {
     }
 
     stopLocalScreenCapture();
+    stopLocalCameraCapture();
 
+    m_callWidget->hideEnterFullscreenButton();
     m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
     switchToMainMenuWidget();
@@ -670,9 +823,16 @@ void MainWindow::onMuteSpeakerButtonClicked(bool mute) {
     m_configManager->setSpeakerMuted(mute);
 }
 
+void MainWindow::onEnableCameraButtonClicked(bool enabled) {
+    m_configManager->setCameraEnabled(enabled);
+}
+
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
     if (m_screenCaptureController->isCapturing())
         stopLocalScreenCapture();
+
+    if (m_cameraController && m_cameraController->isCapturing())
+        stopLocalCameraCapture();
     
     bool requestSent = calls::acceptCall(friendNickname.toStdString());
     if (!requestSent) {
@@ -737,7 +897,7 @@ void MainWindow::handleAcceptCallErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else if (m_stackedLayout->currentWidget() == m_callWidget) {
-        showTransientStatusMessage(errorText, 1500);
+        m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to accept call from unexpected widget");
@@ -751,7 +911,7 @@ void MainWindow::handleDeclineCallErrorNotificationAppearance() {
         m_mainMenuWidget->showErrorNotification(errorText, 1500);
     }
     else if (m_stackedLayout->currentWidget() == m_callWidget) {
-        showTransientStatusMessage(errorText, 1500);
+        m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to decline call from unexpected widget");
@@ -784,7 +944,7 @@ void MainWindow::handleEndCallErrorNotificationAppearance() {
     QString errorText = "Failed to end call. Please try again";
 
     if (m_stackedLayout->currentWidget() == m_callWidget) {
-        showTransientStatusMessage(errorText, 1500);
+        m_callWidget->showErrorNotification(errorText, 1500);
     }
     else {
         LOG_WARN("Trying to end call from unexpected widget");
@@ -884,10 +1044,14 @@ void MainWindow::onRemoteUserEndedCall() {
     if (m_screenCaptureController->isCapturing())
         stopLocalScreenCapture();
 
+    if (m_cameraController && m_cameraController->isCapturing())
+        stopLocalCameraCapture();
+
     LOG_INFO("Remote user ended the call");
+    m_callWidget->hideEnterFullscreenButton();
     m_callWidget->clearIncomingCalls();
-    m_callWidget->disableStartScreenShareButton(false);
-    m_callWidget->setShowingDisplayActive(false);
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->hideMainDisplay();
     switchToMainMenuWidget();
 
     m_mainMenuWidget->setState(calls::State::FREE);

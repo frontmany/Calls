@@ -44,6 +44,8 @@ public:
     // GET
     bool isScreenSharing();
     bool isViewingRemoteScreen();
+    bool isCameraSharing();
+    bool isViewingRemoteCamera();
     bool isMicrophoneMuted();
     bool isSpeakerMuted();
     bool isRunning() const;
@@ -70,6 +72,9 @@ public:
     bool sendScreen(const std::vector<unsigned char>& data);
     bool startScreenSharing();
     bool stopScreenSharing();
+    bool sendCamera(const std::vector<unsigned char>& data);
+    bool startCameraSharing();
+    bool stopCameraSharing();
 
 private:
     // received results handlers
@@ -92,10 +97,16 @@ private:
     void onScreenSharingStartedFail(const nlohmann::json& jsonObject);
     void onScreenSharingStoppedOk(const nlohmann::json& jsonObject);
     void onScreen(const unsigned char* data, int length);
+    void onCameraSharingStartedOk(const nlohmann::json& jsonObject);
+    void onCameraSharingStartedFail(const nlohmann::json& jsonObject);
+    void onCameraSharingStoppedOk(const nlohmann::json& jsonObject);
+    void onCamera(const unsigned char* data, int length);
 
     // on received packets
     void onIncomingScreenSharingStarted(const nlohmann::json& jsonObject);
     void onIncomingScreenSharingStopped(const nlohmann::json& jsonObject);
+    void onIncomingCameraSharingStarted(const nlohmann::json& jsonObject);
+    void onIncomingCameraSharingStopped(const nlohmann::json& jsonObject);
     void onCallAccepted(const nlohmann::json& jsonObject);
     void onCallDeclined(const nlohmann::json& jsonObject);
     void onStopCalling(const nlohmann::json& jsonObject);
@@ -116,6 +127,8 @@ private:
     // essential senders
     void sendStartScreenSharingPacket();
     void sendStopScreenSharingPacket(bool createTask);
+    void sendStartCameraSharingPacket();
+    void sendStopCameraSharingPacket(bool createTask);
     void sendAuthorizationPacket();
     void sendLogoutPacket(bool createTask);
     void sendRequestFriendInfoPacket(const std::string& friendNickname);
@@ -131,6 +144,8 @@ private:
     std::atomic_bool m_running = false;
     std::atomic_bool m_screenSharing = false;
     std::atomic_bool m_viewingRemoteScreen = false;
+    std::atomic_bool m_cameraSharing = false;
+    std::atomic_bool m_viewingRemoteCamera = false;
     std::atomic<State> m_state = State::UNAUTHORIZED;
     mutable std::mutex m_dataMutex;
 

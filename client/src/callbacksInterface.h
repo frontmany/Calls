@@ -19,6 +19,11 @@ namespace calls {
         virtual void onIncomingScreenSharingStopped() = 0;
         virtual void onIncomingScreen(const std::vector<unsigned char>& data) = 0;
 
+        virtual void onStartCameraSharingError() = 0;
+        virtual void onIncomingCameraSharingStarted() = 0;
+        virtual void onIncomingCameraSharingStopped() = 0;
+        virtual void onIncomingCamera(const std::vector<unsigned char>& data) = 0;
+
         virtual void onMaximumCallingTimeReached() = 0;
         virtual void onCallingAccepted() = 0;
         virtual void onCallingDeclined() = 0;

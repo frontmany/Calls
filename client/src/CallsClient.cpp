@@ -45,8 +45,14 @@ bool CallsClient::init(
     m_handlers.emplace(PacketType::START_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStarted(json); });
     m_handlers.emplace(PacketType::STOP_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStopped(json); });
     m_handlers.emplace(PacketType::START_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStartedOk(json); });
+    m_handlers.emplace(PacketType::START_SCREEN_SHARING_FAIL, [this](const nlohmann::json& json) { onScreenSharingStartedFail(json); });
     m_handlers.emplace(PacketType::STOP_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStoppedOk(json); });
-
+    m_handlers.emplace(PacketType::START_CAMERA_SHARING, [this](const nlohmann::json& json) { onIncomingCameraSharingStarted(json); });
+    m_handlers.emplace(PacketType::STOP_CAMERA_SHARING, [this](const nlohmann::json& json) { onIncomingCameraSharingStopped(json); });
+    m_handlers.emplace(PacketType::START_CAMERA_SHARING_OK, [this](const nlohmann::json& json) { onCameraSharingStartedOk(json); });
+    m_handlers.emplace(PacketType::START_CAMERA_SHARING_FAIL, [this](const nlohmann::json& json) { onCameraSharingStartedFail(json); });
+    m_handlers.emplace(PacketType::STOP_CAMERA_SHARING_OK, [this](const nlohmann::json& json) { onCameraSharingStoppedOk(json); });
+    
     m_callbackHandler = std::move(callbacksHandler);
     m_networkController = std::make_shared<NetworkController>();
     m_audioEngine = std::make_unique<AudioEngine>();
@@ -161,27 +167,6 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     else {
         LOG_INFO("Unknown packet type");
     }
-}
-
-void CallsClient::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
-    if (m_state != State::BUSY) return;
-
-    sendConfirmationPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
-    m_viewingRemoteScreen = true;
-
-    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingScreenSharingStarted(); });
-}
-
-void CallsClient::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
-    if (m_state != State::BUSY) return;
-
-    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-    if (needConfirmation)
-        sendConfirmationPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
-
-    m_viewingRemoteScreen = false;
-
-    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingScreenSharingStopped(); });
 }
 
 void CallsClient::onCallAccepted(const nlohmann::json& jsonObject) {
@@ -331,6 +316,14 @@ bool CallsClient::isScreenSharing() {
 
 bool CallsClient::isViewingRemoteScreen() {
     return m_viewingRemoteScreen;
+}
+
+bool CallsClient::isCameraSharing() {
+    return m_cameraSharing;
+}
+
+bool CallsClient::isViewingRemoteCamera() {
+    return m_viewingRemoteCamera;
 }
 
 bool CallsClient::isMicrophoneMuted() {
@@ -717,6 +710,70 @@ bool CallsClient::sendScreen(const std::vector<unsigned char>& data) {
     }
 }
 
+bool CallsClient::startCameraSharing() {
+    std::lock_guard<std::mutex> lock(m_dataMutex);
+
+    if (m_state != State::BUSY || m_screenSharing || m_cameraSharing) return false;
+
+    if (!m_call) {
+        LOG_WARN("Attempted to start camera sharing without active call context");
+        return false;
+    }
+
+    m_cameraSharing = true;
+    sendStartCameraSharingPacket();
+
+    return true;
+}
+
+bool CallsClient::stopCameraSharing() {
+    std::lock_guard<std::mutex> lock(m_dataMutex);
+
+    if (!m_cameraSharing) return false;
+
+    m_cameraSharing = false;
+
+    if (m_state != State::BUSY) return false;
+    if (!m_call) {
+        LOG_WARN("Camera sharing stop requested but call data is missing");
+        return false;
+    }
+
+    sendStopCameraSharingPacket(true);
+
+    return true;
+}
+
+bool CallsClient::sendCamera(const std::vector<unsigned char>& data) {
+    if (!m_cameraSharing) return false;
+    if (m_state != State::BUSY) return false;
+
+    CryptoPP::SecByteBlock callKey;
+    {
+        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_call) return false;
+
+        callKey = m_call.value().getCallKey();
+    }
+
+    try {
+        size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
+        std::vector<CryptoPP::byte> cipherData(cipherDataLength);
+
+        crypto::AESEncrypt(callKey,
+            reinterpret_cast<const CryptoPP::byte*>(data.data()),
+            data.size(),
+            cipherData.data(),
+            cipherDataLength);
+
+        m_networkController->send(std::move(cipherData), PacketType::CAMERA);
+        return true;
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error during screen sending");
+        return false;
+    }
+}
 
 
 
@@ -876,6 +933,105 @@ void CallsClient::onScreen(const unsigned char* data, int length) {
             m_callbackHandler->onIncomingScreen(screenData);
         }
     });
+}
+
+void CallsClient::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
+    if (m_state != State::BUSY) return;
+
+    sendConfirmationPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
+    m_viewingRemoteScreen = true;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingScreenSharingStarted(); });
+}
+
+void CallsClient::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
+    if (m_state != State::BUSY) return;
+
+    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
+    if (needConfirmation)
+        sendConfirmationPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
+
+    m_viewingRemoteScreen = false;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingScreenSharingStopped(); });
+}
+
+void CallsClient::onCameraSharingStartedFail(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onStartCameraSharingError(); });
+}
+
+void CallsClient::onCameraSharingStartedOk(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+}
+
+void CallsClient::onCameraSharingStoppedOk(const nlohmann::json& jsonObject) {
+    auto packetValid = validatePacket(jsonObject);
+    if (!packetValid) return;
+}
+
+void CallsClient::onCamera(const unsigned char* data, int length) {
+    if (!m_viewingRemoteCamera) return;
+
+    if (!data || length <= 0) return;
+
+    if (!m_call) {
+        LOG_WARN("Camera frame received but call state is empty");
+        return;
+    }
+
+    if (length <= CryptoPP::AES::BLOCKSIZE) {
+        LOG_WARN("Camera frame too small to decrypt: {} bytes", length);
+        return;
+    }
+
+    std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
+
+    try {
+        crypto::AESDecrypt(m_call.value().getCallKey(),
+            data,
+            length,
+            decrypted.data(),
+            decrypted.size());
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Failed to decrypt camera frame: {}", e.what());
+        return;
+    }
+
+    std::vector<unsigned char> cameraData(decrypted.begin(), decrypted.end());
+
+    LOG_INFO("Camera frame : {} bytes", cameraData.size());
+
+    m_callbacksQueue.push([this, cameraData = std::move(cameraData)]() mutable {
+        if (m_callbackHandler) {
+            m_callbackHandler->onIncomingScreen(cameraData);
+        }
+    });
+}
+
+void CallsClient::onIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
+    if (m_state != State::BUSY) return;
+
+    sendConfirmationPacket(jsonObject, PacketType::START_CAMERA_SHARING_OK);
+    m_viewingRemoteCamera = true;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingCameraSharingStarted(); });
+}
+
+void CallsClient::onIncomingCameraSharingStopped(const nlohmann::json& jsonObject) {
+    if (m_state != State::BUSY) return;
+
+    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
+    if (needConfirmation)
+        sendConfirmationPacket(jsonObject, PacketType::STOP_CAMERA_SHARING_OK);
+
+    m_viewingRemoteCamera = false;
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onIncomingCameraSharingStopped(); });
 }
 
 void CallsClient::onStartCallingFail(const nlohmann::json& jsonObject) {
@@ -1200,6 +1356,75 @@ void CallsClient::sendStopScreenSharingPacket(bool createTask) {
     }
     
     m_networkController->send(std::move(packet), PacketType::STOP_SCREEN_SHARING);
+}
+
+void CallsClient::sendStartCameraSharingPacket() {
+    if (!m_call) {
+        LOG_WARN("Cannot send start screen sharing packet without active call");
+        return;
+    }
+
+    auto [uuid, packet] = PacketsFactory::getStartCameraSharingPacket(m_myNickname, m_call->getFriendNicknameHash());
+
+    std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_CAMERA_SHARING,
+        [this, uuid]() {
+            std::lock_guard<std::mutex> lock(m_dataMutex);
+
+            if (m_tasks.contains(uuid)) {
+                auto& task = m_tasks.at(uuid);
+                m_callbacksQueue.push([this, task]() {task->retry(); });
+            }
+        },
+        [this, uuid]() {
+            std::lock_guard<std::mutex> lock(m_dataMutex);
+
+            if (m_tasks.contains(uuid)) {
+                m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
+            }
+
+            m_callbacksQueue.push([this]() {
+                m_callbackHandler->onStartCameraSharingError();
+            });
+        },
+        3
+    );
+
+    m_tasks.emplace(uuid, task);
+}
+
+void CallsClient::sendStopCameraSharingPacket(bool createTask) {
+    if (!m_call) {
+        LOG_WARN("Cannot send stop screen sharing packet without active call");
+        return;
+    }
+
+    auto [uuid, packet] = PacketsFactory::getStopCameraSharingPacket(m_myNickname, m_call->getFriendNicknameHash(), createTask);
+
+    if (createTask) {
+        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::STOP_CAMERA_SHARING,
+            [this, uuid]() {
+                std::lock_guard<std::mutex> lock(m_dataMutex);
+
+                if (m_tasks.contains(uuid)) {
+                    auto& task = m_tasks.at(uuid);
+                    m_callbacksQueue.push([this, task]() {task->retry(); });
+                }
+            },
+            [this, uuid]() {
+                std::lock_guard<std::mutex> lock(m_dataMutex);
+
+                if (m_tasks.contains(uuid)) {
+                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
+                }
+            },
+            3
+        );
+
+        m_tasks.emplace(uuid, task);
+        return;
+    }
+
+    m_networkController->send(std::move(packet), PacketType::STOP_CAMERA_SHARING);
 }
 
 void CallsClient::sendStopCallingPacket(bool createTask) {

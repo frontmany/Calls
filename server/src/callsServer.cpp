@@ -51,14 +51,6 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             handleGetFriendInfoPacket(jsonObject, endpointFrom);
             break;
 
-        case PacketType::START_SCREEN_SHARING:
-            handleStartScreenSharingPacket(jsonObject, endpointFrom);
-            break;
-
-        case PacketType::STOP_SCREEN_SHARING:
-            handleStopScreenSharingPacket(jsonObject, endpointFrom);
-            break;
-
         case PacketType::START_CALLING:
             handleStartCallingPacket(jsonObject, endpointFrom);
             break;
@@ -99,12 +91,37 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             redirectPacket(jsonObject, PacketType::START_CALLING_OK);
             break;
 
+        case PacketType::START_SCREEN_SHARING:
+            handleStartScreenSharingPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::STOP_SCREEN_SHARING:
+            handleStopScreenSharingPacket(jsonObject, endpointFrom);
+            break;
+
         case PacketType::START_SCREEN_SHARING_OK:
             redirectPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
             break;
 
         case PacketType::STOP_SCREEN_SHARING_OK:
             redirectPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
+            break;
+
+
+        case PacketType::START_CAMERA_SHARING:
+            handleStartCameraSharingPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::STOP_CAMERA_SHARING:
+            handleStopCameraSharingPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::START_CAMERA_SHARING_OK:
+            redirectPacket(jsonObject, PacketType::START_CAMERA_SHARING_OK);
+            break;
+
+        case PacketType::STOP_CAMERA_SHARING_OK:
+            redirectPacket(jsonObject, PacketType::STOP_CAMERA_SHARING_OK);
             break;
 
         default:
@@ -435,6 +452,54 @@ void CallsServer::handleStopScreenSharingPacket(const nlohmann::json& jsonObject
     }
     catch (const std::exception& e) {
         LOG_ERROR("Error in stop sharing screen packet: {}", e.what());
+    }
+}
+
+void CallsServer::handleStartCameraSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    std::string uuid = jsonObject[UUID].get<std::string>();
+    std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+    std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
+
+    LOG_INFO("Camera sharing initiated from {} to {}", senderNicknameHash, receiverNicknameHash);
+
+    bool receiverOnline = false;
+    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+        auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+        m_networkController.sendToClient(userReceiver->getEndpoint(),
+            jsonObject.dump(),
+            PacketType::START_CAMERA_SHARING
+        );
+
+        receiverOnline = true;
+    }
+
+    if (m_nicknameHashToUser.contains(senderNicknameHash) && !receiverOnline) {
+        auto& userSenser = m_nicknameHashToUser.at(senderNicknameHash);
+        m_networkController.sendToClient(userSenser->getEndpoint(),
+            getPacketWithUuid(uuid),
+            PacketType::START_CAMERA_SHARING_FAIL
+        );
+
+        LOG_WARN("Camera sharing failed: receiver {} is offline", receiverNicknameHash);
+    }
+}
+
+void CallsServer::handleStopCameraSharingPacket(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
+    try {
+        std::string uuid = jsonObject[UUID].get<std::string>();
+        std::string receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+
+        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+            auto& userReceiver = m_nicknameHashToUser.at(receiverNicknameHash);
+
+            m_networkController.sendToClient(userReceiver->getEndpoint(),
+                jsonObject.dump(),
+                PacketType::STOP_CAMERA_SHARING
+            );
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error in stop sharing camera packet: {}", e.what());
     }
 }
 
