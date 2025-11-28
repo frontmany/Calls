@@ -20,7 +20,6 @@ public:
     ~CameraController();
     void startCapture();
     void stopCapture();
-    void refreshAvailableCameras();
     bool isCameraAvailable() const;
     bool isCapturing() const;
 

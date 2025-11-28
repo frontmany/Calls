@@ -637,7 +637,12 @@ void MainWindow::onCameraButtonClicked(bool toggled)
             m_cameraController->stopCapture();
         }
         calls::stopCameraSharing();
-        m_callWidget->hidePreviewDisplay();
+
+        if (m_callWidget->isMainDisplayVisible() && (!calls::isViewingRemoteScreen() && !calls::isViewingRemoteCamera()))
+            m_callWidget->hideMainDisplay();
+
+        if (m_callWidget->isPreviewDisplayVisible() && (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()))
+            m_callWidget->hidePreviewDisplay();
     }
 }
 
@@ -649,11 +654,7 @@ void MainWindow::onStartCameraSharingError()
 
 void MainWindow::onIncomingCameraSharingStarted()
 {
-    if (m_callWidget)
-    {
-        m_callWidget->restrictCameraButton();
-        m_callWidget->restrictScreenShareButton();
-    }
+    //nothing to do here don't need to restrict anything
 }
 
 void MainWindow::onIncomingCameraSharingStopped()

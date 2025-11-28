@@ -16,8 +16,6 @@ CameraController::CameraController(QObject* parent)
     // Ќастройка видеосинка дл€ получени€ кадров
     connect(m_videoSink, &QVideoSink::videoFrameChanged, this, &CameraController::handleVideoFrame);
     m_captureSession->setVideoSink(m_videoSink);
-
-    refreshAvailableCameras();
 }
 
 CameraController::~CameraController()
@@ -79,12 +77,6 @@ void CameraController::stopCapture()
     emit captureStopped();
 }
 
-void CameraController::refreshAvailableCameras()
-{
-    // ћетод оставлен дл€ совместимости API, но не делает ничего особенного
-    // так как мы всегда используем первую доступную камеру
-}
-
 bool CameraController::isCapturing() const
 {
     return m_isCapturing;
@@ -97,27 +89,37 @@ void CameraController::handleVideoFrame(const QVideoFrame& frame)
         return;
     }
 
+    QPixmap pixmap;
     try {
-        QPixmap pixmap = videoFrameToPixmap(clonedFrame);
-        if (!pixmap.isNull()) {
-            // ќбрезаем до горизонтального формата как в ScreenCaptureController
-            QPixmap croppedPixmap = cropToHorizontal(pixmap);
-
-            //  онвертируем в байты с тем же целевым размером
-            QSize targetSize = QSize(1600, 900);
-            std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
-
-            // Ёмитим сигнал с захваченным изображением
-            emit cameraCaptured(croppedPixmap, imageData);
-
-            m_previousImageData = std::move(imageData);
-        }
+        pixmap = videoFrameToPixmap(clonedFrame);
     }
     catch (const std::exception& e) {
-        emit errorOccurred(QString("Failed to process video frame: %1").arg(e.what()));
+        clonedFrame.unmap();
+        emit errorOccurred(QString("Failed to convert video frame: %1").arg(e.what()));
+        return;
     }
 
     clonedFrame.unmap();
+
+    if (!pixmap.isNull() && pixmap.width() > 0 && pixmap.height() > 0) {
+        try {
+            QPixmap croppedPixmap = cropToHorizontal(pixmap);
+
+            if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0) {
+                //  онвертируем в байты с тем же целевым размером
+                QSize targetSize = QSize(1280, 720);
+                std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
+
+                // Ёмитим сигнал с захваченным изображением
+                emit cameraCaptured(croppedPixmap, imageData);
+
+                m_previousImageData = std::move(imageData);
+            }
+        }
+        catch (const std::exception& e) {
+            emit errorOccurred(QString("Failed to process video frame: %1").arg(e.what()));
+        }
+    }
 }
 
 void CameraController::handleCameraError(QCamera::Error error, const QString& errorString)
@@ -133,24 +135,30 @@ QPixmap CameraController::videoFrameToPixmap(const QVideoFrame& frame)
 {
     QImage image = frame.toImage();
 
-    if (image.isNull()) {
-        QVideoFrame cloneFrame(frame);
-        if (cloneFrame.map(QVideoFrame::ReadOnly)) {
-            QImage::Format format = QVideoFrameFormat::imageFormatFromPixelFormat(cloneFrame.pixelFormat());
-            if (format == QImage::Format_Invalid) {
-                format = QImage::Format_RGB32;
-            }
-
-            image = QImage(cloneFrame.bits(0),
-                cloneFrame.width(),
-                cloneFrame.height(),
-                cloneFrame.bytesPerLine(0),
-                format);
-            cloneFrame.unmap();
-        }
-
+    if (!image.isNull()) {
         return QPixmap::fromImage(image);
     }
+
+    QVideoFrame localFrame = frame;
+    if (!localFrame.map(QVideoFrame::ReadOnly)) {
+        return QPixmap();
+    }
+
+    QImage convertedImage;
+    QImage::Format format = QVideoFrameFormat::imageFormatFromPixelFormat(localFrame.pixelFormat());
+    if (format == QImage::Format_Invalid) {
+        format = QImage::Format_RGB32;
+    }
+
+    convertedImage = QImage(localFrame.bits(0),
+        localFrame.width(),
+        localFrame.height(),
+        localFrame.bytesPerLine(0),
+        format);
+
+    localFrame.unmap();
+
+    return QPixmap::fromImage(convertedImage);
 }
 
 bool CameraController::isCameraAvailable() const {

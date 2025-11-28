@@ -166,6 +166,10 @@ void NetworkController::sendScreenToClient(const asio::ip::udp::endpoint& client
     forwardDatagramToClient(clientEndpoint, data, length);
 }
 
+void NetworkController::sendCameraToClient(const asio::ip::udp::endpoint& clientEndpoint, const unsigned char* data, std::size_t length) {
+    forwardDatagramToClient(clientEndpoint, data, length);
+}
+
 void NetworkController::sendDataToClient(const asio::ip::udp::endpoint& clientEndpoint,
     const unsigned char* data, std::size_t length, PacketType type) {
     if (!m_isRunning || !m_socket.is_open()) {

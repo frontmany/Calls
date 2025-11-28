@@ -20,6 +20,10 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
         handleScreenPacket(data, size, endpointFrom);
         return;
     }
+    else if (type == PacketType::CAMERA) {
+        handleCameraPacket(data, size, endpointFrom);
+        return;
+    }
 
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
 
@@ -49,6 +53,22 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
 
         case PacketType::GET_FRIEND_INFO:
             handleGetFriendInfoPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::START_SCREEN_SHARING:
+            handleStartScreenSharingPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::STOP_SCREEN_SHARING:
+            handleStopScreenSharingPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::START_CAMERA_SHARING:
+            handleStartCameraSharingPacket(jsonObject, endpointFrom);
+            break;
+
+        case PacketType::STOP_CAMERA_SHARING:
+            handleStopCameraSharingPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::START_CALLING:
@@ -91,29 +111,12 @@ void CallsServer::onReceive(const unsigned char* data, int size, PacketType type
             redirectPacket(jsonObject, PacketType::START_CALLING_OK);
             break;
 
-        case PacketType::START_SCREEN_SHARING:
-            handleStartScreenSharingPacket(jsonObject, endpointFrom);
-            break;
-
-        case PacketType::STOP_SCREEN_SHARING:
-            handleStopScreenSharingPacket(jsonObject, endpointFrom);
-            break;
-
         case PacketType::START_SCREEN_SHARING_OK:
             redirectPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
             break;
 
         case PacketType::STOP_SCREEN_SHARING_OK:
             redirectPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
-            break;
-
-
-        case PacketType::START_CAMERA_SHARING:
-            handleStartCameraSharingPacket(jsonObject, endpointFrom);
-            break;
-
-        case PacketType::STOP_CAMERA_SHARING:
-            handleStopCameraSharingPacket(jsonObject, endpointFrom);
             break;
 
         case PacketType::START_CAMERA_SHARING_OK:
@@ -150,32 +153,22 @@ void CallsServer::run() {
     std::chrono::steady_clock::time_point lastCheck = begin;
 
     while (m_running) {
-        try {
-            std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
-            auto timeSinceLastCheck = now - lastCheck;
-            auto timeSinceLastPing = now - lastPing;
+        auto timeSinceLastCheck = now - lastCheck;
+        auto timeSinceLastPing = now - lastPing;
 
-            if (timeSinceLastCheck >= checkPingGap) {
-                checkPing();
-                lastCheck = now;
-                lastPing = now;
-            }
-            else if (timeSinceLastPing >= pingGap) {
-                broadcastPing();
-                lastPing = now;
-            }
+        if (timeSinceLastCheck >= checkPingGap) {
+            checkPing();
+            lastCheck = now;
+            lastPing = now;
+        }
+        else if (timeSinceLastPing >= pingGap) {
+            broadcastPing();
+            lastPing = now;
+        }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("Error in server main loop: {}", e.what());
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        catch (...) {
-            LOG_ERROR("Unknown error in server main loop");
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     m_networkController.stop();
@@ -187,22 +180,11 @@ void CallsServer::stop() {
 }
 
 void CallsServer::redirectPacket(const nlohmann::json& jsonObject, PacketType type) {
-    try {
-        const std::string& receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
+    const std::string& receiverNicknameHash = jsonObject[NICKNAME_HASH_RECEIVER].get<std::string>();
 
-        if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
-            auto& user = m_nicknameHashToUser.at(receiverNicknameHash);
-            try {
-                m_networkController.sendToClient(user->getEndpoint(), jsonObject.dump(), type);
-            }
-            catch (const std::exception& e) {
-                LOG_DEBUG("Failed to redirect packet to user {} (may have disconnected): {}", 
-                    receiverNicknameHash, e.what());
-            }
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_WARN("Error in redirectPacket: {}", e.what());
+    if (m_nicknameHashToUser.contains(receiverNicknameHash)) {
+        auto& user = m_nicknameHashToUser.at(receiverNicknameHash);
+        m_networkController.sendToClient(user->getEndpoint(), jsonObject.dump(), type);
     }
 }
 
@@ -211,84 +193,58 @@ void CallsServer::broadcastPing() {
     std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
 
     for (auto& [endpoint, _] : m_endpointToUser) {
-        try {
-            m_networkController.sendToClient(endpoint, PacketType::PING);
-            if (!m_pingResults.contains(endpoint)) {
-                m_pingResults.emplace(endpoint, false);
-            }
-        }
-        catch (const std::exception& e) {
-            LOG_DEBUG("Failed to send ping to {}:{} (may have disconnected): {}", 
-                endpoint.address().to_string(), endpoint.port(), e.what());
+        m_networkController.sendToClient(endpoint, PacketType::PING);
+        if (!m_pingResults.contains(endpoint)) {
+            m_pingResults.emplace(endpoint, false);
         }
     }
 }
 
 void CallsServer::checkPing() {
+    std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
+    std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
+
     std::vector<asio::ip::udp::endpoint> endpointsToLogout;
 
-    {
-        std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
-        std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
-
-        for (auto& [endpoint, result] : m_pingResults) {
-            if (result) {
-                m_pingResults.at(endpoint) = false;
-                LOG_DEBUG("Ping confirmed from {}", endpoint.address().to_string());
-            }
-            else {
-                endpointsToLogout.push_back(endpoint);
-                LOG_INFO("User disconnected due to ping timeout: {}", endpoint.address().to_string());
-            }
+    for (auto& [endpoint, result] : m_pingResults) {
+        if (result) {
+            m_pingResults.at(endpoint) = false;
+            LOG_DEBUG("Ping confirmed from {}", endpoint.address().to_string());
+        }
+        else {
+            endpointsToLogout.push_back(endpoint);
+            LOG_INFO("User disconnected due to ping timeout: {}", endpoint.address().to_string());
         }
     }
 
+
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
-    std::lock_guard<std::mutex> lockEndpoint(m_endpointToUserMutex);
-    std::lock_guard<std::mutex> lockPing(m_pingResultsMutex);
-
     for (const auto& endpoint : endpointsToLogout) {
-        try {
-            auto it = m_endpointToUser.find(endpoint);
+        auto it = m_endpointToUser.find(endpoint);
 
-            if (it != m_endpointToUser.end()) {
-                auto& userToErase = it->second;
-                std::string nicknameHash = userToErase->getNicknameHash();
+        if (it != m_endpointToUser.end()) {
+            auto& userToErase = it->second;
+            std::string nicknameHash = userToErase->getNicknameHash();
 
-                if (userToErase->isInCall()) {
-                    const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
+            if (userToErase->isInCall()) {
+                const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
 
-                    if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
-                        auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
+                if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
+                    auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
 
-                        try {
-                            m_networkController.sendToClient(userInCallWith->getEndpoint(), getPacketEndCall(nicknameHash, false),
-                                PacketType::END_CALL
-                            );
-                        }
-                        catch (const std::exception& e) {
-                            LOG_WARN("Failed to send END_CALL to user {} (may have disconnected): {}", 
-                                userInCallWithNicknameHash, e.what());
-                        }
+                    m_networkController.sendToClient(userInCallWith->getEndpoint(), getPacketEndCall(nicknameHash, false),
+                        PacketType::END_CALL
+                    );
 
-                        try {
-                            m_calls.erase(userToErase->getCall());
-                            userToErase->resetCall();
-                            userInCallWith->resetCall();
-                        }
-                        catch (const std::exception& e) {
-                            LOG_WARN("Error cleaning up call for user {}: {}", nicknameHash, e.what());
-                        }
-                    }
+                    m_calls.erase(userToErase->getCall());
+
+                    userToErase->resetCall();
+                    userInCallWith->resetCall();
                 }
-
-                m_endpointToUser.erase(it);
-                m_nicknameHashToUser.erase(nicknameHash);
-                m_pingResults.erase(endpoint);
             }
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("Error processing logout for endpoint {}: {}", endpoint.address().to_string(), e.what());
+
+            m_endpointToUser.erase(it);
+            m_nicknameHashToUser.erase(nicknameHash);
             m_pingResults.erase(endpoint);
         }
     }
@@ -547,24 +503,14 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
                 if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
                     auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
 
-                    try {
-                        m_networkController.sendToClient(userInCallWith->getEndpoint(), jsonObject.dump(),
-                            PacketType::END_CALL
-                        );
-                    }
-                    catch (const std::exception& e) {
-                        LOG_DEBUG("Failed to send END_CALL to user {} (may have disconnected): {}", 
-                            userInCallWithNicknameHash, e.what());
-                    }
+                    m_networkController.sendToClient(userInCallWith->getEndpoint(), jsonObject.dump(),
+                        PacketType::END_CALL
+                    );
 
-                    try {
-                        m_calls.erase(userSender->getCall());
-                        userSender->resetCall();
-                        userInCallWith->resetCall();
-                    }
-                    catch (const std::exception& e) {
-                        LOG_WARN("Error cleaning up call: {}", e.what());
-                    }
+                    m_calls.erase(userSender->getCall());
+
+                    userSender->resetCall();
+                    userInCallWith->resetCall();
                 }
             }
 
@@ -702,8 +648,23 @@ void CallsServer::handleScreenPacket(const unsigned char* data, int size, const 
     }
 }
 
+void CallsServer::handleCameraPacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
+    std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
+    if (m_endpointToUser.contains(endpointFrom)) {
+        UserPtr user = m_endpointToUser.at(endpointFrom);
+
+        if (user->isInCall()) {
+            const std::string& userNicknameHash = user->inCallWith();
+
+            if (m_nicknameHashToUser.contains(userNicknameHash)) {
+                UserPtr userTo = m_nicknameHashToUser.at(userNicknameHash);
+                m_networkController.sendCameraToClient(userTo->getEndpoint(), data, size);
+            }
+        }
+    }
+}
+
 void CallsServer::onNetworkError() {
-    LOG_WARN("Critical network error occurred (socket issue), but continuing server operation");
-    LOG_DEBUG("onNetworkError called - server will continue running");
-    // DO NOT STOP SERVER - this is normal for UDP when clients crash
+    LOG_ERROR("Network error occurred, stopping server");
+    m_running = false;
 }

@@ -7,9 +7,9 @@
 namespace calls {
 enum class PacketType : uint32_t {
 	// only send
-	AUTHORIZE,
-	LOGOUT,
-	GET_FRIEND_INFO,
+	    AUTHORIZE,
+	    LOGOUT,
+	    GET_FRIEND_INFO,
 
 	// send and receive
 	START_SCREEN_SHARING,

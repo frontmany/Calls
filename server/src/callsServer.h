@@ -44,6 +44,7 @@ private:
 
 
 	void handleScreenPacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
+	void handleCameraPacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 	void handleVoicePacket(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 	void handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom);
 	void handlePing(const asio::ip::udp::endpoint& endpointFrom);

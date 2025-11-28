@@ -154,6 +154,9 @@ void CallsClient::onReceive(const unsigned char* data, int length, PacketType ty
     else if (type == PacketType::SCREEN) {
         onScreen(data, length);
     }
+    else if (type == PacketType::CAMERA) {
+        onCamera(data, length);
+    }
     else if (m_handlers.contains(type)) {
         nlohmann::json jsonObject;
 
@@ -1008,7 +1011,7 @@ void CallsClient::onCamera(const unsigned char* data, int length) {
 
     m_callbacksQueue.push([this, cameraData = std::move(cameraData)]() mutable {
         if (m_callbackHandler) {
-            m_callbackHandler->onIncomingScreen(cameraData);
+            m_callbackHandler->onIncomingCamera(cameraData);
         }
     });
 }

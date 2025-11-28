@@ -657,6 +657,14 @@ bool CallWidget::isFullScreen() const {
     return m_screenFullscreenActive;
 }
 
+bool CallWidget::isMainDisplayVisible() const {
+    return m_mainScreen->isHidden();
+}
+
+bool CallWidget::isPreviewDisplayVisible() const {
+    return m_previewScreen->isHidden();
+}
+
 void CallWidget::onSpeakerClicked()
 {
     m_slidersVisible = m_speakerButton->isToggled();
@@ -926,6 +934,7 @@ void CallWidget::hidePreviewDisplay()
 {
     if (m_previewScreen)
     {
+        m_previewScreen->clear();
         m_previewScreen->hide();
     }
 }

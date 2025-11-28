@@ -60,6 +60,8 @@ public:
     CallWidget(QWidget* parent = nullptr);
     ~CallWidget() = default;
 
+    bool isMainDisplayVisible() const;
+    bool isPreviewDisplayVisible() const;
     bool isFullScreen() const;
     void setCallInfo(const QString& friendNickname);
     void setInputVolume(int newVolume);
