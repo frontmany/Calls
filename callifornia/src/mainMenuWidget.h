@@ -90,7 +90,7 @@ public:
     void setOutputVolume(int volume);
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
-    void setCameraEnabled(bool enabled);
+    void setCameraActive(bool active);
 
 
 signals:
@@ -103,7 +103,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
-    void enableCameraClicked(bool enabled);
+    void activateCameraClicked(bool activateD);
     void updateButtonClicked();
 
 private slots:

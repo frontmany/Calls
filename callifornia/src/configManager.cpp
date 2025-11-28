@@ -22,7 +22,7 @@ void ConfigManager::loadConfig() {
         m_version = getApplicationVersionFromConfig();
         m_updaterHost = getUpdaterHostFromConfig();
         m_isSpeakerMuted = isSpeakerMutedFromConfig();
-        m_isCameraEnabled = isCameraEnabledFromConfig();
+        m_isCameraActive = isCameraActiveFromConfig();
         m_isMicrophoneMuted = isMicrophoneMutedFromConfig();
         m_outputVolume = getOutputVolumeFromConfig();
         m_inputVolume = getInputVolumeFromConfig();
@@ -53,7 +53,7 @@ void ConfigManager::saveConfig() {
         configObject["outputVolume"] = m_outputVolume;
         configObject["microphoneMuted"] = m_isMicrophoneMuted ? "1" : "0";
         configObject["speakerMuted"] = m_isSpeakerMuted ? "1" : "0";
-        configObject["cameraEnabled"] = m_isCameraEnabled ? "1" : "0";
+        configObject["cameraEnabled"] = m_isCameraActive ? "1" : "0";
 
         QJsonDocument configDoc(configObject);
 
@@ -84,7 +84,7 @@ void ConfigManager::setDefaultValues() {
     m_isSpeakerMuted = false;
     m_isMicrophoneMuted = false;
     m_isMultiInstanceAllowed = false;
-    m_isCameraEnabled = false;
+    m_isCameraActive = false;
     m_outputVolume = 100;
     m_inputVolume = 100;
     m_port = "8081";
@@ -100,8 +100,8 @@ bool ConfigManager::isSpeakerMuted() const {
     return m_isSpeakerMuted;
 }
 
-bool ConfigManager::isCameraEnabled() const {
-    return m_isCameraEnabled;
+bool ConfigManager::isCameraActive() const {
+    return m_isCameraActive;
 }
 
 bool ConfigManager::isMicrophoneMuted() const {
@@ -149,9 +149,9 @@ void ConfigManager::setMicrophoneMuted(bool muted) {
     }
 }
 
-void ConfigManager::setCameraEnabled(bool enabled) {
-    if (m_isCameraEnabled != enabled) {
-        m_isCameraEnabled = enabled;
+void ConfigManager::setCameraActive(bool active) {
+    if (m_isCameraActive != active) {
+        m_isCameraActive = active;
         saveConfig();
     }
 }
@@ -601,7 +601,7 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
     }
 }
 
-bool ConfigManager::isCameraEnabledFromConfig() {
+bool ConfigManager::isCameraActiveFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());

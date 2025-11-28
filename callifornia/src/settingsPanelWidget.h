@@ -19,7 +19,7 @@ public:
     void setOutputVolume(int volume);
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
-    void setCameraEnabled(bool enabled);
+    void setCameraActive(bool active);
 
 private slots:
     void onMicVolumeChanged(int volume);

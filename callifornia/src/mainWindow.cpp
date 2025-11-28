@@ -67,7 +67,7 @@ void MainWindow::init() {
 
     loadFonts();
     setupUI();
-    setAudioSettingsFromConfig();
+    setSettingsFromConfig();
     showMaximized();
 }
 
@@ -180,10 +180,10 @@ void MainWindow::loadFonts() {
 }
 
 
-void MainWindow::setAudioSettingsFromConfig() {
+void MainWindow::setSettingsFromConfig() {
     m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
     m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
-    m_mainMenuWidget->setCameraEnabled(m_configManager->isCameraEnabled());
+    m_mainMenuWidget->setCameraActive(m_configManager->isCameraActive());
 
     m_callWidget->setInputVolume(m_configManager->getInputVolume());
     m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
@@ -395,7 +395,7 @@ void MainWindow::setupUI() {
     connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
     connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
     connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::enableCameraClicked, this, &MainWindow::onEnableCameraButtonClicked);
+    connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, this, &MainWindow::onActivateCameraButtonClicked);
     m_stackedLayout->addWidget(m_mainMenuWidget); 
 
     m_callWidget = new CallWidget(this);
@@ -479,8 +479,7 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
 
     m_callWidget->hideMainDisplay();
     m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->setCameraButtonActive(m_configManager->isCameraEnabled() && m_cameraController->isCameraAvailable());
-
+    m_callWidget->setCameraButtonActive(m_configManager->isCameraActive() && m_cameraController->isCameraAvailable());
 
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
@@ -818,8 +817,8 @@ void MainWindow::onMuteSpeakerButtonClicked(bool mute) {
     m_configManager->setSpeakerMuted(mute);
 }
 
-void MainWindow::onEnableCameraButtonClicked(bool enabled) {
-    m_configManager->setCameraEnabled(enabled);
+void MainWindow::onActivateCameraButtonClicked(bool activated) {
+    m_configManager->setCameraActive(activated);
 }
 
 void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {

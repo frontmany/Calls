@@ -72,7 +72,7 @@ private slots:
     void onOutputVolumeChanged(int newVolume);
     void onMuteMicrophoneButtonClicked(bool mute);
     void onMuteSpeakerButtonClicked(bool mute);
-    void onEnableCameraButtonClicked(bool enabled);
+    void onActivateCameraButtonClicked(bool activated);
     void onBlurAnimationFinished();
 
     void onScreenSelected(int screenIndex);
@@ -111,7 +111,7 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
 
-    void setAudioSettingsFromConfig();
+    void setSettingsFromConfig();
     void launchUpdateApplier();
     void setupUI();
     void loadFonts();

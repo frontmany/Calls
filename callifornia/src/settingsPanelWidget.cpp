@@ -167,10 +167,10 @@ void SettingsPanel::setupUI() {
 
     // Camera button
     m_cameraButton = new ToggleButtonIcon(this,
-        QIcon(":/resources/camera.png"),
-        QIcon(":/resources/cameraHover.png"),
         QIcon(":/resources/cameraDisabled.png"),
         QIcon(":/resources/cameraDisabledHover.png"),
+        QIcon(":/resources/camera.png"),
+        QIcon(":/resources/cameraHover.png"),
         scale(32), scale(32));
     m_cameraButton->setSize(scale(32), scale(32));
     m_cameraButton->setCursor(Qt::PointingHandCursor);
@@ -341,12 +341,12 @@ void SettingsPanel::onCameraButtonClicked(bool enabled)
     emit cameraButtonClicked(enabled);
 }
 
-void SettingsPanel::setCameraEnabled(bool enabled)
+void SettingsPanel::setCameraActive(bool active)
 {
     if (m_cameraButton)
     {
         // When enabled, button is not toggled (shows normal icons)
         // When disabled, button is toggled (shows disabled icons)
-        m_cameraButton->setToggled(enabled);
+        m_cameraButton->setToggled(active);
     }
 }
