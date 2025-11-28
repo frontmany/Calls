@@ -653,6 +653,10 @@ void CallWidget::updateCallTimer() {
     m_timerLabel->setText(m_callDuration->toString(timeFormat));
 }
 
+bool CallWidget::isFullScreen() const {
+    return m_screenFullscreenActive;
+}
+
 void CallWidget::onSpeakerClicked()
 {
     m_slidersVisible = m_speakerButton->isToggled();

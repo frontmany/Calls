@@ -526,17 +526,6 @@ void MainWindow::onScreenSelected(int screenIndex)
     m_screenCaptureController->startCapture();
 }
 
-
-
-
-
-
-
-
-
-
-
-
 void MainWindow::onScreenCaptureStarted()
 {
     const std::string friendNickname = calls::getNicknameInCallWith();
@@ -553,9 +542,10 @@ void MainWindow::onScreenCaptureStarted()
         showTransientStatusMessage("Failed to start screen sharing", 3000);
         stopLocalScreenCapture();
         m_callWidget->setScreenShareButtonActive(true);
-        m_callWidget->restrictCameraButton();
         return;
     }
+
+    m_callWidget->restrictCameraButton();
 }
 
 void MainWindow::onScreenCaptureStopped()
@@ -597,6 +587,11 @@ void MainWindow::onIncomingScreenSharingStarted()
 void MainWindow::onIncomingScreenSharingStopped()
 {
     if (m_callWidget) {
+        if (m_callWidget->isFullScreen()) {
+            m_callWidget->exitFullscreen();
+            showMaximized();
+        }
+        
         m_callWidget->setScreenShareButtonActive(false);
         m_callWidget->hideEnterFullscreenButton();
         m_callWidget->hideMainDisplay();
@@ -1048,6 +1043,12 @@ void MainWindow::onRemoteUserEndedCall() {
         stopLocalCameraCapture();
 
     LOG_INFO("Remote user ended the call");
+
+    if (m_callWidget->isFullScreen()) {
+        m_callWidget->exitFullscreen();
+        showMaximized();
+    }
+
     m_callWidget->hideEnterFullscreenButton();
     m_callWidget->clearIncomingCalls();
     m_callWidget->setScreenShareButtonActive(false);

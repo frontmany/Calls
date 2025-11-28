@@ -61,6 +61,7 @@ public:
     CallWidget(QWidget* parent = nullptr);
     ~CallWidget() = default;
 
+    bool isFullScreen() const;
     void setCallInfo(const QString& friendNickname);
     void setInputVolume(int newVolume);
     void setOutputVolume(int newVolume);
@@ -69,7 +70,6 @@ public:
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
-
     void hidePreviewDisplay();
     void hideMainDisplay();
     void enterFullscreen();
