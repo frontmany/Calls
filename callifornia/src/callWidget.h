@@ -46,7 +46,6 @@ struct StyleCallWidget {
     static QString controlButtonStyle();
     static QString hangupButtonStyle();
     static QString panelStyle();
-    static QString sliderStyle();
     static QString volumeLabelStyle();
     static QString scrollAreaStyle();
     static QString volumeSliderStyle();
@@ -204,8 +203,6 @@ private:
     QString m_friendNickname;
 
     // States
-    bool m_microphoneMuted = false;
-    bool m_audioMuted = false;
     bool m_slidersVisible = false;
     bool m_screenFullscreenActive = false;
 

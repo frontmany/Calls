@@ -514,7 +514,7 @@ void CallWidget::setupUI()
     m_notificationLabel = new QLabel(m_notificationWidget);
     QFont errorFont("Outfit", scale(12), QFont::Medium);
     m_notificationLabel->setFont(errorFont);
-    m_notificationLabel->setStyleSheet("color: #FF3333; background: transparent; font-size: 14px; margin: 0px; padding: 0px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 51, 51, 0.5);");
+    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
     m_notificationLayout->addWidget(m_notificationLabel);
 
     m_topMainLayoutSpacer = new QSpacerItem(0, scale(0), QSizePolicy::Minimum, QSizePolicy::Fixed);
@@ -685,7 +685,6 @@ void CallWidget::setMicrophoneMuted(bool muted) {
     {
         m_micLabel->setToggled(muted);
     }
-    m_microphoneMuted = muted;
     m_micVolumeSlider->setEnabled(!muted);
 }
 
@@ -694,6 +693,7 @@ void CallWidget::setSpeakerMuted(bool muted) {
     {
         m_speakerLabel->setToggled(muted);
     }
+    m_speakerVolumeSlider->setEnabled(!muted);
 }
 
 
