@@ -10,6 +10,9 @@
 #include <QMediaCaptureSession>
 #include <QVideoSink>
 #include <QSize>
+#include <QThread>
+
+class FrameProcessor;
 
 class CameraCaptureController : public QObject
 {
@@ -28,15 +31,13 @@ signals:
     void captureStarted();
     void captureStopped();
     void errorOccurred(const QString& errorMessage);
+    void frameReadyForProcessing(const QVideoFrame& frame);
 
 private slots:
     void handleVideoFrame(const QVideoFrame& frame);
     void handleCameraError(QCamera::Error error, const QString& errorString);
-
-private:
-    QPixmap videoFrameToPixmap(const QVideoFrame& frame);
-    QPixmap cropToHorizontal(const QPixmap& pixmap);
-    std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap, QSize targetSize);
+    void onFrameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
+    void onProcessingError(const QString& errorMessage);
 
 private:
     QTimer* m_captureTimer;
@@ -46,5 +47,6 @@ private:
     QMediaCaptureSession* m_captureSession;
     QVideoSink* m_videoSink;
 
-    std::vector<unsigned char> m_previousImageData;
+    QThread* m_processingThread;
+    FrameProcessor* m_frameProcessor;
 };

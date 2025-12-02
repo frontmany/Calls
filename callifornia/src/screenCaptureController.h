@@ -8,6 +8,9 @@
 #include <QScreen>
 #include <QList>
 #include <QSize>
+#include <QThread>
+
+class FrameProcessor;
 
 class ScreenCaptureController : public QObject
 {
@@ -31,17 +34,19 @@ signals:
     void screenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     void captureStarted();
     void captureStopped();
+    void pixmapReadyForProcessing(const QPixmap& pixmap, const QSize& targetSize);
 
 private slots:
     void captureScreen();
-
-private:
-    QPixmap cropToHorizontal(const QPixmap& pixmap);
-    std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap, QSize targetSize);
+    void onFrameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
+    void onProcessingError(const QString& errorMessage);
 
 private:
     QTimer* m_captureTimer;
     bool m_isCapturing;
     QList<QScreen*> m_availableScreens;
     int m_selectedScreenIndex;
+
+    QThread* m_processingThread;
+    FrameProcessor* m_frameProcessor;
 };

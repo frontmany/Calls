@@ -1,4 +1,5 @@
 #include "screenCaptureController.h"
+#include "frameProcessor.h"
 
 #include <QBuffer>
 #include <QGuiApplication>
@@ -13,15 +14,29 @@ ScreenCaptureController::ScreenCaptureController(QObject* parent)
     : QObject(parent),
     m_captureTimer(new QTimer(this)),
     m_isCapturing(false),
-    m_selectedScreenIndex(-1)
+    m_selectedScreenIndex(-1),
+    m_processingThread(new QThread(this)),
+    m_frameProcessor(new FrameProcessor())
 {
+    m_frameProcessor->moveToThread(m_processingThread);
+    
     connect(m_captureTimer, &QTimer::timeout, this, &ScreenCaptureController::captureScreen);
+    connect(this, &ScreenCaptureController::pixmapReadyForProcessing, m_frameProcessor, &FrameProcessor::processPixmap);
+    connect(m_frameProcessor, &FrameProcessor::frameProcessed, this, &ScreenCaptureController::onFrameProcessed);
+    connect(m_frameProcessor, &FrameProcessor::processingError, this, &ScreenCaptureController::onProcessingError);
+    
+    connect(m_processingThread, &QThread::finished, m_frameProcessor, &QObject::deleteLater);
+    
     refreshAvailableScreens();
+    m_processingThread->start();
 }
 
 ScreenCaptureController::~ScreenCaptureController()
 {
     stopCapture();
+    
+    m_processingThread->quit();
+    m_processingThread->wait();
 }
 
 void ScreenCaptureController::startCapture()
@@ -60,19 +75,21 @@ void ScreenCaptureController::captureScreen()
     
     QPixmap screenshot = screen->grabWindow(0);
 
-    std::vector<unsigned char> imageData;
-
     if (!screenshot.isNull())
     {
-        QPixmap croppedScreenshot = cropToHorizontal(screenshot);
-        
-        bool isVertical = screenshot.height() > screenshot.width();
         QSize targetSize = QSize(1600, 900);
-        
-        imageData = pixmapToBytes(croppedScreenshot, targetSize);
-
-        emit screenCaptured(croppedScreenshot, imageData);
+        emit pixmapReadyForProcessing(screenshot, targetSize);
     }
+}
+
+void ScreenCaptureController::onFrameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
+{
+    emit screenCaptured(pixmap, imageData);
+}
+
+void ScreenCaptureController::onProcessingError(const QString& errorMessage)
+{
+    qWarning() << "Screen processing error:" << errorMessage;
 }
 
 void ScreenCaptureController::refreshAvailableScreens()
@@ -114,42 +131,4 @@ void ScreenCaptureController::resetSelectedScreenIndex()
 bool ScreenCaptureController::isCapturing() const
 {
     return m_isCapturing;
-}
-
-QPixmap ScreenCaptureController::cropToHorizontal(const QPixmap& pixmap)
-{
-    if (pixmap.isNull()) return pixmap;
-
-    int w = pixmap.width();
-    int h = pixmap.height();
-
-    if (h <= w)
-    {
-        return pixmap;
-    }
-
-    int targetH = static_cast<int>(w * 9.0 / 16.0);
-    targetH = qMin(targetH, h);
-    QRect cropRect(0, 0, w, targetH);
-    return pixmap.copy(cropRect);
-}
-
-std::vector<unsigned char> ScreenCaptureController::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
-{
-    QImage image = pixmap.toImage();
-    
-    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32)
-    {
-        image = image.convertToFormat(QImage::Format_RGB32);
-    }
-
-    QImage scaledImage = image.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    
-    QByteArray byteArray;
-    QBuffer buffer(&byteArray);
-    buffer.open(QIODevice::WriteOnly);
-
-    scaledImage.save(&buffer, "JPG", 50);
-
-    return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }
