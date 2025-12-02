@@ -1,11 +1,11 @@
-#include "cameraController.h"
+#include "cameraCaptureController.h"
 
 #include <QVideoFrame>
 #include <QImage>
 #include <QPainter>
 #include <QBuffer>
 
-CameraController::CameraController(QObject* parent)
+CameraCaptureController::CameraCaptureController(QObject* parent)
     : QObject(parent),
     m_captureTimer(new QTimer(this)),
     m_isCapturing(false),
@@ -13,17 +13,16 @@ CameraController::CameraController(QObject* parent)
     m_captureSession(new QMediaCaptureSession(this)),
     m_videoSink(new QVideoSink(this))
 {
-    // Настройка видеосинка для получения кадров
-    connect(m_videoSink, &QVideoSink::videoFrameChanged, this, &CameraController::handleVideoFrame);
+    connect(m_videoSink, &QVideoSink::videoFrameChanged, this, &CameraCaptureController::handleVideoFrame);
     m_captureSession->setVideoSink(m_videoSink);
 }
 
-CameraController::~CameraController()
+CameraCaptureController::~CameraCaptureController()
 {
     stopCapture();
 }
 
-void CameraController::startCapture()
+void CameraCaptureController::startCapture()
 {
     if (m_isCapturing)
     {
@@ -36,7 +35,6 @@ void CameraController::startCapture()
         m_camera = nullptr;
     }
 
-    // Используем первую доступную камеру
     auto cameras = QMediaDevices::videoInputs();
     if (cameras.isEmpty()) {
         emit errorOccurred("No cameras available");
@@ -45,7 +43,7 @@ void CameraController::startCapture()
 
     try {
         m_camera = new QCamera(cameras.first());
-        connect(m_camera, &QCamera::errorOccurred, this, &CameraController::handleCameraError);
+        connect(m_camera, &QCamera::errorOccurred, this, &CameraCaptureController::handleCameraError);
 
         m_captureSession->setCamera(m_camera);
         m_camera->start();
@@ -58,7 +56,7 @@ void CameraController::startCapture()
     }
 }
 
-void CameraController::stopCapture()
+void CameraCaptureController::stopCapture()
 {
     if (!m_isCapturing)
     {
@@ -77,18 +75,16 @@ void CameraController::stopCapture()
     emit captureStopped();
 }
 
-bool CameraController::isCapturing() const
+bool CameraCaptureController::isCapturing() const
 {
     return m_isCapturing;
 }
 
-void CameraController::handleVideoFrame(const QVideoFrame& frame)
+void CameraCaptureController::handleVideoFrame(const QVideoFrame& frame)
 {
     QVideoFrame clonedFrame = frame;
-    if (!clonedFrame.map(QVideoFrame::ReadOnly)) {
-        return;
-    }
-
+    if (!clonedFrame.map(QVideoFrame::ReadOnly)) return;
+    
     QPixmap pixmap;
     try {
         pixmap = videoFrameToPixmap(clonedFrame);
@@ -106,11 +102,9 @@ void CameraController::handleVideoFrame(const QVideoFrame& frame)
             QPixmap croppedPixmap = cropToHorizontal(pixmap);
 
             if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0) {
-                // Конвертируем в байты с тем же целевым размером
                 QSize targetSize = QSize(1280, 720);
                 std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
 
-                // Эмитим сигнал с захваченным изображением
                 emit cameraCaptured(croppedPixmap, imageData);
 
                 m_previousImageData = std::move(imageData);
@@ -122,7 +116,7 @@ void CameraController::handleVideoFrame(const QVideoFrame& frame)
     }
 }
 
-void CameraController::handleCameraError(QCamera::Error error, const QString& errorString)
+void CameraCaptureController::handleCameraError(QCamera::Error error, const QString& errorString)
 {
     emit errorOccurred(QString("Camera error %1: %2").arg(error).arg(errorString));
 
@@ -131,7 +125,7 @@ void CameraController::handleCameraError(QCamera::Error error, const QString& er
     }
 }
 
-QPixmap CameraController::videoFrameToPixmap(const QVideoFrame& frame)
+QPixmap CameraCaptureController::videoFrameToPixmap(const QVideoFrame& frame)
 {
     QImage image = frame.toImage();
 
@@ -161,12 +155,12 @@ QPixmap CameraController::videoFrameToPixmap(const QVideoFrame& frame)
     return QPixmap::fromImage(convertedImage);
 }
 
-bool CameraController::isCameraAvailable() const {
+bool CameraCaptureController::isCameraAvailable() const {
     auto cameras = QMediaDevices::videoInputs();
     return !cameras.isEmpty();
 }
 
-QPixmap CameraController::cropToHorizontal(const QPixmap& pixmap)
+QPixmap CameraCaptureController::cropToHorizontal(const QPixmap& pixmap)
 {
     if (pixmap.isNull()) return pixmap;
 
@@ -184,7 +178,7 @@ QPixmap CameraController::cropToHorizontal(const QPixmap& pixmap)
     return pixmap.copy(cropRect);
 }
 
-std::vector<unsigned char> CameraController::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
+std::vector<unsigned char> CameraCaptureController::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
 {
     QImage image = pixmap.toImage();
 

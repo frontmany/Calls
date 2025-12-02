@@ -44,5 +44,4 @@ private:
     bool m_isCapturing;
     QList<QScreen*> m_availableScreens;
     int m_selectedScreenIndex;
-    std::vector<unsigned char> m_previousImageData;
 };

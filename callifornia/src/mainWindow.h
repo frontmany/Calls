@@ -25,7 +25,7 @@ class MainMenuWidget;
 class CallWidget;
 class DialogsController;
 class ScreenCaptureController;
-class CameraController; 
+class CameraCaptureController; 
 class ConfigManager;
 
 class MainWindow : public QMainWindow {
@@ -40,6 +40,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 private slots:
     void onAuthorizationResult(calls::ErrorCode ec);
@@ -141,6 +142,6 @@ private:
     CallWidget* m_callWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
-    CameraController* m_cameraController = nullptr;
+    CameraCaptureController* m_CameraCaptureController = nullptr;
     ConfigManager* m_configManager = nullptr;
 };

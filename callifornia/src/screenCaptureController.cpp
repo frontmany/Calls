@@ -46,7 +46,6 @@ void ScreenCaptureController::stopCapture()
 
     m_isCapturing = false;
     m_captureTimer->stop();
-    m_previousImageData.clear();
 
     emit captureStopped();
 }
@@ -60,7 +59,9 @@ void ScreenCaptureController::captureScreen()
     if (!screen) return;
     
     QPixmap screenshot = screen->grabWindow(0);
+
     std::vector<unsigned char> imageData;
+
     if (!screenshot.isNull())
     {
         QPixmap croppedScreenshot = cropToHorizontal(screenshot);
@@ -69,11 +70,9 @@ void ScreenCaptureController::captureScreen()
         QSize targetSize = QSize(1600, 900);
         
         imageData = pixmapToBytes(croppedScreenshot, targetSize);
-        
-        m_previousImageData = imageData;
-    }
 
-    emit screenCaptured(screenshot, imageData);
+        emit screenCaptured(croppedScreenshot, imageData);
+    }
 }
 
 void ScreenCaptureController::refreshAvailableScreens()

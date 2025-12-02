@@ -3,17 +3,19 @@
 #include <QApplication>
 #include <QSoundEffect>
 #include <QStatusBar>
+#include <QEvent>
 
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
 #include "callWidget.h"
 #include "dialogsController.h"
 #include "screenCaptureController.h"
-#include "cameraController.h"
+#include "CameraCaptureController.h"
 #include "prerequisites.h"
 #include "clientCallbacksHandler.h"
 #include "updaterCallbacksHandler.h"
 #include "configManager.h"
+#include "screen.h"
 #include "logger.h"
 
 MainWindow::MainWindow() {
@@ -148,11 +150,11 @@ void MainWindow::stopLocalScreenCapture()
 
 void MainWindow::stopLocalCameraCapture()
 {
-    if (!m_cameraController) return;
+    if (!m_CameraCaptureController) return;
 
-    if (m_cameraController->isCapturing())
+    if (m_CameraCaptureController->isCapturing())
     {
-        m_cameraController->stopCapture();
+        m_CameraCaptureController->stopCapture();
     }
 }
 
@@ -417,11 +419,11 @@ void MainWindow::setupUI() {
     connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &MainWindow::onScreenCaptureStopped);
     connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &MainWindow::onScreenCaptured);
 
-    m_cameraController = new CameraController(this);
-    connect(m_cameraController, &CameraController::cameraCaptured, this, &MainWindow::onCameraCaptured);
-    connect(m_cameraController, &CameraController::captureStarted, this, &MainWindow::onCameraCaptureStarted);
-    connect(m_cameraController, &CameraController::captureStopped, this, &MainWindow::onCameraCaptureStopped);
-    connect(m_cameraController, &CameraController::errorOccurred, this, &MainWindow::onCameraErrorOccurred);
+    m_CameraCaptureController = new CameraCaptureController(this);
+    connect(m_CameraCaptureController, &CameraCaptureController::cameraCaptured, this, &MainWindow::onCameraCaptured);
+    connect(m_CameraCaptureController, &CameraCaptureController::captureStarted, this, &MainWindow::onCameraCaptureStarted);
+    connect(m_CameraCaptureController, &CameraCaptureController::captureStopped, this, &MainWindow::onCameraCaptureStopped);
+    connect(m_CameraCaptureController, &CameraCaptureController::errorOccurred, this, &MainWindow::onCameraErrorOccurred);
 
     m_dialogsController = new DialogsController(this);
     connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
@@ -454,6 +456,25 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     event->accept();
 }
 
+void MainWindow::changeEvent(QEvent* event)
+{
+    if (event->type() == QEvent::WindowStateChange)
+    {
+        QWindowStateChangeEvent* stateChangeEvent = static_cast<QWindowStateChangeEvent*>(event);
+        Qt::WindowStates oldState = stateChangeEvent->oldState();
+        Qt::WindowStates newState = windowState();
+
+        if ((oldState & Qt::WindowMaximized) && 
+            !(newState & Qt::WindowMaximized) && 
+            !(newState & Qt::WindowFullScreen))
+        {
+            resize(800, 600);
+        }
+    }
+
+    QMainWindow::changeEvent(event);
+}
+
 void MainWindow::switchToAuthorizationWidget() {
     m_stackedLayout->setCurrentWidget(m_authorizationWidget);
     setWindowTitle("Authorization - Callifornia");
@@ -477,9 +498,9 @@ void MainWindow::switchToMainMenuWidget() {
 void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_stackedLayout->setCurrentWidget(m_callWidget);
 
-    m_callWidget->hideMainDisplay();
+    m_callWidget->hideMainScreen();
     m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->setCameraButtonActive(m_configManager->isCameraActive() && m_cameraController->isCameraAvailable());
+    m_callWidget->setCameraButtonActive(m_configManager->isCameraActive() && m_CameraCaptureController->isCameraAvailable());
 
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
@@ -500,7 +521,7 @@ void MainWindow::onScreenShareButtonClicked(bool toggled) {
         stopLocalScreenCapture();
         m_callWidget->setScreenShareButtonActive(false);
         m_callWidget->setCameraButtonActive(false);
-        m_callWidget->hideMainDisplay();
+        m_callWidget->hideMainScreen();
     }
 }
 
@@ -543,8 +564,6 @@ void MainWindow::onScreenCaptureStarted()
         m_callWidget->setScreenShareButtonActive(true);
         return;
     }
-
-    m_callWidget->restrictCameraButton();
 }
 
 void MainWindow::onScreenCaptureStopped()
@@ -552,14 +571,14 @@ void MainWindow::onScreenCaptureStopped()
     calls::stopScreenSharing();
     m_callWidget->setScreenShareButtonActive(false);
     m_callWidget->setCameraButtonActive(false);
-    m_callWidget->hideMainDisplay();
+    m_callWidget->hideMainScreen();
 }
 
 void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
 {
     if (m_callWidget && !pixmap.isNull())
     {
-        m_callWidget->showFrameInMainDisplay(pixmap);
+        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
     }
 
     if (imageData.empty()) return;
@@ -577,45 +596,40 @@ void MainWindow::onStartScreenSharingError()
 
 void MainWindow::onIncomingScreenSharingStarted()
 {
-    if (m_callWidget) {
-        m_callWidget->restrictScreenShareButton();
-        m_callWidget->showEnterFullscreenButton();
-    }
+    m_callWidget->restrictScreenShareButton();
+    m_callWidget->showEnterFullscreenButton();
 }
 
 void MainWindow::onIncomingScreenSharingStopped()
 {
-    if (m_callWidget) {
-        if (m_callWidget->isFullScreen()) {
-            m_callWidget->exitFullscreen();
-            showMaximized();
-        }
-        
-        m_callWidget->setScreenShareButtonActive(false);
-        m_callWidget->hideEnterFullscreenButton();
-        m_callWidget->hideMainDisplay();
+    if (m_callWidget->isFullScreen()) {
+        m_callWidget->exitFullscreen();
+        showMaximized();
     }
+        
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->hideEnterFullscreenButton();
+    m_callWidget->hideMainScreen();
+    
 }
 
 void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
 {
-    if (!m_callWidget || data.empty() || !calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()) return;
+    if (!m_callWidget || data.empty() || !calls::isViewingRemoteScreen()) return;
 
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
-        m_callWidget->showFrameInMainDisplay(frame);
+        m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
 }
 
 void MainWindow::onCameraButtonClicked(bool toggled)
 {
     if (toggled)
     {
-        // Check if cameras are available before starting camera transmission
-        if (!m_cameraController || !m_cameraController->isCameraAvailable())
+        if (!m_CameraCaptureController || !m_CameraCaptureController->isCameraAvailable())
         {
-            // TODO: Handle case when no cameras are available
             m_callWidget->showErrorNotification("No cameras available", 1500);
             m_callWidget->setCameraButtonActive(false);
             return;
@@ -627,22 +641,21 @@ void MainWindow::onCameraButtonClicked(bool toggled)
             m_callWidget->setCameraButtonActive(false);
             return;
         }
-        m_callWidget->restrictScreenShareButton();
-        m_cameraController->startCapture();
+        m_CameraCaptureController->startCapture();
     }
     else
     {
-        if (m_cameraController && m_cameraController->isCapturing())
+        if (m_CameraCaptureController && m_CameraCaptureController->isCapturing())
         {
-            m_cameraController->stopCapture();
+            m_CameraCaptureController->stopCapture();
         }
         calls::stopCameraSharing();
 
-        if (m_callWidget->isMainDisplayVisible() && (!calls::isViewingRemoteScreen() && !calls::isViewingRemoteCamera()))
-            m_callWidget->hideMainDisplay();
+        if (m_callWidget->isMainScreenVisible() && (!calls::isViewingRemoteScreen() && !calls::isViewingRemoteCamera()))
+            m_callWidget->hideMainScreen();
 
-        if (m_callWidget->isPreviewDisplayVisible() && (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()))
-            m_callWidget->hidePreviewDisplay();
+        if (m_callWidget->isAdditionalScreenVisible(calls::getNickname()) && (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()))
+            m_callWidget->removeAdditionalScreen(calls::getNickname());
     }
 }
 
@@ -654,17 +667,20 @@ void MainWindow::onStartCameraSharingError()
 
 void MainWindow::onIncomingCameraSharingStarted()
 {
-    //nothing to do here don't need to restrict anything
+    m_callWidget->showEnterFullscreenButton();
 }
 
 void MainWindow::onIncomingCameraSharingStopped()
 {
     if (m_callWidget)
     {
-        if (calls::isScreenSharing() || calls::isCameraSharing())
-            m_callWidget->hidePreviewDisplay();
+        if (calls::isScreenSharing() || calls::isCameraSharing() || calls::isViewingRemoteScreen())
+            m_callWidget->removeAdditionalScreen(calls::getNicknameInCallWith());
         else 
-            m_callWidget->hideMainDisplay();
+            m_callWidget->hideMainScreen();
+
+        if (!calls::isViewingRemoteScreen())
+            m_callWidget->hideEnterFullscreenButton();
     }
 }
 
@@ -676,10 +692,10 @@ void MainWindow::onIncomingCamera(const std::vector<unsigned char>& data)
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG")) {
-        if (calls::isScreenSharing())
-            m_callWidget->showFrameInPrewievDisplay(frame);
+        if (calls::isScreenSharing() || calls::isViewingRemoteScreen())
+            m_callWidget->showFrameInAdditionalScreen(frame, calls::getNicknameInCallWith());
         else 
-            m_callWidget->showFrameInMainDisplay(frame);
+            m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::CropToFit);
     }
 }
 
@@ -687,10 +703,10 @@ void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsig
 {
     if (m_callWidget && !pixmap.isNull())
     {
-        if (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera())
-            m_callWidget->showFrameInPrewievDisplay(pixmap);
+        if (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera() || calls::isScreenSharing())
+            m_callWidget->showFrameInAdditionalScreen(pixmap, calls::getNickname());
         else
-            m_callWidget->showFrameInMainDisplay(pixmap);
+            m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::CropToFit);
     }
 
     if (imageData.empty()) return;
@@ -705,43 +721,42 @@ void MainWindow::onCameraCaptureStarted()
     if (friendNickname.empty())
     {
         showTransientStatusMessage("No active call to share camera with", 3000);
-        if (m_cameraController)
-            m_cameraController->stopCapture();
+        if (m_CameraCaptureController)
+            m_CameraCaptureController->stopCapture();
         return;
     }
 }
 
 void MainWindow::onCameraCaptureStopped()
 {
-    m_callWidget->setScreenShareButtonActive(false);
     m_callWidget->setCameraButtonActive(false);
 
-    if (calls::isViewingRemoteCamera() || calls::isViewingRemoteScreen())
-        m_callWidget->hidePreviewDisplay();
+    if (calls::isViewingRemoteCamera() || calls::isViewingRemoteScreen() || calls::isScreenSharing())
+        m_callWidget->removeAdditionalScreen(calls::getNickname());
     else
-        m_callWidget->hideMainDisplay();
+        m_callWidget->hideMainScreen();
 }
 
 void MainWindow::onCameraErrorOccurred(const QString& errorMessage)
 {
     showTransientStatusMessage(errorMessage, 3000);
-    if (m_cameraController && m_cameraController->isCapturing())
+    if (m_CameraCaptureController && m_CameraCaptureController->isCapturing())
     {
-        m_cameraController->stopCapture();
+        m_CameraCaptureController->stopCapture();
     }
     m_callWidget->setCameraButtonActive(false);
 }
 
 void MainWindow::onCallWidgetEnterFullscreenRequested()
 {
-    m_callWidget->enterFullscreen();
     showFullScreen();
+    m_callWidget->enterFullscreen();
 }
 
 void MainWindow::onCallWidgetExitFullscreenRequested()
 {
+    showMaximized();
     m_callWidget->exitFullscreen();
-    showMaximized(); 
 }
 
 void MainWindow::onBlurAnimationFinished() {
@@ -826,7 +841,7 @@ void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
     if (m_screenCaptureController->isCapturing())
         stopLocalScreenCapture();
 
-    if (m_cameraController && m_cameraController->isCapturing())
+    if (m_CameraCaptureController && m_CameraCaptureController->isCapturing())
         stopLocalCameraCapture();
     
     bool requestSent = calls::acceptCall(friendNickname.toStdString());
@@ -1039,7 +1054,7 @@ void MainWindow::onRemoteUserEndedCall() {
     if (m_screenCaptureController->isCapturing())
         stopLocalScreenCapture();
 
-    if (m_cameraController && m_cameraController->isCapturing())
+    if (m_CameraCaptureController && m_CameraCaptureController->isCapturing())
         stopLocalCameraCapture();
 
     LOG_INFO("Remote user ended the call");
@@ -1052,7 +1067,8 @@ void MainWindow::onRemoteUserEndedCall() {
     m_callWidget->hideEnterFullscreenButton();
     m_callWidget->clearIncomingCalls();
     m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->hideMainDisplay();
+    m_callWidget->hideMainScreen();
+    m_callWidget->hideAdditionalScreens();
     switchToMainMenuWidget();
 
     m_mainMenuWidget->setState(calls::State::FREE);

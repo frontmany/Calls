@@ -716,7 +716,7 @@ bool CallsClient::sendScreen(const std::vector<unsigned char>& data) {
 bool CallsClient::startCameraSharing() {
     std::lock_guard<std::mutex> lock(m_dataMutex);
 
-    if (m_state != State::BUSY || m_screenSharing || m_cameraSharing) return false;
+    if (m_state != State::BUSY || m_cameraSharing) return false;
 
     if (!m_call) {
         LOG_WARN("Attempted to start camera sharing without active call context");

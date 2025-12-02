@@ -6,17 +6,27 @@
 class Screen : public QWidget
 {
 public:
-    explicit Screen(QWidget* parent = nullptr);
+    enum class ScaleMode {
+        KeepAspectRatio,
+        CropToFit
+    };
 
-    void setPixmap(const QPixmap& pixmap);
+    explicit Screen(QWidget* parent);
     void clear();
-    void enableRoundedCorners(bool enabled);
+    void setPixmap(const QPixmap& pixmap);
+    void setRoundedCornersEnabled(bool enabled);
+    void setScaleMode(ScaleMode mode);
+    ScaleMode scaleMode() const { return m_scaleMode; }
 
 protected:
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
     void paintEvent(QPaintEvent* event) override;
 
+private:
     QPixmap m_pixmap;
     bool m_clearToWhite = false;
-    bool m_roundedCornersEnabled = true; 
+    bool m_roundedCornersEnabled = true;
+    ScaleMode m_scaleMode = ScaleMode::KeepAspectRatio;
     static constexpr qreal m_cornerRadius = 4.0;
 };

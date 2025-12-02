@@ -3,13 +3,11 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>
-#include <QResizeEvent>
 
 Screen::Screen(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
-    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 }
 
 void Screen::setPixmap(const QPixmap& pixmap)
@@ -23,18 +21,42 @@ void Screen::clear()
 {
     m_pixmap = QPixmap();
     m_clearToWhite = true;
-    enableRoundedCorners(true);
+    setRoundedCornersEnabled(true);
     updateGeometry();
     update();
 }
 
-void Screen::enableRoundedCorners(bool enabled)
+void Screen::setRoundedCornersEnabled(bool enabled)
 {
-    if (m_roundedCornersEnabled != enabled)
+    m_roundedCornersEnabled = enabled;
+    update();
+}
+
+void Screen::setScaleMode(ScaleMode mode)
+{
+    if (m_scaleMode != mode)
     {
-        m_roundedCornersEnabled = enabled;
+        m_scaleMode = mode;
         update();
     }
+}
+
+QSize Screen::sizeHint() const
+{
+    if (!m_pixmap.isNull()) {
+        QSize pixmapSize = m_pixmap.size();
+        return QSize(
+            pixmapSize.width(),
+            pixmapSize.height()
+        );
+    }
+
+    return QWidget::sizeHint();
+}
+
+QSize Screen::minimumSizeHint() const
+{
+    return QSize(100, 100);
 }
 
 void Screen::paintEvent(QPaintEvent* event)
@@ -68,11 +90,32 @@ void Screen::paintEvent(QPaintEvent* event)
 
     if (!m_pixmap.isNull())
     {
-        const QPixmap scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QPixmap scaledPixmap;
+        QRect targetRect;
 
-        const int x = widgetRect.x() + (widgetRect.width() - scaledPixmap.width()) / 2;
-        const int y = widgetRect.y();
+        if (m_scaleMode == ScaleMode::CropToFit)
+        {
+            scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+            
+            const int offsetX = (scaledPixmap.width() - widgetRect.width()) / 2;
+            const int offsetY = (scaledPixmap.height() - widgetRect.height()) / 2;
+            
+            QRect sourceRect(offsetX, offsetY, widgetRect.width(), widgetRect.height());
+            targetRect = widgetRect;
+            
+            painter.drawPixmap(targetRect, scaledPixmap, sourceRect);
+            return;
+        }
+        else
+        {
+            scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-        painter.drawPixmap(QPoint(x, y), scaledPixmap);
+            const int x = widgetRect.x() + (widgetRect.width() - scaledPixmap.width()) / 2;
+            const int y = widgetRect.y() + (widgetRect.height() - scaledPixmap.height()) / 2;
+
+            targetRect = QRect(x, y, scaledPixmap.width(), scaledPixmap.height());
+        }
+
+        painter.drawPixmap(targetRect, scaledPixmap);
     }
 }

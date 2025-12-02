@@ -11,13 +11,13 @@
 #include <QVideoSink>
 #include <QSize>
 
-class CameraController : public QObject
+class CameraCaptureController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit CameraController(QObject* parent = nullptr);
-    ~CameraController();
+    explicit CameraCaptureController(QObject* parent = nullptr);
+    ~CameraCaptureController();
     void startCapture();
     void stopCapture();
     bool isCameraAvailable() const;

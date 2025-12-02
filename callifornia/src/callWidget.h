@@ -13,8 +13,11 @@
 #include <QIcon>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QMap>
 
 #include "buttons.h"
+#include "screen.h"
+
 class QDialog;
 class QResizeEvent;
 class Screen;
@@ -42,7 +45,6 @@ struct StyleCallWidget {
     static QString containerStyle();
     static QString titleStyle();
     static QString timerStyle();
-    static QString longTimerStyle();
     static QString controlButtonStyle();
     static QString hangupButtonStyle();
     static QString panelStyle();
@@ -60,8 +62,8 @@ public:
     CallWidget(QWidget* parent = nullptr);
     ~CallWidget() = default;
 
-    bool isMainDisplayVisible() const;
-    bool isPreviewDisplayVisible() const;
+    bool isMainScreenVisible() const;
+    bool isAdditionalScreenVisible(const std::string& id) const;
     bool isFullScreen() const;
     void setCallInfo(const QString& friendNickname);
     void setInputVolume(int newVolume);
@@ -71,12 +73,13 @@ public:
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
-    void hidePreviewDisplay();
-    void hideMainDisplay();
+    void hideMainScreen();
+    void hideAdditionalScreens();
     void enterFullscreen();
     void exitFullscreen();
-    void showFrameInMainDisplay(const QPixmap& frame);
-    void showFrameInPrewievDisplay(const QPixmap& frame);
+    void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode);
+    void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id);
+    void removeAdditionalScreen(const std::string& id);
     void restrictScreenShareButton();
     void setScreenShareButtonActive(bool active);
     void restrictCameraButton();
@@ -106,7 +109,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private slots:
-    void onSpeakerClicked();
+    void onSpeakerClicked(bool toggled);
     void updateCallTimer();
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
     void onIncomingCallsDialogClosed();
@@ -118,16 +121,14 @@ private:
     void updateIncomingCallsVisibility();
     void updateIncomingCallWidths();
     void restoreIncomingCallsContainer();
-    QPixmap cropToHorizontal(const QPixmap& pixmap);
+    void updateExitFullscreenButtonPosition();
+
     void applyStandardSize();
     void applyDecreasedSize();
-    void applyIncreasedSize();
+    void applyExtraDecreasedSize();
+    void applyFullscreenSize();
+
     QSize scaledScreenSize16by9(int baseWidth);
-    void updateExitFullscreenButtonPosition();
-    void updateCameraPreviewPosition();
-    void refreshMainLayoutGeometry();
-    void updateTopSpacerHeight();
-    void updateCameraButtonState();
 
     // Spacers
     QSpacerItem* m_topMainLayoutSpacer;
@@ -148,7 +149,11 @@ private:
     QLabel* m_timerLabel;
     QLabel* m_friendNicknameLabel;
     Screen* m_mainScreen;
-    Screen* m_previewScreen;
+
+    // Additional screens container
+    QWidget* m_additionalScreensContainer;
+    QHBoxLayout* m_additionalScreensLayout;
+    QMap<std::string, Screen*> m_additionalScreens;
 
     // Control panels
     QWidget* m_buttonsPanel;
@@ -171,7 +176,6 @@ private:
 
     // Buttons
     ButtonIcon* m_enterFullscreenButton;
-    QWidget* m_exitFullscreenButtonContainer;
     ButtonIcon* m_exitFullscreenButton;
     ToggleButtonIcon* m_screenShareButton;
     ToggleButtonIcon* m_cameraButton;
@@ -183,7 +187,7 @@ private:
     QIcon m_screenShareIconHover;
     QIcon m_screenShareIconActive;
     QIcon m_screenShareIconActiveHover;
-    QIcon m_screenShareIconDisabled;
+    QIcon m_screenShareIconRestricted;
 
     // Camera button icons
     QIcon m_cameraIconActive;
