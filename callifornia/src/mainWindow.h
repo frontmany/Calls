@@ -144,4 +144,7 @@ private:
     ScreenCaptureController* m_screenCaptureController = nullptr;
     CameraCaptureController* m_CameraCaptureController = nullptr;
     ConfigManager* m_configManager = nullptr;
+
+    bool m_isCameraInAdditionalScreen = false;
+    bool m_isRemoteCameraInAdditionalScreen = false;
 };

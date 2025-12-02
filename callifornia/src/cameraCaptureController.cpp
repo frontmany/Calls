@@ -96,11 +96,21 @@ bool CameraCaptureController::isCapturing() const
 
 void CameraCaptureController::handleVideoFrame(const QVideoFrame& frame)
 {
+    if (!m_isCapturing)
+    {
+        return;
+    }
+
     emit frameReadyForProcessing(frame);
 }
 
 void CameraCaptureController::onFrameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
 {
+    if (!m_isCapturing)
+    {
+        return;
+    }
+
     emit cameraCaptured(pixmap, imageData);
 }
 

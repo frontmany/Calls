@@ -113,14 +113,33 @@ QPixmap FrameProcessor::cropToHorizontal(const QPixmap& pixmap)
     int w = pixmap.width();
     int h = pixmap.height();
 
-    if (h <= w)
+    const double targetAspectRatio = 16.0 / 9.0;
+    const double currentAspectRatio = static_cast<double>(w) / h;
+
+    // If already 16:9, return as is
+    if (qAbs(currentAspectRatio - targetAspectRatio) < 0.01)
     {
         return pixmap;
     }
 
-    int targetH = static_cast<int>(w * 9.0 / 16.0);
-    targetH = qMin(targetH, h);
-    QRect cropRect(0, 0, w, targetH);
+    int cropW = w;
+    int cropH = h;
+
+    // Image is wider than 16:9, crop width
+    if (currentAspectRatio > targetAspectRatio)
+    {
+        cropW = static_cast<int>(h * targetAspectRatio);
+    }
+    // Image is taller than 16:9, crop height
+    else
+    {
+        cropH = static_cast<int>(w / targetAspectRatio);
+    }
+
+    // Center the crop
+    int x = (w - cropW) / 2;
+    int y = (h - cropH) / 2;
+    QRect cropRect(x, y, cropW, cropH);
     return pixmap.copy(cropRect);
 }
 

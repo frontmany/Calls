@@ -520,8 +520,11 @@ void MainWindow::onScreenShareButtonClicked(bool toggled) {
     else {
         stopLocalScreenCapture();
         m_callWidget->setScreenShareButtonActive(false);
-        m_callWidget->setCameraButtonActive(false);
-        m_callWidget->hideMainScreen();
+
+        if (!m_CameraCaptureController || !m_CameraCaptureController->isCapturing())
+        {
+            m_callWidget->hideMainScreen();
+        }
     }
 }
 
@@ -570,8 +573,11 @@ void MainWindow::onScreenCaptureStopped()
 {
     calls::stopScreenSharing();
     m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->setCameraButtonActive(false);
-    m_callWidget->hideMainScreen();
+
+    if (!m_CameraCaptureController || !m_CameraCaptureController->isCapturing())
+    {
+        m_callWidget->hideMainScreen();
+    }
 }
 
 void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
@@ -674,10 +680,15 @@ void MainWindow::onIncomingCameraSharingStopped()
 {
     if (m_callWidget)
     {
-        if (calls::isScreenSharing() || calls::isCameraSharing() || calls::isViewingRemoteScreen())
+        if (m_isRemoteCameraInAdditionalScreen)
+        {
             m_callWidget->removeAdditionalScreen(calls::getNicknameInCallWith());
-        else 
+            m_isRemoteCameraInAdditionalScreen = false;
+        }
+        else
+        {
             m_callWidget->hideMainScreen();
+        }
 
         if (!calls::isViewingRemoteScreen())
             m_callWidget->hideEnterFullscreenButton();
@@ -691,11 +702,28 @@ void MainWindow::onIncomingCamera(const std::vector<unsigned char>& data)
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
-    if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG")) {
-        if (calls::isScreenSharing() || calls::isViewingRemoteScreen())
+    if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG"))
+    {
+        bool shouldBeInAdditionalScreen = calls::isScreenSharing() || calls::isViewingRemoteScreen();
+
+        if (shouldBeInAdditionalScreen)
+        {
+            if (!m_isRemoteCameraInAdditionalScreen)
+            {
+                m_callWidget->hideMainScreen();
+                m_isRemoteCameraInAdditionalScreen = true;
+            }
             m_callWidget->showFrameInAdditionalScreen(frame, calls::getNicknameInCallWith());
-        else 
+        }
+        else
+        {
+            if (m_isRemoteCameraInAdditionalScreen)
+            {
+                m_callWidget->removeAdditionalScreen(calls::getNicknameInCallWith());
+                m_isRemoteCameraInAdditionalScreen = false;
+            }
             m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::CropToFit);
+        }
     }
 }
 
@@ -703,10 +731,26 @@ void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsig
 {
     if (m_callWidget && !pixmap.isNull())
     {
-        if (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera() || calls::isScreenSharing())
+        bool shouldBeInAdditionalScreen = calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera() || calls::isScreenSharing();
+
+        if (shouldBeInAdditionalScreen)
+        {
+            if (!m_isCameraInAdditionalScreen)
+            {
+                m_callWidget->hideMainScreen();
+                m_isCameraInAdditionalScreen = true;
+            }
             m_callWidget->showFrameInAdditionalScreen(pixmap, calls::getNickname());
+        }
         else
+        {
+            if (m_isCameraInAdditionalScreen)
+            {
+                m_callWidget->removeAdditionalScreen(calls::getNickname());
+                m_isCameraInAdditionalScreen = false;
+            }
             m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::CropToFit);
+        }
     }
 
     if (imageData.empty()) return;
@@ -731,10 +775,15 @@ void MainWindow::onCameraCaptureStopped()
 {
     m_callWidget->setCameraButtonActive(false);
 
-    if (calls::isViewingRemoteCamera() || calls::isViewingRemoteScreen() || calls::isScreenSharing())
+    if (m_isCameraInAdditionalScreen)
+    {
         m_callWidget->removeAdditionalScreen(calls::getNickname());
+        m_isCameraInAdditionalScreen = false;
+    }
     else
+    {
         m_callWidget->hideMainScreen();
+    }
 }
 
 void MainWindow::onCameraErrorOccurred(const QString& errorMessage)

@@ -67,6 +67,11 @@ void ScreenCaptureController::stopCapture()
 
 void ScreenCaptureController::captureScreen()
 {
+    if (!m_isCapturing)
+    {
+        return;
+    }
+
     if (m_selectedScreenIndex == -1 || m_selectedScreenIndex >= m_availableScreens.size())
         return;
     
@@ -84,6 +89,11 @@ void ScreenCaptureController::captureScreen()
 
 void ScreenCaptureController::onFrameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData)
 {
+    if (!m_isCapturing)
+    {
+        return;
+    }
+
     emit screenCaptured(pixmap, imageData);
 }
 
