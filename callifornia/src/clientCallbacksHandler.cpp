@@ -42,6 +42,13 @@ void ClientCallbacksHandler::onAcceptCallResult(calls::ErrorCode ec, const std::
     }
 }
 
+void ClientCallbacksHandler::onScreenSharingStarted() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onScreenSharingStarted",
+            Qt::QueuedConnection);
+    }
+}
+
 void ClientCallbacksHandler::onStartScreenSharingError() {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onStartScreenSharingError",
@@ -67,6 +74,13 @@ void ClientCallbacksHandler::onIncomingScreen(const std::vector<unsigned char>& 
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreen",
             Qt::QueuedConnection, Q_ARG(const std::vector<unsigned char>&, data));
+    }
+}
+
+void ClientCallbacksHandler::onCameraSharingStarted() {
+    if (m_mainWindow) {
+        QMetaObject::invokeMethod(m_mainWindow, "onCameraSharingStarted",
+            Qt::QueuedConnection);
     }
 }
 

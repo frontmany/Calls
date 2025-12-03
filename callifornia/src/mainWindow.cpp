@@ -534,6 +534,7 @@ void MainWindow::onScreenSelected(int screenIndex)
     if (!m_screenCaptureController)
     {
         showTransientStatusMessage("Unable to start screen sharing", 2000);
+        m_callWidget->setScreenShareButtonActive(false);
         return;
     }
 
@@ -543,30 +544,37 @@ void MainWindow::onScreenSelected(int screenIndex)
     if (m_screenCaptureController->selectedScreenIndex() == -1)
     {
         showTransientStatusMessage("Selected screen is no longer available", 3000);
+        m_callWidget->setScreenShareButtonActive(false);
         return;
     }
 
-    m_screenCaptureController->startCapture();
-}
-
-void MainWindow::onScreenCaptureStarted()
-{
     const std::string friendNickname = calls::getNicknameInCallWith();
     if (friendNickname.empty())
     {
         showTransientStatusMessage("No active call to share screen with", 3000);
-        stopLocalScreenCapture();
+        m_callWidget->setScreenShareButtonActive(false);
         return;
     }
-    
 
     if (!calls::startScreenSharing())
     {
-        showTransientStatusMessage("Failed to start screen sharing", 3000);
-        stopLocalScreenCapture();
-        m_callWidget->setScreenShareButtonActive(true);
+        showTransientStatusMessage("Failed to send screen sharing request", 3000);
+        m_callWidget->setScreenShareButtonActive(false);
         return;
     }
+}
+
+void MainWindow::onScreenSharingStarted()
+{
+    if (m_screenCaptureController)
+    {
+        m_screenCaptureController->startCapture();
+    }
+}
+
+void MainWindow::onScreenCaptureStarted()
+{
+    LOG_INFO("Screen capture started locally");
 }
 
 void MainWindow::onScreenCaptureStopped()
@@ -641,13 +649,20 @@ void MainWindow::onCameraButtonClicked(bool toggled)
             return;
         }
 
-        if (!calls::startCameraSharing())
+        const std::string friendNickname = calls::getNicknameInCallWith();
+        if (friendNickname.empty())
         {
-            m_callWidget->showErrorNotification("Failed to start camera sharing", 1500);
+            m_callWidget->showErrorNotification("No active call to share camera with", 1500);
             m_callWidget->setCameraButtonActive(false);
             return;
         }
-        m_CameraCaptureController->startCapture();
+
+        if (!calls::startCameraSharing())
+        {
+            m_callWidget->showErrorNotification("Failed to send camera sharing request", 1500);
+            m_callWidget->setCameraButtonActive(false);
+            return;
+        }
     }
     else
     {
@@ -662,6 +677,14 @@ void MainWindow::onCameraButtonClicked(bool toggled)
 
         if (m_callWidget->isAdditionalScreenVisible(calls::getNickname()) && (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()))
             m_callWidget->removeAdditionalScreen(calls::getNickname());
+    }
+}
+
+void MainWindow::onCameraSharingStarted()
+{
+    if (m_CameraCaptureController)
+    {
+        m_CameraCaptureController->startCapture();
     }
 }
 
@@ -761,14 +784,7 @@ void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsig
 
 void MainWindow::onCameraCaptureStarted()
 {
-    const std::string friendNickname = calls::getNicknameInCallWith();
-    if (friendNickname.empty())
-    {
-        showTransientStatusMessage("No active call to share camera with", 3000);
-        if (m_CameraCaptureController)
-            m_CameraCaptureController->stopCapture();
-        return;
-    }
+    LOG_INFO("Camera capture started locally");
 }
 
 void MainWindow::onCameraCaptureStopped()

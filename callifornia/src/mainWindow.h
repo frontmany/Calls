@@ -82,11 +82,13 @@ private slots:
     void onScreenCaptureStopped();
     void onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     
+    void onScreenSharingStarted();
     void onStartScreenSharingError();
     void onIncomingScreenSharingStarted();
     void onIncomingScreenSharingStopped();
     void onIncomingScreen(const std::vector<unsigned char>& data);
 
+    void onCameraSharingStarted();
     void onStartCameraSharingError();
     void onIncomingCameraSharingStarted();
     void onIncomingCameraSharingStopped();

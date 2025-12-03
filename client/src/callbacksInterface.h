@@ -14,11 +14,13 @@ namespace calls {
         virtual void onStartCallingResult(ErrorCode ec) = 0;
         virtual void onAcceptCallResult(ErrorCode ec, const std::string& nickname) = 0;
         
+        virtual void onScreenSharingStarted() = 0;
         virtual void onStartScreenSharingError() = 0;
         virtual void onIncomingScreenSharingStarted() = 0;
         virtual void onIncomingScreenSharingStopped() = 0;
         virtual void onIncomingScreen(const std::vector<unsigned char>& data) = 0;
 
+        virtual void onCameraSharingStarted() = 0;
         virtual void onStartCameraSharingError() = 0;
         virtual void onIncomingCameraSharingStarted() = 0;
         virtual void onIncomingCameraSharingStopped() = 0;

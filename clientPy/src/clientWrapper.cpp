@@ -115,6 +115,15 @@ public:
         );
     }
 
+    void onScreenSharingStarted() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onScreenSharingStarted
+        );
+    }
+
     void onStartScreenSharingError() override
     {
         PYBIND11_OVERRIDE_PURE(
@@ -149,6 +158,15 @@ public:
             calls::CallbacksInterface,
             onIncomingScreen,
             data
+        );
+    }
+
+    void onCameraSharingStarted() override
+    {
+        PYBIND11_OVERRIDE_PURE(
+            void,
+            calls::CallbacksInterface,
+            onCameraSharingStarted
         );
     }
 
@@ -220,10 +238,12 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onNetworkError", &calls::CallbacksInterface::onNetworkError)
         .def("onConnectionRestored", &calls::CallbacksInterface::onConnectionRestored)
         .def("onRemoteUserEndedCall", &calls::CallbacksInterface::onRemoteUserEndedCall)
+        .def("onScreenSharingStarted", &calls::CallbacksInterface::onScreenSharingStarted)
         .def("onStartScreenSharingError", &calls::CallbacksInterface::onStartScreenSharingError)
         .def("onIncomingScreenSharingStarted", &calls::CallbacksInterface::onIncomingScreenSharingStarted)
         .def("onIncomingScreenSharingStopped", &calls::CallbacksInterface::onIncomingScreenSharingStopped)
         .def("onIncomingScreen", &calls::CallbacksInterface::onIncomingScreen)
+        .def("onCameraSharingStarted", &calls::CallbacksInterface::onCameraSharingStarted)
         .def("onStartCameraSharingError", &calls::CallbacksInterface::onStartCameraSharingError)
         .def("onIncomingCameraSharingStarted", &calls::CallbacksInterface::onIncomingCameraSharingStarted)
         .def("onIncomingCameraSharingStopped", &calls::CallbacksInterface::onIncomingCameraSharingStopped)

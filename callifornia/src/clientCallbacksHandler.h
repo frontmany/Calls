@@ -14,11 +14,13 @@ public:
     void onStartCallingResult(calls::ErrorCode ec) override;
     void onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname) override;
 
+    void onScreenSharingStarted() override;
     void onStartScreenSharingError() override;
     void onIncomingScreenSharingStarted() override;
     void onIncomingScreenSharingStopped() override;
     void onIncomingScreen(const std::vector<unsigned char>& data) override;
 
+    void onCameraSharingStarted() override;
     void onStartCameraSharingError() override;
     void onIncomingCameraSharingStarted() override;
     void onIncomingCameraSharingStopped() override;

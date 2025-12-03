@@ -485,6 +485,11 @@ void CallsClient::reset() {
         m_audioEngine->stopStream();
     }
 
+    m_screenSharing = false;
+    m_viewingRemoteScreen = false;
+    m_cameraSharing = false;
+    m_viewingRemoteCamera = false;
+
     m_state = State::UNAUTHORIZED;
 }
 
@@ -658,7 +663,6 @@ bool CallsClient::startScreenSharing() {
         return false;
     }
 
-    m_screenSharing = true;
     sendStartScreenSharingPacket();
 
     return true;
@@ -723,7 +727,6 @@ bool CallsClient::startCameraSharing() {
         return false;
     }
 
-    m_cameraSharing = true;
     sendStartCameraSharingPacket();
 
     return true;
@@ -881,12 +884,20 @@ void CallsClient::onScreenSharingStartedFail(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
 
+    m_screenSharing = false;
+    LOG_WARN("Screen sharing start rejected by server");
+
     m_callbacksQueue.push([this]() {m_callbackHandler->onStartScreenSharingError(); });
 }
 
 void CallsClient::onScreenSharingStartedOk(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
+
+    m_screenSharing = true;
+    LOG_INFO("Screen sharing started successfully");
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onScreenSharingStarted(); });
 }
 
 void CallsClient::onScreenSharingStoppedOk(const nlohmann::json& jsonObject) {
@@ -963,12 +974,20 @@ void CallsClient::onCameraSharingStartedFail(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
 
+    m_cameraSharing = false;
+    LOG_WARN("Camera sharing start rejected by server");
+
     m_callbacksQueue.push([this]() {m_callbackHandler->onStartCameraSharingError(); });
 }
 
 void CallsClient::onCameraSharingStartedOk(const nlohmann::json& jsonObject) {
     auto packetValid = validatePacket(jsonObject);
     if (!packetValid) return;
+
+    m_cameraSharing = true;
+    LOG_INFO("Camera sharing started successfully");
+
+    m_callbacksQueue.push([this]() {m_callbackHandler->onCameraSharingStarted(); });
 }
 
 void CallsClient::onCameraSharingStoppedOk(const nlohmann::json& jsonObject) {
