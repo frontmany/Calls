@@ -527,6 +527,28 @@ void CallWidget::resizeEvent(QResizeEvent* event)
 {
     updateIncomingCallWidths();
     updateExitFullscreenButtonPosition();
+    
+    if (m_screenFullscreenActive)
+    {
+        applyFullscreenSize();
+    }
+    else if (m_mainScreen->isVisible())
+    {
+        if (m_slidersVisible)
+        {
+            if (m_additionalScreens.isEmpty())
+                applyDecreasedSize();
+            else
+                applyExtraDecreasedSize();
+        }
+        else
+        {
+            if (m_additionalScreens.isEmpty())
+                applyStandardSize();
+            else
+                applyDecreasedSize();
+        }
+    }
 }
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
@@ -626,6 +648,14 @@ void CallWidget::applyStandardSize() {
 
     QSize availableSize = size();
     targetSize = scaledScreenSize16by9(1440);
+    
+    int reservedHeight = scale(100);
+    int availableHeight = availableSize.height() - reservedHeight;
+    if (availableHeight > 0 && targetSize.height() > availableHeight)
+    {
+        int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
+        targetSize = QSize(adjustedWidth, availableHeight);
+    }
 
     m_mainScreen->setRoundedCornersEnabled(true);
     m_mainScreen->setMinimumSize(100, 100);
@@ -634,12 +664,32 @@ void CallWidget::applyStandardSize() {
 
 void CallWidget::applyDecreasedSize() {
     QSize targetSize = scaledScreenSize16by9(scale(1280));
+    
+    QSize availableSize = size();
+    int reservedHeight = scale(100) + scale(154);
+    int availableHeight = availableSize.height() - reservedHeight;
+    if (availableHeight > 0 && targetSize.height() > availableHeight)
+    {
+        int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
+        targetSize = QSize(adjustedWidth, availableHeight);
+    }
+    
     m_mainScreen->setMinimumSize(100, 100);
     m_mainScreen->setMaximumSize(targetSize);
 }
 
 void CallWidget::applyExtraDecreasedSize() {
     QSize targetSize = scaledScreenSize16by9(scale(820));
+    
+    QSize availableSize = size();
+    int reservedHeight = scale(100) + scale(154) + scale(120);
+    int availableHeight = availableSize.height() - reservedHeight;
+    if (availableHeight > 0 && targetSize.height() > availableHeight)
+    {
+        int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
+        targetSize = QSize(adjustedWidth, availableHeight);
+    }
+    
     m_mainScreen->setMinimumSize(100, 100);
     m_mainScreen->setMaximumSize(targetSize);
 }
