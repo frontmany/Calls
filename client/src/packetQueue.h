@@ -9,26 +9,33 @@
 
 #include "packetTypes.h"
 
-struct Packet
-{
-    uint64_t id;
-    calls::PacketType type = calls::PacketType::PING;
-    std::vector<unsigned char> data;
-};
+namespace calls {
 
-class PacketQueue
-{
-public:
-    PacketQueue();
+    struct Packet
+    {
+        uint64_t id;
+        calls::PacketType type = calls::PacketType::PING;
+        std::vector<unsigned char> data;
+    };
 
-    void push(Packet packet);
-    bool tryPop(Packet& packet, std::chrono::milliseconds timeout);
-    void clear();
+    class PacketQueue
+    {
+    public:
+        PacketQueue();
 
-private:
-    std::mutex m_mutex;
-    std::condition_variable m_cv;
-    std::deque<Packet> m_queue;
-    std::size_t m_maxSize;
-};
+        void push(Packet packet);
+        bool tryPop(Packet& packet, std::chrono::milliseconds timeout);
+        void clear();
 
+    private:
+        bool isCriticalPacket(const Packet& packet) const;
+
+    private:
+        std::mutex m_mutex;
+        std::condition_variable m_cv;
+        std::deque<Packet> m_priorityQueue;
+        std::deque<Packet> m_regularQueue;
+        std::size_t m_maxRegularSize;
+    };
+
+}

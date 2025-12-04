@@ -147,7 +147,7 @@ void CallsServer::run() {
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::chrono::seconds pingGap = 2s;
-    std::chrono::seconds checkPingGap = 4s;
+    std::chrono::seconds checkPingGap = 6s;
 
     std::chrono::steady_clock::time_point lastPing = begin;
     std::chrono::steady_clock::time_point lastCheck = begin;
@@ -201,7 +201,7 @@ void CallsServer::broadcastPing() {
 }
 
 void CallsServer::checkPing() {
-    const int MAX_CONSECUTIVE_FAILURES = 3;
+    const int MAX_CONSECUTIVE_FAILURES = 4;
     
     std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
     std::lock_guard<std::mutex> lock2(m_pingResultsMutex);

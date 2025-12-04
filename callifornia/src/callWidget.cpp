@@ -667,13 +667,7 @@ void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode s
 {
     if (frame.isNull()) return;
 
-    if (m_screenFullscreenActive) {
-        m_mainScreen->setScaleMode(Screen::ScaleMode::CropToFit);
-    }
-    else {
-        m_mainScreen->setScaleMode(scaleMode);
-    }
-    
+    m_mainScreen->setScaleMode(scaleMode);
     m_mainScreen->setPixmap(frame);
 
     if (!m_mainScreen->isVisible())

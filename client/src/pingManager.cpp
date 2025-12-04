@@ -39,7 +39,7 @@ namespace calls {
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         std::chrono::seconds pingGap = 1s;
-        std::chrono::seconds checkPingGap = 3s;
+        std::chrono::seconds checkPingGap = 5s;
 
         std::chrono::steady_clock::time_point lastPing = begin;
         std::chrono::steady_clock::time_point lastCheck = begin;
@@ -65,7 +65,7 @@ namespace calls {
     }
 
     void PingManager::checkPing() {
-        const int MAX_CONSECUTIVE_FAILURES = 3;
+        const int MAX_CONSECUTIVE_FAILURES = 4;
 
         if (m_pingResult) {
             m_consecutiveFailures = 0;

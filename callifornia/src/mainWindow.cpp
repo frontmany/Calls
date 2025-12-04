@@ -696,7 +696,12 @@ void MainWindow::onStartCameraSharingError()
 
 void MainWindow::onIncomingCameraSharingStarted()
 {
-    m_callWidget->showEnterFullscreenButton();
+    bool shouldBeInAdditionalScreen = calls::isScreenSharing() || calls::isViewingRemoteScreen();
+    
+    if (!shouldBeInAdditionalScreen)
+    {
+        m_callWidget->showEnterFullscreenButton();
+    }
 }
 
 void MainWindow::onIncomingCameraSharingStopped()
