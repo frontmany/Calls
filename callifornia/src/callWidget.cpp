@@ -528,26 +528,9 @@ void CallWidget::resizeEvent(QResizeEvent* event)
     updateIncomingCallWidths();
     updateExitFullscreenButtonPosition();
     
-    if (m_screenFullscreenActive)
+    if (m_mainScreen->isVisible())
     {
-        applyFullscreenSize();
-    }
-    else if (m_mainScreen->isVisible())
-    {
-        if (m_slidersVisible)
-        {
-            if (m_additionalScreens.isEmpty())
-                applyDecreasedSize();
-            else
-                applyExtraDecreasedSize();
-        }
-        else
-        {
-            if (m_additionalScreens.isEmpty())
-                applyStandardSize();
-            else
-                applyDecreasedSize();
-        }
+        updateMainScreenSize();
     }
 }
 
@@ -603,20 +586,7 @@ void CallWidget::onSpeakerClicked(bool toggled)
     m_slidersVisible = toggled;
     m_slidersContainer->setVisible(toggled);
     
-    if (toggled)
-    {
-        if (m_additionalScreens.isEmpty())
-            applyDecreasedSize();
-        else
-            applyExtraDecreasedSize();
-    }
-    else
-    {
-        if (m_additionalScreens.isEmpty()) 
-            applyStandardSize();
-        else 
-            applyDecreasedSize();
-    }
+    updateMainScreenSize();
 }
 
 void CallWidget::setInputVolume(int newVolume) {
@@ -704,6 +674,28 @@ void CallWidget::applyFullscreenSize()
     m_mainScreen->setFixedSize(width, height);
 }
 
+void CallWidget::updateMainScreenSize()
+{
+    if (m_screenFullscreenActive)
+    {
+        applyFullscreenSize();
+    }
+    else if (m_slidersVisible)
+    {
+        if (m_additionalScreens.isEmpty())
+            applyDecreasedSize();
+        else
+            applyExtraDecreasedSize();
+    }
+    else
+    {
+        if (m_additionalScreens.isEmpty())
+            applyStandardSize();
+        else
+            applyDecreasedSize();
+    }
+}
+
 QSize CallWidget::scaledScreenSize16by9(int baseWidth)
 {
     const int scaledWidth = extraScale(baseWidth, 4) - scale(15);
@@ -732,7 +724,9 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
 {
     if (frame.isNull()) return;
 
-    if (m_additionalScreens.isEmpty())
+    bool wasEmpty = m_additionalScreens.isEmpty();
+    
+    if (wasEmpty)
         m_topMainLayoutSpacer->changeSize(0, scale(20), QSizePolicy::Minimum, QSizePolicy::Fixed);
 
     Screen* screen = nullptr;
@@ -752,6 +746,11 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
 
         m_additionalScreens[id] = screen;
         m_additionalScreensLayout->addWidget(screen);
+        
+        if (wasEmpty && !m_screenFullscreenActive)
+        {
+            updateMainScreenSize();
+        }
     }
 
     if (m_screenFullscreenActive)
@@ -771,9 +770,15 @@ void CallWidget::removeAdditionalScreen(const std::string& id)
     screen->deleteLater();
     m_additionalScreens.remove(id);
 
-    if (m_additionalScreens.isEmpty()) {
+    if (m_additionalScreens.isEmpty())
+    {
         m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
         m_additionalScreensContainer->hide();
+        
+        if (!m_screenFullscreenActive)
+        {
+            updateMainScreenSize();
+        }
     }
 }
 

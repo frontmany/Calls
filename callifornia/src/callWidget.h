@@ -127,6 +127,7 @@ private:
     void applyDecreasedSize();
     void applyExtraDecreasedSize();
     void applyFullscreenSize();
+    void updateMainScreenSize();
 
     QSize scaledScreenSize16by9(int baseWidth);
 
