@@ -17,6 +17,11 @@
 
 typedef std::shared_ptr<User> UserPtr;
 
+struct PingState {
+	bool result = false;
+	int consecutiveFailures = 0;
+};
+
 class CallsServer {
 public:
 	CallsServer(const std::string& port);
@@ -57,7 +62,7 @@ private:
 	std::mutex m_pingResultsMutex;
 	std::mutex m_nicknameHashToUserAndCallsMutex;
 	std::atomic_bool m_running = false;
-	std::unordered_map<asio::ip::udp::endpoint, bool> m_pingResults;
+	std::unordered_map<asio::ip::udp::endpoint, PingState> m_pingResults;
 	std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;
 	std::unordered_map<std::string, UserPtr> m_nicknameHashToUser;
 	std::unordered_set<std::shared_ptr<Call>> m_calls;

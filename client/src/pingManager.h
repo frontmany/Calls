@@ -29,5 +29,6 @@ namespace calls {
 		std::atomic_bool m_error = false;
 		std::atomic_bool m_pingResult = false;
 		std::atomic_bool m_running = false;
+		std::atomic_int m_consecutiveFailures = 0;
 	};
 }

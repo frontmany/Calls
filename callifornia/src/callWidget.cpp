@@ -650,7 +650,6 @@ void CallWidget::applyFullscreenSize()
     auto width = availableSize.width();
     auto height = availableSize.height() + scale(42);
 
-    m_mainScreen->setScaleMode(Screen::ScaleMode::CropToFit);
     m_mainScreen->setRoundedCornersEnabled(false);
     m_mainScreen->setFixedSize(width, height);
 }
@@ -700,9 +699,12 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
     else
     {
         screen = new Screen(m_additionalScreensContainer);
-        screen->setFixedSize(scale(256), scale(144));
         screen->setRoundedCornersEnabled(true);
         screen->setScaleMode(Screen::ScaleMode::CropToFit);
+
+        const int scaledWidth = extraScale(256, 4);
+        const int scaledHeight = extraScale(144, 4);
+        screen->setFixedSize(scaledWidth, scaledHeight);
 
         m_additionalScreens[id] = screen;
         m_additionalScreensLayout->addWidget(screen);

@@ -147,7 +147,7 @@ void CallsServer::run() {
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::chrono::seconds pingGap = 2s;
-    std::chrono::seconds checkPingGap = 12s;
+    std::chrono::seconds checkPingGap = 4s;
 
     std::chrono::steady_clock::time_point lastPing = begin;
     std::chrono::steady_clock::time_point lastCheck = begin;
@@ -195,25 +195,34 @@ void CallsServer::broadcastPing() {
     for (auto& [endpoint, _] : m_endpointToUser) {
         m_networkController.sendToClient(endpoint, PacketType::PING);
         if (!m_pingResults.contains(endpoint)) {
-            m_pingResults.emplace(endpoint, false);
+            m_pingResults.emplace(endpoint, PingState{});
         }
     }
 }
 
 void CallsServer::checkPing() {
+    const int MAX_CONSECUTIVE_FAILURES = 3;
+    
     std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
     std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
 
     std::vector<asio::ip::udp::endpoint> endpointsToLogout;
 
-    for (auto& [endpoint, result] : m_pingResults) {
-        if (result) {
-            m_pingResults.at(endpoint) = false;
+    for (auto& [endpoint, pingState] : m_pingResults) {
+        if (pingState.result) {
+            pingState.consecutiveFailures = 0;
+            pingState.result = false;
             LOG_DEBUG("Ping confirmed from {}", endpoint.address().to_string());
         }
         else {
-            endpointsToLogout.push_back(endpoint);
-            LOG_INFO("User disconnected due to ping timeout: {}", endpoint.address().to_string());
+            pingState.consecutiveFailures++;
+            LOG_WARN("Ping check failed for {} (consecutive failures: {})", 
+                endpoint.address().to_string(), pingState.consecutiveFailures);
+            
+            if (pingState.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                endpointsToLogout.push_back(endpoint);
+                LOG_ERROR("User disconnected due to multiple ping timeouts: {}", endpoint.address().to_string());
+            }
         }
     }
 
@@ -253,7 +262,7 @@ void CallsServer::checkPing() {
 void CallsServer::handlePingSuccess(const asio::ip::udp::endpoint& endpointFrom) {
     std::lock_guard<std::mutex> lock(m_pingResultsMutex);
     if (m_pingResults.contains(endpointFrom)) {
-        m_pingResults.at(endpointFrom) = true;
+        m_pingResults.at(endpointFrom).result = true;
     }
 }
 

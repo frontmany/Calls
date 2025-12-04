@@ -65,7 +65,11 @@ namespace calls {
     }
 
     void PingManager::checkPing() {
+        const int MAX_CONSECUTIVE_FAILURES = 3;
+
         if (m_pingResult) {
+            m_consecutiveFailures = 0;
+            
             if (m_error) {
                 m_onPingEstablishedAgain();
                 m_error = false;
@@ -75,12 +79,16 @@ namespace calls {
             LOG_INFO("ping success");
         }
         else {
-            if (!m_error) {
-                m_onPingFail();
+            m_consecutiveFailures++;
+            LOG_WARN("ping check failed (consecutive failures: {})", m_consecutiveFailures.load());
+            
+            if (m_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                if (!m_error) {
+                    LOG_ERROR("Multiple consecutive ping failures, triggering network error");
+                    m_onPingFail();
+                }
+                m_error = true;
             }
-
-            m_error = true;
-            LOG_INFO("ping fail");
         }
     }
 }
