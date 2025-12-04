@@ -153,6 +153,12 @@ void AudioEngine::refreshAudioDevices() {
         stopStream();
     }
 
+    {
+        std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
+        std::queue<AudioPacket> emptyQueue;
+        std::swap(m_outputAudioQueue, emptyQueue);
+    }
+
     if (m_isInitialized) {
         Pa_Terminate();
         m_isInitialized = false;

@@ -648,7 +648,7 @@ void CallWidget::applyFullscreenSize()
 {
     QSize availableSize = size();
     auto width = availableSize.width();
-    auto height = availableSize.height() + scale(42);
+    auto height = availableSize.height();
 
     m_mainScreen->setRoundedCornersEnabled(false);
     m_mainScreen->setFixedSize(width, height);
@@ -696,8 +696,8 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
         screen->setRoundedCornersEnabled(true);
         screen->setScaleMode(Screen::ScaleMode::CropToFit);
 
-        const int scaledWidth = extraScale(256, 4);
-        const int scaledHeight = extraScale(144, 4);
+        const int scaledWidth = extraScale(256, 3);
+        const int scaledHeight = extraScale(144, 3);
         screen->setFixedSize(scaledWidth, scaledHeight);
 
         m_additionalScreens[id] = screen;
@@ -771,6 +771,7 @@ void CallWidget::enterFullscreen()
     setMouseTracking(true);
     m_exitFullscreenHideTimer->start();
 
+    m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
     applyFullscreenSize();
 }
 
@@ -799,6 +800,7 @@ void CallWidget::exitFullscreen()
     setMouseTracking(false);
     m_exitFullscreenHideTimer->stop();
 
+    m_mainLayout->setAlignment(Qt::AlignCenter);
     applyStandardSize();
 }
 
