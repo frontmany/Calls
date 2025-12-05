@@ -622,7 +622,9 @@ void MainWindow::onIncomingScreenSharingStopped()
     
     if (wasFullscreen) {
         m_callWidget->exitFullscreen();
-        showMaximized();
+        QTimer::singleShot(0, this, [this]() {
+            showMaximized();
+        });
     }
         
     m_callWidget->setScreenShareButtonActive(false);
@@ -1155,7 +1157,9 @@ void MainWindow::onRemoteUserEndedCall() {
 
     if (m_callWidget->isFullScreen()) {
         m_callWidget->exitFullscreen();
-        showMaximized();
+        QTimer::singleShot(0, this, [this]() {
+            showMaximized();
+        });
     }
 
     m_callWidget->hideEnterFullscreenButton();
