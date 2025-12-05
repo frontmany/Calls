@@ -622,8 +622,9 @@ void MainWindow::onIncomingScreenSharingStopped()
     
     if (wasFullscreen) {
         m_callWidget->exitFullscreen();
+        setWindowState(Qt::WindowNoState);
         QTimer::singleShot(0, this, [this]() {
-            showMaximized();
+            setWindowState(Qt::WindowMaximized);
         });
     }
         
@@ -1157,8 +1158,9 @@ void MainWindow::onRemoteUserEndedCall() {
 
     if (m_callWidget->isFullScreen()) {
         m_callWidget->exitFullscreen();
+        setWindowState(Qt::WindowNoState);
         QTimer::singleShot(0, this, [this]() {
-            showMaximized();
+            setWindowState(Qt::WindowMaximized);
         });
     }
 
