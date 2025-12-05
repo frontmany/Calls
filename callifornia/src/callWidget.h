@@ -77,6 +77,7 @@ public:
     void hideAdditionalScreens();
     void enterFullscreen();
     void exitFullscreen();
+    void updateMainScreenSize();
     void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode);
     void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id);
     void removeAdditionalScreen(const std::string& id);
@@ -127,7 +128,6 @@ private:
     void applyDecreasedSize();
     void applyExtraDecreasedSize();
     void applyFullscreenSize();
-    void updateMainScreenSize();
 
     QSize scaledScreenSize16by9(int baseWidth);
 

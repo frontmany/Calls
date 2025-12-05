@@ -4,6 +4,7 @@
 #include <QSoundEffect>
 #include <QStatusBar>
 #include <QEvent>
+#include <QTimer>
 
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
@@ -575,6 +576,7 @@ void MainWindow::onScreenSharingStarted()
 void MainWindow::onScreenCaptureStarted()
 {
     LOG_INFO("Screen capture started locally");
+    m_callWidget->hideEnterFullscreenButton();
 }
 
 void MainWindow::onScreenCaptureStopped()
@@ -616,15 +618,40 @@ void MainWindow::onIncomingScreenSharingStarted()
 
 void MainWindow::onIncomingScreenSharingStopped()
 {
-    if (m_callWidget->isFullScreen()) {
+    bool wasFullscreen = m_callWidget->isFullScreen();
+    
+    if (wasFullscreen) {
         m_callWidget->exitFullscreen();
         showMaximized();
     }
         
     m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->hideEnterFullscreenButton();
     m_callWidget->hideMainScreen();
-    
+
+    // Move cameras from additional screens to main screen
+    if (calls::isViewingRemoteCamera() && m_isRemoteCameraInAdditionalScreen)
+    {
+        m_callWidget->removeAdditionalScreen(calls::getNicknameInCallWith());
+        m_isRemoteCameraInAdditionalScreen = false;
+    }
+    else if (calls::isCameraSharing() && m_isCameraInAdditionalScreen)
+    {
+        m_callWidget->removeAdditionalScreen(calls::getNickname());
+        m_isCameraInAdditionalScreen = false;
+    }
+
+    // Hide fullscreen button only if remote camera is not present
+    if (!calls::isViewingRemoteCamera())
+    {
+        m_callWidget->hideEnterFullscreenButton();
+    }
+
+    if (wasFullscreen)
+    {
+        QTimer::singleShot(0, m_callWidget, [this]() {
+            m_callWidget->updateMainScreenSize();
+        });
+    }
 }
 
 void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
@@ -706,20 +733,17 @@ void MainWindow::onIncomingCameraSharingStarted()
 
 void MainWindow::onIncomingCameraSharingStopped()
 {
-    if (m_callWidget)
-    {
-        if (m_isRemoteCameraInAdditionalScreen)
-        {
-            m_callWidget->removeAdditionalScreen(calls::getNicknameInCallWith());
-            m_isRemoteCameraInAdditionalScreen = false;
-        }
-        else
-        {
-            m_callWidget->hideMainScreen();
-        }
+    if (m_isRemoteCameraInAdditionalScreen) {
+        m_callWidget->removeAdditionalScreen(calls::getNicknameInCallWith());
+        m_isRemoteCameraInAdditionalScreen = false;
+    }
+    else
+        m_callWidget->hideMainScreen();
+    
 
-        if (!calls::isViewingRemoteScreen())
-            m_callWidget->hideEnterFullscreenButton();
+    if (!calls::isViewingRemoteScreen() && calls::isCameraSharing()) {
+        onCallWidgetExitFullscreenRequested();
+        m_callWidget->hideEnterFullscreenButton();
     }
 }
 

@@ -529,9 +529,7 @@ void CallWidget::resizeEvent(QResizeEvent* event)
     updateExitFullscreenButtonPosition();
     
     if (m_mainScreen->isVisible())
-    {
         updateMainScreenSize();
-    }
 }
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
@@ -676,18 +674,18 @@ void CallWidget::applyFullscreenSize()
 
 void CallWidget::updateMainScreenSize()
 {
-    if (m_screenFullscreenActive)
+    if (m_screenFullscreenActive) 
     {
         applyFullscreenSize();
     }
-    else if (m_slidersVisible)
+    else if (m_slidersVisible) 
     {
         if (m_additionalScreens.isEmpty())
             applyDecreasedSize();
         else
             applyExtraDecreasedSize();
     }
-    else
+    else 
     {
         if (m_additionalScreens.isEmpty())
             applyStandardSize();
@@ -776,9 +774,7 @@ void CallWidget::removeAdditionalScreen(const std::string& id)
         m_additionalScreensContainer->hide();
         
         if (!m_screenFullscreenActive)
-        {
             updateMainScreenSize();
-        }
     }
 }
 
@@ -856,7 +852,7 @@ void CallWidget::exitFullscreen()
     m_exitFullscreenHideTimer->stop();
 
     m_mainLayout->setAlignment(Qt::AlignCenter);
-    applyStandardSize();
+    updateMainScreenSize();
 }
 
 void CallWidget::hideAdditionalScreens() {
