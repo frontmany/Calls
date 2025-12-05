@@ -287,6 +287,16 @@ void CallWidget::setupUI() {
     m_screenShareIconHover = QIcon(":/resources/screenShareHover.png");
     m_screenShareIconActive = QIcon(":/resources/screenShareActive.png");
     m_screenShareIconActiveHover = QIcon(":/resources/screenShareActiveHover.png");
+    m_microphoneButton = new ToggleButtonIcon(m_buttonsPanel,
+        QIcon(":/resources/microphone.png"),
+        QIcon(":/resources/microphoneHover.png"),
+        QIcon(":/resources/mute-enabled-microphone.png"),
+        QIcon(":/resources/mute-enabled-microphoneHover.png"),
+        scale(40), scale(40));
+    m_microphoneButton->setSize(scale(37), scale(37));
+    m_microphoneButton->setToolTip("Microphone mute");
+    m_microphoneButton->setCursor(Qt::PointingHandCursor);
+
     m_screenShareIconRestricted = QIcon(":/resources/screenShareRestricted.png");
     m_screenShareButton = new ToggleButtonIcon(m_buttonsPanel,
         m_screenShareIconNormal,
@@ -331,15 +341,15 @@ void CallWidget::setupUI() {
     m_enterFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_enterFullscreenButton->hide();
 
-    m_speakerButton = new ToggleButtonIcon(m_buttonsPanel,
-        QIcon(":/resources/speaker.png"),
-        QIcon(":/resources/speakerHover.png"),
-        QIcon(":/resources/speakerActive.png"),
-        QIcon(":/resources/speakerActiveHover.png"),
+    m_slidersButton = new ToggleButtonIcon(m_buttonsPanel,
+        QIcon(":/resources/sliders.png"),
+        QIcon(":/resources/slidersHover.png"),
+        QIcon(":/resources/slidersActive.png"),
+        QIcon(":/resources/slidersActiveHover.png"),
         scale(40), scale(40));
-    m_speakerButton->setSize(scale(35), scale(35));
-    m_speakerButton->setToolTip("Show volume controls");
-    m_speakerButton->setCursor(Qt::PointingHandCursor);
+    m_slidersButton->setSize(scale(37), scale(37));
+    m_slidersButton->setToolTip("Show volume controls");
+    m_slidersButton->setCursor(Qt::PointingHandCursor);
 
     m_hangupButton = new QPushButton(m_buttonsPanel);
     m_hangupButton->setFixedSize(scale(60), scale(60));
@@ -350,10 +360,11 @@ void CallWidget::setupUI() {
     m_hangupButton->setToolTip("Hang up");
     m_hangupButton->setCursor(Qt::PointingHandCursor);
 
-    m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(cameraContainer);
+    m_buttonsLayout->addWidget(m_microphoneButton);
+    m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(m_enterFullscreenButton);
-    m_buttonsLayout->addWidget(m_speakerButton);
+    m_buttonsLayout->addWidget(m_slidersButton);
     m_buttonsLayout->addWidget(m_hangupButton);
 
     m_fullscreenIconMinimize = QIcon(":/resources/minimize.png");
@@ -482,11 +493,24 @@ void CallWidget::setupUI() {
 
     connect(m_exitFullscreenButton, &ButtonIcon::clicked, [this]() {emit requestExitFullscreen(); });
     connect(m_enterFullscreenButton, &ButtonIcon::clicked, [this]() {emit requestEnterFullscreen(); });
+    connect(m_microphoneButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
+        if (m_micLabel->isToggled() != toggled) {
+            m_micLabel->setToggled(toggled);
+        }
+        m_micVolumeSlider->setEnabled(!toggled);
+        emit muteMicrophoneClicked(toggled);
+    });
     connect(m_screenShareButton, &ToggleButtonIcon::toggled, [this](bool toggled) {emit screenShareClicked(toggled); });
     connect(m_cameraButton, &ToggleButtonIcon::toggled, [this](bool toggled) {emit cameraClicked(toggled); });
-    connect(m_speakerButton, &ToggleButtonIcon::toggled, this, &CallWidget::onSpeakerClicked);
+    connect(m_slidersButton, &ToggleButtonIcon::toggled, this, &CallWidget::onSlidersClicked);
     connect(m_hangupButton, &QPushButton::clicked, [this]() {emit hangupClicked(); });
-    connect(m_micLabel, &ToggleButtonIcon::toggled, [this](bool toggled) {m_micVolumeSlider->setEnabled(!toggled); emit muteMicrophoneClicked(toggled); });
+    connect(m_micLabel, &ToggleButtonIcon::toggled, [this](bool toggled) {
+        if (m_microphoneButton->isToggled() != toggled) {
+            m_microphoneButton->setToggled(toggled);
+        }
+        m_micVolumeSlider->setEnabled(!toggled);
+        emit muteMicrophoneClicked(toggled);
+    });
     connect(m_speakerLabel, &ToggleButtonIcon::toggled, [this](bool toggled) {m_speakerVolumeSlider->setEnabled(!toggled); emit muteSpeakerClicked(toggled); });
     connect(m_micVolumeSlider, &QSlider::valueChanged, [this](int volume) {emit inputVolumeChanged(volume); });
     connect(m_speakerVolumeSlider, &QSlider::valueChanged, [this](int volume) {emit outputVolumeChanged(volume); });
@@ -496,9 +520,10 @@ void CallWidget::setupShadowEffect() {
     setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
     setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_enterFullscreenButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_microphoneButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_screenShareButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_cameraButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_speakerButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_slidersButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 50));
     setupElementShadow(m_slidersContainer, 10, QColor(0, 0, 0, 50));
 }
@@ -579,7 +604,7 @@ bool CallWidget::isAdditionalScreenVisible(const std::string& id) const {
     return m_additionalScreens.contains(id);
 }
 
-void CallWidget::onSpeakerClicked(bool toggled)
+void CallWidget::onSlidersClicked(bool toggled)
 {
     m_slidersVisible = toggled;
     m_slidersContainer->setVisible(toggled);
@@ -596,6 +621,10 @@ void CallWidget::setOutputVolume(int newVolume) {
 }
 
 void CallWidget::setMicrophoneMuted(bool muted) {
+    if (m_microphoneButton && m_microphoneButton->isToggled() != muted)
+    {
+        m_microphoneButton->setToggled(muted);
+    }
     if (m_micLabel && m_micLabel->isToggled() != muted)
     {
         m_micLabel->setToggled(muted);
@@ -811,7 +840,7 @@ void CallWidget::enterFullscreen()
     m_enterFullscreenButton->hide();
     m_buttonsPanel->hide();
 
-    m_speakerButton->setToggled(false);
+    m_slidersButton->setToggled(false);
     m_slidersContainer->hide();
     
     m_additionalScreensContainer->hide();

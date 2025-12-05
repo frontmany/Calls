@@ -22,6 +22,10 @@
 	 <file>speakerHover.png</file>
 	 <file>speakerActive.png</file>
 	 <file>speakerActiveHover.png</file>
+ 	 <file>sliders.png</file>
+	 <file>slidersHover.png</file>
+	 <file>slidersActive.png</file>
+	 <file>slidersActiveHover.png</file>
 	 <file>speakerMutedActive.png</file>
 	 <file>screenShareRestricted.png</file>
 	 <file>screenShare.png</file>

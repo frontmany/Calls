@@ -110,7 +110,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private slots:
-    void onSpeakerClicked(bool toggled);
+    void onSlidersClicked(bool toggled);
     void updateCallTimer();
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
     void onIncomingCallsDialogClosed();
@@ -178,9 +178,10 @@ private:
     // Buttons
     ButtonIcon* m_enterFullscreenButton;
     ButtonIcon* m_exitFullscreenButton;
+    ToggleButtonIcon* m_microphoneButton;
     ToggleButtonIcon* m_screenShareButton;
     ToggleButtonIcon* m_cameraButton;
-    ToggleButtonIcon* m_speakerButton;
+    ToggleButtonIcon* m_slidersButton;
     QPushButton* m_hangupButton;
 
     // Screen share button icons

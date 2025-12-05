@@ -501,7 +501,18 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
 
     m_callWidget->hideMainScreen();
     m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->setCameraButtonActive(m_configManager->isCameraActive() && m_CameraCaptureController->isCameraAvailable());
+    
+    bool shouldStartCamera = m_configManager->isCameraActive() && m_CameraCaptureController->isCameraAvailable();
+    m_callWidget->setCameraButtonActive(shouldStartCamera);
+    
+    // Auto-start camera if it was enabled in settings
+    if (shouldStartCamera)
+    {
+        if (!calls::startCameraSharing())
+        {
+            m_callWidget->setCameraButtonActive(false);
+        }
+    }
 
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
@@ -622,10 +633,7 @@ void MainWindow::onIncomingScreenSharingStopped()
     
     if (wasFullscreen) {
         m_callWidget->exitFullscreen();
-        setWindowState(Qt::WindowNoState);
-        QTimer::singleShot(0, this, [this]() {
-            setWindowState(Qt::WindowMaximized);
-        });
+        showMaximized();
     }
         
     m_callWidget->setScreenShareButtonActive(false);
@@ -743,9 +751,9 @@ void MainWindow::onIncomingCameraSharingStopped()
     else
         m_callWidget->hideMainScreen();
     
-
-    if (!calls::isViewingRemoteScreen() && calls::isCameraSharing()) {
-        onCallWidgetExitFullscreenRequested();
+    // Hide fullscreen button if no remote content to view
+    if (!calls::isViewingRemoteScreen() && !calls::isViewingRemoteCamera())
+    {
         m_callWidget->hideEnterFullscreenButton();
     }
 }
@@ -817,11 +825,13 @@ void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsig
 void MainWindow::onCameraCaptureStarted()
 {
     LOG_INFO("Camera capture started locally");
+    m_mainMenuWidget->setCameraActive(true);
 }
 
 void MainWindow::onCameraCaptureStopped()
 {
     m_callWidget->setCameraButtonActive(false);
+    m_mainMenuWidget->setCameraActive(false);
 
     if (m_isCameraInAdditionalScreen)
     {
@@ -1158,10 +1168,7 @@ void MainWindow::onRemoteUserEndedCall() {
 
     if (m_callWidget->isFullScreen()) {
         m_callWidget->exitFullscreen();
-        setWindowState(Qt::WindowNoState);
-        QTimer::singleShot(0, this, [this]() {
-            setWindowState(Qt::WindowMaximized);
-        });
+        showMaximized();
     }
 
     m_callWidget->hideEnterFullscreenButton();
