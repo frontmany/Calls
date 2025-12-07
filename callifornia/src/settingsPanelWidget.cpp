@@ -345,8 +345,8 @@ void SettingsPanel::setCameraActive(bool active)
 {
     if (m_cameraButton)
     {
-        // When enabled, button is not toggled (shows normal icons)
-        // When disabled, button is toggled (shows disabled icons)
+        // When enabled, button is toggled (shows camera.png - active icons)
+        // When disabled, button is not toggled (shows cameraDisabled.png - disabled icons)
         m_cameraButton->setToggled(active);
     }
 }

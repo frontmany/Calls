@@ -147,6 +147,8 @@ void MainWindow::stopLocalScreenCapture()
         m_dialogsController->hideScreenShareDialog();
     }
     m_screenCaptureController->stopCapture();
+
+    calls::stopScreenSharing();
 }
 
 void MainWindow::stopLocalCameraCapture()
@@ -157,6 +159,8 @@ void MainWindow::stopLocalCameraCapture()
     {
         m_CameraCaptureController->stopCapture();
     }
+
+    calls::stopCameraSharing();
 }
 
 void MainWindow::showTransientStatusMessage(const QString& message, int durationMs)
@@ -488,6 +492,12 @@ void MainWindow::switchToMainMenuWidget() {
     m_mainMenuWidget->setMicrophoneMuted(calls::isMicrophoneMuted());
     m_mainMenuWidget->setSpeakerMuted(calls::isSpeakerMuted());
 
+    m_callWidget->hideEnterFullscreenButton();
+    m_callWidget->clearIncomingCalls();
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->hideMainScreen();
+    m_callWidget->hideAdditionalScreens();
+
     setWindowTitle("Callifornia");
 
     std::string nickname = calls::getNickname();
@@ -503,13 +513,15 @@ void MainWindow::switchToCallWidget(const QString& friendNickname) {
     m_callWidget->setScreenShareButtonActive(false);
     
     bool shouldStartCamera = m_configManager->isCameraActive() && m_CameraCaptureController->isCameraAvailable();
+    m_configManager->setCameraActive(shouldStartCamera);
+    m_mainMenuWidget->setCameraActive(shouldStartCamera);
     m_callWidget->setCameraButtonActive(shouldStartCamera);
-    
-    // Auto-start camera if it was enabled in settings
+
     if (shouldStartCamera)
     {
-        if (!calls::startCameraSharing())
-        {
+        if (!calls::startCameraSharing()) {
+            m_configManager->setCameraActive(false);
+            m_mainMenuWidget->setCameraActive(false);
             m_callWidget->setCameraButtonActive(false);
         }
     }
@@ -678,7 +690,12 @@ void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data)
 
 void MainWindow::onCameraButtonClicked(bool toggled)
 {
-    if (toggled)
+    bool active = toggled;
+
+    m_configManager->setCameraActive(active);
+    m_mainMenuWidget->setCameraActive(active);
+
+    if (active)
     {
         if (!m_CameraCaptureController || !m_CameraCaptureController->isCameraAvailable())
         {
@@ -705,16 +722,15 @@ void MainWindow::onCameraButtonClicked(bool toggled)
     else
     {
         if (m_CameraCaptureController && m_CameraCaptureController->isCapturing())
-        {
             m_CameraCaptureController->stopCapture();
-        }
-        calls::stopCameraSharing();
 
         if (m_callWidget->isMainScreenVisible() && (!calls::isViewingRemoteScreen() && !calls::isViewingRemoteCamera()))
             m_callWidget->hideMainScreen();
 
         if (m_callWidget->isAdditionalScreenVisible(calls::getNickname()) && (calls::isViewingRemoteScreen() || calls::isViewingRemoteCamera()))
             m_callWidget->removeAdditionalScreen(calls::getNickname());
+
+        calls::stopCameraSharing();
     }
 }
 
@@ -825,14 +841,10 @@ void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsig
 void MainWindow::onCameraCaptureStarted()
 {
     LOG_INFO("Camera capture started locally");
-    m_mainMenuWidget->setCameraActive(true);
 }
 
 void MainWindow::onCameraCaptureStopped()
 {
-    m_callWidget->setCameraButtonActive(false);
-    m_mainMenuWidget->setCameraActive(false);
-
     if (m_isCameraInAdditionalScreen)
     {
         m_callWidget->removeAdditionalScreen(calls::getNickname());
@@ -909,8 +921,6 @@ void MainWindow::onEndCallButtonClicked() {
     stopLocalScreenCapture();
     stopLocalCameraCapture();
 
-    m_callWidget->hideEnterFullscreenButton();
-    m_callWidget->clearIncomingCalls();
     m_mainMenuWidget->setState(calls::State::FREE);
     switchToMainMenuWidget();
     playSoundEffect(":/resources/endCall.wav");
@@ -1171,11 +1181,6 @@ void MainWindow::onRemoteUserEndedCall() {
         showMaximized();
     }
 
-    m_callWidget->hideEnterFullscreenButton();
-    m_callWidget->clearIncomingCalls();
-    m_callWidget->setScreenShareButtonActive(false);
-    m_callWidget->hideMainScreen();
-    m_callWidget->hideAdditionalScreens();
     switchToMainMenuWidget();
 
     m_mainMenuWidget->setState(calls::State::FREE);

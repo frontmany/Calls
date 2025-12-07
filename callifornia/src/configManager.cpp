@@ -150,10 +150,8 @@ void ConfigManager::setMicrophoneMuted(bool muted) {
 }
 
 void ConfigManager::setCameraActive(bool active) {
-    if (m_isCameraActive != active) {
-        m_isCameraActive = active;
-        saveConfig();
-    }
+    m_isCameraActive = active;
+    saveConfig();
 }
 
 void ConfigManager::setOutputVolume(int volume) {
