@@ -50,5 +50,6 @@
 	 <file>cameraDisabled.png</file>
 	 <file>cameraDisabledHover.png</file>
 	 <file>cameraRestricted.png</file>
+	 <file>welcome.jpg</file>
     </qresource>
 </RCC>

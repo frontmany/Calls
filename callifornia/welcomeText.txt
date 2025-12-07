@@ -1,0 +1,8 @@
+Welcome to Callifornia!
+
+What's new in this version:
+
+• New camera feature with enhanced functionality
+• Fixed audio delay bugs for improved call quality
+• Improved volume controls using hyperbolic tangent function for smoother adjustments
+• Various bug fixes and performance improvements

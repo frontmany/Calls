@@ -22,6 +22,7 @@ public:
     QString getPort() const;
     QString getServerHost() const;
     QString getUpdaterHost() const;
+    bool isFirstLaunch() const;
 
     void setUpdaterHost(const QString& host);
     void setSpeakerMuted(bool muted);
@@ -32,6 +33,7 @@ public:
     void setPort(const QString& port);
     void setServerHost(const QString& host);
     void setCameraActive(bool active);
+    void setFirstLaunch(bool firstLaunch);
 
 private:
     bool isCameraActiveFromConfig();
@@ -44,6 +46,7 @@ private:
     QString getServerHostFromConfig();
     QString getUpdaterHostFromConfig();
     QString getApplicationVersionFromConfig();
+    bool isFirstLaunchFromConfig();
 
 private:
     const QString m_configPath = "config.json";
@@ -59,4 +62,5 @@ private:
     QString m_serverHost;
     QString m_updaterHost;
     QString m_version;
+    bool m_firstLaunch;
 };

@@ -27,6 +27,9 @@ public:
     void showAlreadyRunningDialog();
     void hideAlreadyRunningDialog();
 
+    void showFirstLaunchDialog(const QString& imagePath = ":/resources/welcome.jpg", const QString& descriptionText = "");
+    void hideFirstLaunchDialog();
+
     void updateLoadingProgress(double progress);
 	void swapUpdatingToRestarting();
 	void swapUpdatingToUpToDate();
@@ -44,6 +47,7 @@ private:
     QWidget* createUpdatingDialog(OverlayWidget* overlay);
     QWidget* createConnectionErrorDialog(OverlayWidget* overlay);
     QWidget* createScreenShareDialog(OverlayWidget* overlay);
+    QWidget* createFirstLaunchDialog(OverlayWidget* overlay, const QString& imagePath = "", const QString& descriptionText = "");
     void refreshScreenSharePreviews();
     void handleScreenPreviewClick(int screenIndex, bool currentlySelected);
     void updateScreenShareSelectionState();
@@ -75,5 +79,11 @@ private:
     QLabel* m_alreadyRunningImageLabel;
     QLabel* m_alreadyRunningTitleLabel;
     QLabel* m_alreadyRunningMessageLabel;
+
+    OverlayWidget* m_firstLaunchOverlay;
+    QWidget* m_firstLaunchDialog;
+    QLabel* m_firstLaunchImageLabel;
+    QLabel* m_firstLaunchDescriptionLabel;
+    QPushButton* m_firstLaunchOkButton;
 };
 

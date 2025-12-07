@@ -2,13 +2,17 @@
 #include "authorizationWidget.h"
 #include "mainMenuWidget.h"
 #include "navigationController.h"
+#include "configManager.h"
+#include "dialogsController.h"
 #include "calls.h"
 #include "logger.h"
 #include "state.h"
 
-AuthorizationManager::AuthorizationManager(NavigationController* navigationController, QObject* parent)
+AuthorizationManager::AuthorizationManager(NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, QObject* parent)
     : QObject(parent)
     , m_navigationController(navigationController)
+    , m_configManager(configManager)
+    , m_dialogsController(dialogsController)
 {
 }
 
@@ -80,6 +84,12 @@ void AuthorizationManager::onBlurAnimationFinished()
             }
 
             m_mainMenuWidget->setFocusToLineEdit();
+        }
+
+        // Show first launch dialog if this is the first launch
+        if (m_configManager && m_configManager->isFirstLaunch() && m_dialogsController) {
+            m_dialogsController->showFirstLaunchDialog();
+            m_configManager->setFirstLaunch(false);
         }
     }
     else {

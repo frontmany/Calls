@@ -29,6 +29,7 @@ void ConfigManager::loadConfig() {
         m_isMultiInstanceAllowed = isMultiInstanceAllowedFromConfig();
         m_port = getPortFromConfig();
         m_serverHost = getServerHostFromConfig();
+        m_firstLaunch = isFirstLaunchFromConfig();
 
         m_isConfigLoaded = true;
     }
@@ -54,6 +55,7 @@ void ConfigManager::saveConfig() {
         configObject["microphoneMuted"] = m_isMicrophoneMuted ? "1" : "0";
         configObject["speakerMuted"] = m_isSpeakerMuted ? "1" : "0";
         configObject["cameraEnabled"] = m_isCameraActive ? "1" : "0";
+        configObject["firstLaunch"] = m_firstLaunch ? "1" : "0";
 
         QJsonDocument configDoc(configObject);
 
@@ -90,6 +92,7 @@ void ConfigManager::setDefaultValues() {
     m_port = "8081";
     m_serverHost = "92.255.165.77";
     m_updaterHost = "92.255.165.77";
+    m_firstLaunch = true; // Default to true for first launch
 }
 
 QString ConfigManager::getUpdaterHost() const {
@@ -152,6 +155,66 @@ void ConfigManager::setMicrophoneMuted(bool muted) {
 void ConfigManager::setCameraActive(bool active) {
     m_isCameraActive = active;
     saveConfig();
+}
+
+bool ConfigManager::isFirstLaunch() const {
+    return m_firstLaunch;
+}
+
+void ConfigManager::setFirstLaunch(bool firstLaunch) {
+    if (m_firstLaunch != firstLaunch) {
+        m_firstLaunch = firstLaunch;
+        saveConfig();
+    }
+}
+
+bool ConfigManager::isFirstLaunchFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_DEBUG("Config file not found, assuming first launch");
+        return true;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_DEBUG("JSON parse error, assuming first launch");
+        return true;
+    }
+
+    if (!doc.isObject()) {
+        LOG_DEBUG("Config is not an object, assuming first launch");
+        return true;
+    }
+
+    QJsonObject jsonObj = doc.object();
+
+    if (!jsonObj.contains("firstLaunch")) {
+        LOG_DEBUG("firstLaunch key not found in config, assuming first launch");
+        return true;
+    }
+
+    QJsonValue firstLaunchValue = jsonObj["firstLaunch"];
+
+    if (firstLaunchValue.isString()) {
+        QString value = firstLaunchValue.toString().toLower().trimmed();
+        bool result = (value == "1" || value == "true" || value == "yes" || value == "on");
+        return result;
+    }
+    else if (firstLaunchValue.isBool()) {
+        return firstLaunchValue.toBool();
+    }
+    else if (firstLaunchValue.isDouble()) {
+        return (firstLaunchValue.toInt() == 1);
+    }
+    else {
+        LOG_DEBUG("firstLaunch has unsupported type, assuming first launch");
+        return true;
+    }
 }
 
 void ConfigManager::setOutputVolume(int volume) {

@@ -166,13 +166,17 @@ void MainWindow::setupUI() {
     m_stackedLayout = new QStackedLayout();
     m_mainLayout->addLayout(m_stackedLayout);
 
+    // Create dialogs controller first (needed for AuthorizationManager)
+    m_dialogsController = new DialogsController(this);
+    connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
+
     // Create navigation controller with layout
     m_navigationController = new NavigationController(m_stackedLayout, this);
     // Update managers that depend on navigation controller
     if (m_authorizationManager) {
         delete m_authorizationManager;
     }
-    m_authorizationManager = new AuthorizationManager(m_navigationController, this);
+    m_authorizationManager = new AuthorizationManager(m_navigationController, m_configManager, m_dialogsController, this);
     if (m_callManager) {
         m_callManager->setNavigationController(m_navigationController);
     }
@@ -227,8 +231,6 @@ void MainWindow::setupUI() {
     connect(m_CameraCaptureController, &CameraCaptureController::captureStopped, this, &MainWindow::onCameraCaptureStopped);
     connect(m_CameraCaptureController, &CameraCaptureController::errorOccurred, this, &MainWindow::onCameraErrorOccurred);
 
-    m_dialogsController = new DialogsController(this);
-    connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
     connect(m_dialogsController, &DialogsController::screenSelected, this, &MainWindow::onScreenSelected);
     connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {
         if (m_callWidget) {
