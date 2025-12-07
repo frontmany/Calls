@@ -482,7 +482,6 @@ void CallWidget::setupUI() {
 
     m_mainLayout->addSpacerItem(m_topMainLayoutSpacer);
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignHCenter);
-    m_mainLayout->addWidget(m_incomingCallsContainer);
     m_mainLayout->addWidget(m_timerLabel);
     m_mainLayout->addWidget(m_additionalScreensContainer);
     m_mainLayout->addWidget(m_mainScreen);
@@ -929,13 +928,9 @@ void CallWidget::clearIncomingCalls() {
 
 void CallWidget::onIncomingCallsDialogClosed()
 {
-	if (m_incomingCallsContainer && m_incomingCallsContainer->parent() == m_incomingCallsDialog)
+	if (m_incomingCallsContainer && m_incomingCallsDialog && m_incomingCallsDialog->layout())
 	{
-		if (m_incomingCallsDialog && m_incomingCallsDialog->layout())
-			m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
-		
-		m_incomingCallsContainer->setParent(this);
-		m_mainLayout->insertWidget(0, m_incomingCallsContainer);
+		m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
 	}
 
 	const QList<QString> names = m_incomingCallWidgets.keys();
@@ -956,6 +951,7 @@ void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTim
     callWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_incomingCallsScrollLayout->addWidget(callWidget, 0, Qt::AlignHCenter);
     m_incomingCallWidgets[friendNickName] = callWidget;
+    callWidget->show();
 
     connect(callWidget, &IncomingCallWidget::callAccepted, [this](const QString& callerName) {emit acceptCallButtonClicked(callerName); });
     connect(callWidget, &IncomingCallWidget::callDeclined, [this](const QString& callerName) {emit declineCallButtonClicked(callerName); });
@@ -977,17 +973,13 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
 }
 
 void CallWidget::restoreIncomingCallsContainer() {
-    if (m_incomingCallsContainer->parent() != this) {
-        if (m_incomingCallsDialog && m_incomingCallsDialog->layout()) {
-            m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
-        }
-        m_incomingCallsContainer->setParent(this);
-        if (m_mainLayout) {
-            m_mainLayout->insertWidget(0, m_incomingCallsContainer);
-        }
+    // Container is always in dialog, just hide it
+    if (m_incomingCallsContainer) {
+        m_incomingCallsContainer->hide();
     }
-
-    m_incomingCallsContainer->hide();
+    if (m_incomingCallsDialog) {
+        m_incomingCallsDialog->hide();
+    }
 }
 
 void CallWidget::updateIncomingCallsVisibility() {
@@ -997,92 +989,72 @@ void CallWidget::updateIncomingCallsVisibility() {
         int scrollAreaHeight = visibleCount * scale(90);
         int containerHeight = scrollAreaHeight + scale(40);
 
-        if (m_mainScreen && m_mainScreen->isVisible())
-		{
-			if (!m_incomingCallsDialog)
-			{
-				m_incomingCallsDialog = new QDialog(window(), Qt::Window);
-				m_incomingCallsDialog->setModal(false);
-				m_incomingCallsDialog->setStyleSheet("background-color: white;");
-				m_incomingCallsDialog->setAttribute(Qt::WA_DeleteOnClose, true);
+        // Always show incoming calls in a separate dialog window
+        if (!m_incomingCallsDialog)
+        {
+            m_incomingCallsDialog = new QDialog(window(), Qt::Window);
+            m_incomingCallsDialog->setModal(false);
+            m_incomingCallsDialog->setStyleSheet("background-color: white;");
+            m_incomingCallsDialog->setAttribute(Qt::WA_DeleteOnClose, true);
 
-				QVBoxLayout* dlgLayout = new QVBoxLayout(m_incomingCallsDialog);
-				dlgLayout->setContentsMargins(0, 0, 0, 0);
-				dlgLayout->setSpacing(0);
+            QVBoxLayout* dlgLayout = new QVBoxLayout(m_incomingCallsDialog);
+            dlgLayout->setContentsMargins(0, 0, 0, 0);
+            dlgLayout->setSpacing(0);
 
-				if (m_mainLayout && m_incomingCallsContainer->parent() == this)
-				{
-					m_mainLayout->removeWidget(m_incomingCallsContainer);
-				}
-				m_incomingCallsContainer->setParent(m_incomingCallsDialog);
-				m_incomingCallsContainer->show();
-				dlgLayout->addWidget(m_incomingCallsContainer);
+            // Ensure container is not in main layout
+            if (m_mainLayout && m_incomingCallsContainer->parent() == this)
+            {
+                m_mainLayout->removeWidget(m_incomingCallsContainer);
+            }
+            
+            m_incomingCallsContainer->setParent(m_incomingCallsDialog);
+            m_incomingCallsContainer->show();
+            m_incomingCallsScrollArea->show();
+            m_incomingCallsScrollWidget->show();
+            dlgLayout->addWidget(m_incomingCallsContainer);
 
-				m_incomingCallsDialog->setMinimumWidth(scale(520));
+            m_incomingCallsDialog->setMinimumWidth(scale(520));
 
-				connect(m_incomingCallsDialog, &QDialog::rejected, this, &CallWidget::onIncomingCallsDialogClosed);
-				connect(m_incomingCallsDialog, &QObject::destroyed, this, [this]() { m_incomingCallsDialog = nullptr; });
-			}
-			else
-			{
-				m_incomingCallsDialog->setStyleSheet("background-color: white;");
+            connect(m_incomingCallsDialog, &QDialog::rejected, this, &CallWidget::onIncomingCallsDialogClosed);
+            connect(m_incomingCallsDialog, &QObject::destroyed, this, [this]() { m_incomingCallsDialog = nullptr; });
+        }
+        else
+        {
+            // Ensure container is in dialog, not in main layout
+            if (m_incomingCallsContainer->parent() != m_incomingCallsDialog)
+            {
+                if (m_mainLayout && m_incomingCallsContainer->parent() == this)
+                {
+                    m_mainLayout->removeWidget(m_incomingCallsContainer);
+                }
+                m_incomingCallsContainer->setParent(m_incomingCallsDialog);
+                if (QLayout* layout = m_incomingCallsDialog->layout())
+                {
+                    layout->addWidget(m_incomingCallsContainer);
+                }
+            }
+            
+            m_incomingCallsContainer->show();
+            m_incomingCallsScrollArea->show();
+            m_incomingCallsScrollWidget->show();
+        }
 
-				if (m_incomingCallsContainer->parent() != m_incomingCallsDialog)
-				{
-					if (m_mainLayout && m_incomingCallsContainer->parent() == this)
-					{
-						m_mainLayout->removeWidget(m_incomingCallsContainer);
-					}
-					m_incomingCallsContainer->setParent(m_incomingCallsDialog);
-					m_incomingCallsContainer->show();
-					if (QLayout* layout = m_incomingCallsDialog->layout())
-					{
-						layout->addWidget(m_incomingCallsContainer);
-					}
-				}
-
-				bool hasRejected = QMetaObject::Connection();
-				connect(m_incomingCallsDialog, &QDialog::rejected, this, &CallWidget::onIncomingCallsDialogClosed);
-				connect(m_incomingCallsDialog, &QObject::destroyed, this, [this]() { m_incomingCallsDialog = nullptr; });
-			}
-
-			m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
-			m_incomingCallsContainer->setFixedHeight(containerHeight);
-			m_incomingCallsDialog->adjustSize();
-			m_incomingCallsDialog->show();
-			m_incomingCallsDialog->raise();
-			m_incomingCallsDialog->activateWindow();
-		}
-		else
-		{
-			if (m_incomingCallsDialog)
-			{
-				m_incomingCallsDialog->hide();
-			}
-
-			if (m_incomingCallsContainer->parent() != this)
-			{
-				m_incomingCallsContainer->setParent(this);
-				if (m_mainLayout)
-				{
-					m_mainLayout->insertWidget(0, m_incomingCallsContainer);
-				}
-			}
-
-			m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
-			m_incomingCallsContainer->setFixedHeight(containerHeight);
-			m_incomingCallsContainer->show();
-		}
+        m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
+        m_incomingCallsContainer->setFixedHeight(containerHeight);
+        m_incomingCallsDialog->adjustSize();
+        m_incomingCallsDialog->show();
+        m_incomingCallsDialog->raise();
+        m_incomingCallsDialog->activateWindow();
     } else {
+        if (m_incomingCallsDialog) {
+            m_incomingCallsDialog->hide();
+        }
         if (m_incomingCallsContainer) {
             m_incomingCallsContainer->hide();
         }
         if (m_incomingCallsScrollArea) {
             m_incomingCallsScrollArea->hide();
         }
-		if (m_incomingCallsDialog) {
-			m_incomingCallsDialog->hide();
-		}
     }
 
     updateIncomingCallWidths();

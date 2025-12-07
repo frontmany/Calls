@@ -55,8 +55,15 @@ void NavigationController::switchToCallWidget(const QString& friendNickname)
 
     m_stackedLayout->setCurrentWidget(m_callWidget);
 
+    // Clean up previous call state
+    if (m_callWidget->isFullScreen()) {
+        m_callWidget->exitFullscreen();
+    }
+    m_callWidget->hideEnterFullscreenButton();
     m_callWidget->hideMainScreen();
+    m_callWidget->hideAdditionalScreens();
     m_callWidget->setScreenShareButtonActive(false);
+    // Note: Camera state is preserved and will be set by the camera manager if needed
 
     m_callWidget->setInputVolume(calls::getInputVolume());
     m_callWidget->setOutputVolume(calls::getOutputVolume());
