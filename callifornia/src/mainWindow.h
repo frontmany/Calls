@@ -3,19 +3,8 @@
 #include <QWidget>
 #include <QStackedLayout>
 #include <QHBoxLayout>
-#include <QMediaPlayer>
-#include <QAudioOutput>
-#include <QFile>
-#include <QLabel>
-#include <QMovie>
-#include <QDir>
-#include <QProcess>
-#include <QRect>
-#include <QDialog>
-#include <QScreen>
-#include <QPixmap>
+#include <QFontDatabase>
 #include <memory>
-#include <vector>
 
 #include "updater.h"
 #include "calls.h"
@@ -27,6 +16,15 @@ class DialogsController;
 class ScreenCaptureController;
 class CameraCaptureController; 
 class ConfigManager;
+class AudioEffectsManager;
+class AudioSettingsManager;
+class UpdateManager;
+class NavigationController;
+class AuthorizationManager;
+class CallManager;
+class ScreenSharingManager;
+class CameraSharingManager;
+class NetworkErrorHandler;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -36,31 +34,27 @@ public:
     ~MainWindow();
     void init();
     void executePrerequisites();
-    void checkUpdates();
 
 protected:
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
 
 private slots:
+    // Эти слоты остаются для совместимости с ClientCallbacksHandler
     void onAuthorizationResult(calls::ErrorCode ec);
     void onStartCallingResult(calls::ErrorCode ec);
     void onAcceptCallResult(calls::ErrorCode ec, const QString& nickname);
-
     void onMaximumCallingTimeReached();
     void onCallingAccepted();
     void onCallingDeclined();
     void onRemoteUserEndedCall();
-    void onIncomingCall(const QString& friendNicname);
+    void onIncomingCall(const QString& friendNickname);
     void onIncomingCallExpired(const QString& friendNickname);
     void onClientNetworkError();
     void onUpdaterNetworkError();
     void onConnectionRestored();
 
-    void onUpdaterCheckResult(updater::UpdatesCheckResult checkResult);
-    void onUpdateLoaded(bool emptyUpdate);
-    void onLoadingProgress(double progress);
-
+    // Остальные слоты делегируются менеджерам
     void onUpdateButtonClicked();
     void onStartCallingButtonClicked(const QString& friendNickname);
     void onStopCallingButtonClicked();
@@ -81,7 +75,6 @@ private slots:
     void onScreenCaptureStarted();
     void onScreenCaptureStopped();
     void onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
-    
     void onScreenSharingStarted();
     void onStartScreenSharingError();
     void onIncomingScreenSharingStarted();
@@ -94,7 +87,6 @@ private slots:
     void onIncomingCameraSharingStopped();
     void onIncomingCamera(const std::vector<unsigned char>& data);
     void onCameraButtonClicked(bool toggled);
-
     void onCameraCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     void onCameraCaptureStarted();
     void onCameraCaptureStopped();
@@ -103,38 +95,24 @@ private slots:
     void onCallWidgetEnterFullscreenRequested();
     void onCallWidgetExitFullscreenRequested();
 
+    // Signals from managers
+    void onWindowTitleChanged(const QString& title);
+    void onWindowFullscreenRequested();
+    void onWindowMaximizedRequested();
+    void onCallWidgetActivated(const QString& friendNickname);
+    void onStopScreenCaptureRequested();
+    void onStopCameraCaptureRequested();
+    void onEndCallFullscreenExitRequested();
+    void onStopAllRingtonesRequested();
+
 private:
-    void switchToAuthorizationWidget();
-    void switchToMainMenuWidget();
-    void switchToCallWidget(const QString& friendNickname);
-
-    void handleAcceptCallErrorNotificationAppearance();
-    void handleDeclineCallErrorNotificationAppearance();
-    void handleStartCallingErrorNotificationAppearance();
-    void handleStopCallingErrorNotificationAppearance();
-    void handleEndCallErrorNotificationAppearance();
-
-    void setSettingsFromConfig();
-    void launchUpdateApplier();
     void setupUI();
     void loadFonts();
-    std::string parseVersionFromConfig();
-    updater::OperationSystemType resolveOperationSystemType();
-    void playRingtone(const QUrl& ringtoneUrl);
-    void stopRingtone();
-    void stopIncomingCallRingtone();
-    void playIncomingCallRingtone();
-    void playCallingRingtone();
-    void stopCallingRingtone();
-    void playSoundEffect(const QString& soundPath); 
-    void stopLocalScreenCapture();
-    void stopLocalCameraCapture();
-    void showTransientStatusMessage(const QString& message, int durationMs);
+    void setSettingsFromConfig();
+    void setupManagerConnections();
 
 private:
-    QMediaPlayer* m_ringtonePlayer = nullptr;
-    QAudioOutput* m_audioOutput = nullptr;
-
+    // UI components
     QWidget* m_centralWidget = nullptr;
     QHBoxLayout* m_mainLayout = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;
@@ -147,6 +125,14 @@ private:
     CameraCaptureController* m_CameraCaptureController = nullptr;
     ConfigManager* m_configManager = nullptr;
 
-    bool m_isCameraInAdditionalScreen = false;
-    bool m_isRemoteCameraInAdditionalScreen = false;
+    // Managers
+    AudioEffectsManager* m_audioManager = nullptr;
+    AudioSettingsManager* m_audioSettingsManager = nullptr;
+    UpdateManager* m_updateManager = nullptr;
+    NavigationController* m_navigationController = nullptr;
+    AuthorizationManager* m_authorizationManager = nullptr;
+    CallManager* m_callManager = nullptr;
+    ScreenSharingManager* m_screenSharingManager = nullptr;
+    CameraSharingManager* m_cameraSharingManager = nullptr;
+    NetworkErrorHandler* m_networkErrorHandler = nullptr;
 };
