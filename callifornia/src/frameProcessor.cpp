@@ -4,6 +4,13 @@
 #include <QImage>
 #include <QPainter>
 #include <QBuffer>
+#include <QCursor>
+#include <QtGlobal>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <cstring>
+#endif
 
 FrameProcessor::FrameProcessor(QObject* parent)
     : QObject(parent)
@@ -159,5 +166,171 @@ std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, 
     scaledImage.save(&buffer, "JPG", 50);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
+}
+
+void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos, const QRect& screenGeometry)
+{
+    if (pixmap.isNull() || !screenGeometry.contains(cursorPos))
+    {
+        return;
+    }
+
+    QPoint screenRelativePos = cursorPos - screenGeometry.topLeft();
+    
+#ifdef Q_OS_WIN
+    CURSORINFO cursorInfo = { 0 };
+    cursorInfo.cbSize = sizeof(CURSORINFO);
+    if (!GetCursorInfo(&cursorInfo) || cursorInfo.flags != CURSOR_SHOWING)
+    {
+        return;
+    }
+
+    ICONINFO iconInfo;
+    if (!GetIconInfo(cursorInfo.hCursor, &iconInfo))
+    {
+        return;
+    }
+
+    QPoint hotspot(iconInfo.xHotspot, iconInfo.yHotspot);
+    
+    int cursorWidth = GetSystemMetrics(SM_CXCURSOR);
+    int cursorHeight = GetSystemMetrics(SM_CYCURSOR);
+    
+    if (cursorWidth == 0) cursorWidth = 32;
+    if (cursorHeight == 0) cursorHeight = 32;
+    
+    if (iconInfo.hbmColor)
+    {
+        BITMAP bmp;
+        GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
+        if (bmp.bmWidth > 0 && bmp.bmHeight > 0)
+        {
+            cursorWidth = bmp.bmWidth;
+            cursorHeight = bmp.bmHeight;
+        }
+    }
+    else if (iconInfo.hbmMask)
+    {
+        BITMAP bmp;
+        GetObject(iconInfo.hbmMask, sizeof(BITMAP), &bmp);
+        if (bmp.bmWidth > 0 && bmp.bmHeight > 1)
+        {
+            cursorWidth = bmp.bmWidth;
+            cursorHeight = bmp.bmHeight / 2;
+        }
+    }
+    
+    QImage cursorImage(cursorWidth, cursorHeight, QImage::Format_ARGB32);
+    cursorImage.fill(Qt::transparent);
+    
+    HDC hdcScreen = GetDC(NULL);
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    
+    if (hdcMem)
+    {
+        BITMAPINFO bmi = { 0 };
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth = cursorWidth;
+        bmi.bmiHeader.biHeight = -cursorHeight;
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+        
+        void* bitsWhite = nullptr;
+        void* bitsBlack = nullptr;
+        HBITMAP hbitmapWhite = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, &bitsWhite, NULL, 0);
+        HBITMAP hbitmapBlack = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, &bitsBlack, NULL, 0);
+        
+        if (hbitmapWhite && hbitmapBlack)
+        {
+            uint32_t whiteColor = 0xFFFFFFFF;
+            uint32_t blackColor = 0xFF000000;
+            uint32_t* whiteBits = reinterpret_cast<uint32_t*>(bitsWhite);
+            uint32_t* blackBits = reinterpret_cast<uint32_t*>(bitsBlack);
+            const int pixelCount = cursorWidth * cursorHeight;
+            
+            for (int i = 0; i < pixelCount; ++i)
+            {
+                whiteBits[i] = whiteColor;
+                blackBits[i] = blackColor;
+            }
+            
+            HGDIOBJ oldObj = SelectObject(hdcMem, hbitmapWhite);
+            DrawIconEx(hdcMem, 0, 0, cursorInfo.hCursor, 0, 0, 0, NULL, DI_NORMAL);
+            GdiFlush();
+            SelectObject(hdcMem, hbitmapBlack);
+            DrawIconEx(hdcMem, 0, 0, cursorInfo.hCursor, 0, 0, 0, NULL, DI_NORMAL);
+            GdiFlush();
+            
+            uint32_t* cursorBits = reinterpret_cast<uint32_t*>(cursorImage.bits());
+            
+            for (int i = 0; i < pixelCount; ++i)
+            {
+                uint32_t whiteBgra = whiteBits[i];
+                uint32_t blackBgra = blackBits[i];
+                
+                uint8_t whiteB = (whiteBgra >> 0) & 0xFF;
+                uint8_t whiteG = (whiteBgra >> 8) & 0xFF;
+                uint8_t whiteR = (whiteBgra >> 16) & 0xFF;
+                
+                uint8_t blackB = (blackBgra >> 0) & 0xFF;
+                uint8_t blackG = (blackBgra >> 8) & 0xFF;
+                uint8_t blackR = (blackBgra >> 16) & 0xFF;
+                
+                bool visibleOnWhite = (whiteR != 255 || whiteG != 255 || whiteB != 255);
+                bool visibleOnBlack = (blackR != 0 || blackG != 0 || blackB != 0);
+                
+                if (visibleOnBlack && visibleOnWhite)
+                {
+                    cursorBits[i] = qRgba(blackR, blackG, blackB, 255);
+                }
+                else if (visibleOnBlack)
+                {
+                    cursorBits[i] = qRgba(blackR, blackG, blackB, 255);
+                }
+                else if (visibleOnWhite)
+                {
+                    cursorBits[i] = qRgba(whiteR, whiteG, whiteB, 255);
+                }
+            }
+            
+            SelectObject(hdcMem, oldObj);
+            DeleteObject(hbitmapWhite);
+            DeleteObject(hbitmapBlack);
+        }
+        
+        DeleteDC(hdcMem);
+    }
+    
+    ReleaseDC(NULL, hdcScreen);
+    
+    if (iconInfo.hbmMask) DeleteObject(iconInfo.hbmMask);
+    if (iconInfo.hbmColor) DeleteObject(iconInfo.hbmColor);
+    
+    if (!cursorImage.isNull())
+    {
+        QPainter painter(&pixmap);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        painter.drawImage(
+            screenRelativePos.x() - hotspot.x(),
+            screenRelativePos.y() - hotspot.y(),
+            cursorImage
+        );
+    }
+#else
+    QCursor cursor;
+    QPixmap cursorPixmap = cursor.pixmap();
+    if (!cursorPixmap.isNull())
+    {
+        QPoint hotspot = cursor.hotSpot();
+        QPainter painter(&pixmap);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        painter.drawPixmap(
+            screenRelativePos.x() - hotspot.x(),
+            screenRelativePos.y() - hotspot.y(),
+            cursorPixmap
+        );
+    }
+#endif
 }
 
