@@ -630,3 +630,137 @@
 [2025-12-07 20:48:54.127] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
 [2025-12-07 20:48:56.169] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 4)
 [2025-12-07 20:48:56.170] [calls_server] [error] User disconnected due to multiple ping timeouts: 127.0.0.1
+[2025-12-10 04:20:32.470] [calls_server] [info] Starting calls server main loop
+[2025-12-10 04:20:32.472] [calls_server] [info] UDP Server started on 0.0.0.0:8081
+[2025-12-10 04:20:37.285] [calls_server] [info] User authorized: C71A9A78E4DABEF06705F4530273CAB443CE1A44987E36E052345F4FC76BA5A0 from 127.0.0.1:54900
+[2025-12-10 04:20:40.488] [calls_server] [info] User successfully logged out: C71A9A78E4DABEF06705F4530273CAB443CE1A44987E36E052345F4FC76BA5A0
+[2025-12-10 04:20:48.164] [calls_server] [info] User authorized: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 from 127.0.0.1:54475
+[2025-12-10 04:20:50.126] [calls_server] [info] User authorized: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 from 127.0.0.1:54476
+[2025-12-10 04:20:50.436] [calls_server] [info] Call initiated from 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 to 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-12-10 04:20:50.658] [calls_server] [info] Call established between 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 and 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-12-10 04:20:50.792] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:20:53.634] [calls_server] [info] User successfully logged out: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-12-10 04:20:53.794] [calls_server] [info] User successfully logged out: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-12-10 04:21:00.696] [calls_server] [info] User authorized: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 from 127.0.0.1:57595
+[2025-12-10 04:21:02.674] [calls_server] [info] User authorized: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 from 127.0.0.1:57596
+[2025-12-10 04:21:02.989] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:02.993] [calls_server] [info] Call initiated from 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 to 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-12-10 04:21:03.214] [calls_server] [info] Call established between 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 and 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-12-10 04:21:06.181] [calls_server] [info] User successfully logged out: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-12-10 04:21:06.355] [calls_server] [info] User successfully logged out: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-12-10 04:21:13.296] [calls_server] [info] User authorized: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5 from 127.0.0.1:52270
+[2025-12-10 04:21:15.236] [calls_server] [info] User authorized: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 from 127.0.0.1:52271
+[2025-12-10 04:21:15.553] [calls_server] [info] Call initiated from 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5 to 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-12-10 04:21:18.679] [calls_server] [info] User successfully logged out: 6DCDE155F1F900E157D25BB5C24B1A54D71EA35B78661ED9B1A8BE3532C3D4F5
+[2025-12-10 04:21:18.743] [calls_server] [info] User successfully logged out: 61DE55BA3388AEC4FDF6ECFC6EEF846FB0F1B13E28CC8381270C27FFA313AEE5
+[2025-12-10 04:21:25.269] [calls_server] [info] User authorized: 44612433E03DBBC4A1FFEC0959D68E17A274E595CF5446F70FA42D70AA8E806B from 127.0.0.1:52272
+[2025-12-10 04:21:27.456] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:28.474] [calls_server] [info] User successfully logged out: 44612433E03DBBC4A1FFEC0959D68E17A274E595CF5446F70FA42D70AA8E806B
+[2025-12-10 04:21:35.192] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:53954
+[2025-12-10 04:21:36.185] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:53955
+[2025-12-10 04:21:36.499] [calls_server] [info] Call initiated from 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:21:36.716] [calls_server] [info] Call established between 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD and 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-12-10 04:21:37.148] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:53956
+[2025-12-10 04:21:39.631] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:39.631] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:39.632] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:40.459] [calls_server] [info] Call initiated from A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 to 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-12-10 04:21:40.676] [calls_server] [info] Call established between 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC and A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:21:44.924] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:21:45.711] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:45.712] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:48.653] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:21:51.771] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:53.789] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:21:55.168] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:56163
+[2025-12-10 04:21:55.818] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:21:56.078] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:56164
+[2025-12-10 04:21:56.397] [calls_server] [info] Call initiated from A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:21:56.615] [calls_server] [info] Call established between 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD and A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:21:57.852] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 1)
+[2025-12-10 04:21:57.853] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:21:58.118] [calls_server] [warning] Authorization failed - nickname already taken: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-12-10 04:21:59.584] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:21:59.902] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:22:01.922] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:22:03.966] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 2)
+[2025-12-10 04:22:03.968] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:04.824] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:22:05.998] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:22:08.043] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:22:10.072] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 3)
+[2025-12-10 04:22:10.830] [calls_server] [info] User authorized: A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D from 127.0.0.1:49601
+[2025-12-10 04:22:12.103] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:22:12.916] [calls_server] [info] User authorized: A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36 from 127.0.0.1:49602
+[2025-12-10 04:22:13.978] [calls_server] [info] User authorized: E3176EE77C4115F7FC9AE7E85CE5782BF41F0A9CAE17D3EA7CAB7830E0C42CD4 from 127.0.0.1:49603
+[2025-12-10 04:22:14.135] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:22:15.109] [calls_server] [info] User authorized: 22F0FA1A5ADC276F512672D4FB7CAEA82BDC5E915886BB9C2B12BC9FE12984D1 from 127.0.0.1:49604
+[2025-12-10 04:22:15.237] [calls_server] [info] Call initiated from A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36 to A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-12-10 04:22:15.458] [calls_server] [info] Call established between A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D and A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36
+[2025-12-10 04:22:16.190] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 4)
+[2025-12-10 04:22:16.191] [calls_server] [error] User disconnected due to multiple ping timeouts: 127.0.0.1
+[2025-12-10 04:22:16.191] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:16.192] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:16.192] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:16.304] [calls_server] [info] Call initiated from E3176EE77C4115F7FC9AE7E85CE5782BF41F0A9CAE17D3EA7CAB7830E0C42CD4 to A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-12-10 04:22:17.420] [calls_server] [info] Call initiated from 22F0FA1A5ADC276F512672D4FB7CAEA82BDC5E915886BB9C2B12BC9FE12984D1 to A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-12-10 04:22:18.422] [calls_server] [info] User successfully logged out: A2EA4E294E930A7965A2C00DF2D7B76F933AF2499F6740C44A17DB8CFD8D3B36
+[2025-12-10 04:22:19.493] [calls_server] [info] User successfully logged out: E3176EE77C4115F7FC9AE7E85CE5782BF41F0A9CAE17D3EA7CAB7830E0C42CD4
+[2025-12-10 04:22:20.617] [calls_server] [info] User successfully logged out: 22F0FA1A5ADC276F512672D4FB7CAEA82BDC5E915886BB9C2B12BC9FE12984D1
+[2025-12-10 04:22:22.282] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:28.414] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:31.313] [calls_server] [info] User successfully logged out: A72EA6BC729F92FC1FFEC1E97ADFB40B2D79681E692493AEBF3DF4EF81A9228D
+[2025-12-10 04:22:38.146] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:50041
+[2025-12-10 04:22:39.674] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:50042
+[2025-12-10 04:22:40.631] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:41.104] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:50043
+[2025-12-10 04:22:42.665] [calls_server] [info] User authorized: 0D92E948659123AFC7EC4C2B82F7CE8507835F86CC1AAF300A13B896DF4F9255 from 127.0.0.1:60069
+[2025-12-10 04:22:43.411] [calls_server] [info] Call initiated from 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD to A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:22:44.975] [calls_server] [info] Call initiated from 0D92E948659123AFC7EC4C2B82F7CE8507835F86CC1AAF300A13B896DF4F9255 to 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-12-10 04:22:46.738] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:46.738] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:46.738] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:46.739] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:51.379] [calls_server] [info] User successfully logged out: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-12-10 04:22:52.851] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:52.851] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:52.852] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:22:52.899] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:22:54.310] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:22:55.870] [calls_server] [info] User successfully logged out: 0D92E948659123AFC7EC4C2B82F7CE8507835F86CC1AAF300A13B896DF4F9255
+[2025-12-10 04:23:02.161] [calls_server] [info] User authorized: 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485 from 127.0.0.1:56098
+[2025-12-10 04:23:03.099] [calls_server] [info] User authorized: E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 from 127.0.0.1:56099
+[2025-12-10 04:23:03.408] [calls_server] [info] Call initiated from E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 to 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-12-10 04:23:05.051] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:06.408] [calls_server] [info] Call initiated from E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 to 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-12-10 04:23:09.423] [calls_server] [info] Call initiated from E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5 to 5FD620816C776A7EE5A209C3FF948D7C759A0E4A912F6907306AC0D6DBC1F485
+[2025-12-10 04:23:11.169] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:11.171] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:17.276] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:17.276] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:22.308] [calls_server] [info] User successfully logged out: E6C4427E4FB2A5B6A5E7C3D0AFD66DB72407E08AC7B6CBFC88F75721D00AF9C5
+[2025-12-10 04:23:23.372] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:25.407] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:27.452] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:28.651] [calls_server] [info] User authorized: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 from 127.0.0.1:55742
+[2025-12-10 04:23:29.484] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 1)
+[2025-12-10 04:23:29.540] [calls_server] [info] User authorized: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD from 127.0.0.1:55743
+[2025-12-10 04:23:31.523] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:31.584] [calls_server] [info] User authorized: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC from 127.0.0.1:53814
+[2025-12-10 04:23:31.908] [calls_server] [info] Call initiated from 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC to 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:23:32.070] [calls_server] [info] Call initiated from 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD to A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:23:32.611] [calls_server] [info] Call established between A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5 and 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:23:33.564] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:35.093] [calls_server] [info] User successfully logged out: 6BED901F408D389FA73DCC5F457D7776071553E3C1738D5C92E7D864776606CC
+[2025-12-10 04:23:35.597] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 2)
+[2025-12-10 04:23:35.598] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:35.598] [calls_server] [debug] Ping confirmed from 127.0.0.1
+[2025-12-10 04:23:37.638] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:39.668] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:40.263] [calls_server] [info] User successfully logged out: 449D911A5A57C56B9EB31294052D9D85385F033902F80F3B1D2156153445FDAD
+[2025-12-10 04:23:40.821] [calls_server] [info] User successfully logged out: A5A064AB8D8F2E10A5686BF3D0D6642730A48A39A7A05F255516139C0977BEF5
+[2025-12-10 04:23:41.700] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 3)
+[2025-12-10 04:23:43.736] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:45.780] [calls_server] [debug] UDP receive error (normal for UDP): Подключение не установлено, т.к. конечный компьютер отверг запрос на подключение.
+[2025-12-10 04:23:47.827] [calls_server] [warning] Ping check failed for 127.0.0.1 (consecutive failures: 4)
+[2025-12-10 04:23:47.828] [calls_server] [error] User disconnected due to multiple ping timeouts: 127.0.0.1

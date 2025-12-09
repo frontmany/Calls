@@ -34,7 +34,7 @@ set(RC_FILE resources/app_icon.rc)
 
 if(WIN32)
     set(RC_FILE resources/app_icon.rc)
-    add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES} ${RC_FILE})
+    add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${QRC_FILES} ${RC_FILE})
 else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES})
 endif()

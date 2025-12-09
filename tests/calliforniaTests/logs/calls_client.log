@@ -1717,3 +1717,496 @@
 [2025-12-07 20:48:46.992] [calls_client] [info] Call ended by remote user
 [2025-12-07 20:48:45.974] [calls_client] [debug] Critical packet (type: 34) added to priority queue
 [2025-12-07 20:48:46.562] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:36.281] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:20:36.282] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:20:36.282] [calls_client] [info] Starting calls client
+[2025-12-10 04:20:36.282] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:20:37.302] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:37.387] [calls_client] [info] User authorized successfully
+[2025-12-10 04:20:38.311] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:39.331] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:40.363] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:47.161] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:20:47.162] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:20:47.162] [calls_client] [info] Starting calls client
+[2025-12-10 04:20:47.162] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:20:48.183] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:48.279] [calls_client] [info] User authorized successfully
+[2025-12-10 04:20:49.122] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:20:49.123] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:20:49.123] [calls_client] [info] Starting calls client
+[2025-12-10 04:20:49.124] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:20:50.146] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:50.227] [calls_client] [info] User authorized successfully
+[2025-12-10 04:20:48.757] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:20:49.204] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:50.226] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:50.453] [calls_client] [info] Incoming call from caller
+[2025-12-10 04:20:50.579] [calls_client] [info] Call accepted by responder
+[2025-12-10 04:20:51.246] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:52.262] [calls_client] [info] ping success
+[2025-12-10 04:20:52.816] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:20:53.269] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:53.634] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:20:51.166] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:52.183] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:52.816] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:20:53.191] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:20:59.692] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:20:59.693] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:20:59.693] [calls_client] [info] Starting calls client
+[2025-12-10 04:20:59.694] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:00.709] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:00.806] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:01.672] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:01.673] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:01.673] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:01.673] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:02.686] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:02.782] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:00.950] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:01.730] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:02.750] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:03.019] [calls_client] [info] Incoming call from caller
+[2025-12-10 04:21:03.152] [calls_client] [info] Call accepted by responder
+[2025-12-10 04:21:03.772] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:04.784] [calls_client] [info] ping success
+[2025-12-10 04:21:05.021] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:05.793] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:06.181] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:21:03.708] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:04.721] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:05.020] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:05.730] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:12.293] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:12.294] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:12.294] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:12.295] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:13.314] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:13.411] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:14.233] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:14.234] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:14.234] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:14.235] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:15.263] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:15.343] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:14.333] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:15.343] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:15.567] [calls_client] [info] Incoming call from caller
+[2025-12-10 04:21:16.365] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:17.243] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:17.386] [calls_client] [info] ping success
+[2025-12-10 04:21:16.285] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:17.243] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:17.307] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:18.330] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:18.409] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:24.265] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:24.266] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:24.267] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:24.267] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:25.286] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:25.381] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:25.413] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:26.305] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:27.329] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:28.347] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:34.189] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:34.190] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:34.190] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:35.179] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:35.181] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:35.182] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:34.191] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:35.200] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:35.294] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:36.146] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:36.146] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:36.146] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:35.183] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:36.201] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:36.294] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:35.591] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:36.217] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:36.505] [calls_client] [info] Incoming call from user_a
+[2025-12-10 04:21:36.622] [calls_client] [info] Call accepted by user_b
+[2025-12-10 04:21:36.147] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:37.153] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:37.249] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:37.233] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:37.609] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:38.249] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:39.257] [calls_client] [info] ping success
+[2025-12-10 04:21:37.217] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:37.609] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:38.233] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:39.241] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:40.271] [calls_client] [info] ping success
+[2025-12-10 04:21:40.465] [calls_client] [info] Incoming call from user_c
+[2025-12-10 04:21:40.270] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:40.507] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:21:37.609] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:38.170] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:39.178] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:40.207] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:40.583] [calls_client] [info] Call accepted by user_a
+[2025-12-10 04:21:41.237] [calls_client] [info] ping success
+[2025-12-10 04:21:41.284] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:41.678] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:42.290] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:43.306] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:43.697] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:44.324] [calls_client] [info] ping success
+[2025-12-10 04:21:41.284] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:41.678] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:42.290] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:43.306] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:43.697] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:44.324] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:45.334] [calls_client] [info] ping success
+[2025-12-10 04:21:41.678] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:42.243] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:43.245] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:43.697] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:44.260] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:45.271] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:46.276] [calls_client] [info] ping success
+[2025-12-10 04:21:46.338] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:47.354] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:47.733] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:48.372] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:48.653] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:21:47.292] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:47.733] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:48.308] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:49.402] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:49.762] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:50.406] [calls_client] [info] ping success
+[2025-12-10 04:21:54.165] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:54.166] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:54.166] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:55.076] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:55.077] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:55.077] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:54.166] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:55.178] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:55.271] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:55.077] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:56.084] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:56.193] [calls_client] [info] User authorized successfully
+[2025-12-10 04:21:55.818] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:21:56.193] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:56.403] [calls_client] [info] Incoming call from user_c
+[2025-12-10 04:21:56.522] [calls_client] [info] Call accepted by user_b
+[2025-12-10 04:21:57.116] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:21:57.116] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:21:57.116] [calls_client] [info] Starting calls client
+[2025-12-10 04:21:57.116] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:21:58.133] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:58.226] [calls_client] [warning] Authorization failed - nickname already taken
+[2025-12-10 04:21:57.213] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:58.242] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:59.270] [calls_client] [info] ping success
+[2025-12-10 04:21:59.584] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:21:57.103] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:58.117] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:59.131] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:21:59.147] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:00.153] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:01.160] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:02.177] [calls_client] [info] ping success
+[2025-12-10 04:21:59.902] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:00.279] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:01.287] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:01.922] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:02.305] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:03.330] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:04.347] [calls_client] [info] ping success
+[2025-12-10 04:22:09.828] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:09.829] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:09.829] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:09.829] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:10.849] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:10.944] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:11.914] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:11.914] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:11.915] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:12.975] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:12.976] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:12.976] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:11.915] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:12.928] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:13.023] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:12.976] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:13.993] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:14.088] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:14.107] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:14.107] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:14.107] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:11.866] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:12.103] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:12.880] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:13.897] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:14.135] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:14.915] [calls_client] [info] ping success
+[2025-12-10 04:22:14.108] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:15.122] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:15.218] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:15.250] [calls_client] [info] Incoming call from caller_0
+[2025-12-10 04:22:13.945] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:14.136] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:14.963] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:15.363] [calls_client] [info] Call accepted by popular_user
+[2025-12-10 04:22:15.932] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:16.310] [calls_client] [info] Incoming call from caller_1
+[2025-12-10 04:22:15.980] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:16.996] [calls_client] [info] ping success
+[2025-12-10 04:22:16.948] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:17.426] [calls_client] [info] Incoming call from caller_2
+[2025-12-10 04:22:14.136] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:15.011] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:16.027] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:17.044] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:18.057] [calls_client] [info] ping success
+[2025-12-10 04:22:17.977] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:18.216] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:18.422] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:22:18.008] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:18.216] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:16.146] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:17.172] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:18.184] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:18.216] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:19.204] [calls_client] [info] ping success
+[2025-12-10 04:22:18.216] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:19.078] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:18.997] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:20.013] [calls_client] [info] ping success
+[2025-12-10 04:22:20.219] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:20.251] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:20.251] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:21.024] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:22.044] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:23.063] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:24.087] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:24.327] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:25.110] [calls_client] [info] ping success
+[2025-12-10 04:22:26.132] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:26.372] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:27.155] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:28.175] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:29.196] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:30.215] [calls_client] [info] ping success
+[2025-12-10 04:22:30.453] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:31.234] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:37.142] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:37.143] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:37.143] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:37.143] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:38.157] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:38.253] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:38.672] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:38.672] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:38.672] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:38.672] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:39.694] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:39.789] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:40.101] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:40.101] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:40.101] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:40.101] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:41.127] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:41.205] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:41.663] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:22:41.664] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:22:41.664] [calls_client] [info] Starting calls client
+[2025-12-10 04:22:38.603] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:39.167] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:40.185] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:41.205] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:42.215] [calls_client] [info] ping success
+[2025-12-10 04:22:41.664] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:22:42.677] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:42.772] [calls_client] [info] User authorized successfully
+[2025-12-10 04:22:40.711] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:41.729] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:42.661] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:42.740] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:43.418] [calls_client] [info] Incoming call from user_b
+[2025-12-10 04:22:43.758] [calls_client] [info] ping success
+[2025-12-10 04:22:42.661] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:43.234] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:44.253] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:44.699] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:45.003] [calls_client] [info] Incoming call from user_d
+[2025-12-10 04:22:42.135] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:42.661] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:43.155] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:44.174] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:44.700] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:45.184] [calls_client] [info] ping success
+[2025-12-10 04:22:43.696] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:44.700] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:44.715] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:45.743] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:46.769] [calls_client] [info] ping success
+[2025-12-10 04:22:45.263] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:46.289] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:47.310] [calls_client] [info] ping success
+[2025-12-10 04:22:44.700] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:44.779] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:45.808] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:46.833] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:47.854] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:48.775] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:48.870] [calls_client] [info] ping success
+[2025-12-10 04:22:46.209] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:47.230] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:48.246] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:48.775] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:49.270] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:50.292] [calls_client] [info] ping success
+[2025-12-10 04:22:48.325] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:48.775] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:49.350] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:50.372] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:50.820] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:47.791] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:48.775] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:48.806] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:49.830] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:50.820] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:50.852] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:51.867] [calls_client] [info] ping success
+[2025-12-10 04:22:49.893] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:50.820] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:50.916] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:51.931] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:50.820] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:51.315] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:52.328] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:53.343] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:52.882] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:53.897] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:22:54.883] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:22:54.914] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:01.159] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:23:01.160] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:23:01.160] [calls_client] [info] Starting calls client
+[2025-12-10 04:23:02.096] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:23:02.096] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:23:02.096] [calls_client] [info] Starting calls client
+[2025-12-10 04:23:01.160] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:23:02.182] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:02.261] [calls_client] [info] User authorized successfully
+[2025-12-10 04:23:02.096] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:23:03.120] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:03.200] [calls_client] [info] User authorized successfully
+[2025-12-10 04:23:03.009] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:03.200] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:03.418] [calls_client] [info] Incoming call from persistent_caller
+[2025-12-10 04:23:04.220] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:05.242] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:06.263] [calls_client] [info] ping success
+[2025-12-10 04:23:06.414] [calls_client] [info] Incoming call from persistent_caller
+[2025-12-10 04:23:04.141] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:05.163] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:06.183] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:07.092] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:07.204] [calls_client] [info] ping success
+[2025-12-10 04:23:07.092] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:07.283] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:08.306] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:09.136] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:09.326] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:09.430] [calls_client] [info] Incoming call from persistent_caller
+[2025-12-10 04:23:10.340] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:11.361] [calls_client] [info] ping success
+[2025-12-10 04:23:08.226] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:09.136] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:09.247] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:10.260] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:11.281] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:12.298] [calls_client] [info] ping success
+[2025-12-10 04:23:12.378] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:13.202] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:13.393] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:14.410] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:15.230] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:15.422] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:16.444] [calls_client] [info] ping success
+[2025-12-10 04:23:13.202] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:13.313] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:14.330] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:15.230] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:15.358] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:16.379] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:17.403] [calls_client] [info] ping success
+[2025-12-10 04:23:17.467] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:18.488] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:19.314] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:19.505] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:20.515] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:21.340] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:21.529] [calls_client] [info] ping success
+[2025-12-10 04:23:18.424] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:19.314] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:19.442] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:20.451] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:21.340] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:21.466] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:27.648] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:23:27.649] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:23:27.649] [calls_client] [info] Starting calls client
+[2025-12-10 04:23:28.537] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:23:28.537] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:23:28.537] [calls_client] [info] Starting calls client
+[2025-12-10 04:23:27.649] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:23:28.673] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:28.753] [calls_client] [info] User authorized successfully
+[2025-12-10 04:23:28.538] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:23:29.564] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:29.644] [calls_client] [info] User authorized successfully
+[2025-12-10 04:23:30.580] [calls_client] [info] Network controller initialized, server: localhost:8081
+[2025-12-10 04:23:30.581] [calls_client] [info] Calls client initialized successfully
+[2025-12-10 04:23:30.581] [calls_client] [info] Starting calls client
+[2025-12-10 04:23:30.581] [calls_client] [debug] RSA keys generated
+[2025-12-10 04:23:31.603] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:31.699] [calls_client] [info] User authorized successfully
+[2025-12-10 04:23:30.581] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:31.523] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:31.603] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:31.924] [calls_client] [info] Incoming call from user_a
+[2025-12-10 04:23:29.691] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:30.708] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:31.523] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:31.730] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:32.084] [calls_client] [info] Incoming call from user_b
+[2025-12-10 04:23:32.418] [calls_client] [info] Call accepted by user_c
+[2025-12-10 04:23:32.758] [calls_client] [info] ping success
+[2025-12-10 04:23:32.625] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:33.564] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:33.644] [calls_client] [info] ping success
+[2025-12-10 04:23:32.625] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:33.564] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:33.644] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:34.667] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:33.564] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:33.772] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:34.794] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:35.817] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:36.837] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:37.638] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:37.849] [calls_client] [info] ping success
+[2025-12-10 04:23:34.667] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:35.681] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:36.694] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:37.638] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:37.717] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:38.734] [calls_client] [info] ping success
+[2025-12-10 04:23:38.866] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:39.668] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:39.882] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2025-12-10 04:23:40.262] [calls_client] [info] Call ended by remote user
+[2025-12-10 04:23:39.668] [calls_client] [debug] Critical packet (type: 34) added to priority queue
+[2025-12-10 04:23:39.764] [calls_client] [debug] Critical packet (type: 33) added to priority queue
