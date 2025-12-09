@@ -50,7 +50,7 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
     }
 }
 
-void FrameProcessor::processPixmap(const QPixmap& pixmap, const QSize& targetSize)
+void FrameProcessor::processPixmap(const QPixmap& pixmap)
 {
     if (pixmap.isNull())
     {
@@ -63,6 +63,7 @@ void FrameProcessor::processPixmap(const QPixmap& pixmap, const QSize& targetSiz
         
         if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0)
         {
+            QSize targetSize = QSize(1920, 1080);
             std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
             emit frameProcessed(croppedPixmap, imageData);
         }
@@ -158,7 +159,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, 
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    scaledImage.save(&buffer, "JPG", 50);
+    scaledImage.save(&buffer, "JPG", 70);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }

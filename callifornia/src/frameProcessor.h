@@ -16,7 +16,7 @@ public:
 
 public slots:
     void processVideoFrame(const QVideoFrame& frame);
-    void processPixmap(const QPixmap& pixmap, const QSize& targetSize);
+    void processPixmap(const QPixmap& pixmap);
 
 signals:
     void frameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);

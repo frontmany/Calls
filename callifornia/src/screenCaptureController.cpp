@@ -47,7 +47,7 @@ void ScreenCaptureController::startCapture()
     }
 
     m_isCapturing = true;
-    m_captureTimer->start(100);
+    m_captureTimer->start(80);
 
     emit captureStarted();
 }
@@ -82,8 +82,7 @@ void ScreenCaptureController::captureScreen()
 
     if (!screenshot.isNull())
     {
-        QSize targetSize = QSize(1600, 900);
-        emit pixmapReadyForProcessing(screenshot, targetSize);
+        emit pixmapReadyForProcessing(screenshot);
     }
 }
 

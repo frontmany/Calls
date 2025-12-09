@@ -34,7 +34,7 @@ signals:
     void screenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     void captureStarted();
     void captureStopped();
-    void pixmapReadyForProcessing(const QPixmap& pixmap, const QSize& targetSize);
+    void pixmapReadyForProcessing(const QPixmap& pixmap);
 
 private slots:
     void captureScreen();
