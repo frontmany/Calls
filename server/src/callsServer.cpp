@@ -207,8 +207,14 @@ void CallsServer::checkPing() {
     std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
 
     std::vector<asio::ip::udp::endpoint> endpointsToLogout;
+    std::vector<asio::ip::udp::endpoint> orphanedPingResults;
 
     for (auto& [endpoint, pingState] : m_pingResults) {
+        if (!m_endpointToUser.contains(endpoint)) {
+            orphanedPingResults.push_back(endpoint);
+            continue;
+        }
+
         if (pingState.result) {
             pingState.consecutiveFailures = 0;
             pingState.result = false;
@@ -226,6 +232,10 @@ void CallsServer::checkPing() {
         }
     }
 
+    for (const auto& endpoint : orphanedPingResults) {
+        m_pingResults.erase(endpoint);
+        LOG_DEBUG("Cleaned up orphaned ping result for {}", endpoint.address().to_string());
+    }
 
     std::lock_guard<std::mutex> lock(m_nicknameHashToUserAndCallsMutex);
     for (const auto& endpoint : endpointsToLogout) {
@@ -249,6 +259,9 @@ void CallsServer::checkPing() {
 
                     userToErase->resetCall();
                     userInCallWith->resetCall();
+                }
+                else {
+                    m_calls.erase(userToErase->getCall());
                 }
             }
 
@@ -278,23 +291,30 @@ void CallsServer::handleAuthorizationPacket(const nlohmann::json& jsonObject, co
         CryptoPP::RSA::PublicKey publicKey = crypto::deserializePublicKey(publicKeyStr);
 
         std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-        if (!m_nicknameHashToUser.contains(nicknameHash)) {
-            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
-                PacketType::AUTHORIZE_SUCCESS
-            );
-
-            UserPtr user = std::make_shared<User>(nicknameHash, publicKey, endpointFrom);
-            m_endpointToUser.emplace(endpointFrom, user);
-            m_nicknameHashToUser.emplace(nicknameHash, user);
-            LOG_INFO("User authorized: {} from {}:{}", nicknameHash, endpointFrom.address().to_string(), endpointFrom.port());
+        
+        if (m_nicknameHashToUser.contains(nicknameHash)) {
+            auto& existingUser = m_nicknameHashToUser.at(nicknameHash);
+            if (existingUser && m_endpointToUser.contains(existingUser->getEndpoint())) {
+                m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+                    PacketType::AUTHORIZE_FAIL
+                );
+                LOG_WARN("Authorization failed - nickname already taken: {}", nicknameHash);
+                return;
+            }
+            else {
+                LOG_INFO("Removing stale user entry for nickname: {}", nicknameHash);
+                m_nicknameHashToUser.erase(nicknameHash);
+            }
         }
-        else {
-            m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
-                PacketType::AUTHORIZE_FAIL
-            );
 
-            LOG_WARN("Authorization failed - nickname already taken: {}", nicknameHash);
-        }
+        m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
+            PacketType::AUTHORIZE_SUCCESS
+        );
+
+        UserPtr user = std::make_shared<User>(nicknameHash, publicKey, endpointFrom);
+        m_endpointToUser.emplace(endpointFrom, user);
+        m_nicknameHashToUser.emplace(nicknameHash, user);
+        LOG_INFO("User authorized: {} from {}:{}", nicknameHash, endpointFrom.address().to_string(), endpointFrom.port());
     }
     catch (const std::exception& e) {
         LOG_ERROR("Error in authorization packet: {}", e.what());
@@ -307,31 +327,52 @@ void CallsServer::handleLogout(const nlohmann::json& jsonObject, const asio::ip:
         std::string senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
         bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
 
-        {
-            std::lock_guard<std::mutex> lock(m_endpointToUserMutex);
-            auto it = m_endpointToUser.find(endpointFrom);
+        std::lock_guard<std::mutex> lock1(m_endpointToUserMutex);
+        std::lock_guard<std::mutex> lock2(m_pingResultsMutex);
 
-            if (it != m_endpointToUser.end()) {
-                m_endpointToUser.erase(it);
+        auto it = m_endpointToUser.find(endpointFrom);
+        UserPtr userToErase = nullptr;
+
+        if (it != m_endpointToUser.end()) {
+            userToErase = it->second;
+            m_endpointToUser.erase(it);
+        }
+
+        m_pingResults.erase(endpointFrom);
+
+        if (userToErase) {
+            if (userToErase->isInCall()) {
+                const std::string& userInCallWithNicknameHash = userToErase->inCallWith();
+
+                if (m_nicknameHashToUser.contains(userInCallWithNicknameHash)) {
+                    auto& userInCallWith = m_nicknameHashToUser.at(userInCallWithNicknameHash);
+
+                    m_networkController.sendToClient(userInCallWith->getEndpoint(), getPacketEndCall(senderNicknameHash, false),
+                        PacketType::END_CALL
+                    );
+
+                    m_calls.erase(userToErase->getCall());
+
+                    userToErase->resetCall();
+                    userInCallWith->resetCall();
+                }
+                else {
+                    m_calls.erase(userToErase->getCall());
+                }
             }
-        }
 
-        {
-            std::lock_guard<std::mutex> pingLock(m_pingResultsMutex);
-            m_pingResults.erase(endpointFrom);
-        }
-
-        if (m_nicknameHashToUser.contains(senderNicknameHash)) {
-            m_nicknameHashToUser.erase(senderNicknameHash);
+            if (m_nicknameHashToUser.contains(senderNicknameHash)) {
+                m_nicknameHashToUser.erase(senderNicknameHash);
+            }
 
             if (needConfirmation) 
                 m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid), PacketType::LOGOUT_OK);
 
             LOG_INFO("User successfully logged out: {}", senderNicknameHash);
         }
-
-        else
+        else {
             LOG_WARN("Logout request from unknown endpoint: {}", endpointFrom.address().to_string());
+        }
 
     }
     catch (const std::exception& e) {
@@ -505,7 +546,7 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
         if (m_nicknameHashToUser.contains(senderNicknameHash)) {
             auto& userSender = m_endpointToUser.at(endpointFrom);
 
-            bool error = false;
+            bool success = false;
             if (userSender->isInCall()) {
                 const std::string& userInCallWithNicknameHash = userSender->inCallWith();
 
@@ -520,10 +561,16 @@ void CallsServer::handleEndCallPacket(const nlohmann::json& jsonObject, const as
 
                     userSender->resetCall();
                     userInCallWith->resetCall();
+                    success = true;
+                }
+                else {
+                    m_calls.erase(userSender->getCall());
+                    userSender->resetCall();
+                    success = true;
                 }
             }
 
-            if (error && needConfirmation) {
+            if (success && needConfirmation) {
                 m_networkController.sendToClient(endpointFrom, getPacketWithUuid(uuid),
                     PacketType::END_CALL_OK
                 );

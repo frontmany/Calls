@@ -14,6 +14,7 @@ namespace calls {
 		PingManager(std::shared_ptr<NetworkController> networkController, std::function<void()>&& onPingFail, std::function<void()>&& onPingEstablishedAgain);
 		~PingManager();
 		void setPingSuccess();
+		void setError();
 		void start();
 		void stop();
 

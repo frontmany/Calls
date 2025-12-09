@@ -34,6 +34,13 @@ namespace calls {
         m_pingResult = true;
     }
 
+    void PingManager::setError() {
+        if (!m_error) {
+            m_error = true;
+            LOG_INFO("Network error set in PingManager");
+        }
+    }
+
     void PingManager::ping() {
         using namespace std::chrono_literals;
 

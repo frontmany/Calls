@@ -70,6 +70,7 @@ bool CallsClient::init(
         [this]() {
             std::lock_guard<std::mutex> lock(m_dataMutex);
             m_callbacksQueue.push([this]() {reset(); m_networkError = true; });
+            m_callbacksQueue.push([this]() {if (m_pingManager) m_pingManager->setError(); });
             m_callbacksQueue.push([this]() {m_callbackHandler->onNetworkError(); });
         });
 

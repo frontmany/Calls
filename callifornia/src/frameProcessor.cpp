@@ -117,7 +117,6 @@ QPixmap FrameProcessor::cropToHorizontal(const QPixmap& pixmap)
     const double targetAspectRatio = 16.0 / 9.0;
     const double currentAspectRatio = static_cast<double>(w) / h;
 
-    // If already 16:9, return as is
     if (qAbs(currentAspectRatio - targetAspectRatio) < 0.01)
     {
         return pixmap;
@@ -126,18 +125,16 @@ QPixmap FrameProcessor::cropToHorizontal(const QPixmap& pixmap)
     int cropW = w;
     int cropH = h;
 
-    // Image is wider than 16:9, crop width
     if (currentAspectRatio > targetAspectRatio)
     {
         cropW = static_cast<int>(h * targetAspectRatio);
     }
-    // Image is taller than 16:9, crop height
+
     else
     {
         cropH = static_cast<int>(w / targetAspectRatio);
     }
 
-    // Center the crop
     int x = (w - cropW) / 2;
     int y = (h - cropH) / 2;
     QRect cropRect(x, y, cropW, cropH);
@@ -159,7 +156,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, 
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    scaledImage.save(&buffer, "JPG", 70);
+    scaledImage.save(&buffer, "JPG", 50);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }
