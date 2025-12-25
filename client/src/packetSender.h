@@ -4,10 +4,10 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <thread>
 #include <vector>
 
-#include "packetQueue.h"
+#include "packet.h"
+#include "safeQueue.h"
 
 #include <asio.hpp>
 
@@ -18,26 +18,29 @@ namespace calls {
         PacketSender();
         ~PacketSender();
 
-        void init(PacketQueue& queue, asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint, std::function<void()> onErrorCallback);
-        void start();
+        void init(asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint, std::function<void()> onErrorCallback);
+        void send(const Packet& packet);
         void stop();
-        bool isRunning() const;
 
     private:
-        void run();
-        void sendPacket(const Packet& packet);
+        void startSendingIfIdle();
+        void sendNextDatagram();
+        void processNextPacketFromQueue();
         std::vector<std::vector<unsigned char>> splitPacket(const Packet& packet);
         void writeUint16(std::vector<unsigned char>& buffer, uint16_t value);
         void writeUint32(std::vector<unsigned char>& buffer, uint32_t value);
         void writeUint64(std::vector<unsigned char>& buffer, uint64_t value);
 
     private:
-        std::optional<std::reference_wrapper<PacketQueue>> m_queue;
-        std::atomic<bool> m_running;
-        std::thread m_thread;
+        SafeQueue<Packet> m_packetQueue;
+        std::atomic<bool> m_isSending;
+
         asio::ip::udp::endpoint m_serverEndpoint;
         std::optional<std::reference_wrapper<asio::ip::udp::socket>> m_socket;
         std::function<void()> m_onErrorCallback;
+
+        std::vector<std::vector<unsigned char>> m_currentDatagrams;
+        std::size_t m_currentDatagramIndex;
 
         const std::size_t m_maxPayloadSize = 1300;
         const std::size_t m_headerSize = 18;

@@ -7,7 +7,6 @@
 #include "packetTypes.h"
 #include "packetSender.h"
 #include "packetReceiver.h"
-#include "packetQueue.h"
 
 #include "asio.hpp"
 
@@ -42,7 +41,6 @@ namespace calls {
 
         PacketReceiver m_packetReceiver;
         PacketSender m_packetSender;
-        PacketQueue m_packetsQueue;
 
         std::atomic<bool> m_running;
         std::atomic<uint64_t> m_nextPacketId;

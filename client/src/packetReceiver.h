@@ -3,16 +3,16 @@
 
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
-#include <unordered_map>
+#include <thread>
 #include <vector>
 
 #include "packetTypes.h"
+#include "safeQueue.h"
 
 namespace calls {
     class PacketReceiver {
@@ -23,7 +23,11 @@ namespace calls {
             std::size_t receivedChunks = 0;
             PacketType type = PacketType::PING;
             bool typeSet = false;
-            std::chrono::steady_clock::time_point lastUpdate;
+        };
+
+        struct ReceivedPacket {
+            std::vector<unsigned char> data;
+            PacketType type;
         };
 
     public:
@@ -43,7 +47,7 @@ namespace calls {
         void processDatagram(std::size_t bytesTransferred);
         void handleChunk(uint64_t packetId, uint16_t chunkIndex, uint16_t chunkCount, PacketType packetType,
             const unsigned char* payload, std::size_t payloadSize);
-        void cleanupExpired();
+        void processReceivedPackets();
         uint16_t readUint16(const unsigned char* data);
         uint32_t readUint32(const unsigned char* data);
         uint64_t readUint64(const unsigned char* data);
@@ -55,11 +59,12 @@ namespace calls {
         std::array<unsigned char, 1500> m_buffer{};
         std::atomic<bool> m_running;
         std::mutex m_stateMutex;
-        std::unordered_map<uint64_t, PendingPacket> m_pendingPackets;
+        std::optional<PendingPacket> m_pendingPacket;
         std::function<void(const unsigned char*, int, PacketType)> m_onPacketReceived;
         std::function<void()> m_onErrorCallback;
+        SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
+        std::thread m_processingThread;
 
         const std::size_t m_headerSize = 18;
-        const std::chrono::seconds m_packetTimeout = std::chrono::seconds(2);
     };
 }

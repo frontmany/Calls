@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "logger.h"
+#include "packet.h"
 
 using namespace calls;
 
@@ -85,7 +86,7 @@ bool NetworkController::init(const std::string& host,
             return false;
         }
 
-        m_packetSender.init(m_packetsQueue, m_socket, m_serverEndpoint, errorHandler);
+        m_packetSender.init(m_socket, m_serverEndpoint, errorHandler);
 
         LOG_INFO("Network controller initialized, server: {}:{}", host, port);
         return true;
@@ -107,7 +108,6 @@ void NetworkController::run() {
     });
 
     m_packetReceiver.start();
-    m_packetSender.start();
 }
 
 void NetworkController::stop() {
@@ -117,7 +117,6 @@ void NetworkController::stop() {
 
     m_packetSender.stop();
     m_packetReceiver.stop();
-    m_packetsQueue.clear();
 
     std::error_code ec;
     if (m_socket.is_open()) {
@@ -149,17 +148,17 @@ bool NetworkController::isRunning() const {
 void NetworkController::send(const std::vector<unsigned char>& data, PacketType type) {
     Packet packet;
     packet.id = generateId();
-    packet.type = type;
+    packet.type = static_cast<uint32_t>(type);
     packet.data = data;
-    m_packetsQueue.push(std::move(packet));
+    m_packetSender.send(packet);
 }
 
 void NetworkController::send(std::vector<unsigned char>&& data, PacketType type) {
     Packet packet;
     packet.id = generateId();
-    packet.type = type;
+    packet.type = static_cast<uint32_t>(type);
     packet.data = std::move(data);
-    m_packetsQueue.push(std::move(packet));
+    m_packetSender.send(packet);
 }
 
 void NetworkController::send(PacketType type) {

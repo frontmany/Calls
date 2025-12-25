@@ -1,15 +1,13 @@
 #include "packetSender.h"
 
 #include <algorithm>
-#include <chrono>
-#include <thread>
 
 #include "logger.h"
 
 using namespace calls;
 
 PacketSender::PacketSender()
-    : m_running(false)
+    : m_isSending(false), m_currentDatagramIndex(0)
 {
 }
 
@@ -17,39 +15,45 @@ PacketSender::~PacketSender() {
     stop();
 }
 
-void PacketSender::init(PacketQueue& queue, asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint, std::function<void()> onErrorCallback) {
-    m_queue = std::ref(queue);
+void PacketSender::init(asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint, std::function<void()> onErrorCallback) {
     m_socket = std::ref(socket);
     m_serverEndpoint = remoteEndpoint;
     m_onErrorCallback = std::move(onErrorCallback);
-    m_running = false;
+    m_isSending = false;
+    m_currentDatagrams.clear();
+    m_currentDatagramIndex = 0;
+
+    m_packetQueue.clear();
 }
 
-void PacketSender::start() {
-    if (!m_queue.has_value() || !m_socket.has_value()) {
-        LOG_ERROR("PacketSender is not properly initialized");
-        return;
-    }
+void PacketSender::send(const Packet& packet) {
+    bool wasEmpty = m_packetQueue.empty();
+    m_packetQueue.push(packet);
 
-    if (m_running.exchange(true)) {
-        return;
+    if (wasEmpty && !m_isSending.load()) {
+        startSendingIfIdle();
     }
-
-    m_thread = std::thread(&PacketSender::run, this);
 }
 
 void PacketSender::stop() {
-    if (!m_running.exchange(false)) {
+    m_isSending = false;
+    m_currentDatagrams.clear();
+    m_currentDatagramIndex = 0;
+
+    m_packetQueue.clear();
+}
+
+void PacketSender::startSendingIfIdle() {
+    if (m_isSending.exchange(true)) {
         return;
     }
 
-    if (m_thread.joinable()) {
-        m_thread.join();
+    if (!m_socket.has_value()) {
+        m_isSending = false;
+        return;
     }
-}
 
-bool PacketSender::isRunning() const {
-    return m_running.load();
+    processNextPacketFromQueue();
 }
 
 void PacketSender::writeUint16(std::vector<unsigned char>& buffer, uint16_t value)
@@ -73,43 +77,70 @@ void PacketSender::writeUint64(std::vector<unsigned char>& buffer, uint64_t valu
     }
 }
 
-void PacketSender::run() {
-    while (m_running.load()) {
-        if (!m_queue.has_value()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
+void PacketSender::processNextPacketFromQueue() {
+    if (!m_socket.has_value()) {
+        m_isSending = false;
+        return;
+    }
 
-        auto& queue = m_queue->get();
-        Packet packet{};
-        if (!queue.tryPop(packet, std::chrono::milliseconds(100))) {
-            continue;
-        }
+    Packet packet{};
+    bool hasPacket = m_packetQueue.pop_ref([&packet](Packet&& p) {
+        packet = std::move(p);
+    });
 
-        sendPacket(packet);
+    if (!hasPacket) {
+        m_isSending = false;
+        return;
+    }
+
+    m_currentDatagrams = splitPacket(packet);
+    m_currentDatagramIndex = 0;
+
+    if (!m_currentDatagrams.empty()) {
+        sendNextDatagram();
+    }
+    else {
+        processNextPacketFromQueue();
     }
 }
 
-void PacketSender::sendPacket(const Packet& packet) {
+void PacketSender::sendNextDatagram() {
     if (!m_socket.has_value()) {
+        m_isSending = false;
+        return;
+    }
+
+    if (m_currentDatagramIndex >= m_currentDatagrams.size()) {
+        processNextPacketFromQueue();
         return;
     }
 
     auto& socket = m_socket->get();
-    auto datagrams = splitPacket(packet);
+    auto& datagram = m_currentDatagrams[m_currentDatagramIndex];
 
-    for (const auto& datagram : datagrams) {
-        std::error_code ec;
-        socket.send_to(asio::buffer(datagram), m_serverEndpoint, 0, ec);
-        if (ec) {
-            LOG_ERROR("Failed to send datagram chunk: {}", ec.message());
-            if (m_onErrorCallback) {
-                m_onErrorCallback();
+    socket.async_send_to(
+        asio::buffer(datagram),
+        m_serverEndpoint,
+        [this](std::error_code ec, std::size_t bytesTransferred) {
+            if (ec) {
+                LOG_ERROR("Failed to send datagram chunk: {}", ec.message());
+                m_isSending = false;
+                if (m_onErrorCallback) {
+                    m_onErrorCallback();
+                }
+                return;
             }
 
-            break;
+            ++m_currentDatagramIndex;
+
+            if (m_currentDatagramIndex >= m_currentDatagrams.size()) {
+                processNextPacketFromQueue();
+            }
+            else {
+                sendNextDatagram();
+            }
         }
-    }
+    );
 }
 
 std::vector<std::vector<unsigned char>> PacketSender::splitPacket(const Packet& packetData) {

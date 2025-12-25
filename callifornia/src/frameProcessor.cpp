@@ -44,7 +44,7 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
 
             if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0)
             {
-                QSize targetSize = QSize(1280, 720);
+                QSize targetSize = QSize(1920, 1080);
                 std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
 
                 emit frameProcessed(croppedPixmap, imageData);
@@ -135,17 +135,15 @@ QPixmap FrameProcessor::cropToHorizontal(const QPixmap& pixmap)
     if (currentAspectRatio > targetAspectRatio)
     {
         cropW = static_cast<int>(h * targetAspectRatio);
+        QRect cropRect(0, 0, cropW, cropH);
+        return pixmap.copy(cropRect);
     }
-
     else
     {
         cropH = static_cast<int>(w / targetAspectRatio);
+        QRect cropRect(0, 0, cropW, cropH);
+        return pixmap.copy(cropRect);
     }
-
-    int x = (w - cropW) / 2;
-    int y = (h - cropH) / 2;
-    QRect cropRect(x, y, cropW, cropH);
-    return pixmap.copy(cropRect);
 }
 
 std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
@@ -163,7 +161,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, 
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    scaledImage.save(&buffer, "JPG", 50);
+    scaledImage.save(&buffer, "JPG", 90);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }
