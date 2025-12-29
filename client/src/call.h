@@ -2,26 +2,25 @@
 
 #include <optional>
 
-#include "crypto.h"
-#include "incomingCallData.h"
+#include "utilities/crypto.h"
+#include "incomingCall.h"
 
-namespace calls {
+namespace calls
+{
+	class Call {
+	public:
+		Call(const std::string& nickname, const CryptoPP::RSA::PublicKey& publicKey);
+		Call(const IncomingCall& incomingCall);
+		const CryptoPP::SecByteBlock& getCallKey() const;
+		const CryptoPP::RSA::PublicKey& getPublicKey() const;
+		const std::string& getNickname() const;
 
-class Call {
-public:
-	Call(const std::string& friendNicknameHash, const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey);
-	Call(const IncomingCallData& incomingCallData);
-	void createCallKey();
-	const CryptoPP::SecByteBlock& getCallKey() const;
-	const CryptoPP::RSA::PublicKey& getFriendPublicKey() const;
-	const std::string& getFriendNicknameHash() const;
-	const std::string& getFriendNickname() const;
+	private:
+		void createCallKey();
 
-private:
-	std::string m_friendNickname;
-	std::string m_friendNicknameHash;
-	CryptoPP::RSA::PublicKey m_friendPublicKey;
-	CryptoPP::SecByteBlock m_callKey;
-};
-
+	private:
+		std::string m_nickname;
+		CryptoPP::RSA::PublicKey m_publicKey;
+		CryptoPP::SecByteBlock m_callKey;
+	};
 }

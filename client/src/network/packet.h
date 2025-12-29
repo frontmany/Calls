@@ -9,9 +9,9 @@
 
 #include "packetTypes.h"
 
-namespace calls {
-    struct Packet
-    {
+namespace network 
+{
+    struct Packet {
         uint64_t id;
         uint32_t type;
         std::vector<unsigned char> data;

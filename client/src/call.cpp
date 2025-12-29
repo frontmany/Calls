@@ -1,36 +1,37 @@
 #include "call.h"
-#include "incomingCallData.h"
+#include "incomingCall.h"
 
-using namespace calls;
+using namespace utilities;
 
-Call::Call(const std::string& friendNicknameHash, const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey)
-	: m_friendNicknameHash(friendNicknameHash), m_friendNickname(friendNickname), m_friendPublicKey(friendPublicKey)
+namespace calls
 {
-}
+	Call::Call(const std::string& nickname,
+		const CryptoPP::RSA::PublicKey& publicKey)
+		: m_nickname(nickname),
+		m_publicKey(publicKey)
+	{
+		createCallKey();
+	}
 
-Call::Call(const IncomingCallData& incomingCallData) {
-	m_friendNicknameHash = crypto::calculateHash(incomingCallData.friendNickname);
-	m_friendNickname = incomingCallData.friendNickname;
-	m_friendPublicKey = incomingCallData.friendPublicKey;
-	m_callKey = incomingCallData.callKey;
-}
+	Call::Call(const IncomingCall& incomingCallData) {
+		m_nickname = incomingCallData.friendNickname;
+		m_publicKey = incomingCallData.friendPublicKey;
+		m_callKey = incomingCallData.callKey;
+	}
 
-void Call::createCallKey() {
-	crypto::generateAESKey(m_callKey);
-}
+	const CryptoPP::SecByteBlock& Call::getCallKey() const {
+		return m_callKey;
+	}
 
-const CryptoPP::SecByteBlock& Call::getCallKey() const {
-	return m_callKey;
-}
+	const CryptoPP::RSA::PublicKey& Call::getPublicKey() const {
+		return m_publicKey;
+	}
 
-const CryptoPP::RSA::PublicKey& Call::getFriendPublicKey() const {
-	return m_friendPublicKey;
-}
+	const std::string& Call::getNickname() const {
+		return m_nickname;
+	}
 
-const std::string& Call::getFriendNicknameHash() const {
-	return m_friendNicknameHash;
-}
-
-const std::string& Call::getFriendNickname() const {
-	return m_friendNickname;
+	void Call::createCallKey() {
+		crypto::generateAESKey(m_callKey);
+	}
 }

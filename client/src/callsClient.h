@@ -9,162 +9,125 @@
 #include <chrono>
 #include <vector>
 #include <cstdint>
+#include <memory>
 
-#include "networkController.h"
-#include "audioEngine.h"
-#include "pingManager.h"
 #include "keysManager.h"
+#include "tasksManager.h"
 #include "packetTypes.h"
 #include "incomingCallData.h"
 #include "errorCode.h"
 #include "callbacksInterface.h"
-#include "state.h"
-#include "timer.h"
+#include "clientState.h"
 #include "call.h"
 #include "task.h"
+#include "clientStateManager.h"
+#include "packetProcessor.h"
+
+#include "network/networkController.h"
+#include "audio/audioEngine.h"
+#include "utilities/timer.h"
 
 #include "json.hpp"
 
-namespace calls {
-class CallsClient {
-public:
-    static CallsClient& get();
+namespace calls 
+{
+    class CallsClient {
+    public:
+        static CallsClient& get();
 
-    bool init(const std::string& host, const std::string& port, std::unique_ptr<CallbacksInterface>&& callbacksHandler);
-    void run();
-    void stop();
+        bool init(const std::string& host,
+            const std::string& port,
+            std::unique_ptr<CallbacksInterface>&& callbacksHandler
+        );
+        void run();
+        void stop();
 
-    // SET
-    void refreshAudioDevices();
-    void muteMicrophone(bool isMute);
-    void muteSpeaker(bool isMute);
-    void setInputVolume(int volume);
-    void setOutputVolume(int volume);
+        // SET
+        void refreshAudioDevices();
+        void muteMicrophone(bool isMute);
+        void muteSpeaker(bool isMute);
+        void setInputVolume(int volume);
+        void setOutputVolume(int volume);
 
-    // GET
-    bool isScreenSharing();
-    bool isViewingRemoteScreen();
-    bool isCameraSharing();
-    bool isViewingRemoteCamera();
-    bool isMicrophoneMuted();
-    bool isSpeakerMuted();
-    bool isRunning() const;
-    bool isAuthorized() const;
-    bool isCalling() const;
-    bool isBusy() const;
-    bool isNetworkError() const;
-    const std::string& getNickname() const;
-    std::vector<std::string> getCallers();
-    int getInputVolume() const;
-    int getOutputVolume() const;
-    int getIncomingCallsCount() const;
-    const std::string& getNicknameWhomCalling() const;
-    const std::string& getNicknameInCallWith() const;
+        // GET
+        bool isScreenSharing();
+        bool isViewingRemoteScreen();
+        bool isCameraSharing();
+        bool isViewingRemoteCamera();
+        bool isMicrophoneMuted();
+        bool isSpeakerMuted();
+        bool isRunning() const;
+        bool isAuthorized() const;
+        bool isCalling() const;
+        bool isBusy() const;
+        bool isNetworkError() const;
+        const std::string& getNickname() const;
+        std::vector<std::string> getCallers();
+        int getInputVolume() const;
+        int getOutputVolume() const;
+        int getIncomingCallsCount() const;
+        const std::string& getNicknameWhomCalling() const;
+        const std::string& getNicknameInCallWith() const;
 
-    // flow functions
-    bool logout();
-    bool authorize(const std::string& nickname);
-    bool startCalling(const std::string& friendNickname);
-    bool stopCalling();
-    bool declineCall(const std::string& friendNickname);
-    bool acceptCall(const std::string& friendNickname);
-    bool endCall();
-    bool sendScreen(const std::vector<unsigned char>& data);
-    bool startScreenSharing();
-    bool stopScreenSharing();
-    bool sendCamera(const std::vector<unsigned char>& data);
-    bool startCameraSharing();
-    bool stopCameraSharing();
+        // flow functions
+        bool authorize(const std::string& nickname);
+        bool logout();
+        bool startCalling(const std::string& friendNickname);
+        bool stopCalling();
+        bool acceptCall(const std::string& friendNickname);
+        bool declineCall(const std::string& friendNickname);
+        bool endCall();
+        bool startScreenSharing();
+        bool stopScreenSharing();
+        bool sendScreen(const std::vector<unsigned char>& data);
+        bool startCameraSharing();
+        bool stopCameraSharing();
+        bool sendCamera(const std::vector<unsigned char>& data);
 
-private:
-    // received results handlers
-    void onPing();
-    void onPingSuccess();
-    void onVoice(const unsigned char* data, int length);
-    void onAuthorizationSuccess(const nlohmann::json& jsonObject);
-    void onAuthorizationFail(const nlohmann::json& jsonObject);
-    void onLogoutOk(const nlohmann::json& jsonObject);
-    void onFriendInfoSuccess(const nlohmann::json& jsonObject);
-    void onFriendInfoFail(const nlohmann::json& jsonObject);
-    void onStartCallingOk(const nlohmann::json& jsonObject);
-    void onStartCallingFail(const nlohmann::json& jsonObject);
-    void onEndCallOk(const nlohmann::json& jsonObject);
-    void onStopCallingOk(const nlohmann::json& jsonObject);
-    void onCallAcceptedOk(const nlohmann::json& jsonObject);
-    void onCallAcceptedFail(const nlohmann::json& jsonObject);
-    void onCallDeclinedOk(const nlohmann::json& jsonObject);
-    void onScreenSharingStartedOk(const nlohmann::json& jsonObject);
-    void onScreenSharingStartedFail(const nlohmann::json& jsonObject);
-    void onScreenSharingStoppedOk(const nlohmann::json& jsonObject);
-    void onScreen(const unsigned char* data, int length);
-    void onCameraSharingStartedOk(const nlohmann::json& jsonObject);
-    void onCameraSharingStartedFail(const nlohmann::json& jsonObject);
-    void onCameraSharingStoppedOk(const nlohmann::json& jsonObject);
-    void onCamera(const unsigned char* data, int length);
+    private:
+        // Media handlers
+        void onVoice(const unsigned char* data, int length);
+        void onScreen(const unsigned char* data, int length);
+        void onCamera(const unsigned char* data, int length);
 
-    // on received packets
-    void onIncomingScreenSharingStarted(const nlohmann::json& jsonObject);
-    void onIncomingScreenSharingStopped(const nlohmann::json& jsonObject);
-    void onIncomingCameraSharingStarted(const nlohmann::json& jsonObject);
-    void onIncomingCameraSharingStopped(const nlohmann::json& jsonObject);
-    void onCallAccepted(const nlohmann::json& jsonObject);
-    void onCallDeclined(const nlohmann::json& jsonObject);
-    void onStopCalling(const nlohmann::json& jsonObject);
-    void onEndCall(const nlohmann::json& jsonObject);
-    void onIncomingCall(const nlohmann::json& jsonObject);
+        // essential functions
+        CallsClient() = default;
+        ~CallsClient();
+        void onReceive(const unsigned char* data, int length, PacketType type);
+        void onInputVoice(const unsigned char* data, int length);
+        void onConnectionDown();
+        void onConnectionRestored();
+        void reset();
 
-    // essential functions
-    CallsClient() = default;
-    ~CallsClient();
-    void onReceive(const unsigned char* data, int length, PacketType type);
-    void processQueue();
-    void onInputVoice(const unsigned char* data, int length);
-    bool validatePacket(const nlohmann::json& jsonObject);
-    void onPingFail();
-    void onConnectionRestored();
-    void reset();
+        // essential senders
+        void sendStartScreenSharingPacket();
+        void sendStopScreenSharingPacket(bool createTask);
+        void sendStartCameraSharingPacket();
+        void sendStopCameraSharingPacket(bool createTask);
+        void sendAuthorizationPacket();
+        void sendLogoutPacket(bool createTask);
+        void sendRequestFriendInfoPacket(const std::string& friendNickname);
+        void sendAcceptCallPacket(const std::string& friendNickname);
+        void sendDeclineCallPacket(const std::string& friendNickname, bool createTask);
+        void sendStartCallingPacket(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey);
+        void sendStopCallingPacket(bool createTask);
+        void sendEndCallPacket(bool createTask);
+        void sendConfirmation(const std::string& uid, const std::string& nicknameHashTo);
+        void sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType confirmationType);
 
-    // essential senders
-    void sendStartScreenSharingPacket();
-    void sendStopScreenSharingPacket(bool createTask);
-    void sendStartCameraSharingPacket();
-    void sendStopCameraSharingPacket(bool createTask);
-    void sendAuthorizationPacket();
-    void sendLogoutPacket(bool createTask);
-    void sendRequestFriendInfoPacket(const std::string& friendNickname);
-    void sendAcceptCallPacket(const std::string& friendNickname);
-    void sendDeclineCallPacket(const std::string& friendNickname, bool createTask);
-    void sendStartCallingPacket(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey);
-    void sendStopCallingPacket(bool createTask);
-    void sendEndCallPacket(bool createTask);
-    void sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType type);
+        void sendPacketWithConfirmation(const std::string& uuid, std::vector<unsigned char> packet, 
+            PacketType packetType, int maxRetries = 3);
+        void onPacketConfirmed(const std::string& uuid);
 
-private:
-    std::atomic_bool m_networkError = false;
-    std::atomic_bool m_running = false;
-    std::atomic_bool m_screenSharing = false;
-    std::atomic_bool m_viewingRemoteScreen = false;
-    std::atomic_bool m_cameraSharing = false;
-    std::atomic_bool m_viewingRemoteCamera = false;
-    std::atomic<State> m_state = State::UNAUTHORIZED;
-    mutable std::mutex m_dataMutex;
-
-    std::optional<Call> m_call = std::nullopt;
-    std::string m_nicknameWhomCalling;
-    std::string m_myNickname;
-    Timer m_callingTimer;
-
-    std::thread m_callbacksQueueProcessingThread;
-    std::queue<std::function<void()>> m_callbacksQueue;
-    std::vector<std::pair<std::unique_ptr<Timer>, IncomingCallData>> m_incomingCalls;
-    std::unordered_map<PacketType, std::function<void(const nlohmann::json&)>> m_handlers;
-    std::unordered_map<std::string, std::shared_ptr<Task>> m_tasks;
-
-    std::shared_ptr<NetworkController> m_networkController;
-    std::unique_ptr<AudioEngine> m_audioEngine;
-    std::shared_ptr<PingManager> m_pingManager;
-    std::unique_ptr<KeysManager> m_keysManager;
-    std::unique_ptr<CallbacksInterface> m_callbackHandler;
-};
+    private:
+        ClientStateManager m_stateManager;
+        std::unique_ptr<PacketProcessor> m_packetProcessor;
+        KeysManager m_keysManager;
+        TasksManager m_tasksManager;
+        network::NetworkController m_networkController;
+        audio::AudioEngine m_audioEngine;
+        std::unique_ptr<CallbacksInterface> m_callbackHandler;
+        std::thread m_callbacksQueueProcessingThread;
+    };
 
 }

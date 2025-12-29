@@ -8,7 +8,8 @@
 #include <memory>
 #include <functional>
 
-namespace calls {
+namespace utilities 
+{
     template<typename T>
     class SafeQueue {
     public:

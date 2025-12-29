@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <functional>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -14,20 +13,21 @@
 #include "packetTypes.h"
 #include "safeQueue.h"
 
-namespace calls {
+namespace network 
+{
     class PacketReceiver {
     private:
         struct PendingPacket {
+            uint64_t packetId = 0;
             uint16_t totalChunks = 0;
-            std::vector<std::vector<unsigned char>> chunks;
             std::size_t receivedChunks = 0;
-            PacketType type = PacketType::PING;
-            bool typeSet = false;
+            std::vector<std::vector<unsigned char>> chunks;
+            uint32_t type = 0;
         };
 
         struct ReceivedPacket {
             std::vector<unsigned char> data;
-            PacketType type;
+            uint32_t type;
         };
 
     public:
@@ -35,8 +35,9 @@ namespace calls {
         ~PacketReceiver();
 
         bool init(asio::ip::udp::socket& socket,
-            std::function<void(const unsigned char*, int, PacketType)> onPacketReceived,
-            std::function<void()> onErrorCallback);
+            std::function<void(const unsigned char*, int, uint32_t)> onPacketReceived,
+            std::function<void()> onErrorCallback,
+            std::function<void(uint32_t)> onPingReceived);
 
         void start();
         void stop();
@@ -45,9 +46,8 @@ namespace calls {
     private:
         void doReceive();
         void processDatagram(std::size_t bytesTransferred);
-        void handleChunk(uint64_t packetId, uint16_t chunkIndex, uint16_t chunkCount, PacketType packetType,
-            const unsigned char* payload, std::size_t payloadSize);
         void processReceivedPackets();
+        void resetPendingPacket(uint64_t packetId, uint16_t totalChunks, uint32_t packetType);
         uint16_t readUint16(const unsigned char* data);
         uint32_t readUint32(const unsigned char* data);
         uint64_t readUint64(const unsigned char* data);
@@ -59,12 +59,12 @@ namespace calls {
         std::array<unsigned char, 1500> m_buffer{};
         std::atomic<bool> m_running;
         std::mutex m_stateMutex;
-        std::optional<PendingPacket> m_pendingPacket;
-        std::function<void(const unsigned char*, int, PacketType)> m_onPacketReceived;
-        std::function<void()> m_onErrorCallback;
+        PendingPacket m_pendingPacket;
         SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
         std::thread m_processingThread;
-
         const std::size_t m_headerSize = 18;
+        std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
+        std::function<void()> m_onErrorCallback;
+        std::function<void(uint32_t)> m_onPingReceived;
     };
 }

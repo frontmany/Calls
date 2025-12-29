@@ -4,7 +4,8 @@
 #include <cstring>
 #include <iomanip>
 
-namespace calls { namespace crypto {
+namespace utilities 
+{
     void generateRSAKeyPair(CryptoPP::RSA::PrivateKey& privateKey, CryptoPP::RSA::PublicKey& publicKey) {
         CryptoPP::AutoSeededRandomPool rng;
         privateKey.Initialize(rng, 3072);
@@ -296,4 +297,4 @@ namespace calls { namespace crypto {
             throw std::runtime_error(std::string("UUID generation error: ") + e.what());
         }
     }
-}}
+}

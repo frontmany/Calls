@@ -3,7 +3,8 @@
 #include <future>
 #include <mutex>
 #include <atomic>
-#include "crypto.h"
+
+#include "utilities/crypto.h"
 
 namespace calls {
     class KeysManager {

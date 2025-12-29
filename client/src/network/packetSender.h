@@ -11,7 +11,8 @@
 
 #include <asio.hpp>
 
-namespace calls {
+namespace network 
+{
     class PacketSender
     {
     public:
@@ -26,7 +27,7 @@ namespace calls {
         void startSendingIfIdle();
         void sendNextDatagram();
         void processNextPacketFromQueue();
-        std::vector<std::vector<unsigned char>> splitPacket(const Packet& packet);
+        std::vector<std::vector<unsigned char>> splitPacket(const Packet& packetData);
         void writeUint16(std::vector<unsigned char>& buffer, uint16_t value);
         void writeUint32(std::vector<unsigned char>& buffer, uint32_t value);
         void writeUint64(std::vector<unsigned char>& buffer, uint64_t value);

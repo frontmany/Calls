@@ -1,7 +1,9 @@
 #pragma once
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "packetTypes.h"
@@ -10,7 +12,9 @@
 
 #include "asio.hpp"
 
-namespace calls {
+namespace network 
+{
+    class PingController;
 
     class NetworkController {
     public:
@@ -19,18 +23,22 @@ namespace calls {
 
         bool init(const std::string& host,
             const std::string& port,
-            std::function<void(const unsigned char*, int, PacketType)> onReceiveCallback,
-            std::function<void()> onErrorCallback);
+            std::function<void(const unsigned char*, int, uint32_t)> onReceive,
+            std::function<void()> onConnectionDown,
+            std::function<void()> onConnectionRestored);
 
         void run();
         void stop();
         bool isRunning() const;
-        void send(const std::vector<unsigned char>& data, PacketType type);
-        void send(std::vector<unsigned char>&& data, PacketType type);
-        void send(PacketType type);
+        bool send(const std::vector<unsigned char>& data, uint32_t type);
+        bool send(std::vector<unsigned char>&& data, uint32_t type);
+        bool send(uint32_t type);
+        void setConnectionError();
 
     private:
+        void sendPing();
         uint64_t generateId();
+        void sendPingResponse();
 
     private:
         asio::io_context m_context;
@@ -41,12 +49,14 @@ namespace calls {
 
         PacketReceiver m_packetReceiver;
         PacketSender m_packetSender;
+        std::unique_ptr<PingController> m_pingController;
 
         std::atomic<bool> m_running;
         std::atomic<uint64_t> m_nextPacketId;
 
-        std::function<void(const unsigned char*, int, PacketType)> m_onReceiveCallback;
-        std::function<void()> m_onErrorCallback;
+        std::function<void(const unsigned char*, int, uint32_t)> m_onReceive;
+        std::function<void()> m_onConnectionDown;
+        std::function<void()> m_onConnectionRestored;
     };
 
 }
