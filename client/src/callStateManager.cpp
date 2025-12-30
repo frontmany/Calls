@@ -10,6 +10,11 @@ namespace calls
         return m_activeCall.has_value();
     }
 
+    bool CallStateManager::isCallParticipantConnectionLost() const {
+        m_activeCall.value().isCallParticipantConnectionLost();
+    }
+
+
     const OutgoingCall& CallStateManager::getOutgoingCall() const {
         return m_outgoingCall.value();
     }
@@ -36,6 +41,10 @@ namespace calls
 
         m_outgoingCall = std::nullopt;
         m_activeCall.emplace(incomingCall);
+    }
+
+    void CallStateManager::setCallParticipantConnectionLost(bool value) {
+        m_activeCall.value().setCallParticipantConnectionLost(value);
     }
 
     void CallStateManager::clear()

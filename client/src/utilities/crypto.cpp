@@ -272,7 +272,7 @@ namespace utilities
         return digest;
     }
 
-    std::string generateUUID() {
+    std::string generateUID() {
         try {
             CryptoPP::AutoSeededRandomPool rng;
             CryptoPP::byte uuid[16];

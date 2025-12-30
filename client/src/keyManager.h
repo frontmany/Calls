@@ -6,11 +6,12 @@
 
 #include "utilities/crypto.h"
 
-namespace calls {
-    class KeysManager {
+namespace calls 
+{
+    class KeyManager {
     public:
-        KeysManager() = default;
-        ~KeysManager();
+        KeyManager() = default;
+        ~KeyManager();
 
         void generateKeys();
         void resetKeys();

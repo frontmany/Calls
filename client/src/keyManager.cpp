@@ -1,21 +1,21 @@
-#include "keysManager.h"
+#include "keyManager.h"
 
 namespace calls {
-    KeysManager::~KeysManager()
+    KeyManager::~KeyManager()
     {
         if (m_future.valid()) {
             m_future.wait();
         }
     }
 
-    void KeysManager::generateKeys() {
+    void KeyManager::generateKeys() {
         if (m_generating.load()) {
             return;
         }
 
         std::lock_guard<std::mutex> lock(m_mutex);
         m_future = std::async(std::launch::async, [this]() {
-            crypto::generateRSAKeyPair(m_privateKey, m_publicKey);
+            utilities::crypto::generateRSAKeyPair(m_privateKey, m_publicKey);
             m_generating.store(false);
             m_keysReady.store(true);
         });
@@ -24,15 +24,15 @@ namespace calls {
         m_keysReady.store(false);
     }
 
-    bool KeysManager::isKeys() const {
+    bool KeyManager::isKeys() const {
         return m_keysReady.load();
     }
 
-    bool KeysManager::isGeneratingKeys() const {
+    bool KeyManager::isGeneratingKeys() const {
         return m_generating.load();
     }
 
-    void KeysManager::awaitKeysGeneration() {
+    void KeyManager::awaitKeysGeneration() {
         if (m_future.valid()) {
             m_future.wait();
         }
@@ -41,7 +41,7 @@ namespace calls {
         m_generating.store(false);
     }
 
-    void KeysManager::resetKeys() {
+    void KeyManager::resetKeys() {
         std::lock_guard<std::mutex> lock(m_mutex);
 
         if (m_future.valid()) {
@@ -55,7 +55,7 @@ namespace calls {
         m_generating.store(false);
     }
 
-    const CryptoPP::RSA::PublicKey& KeysManager::getPublicKey() {
+    const CryptoPP::RSA::PublicKey& KeyManager::getPublicKey() {
         std::lock_guard<std::mutex> lock(m_mutex);
 
         if (m_future.valid()) {
@@ -65,7 +65,7 @@ namespace calls {
         return m_publicKey;
     }
 
-    const CryptoPP::RSA::PrivateKey& KeysManager::getPrivateKey() {
+    const CryptoPP::RSA::PrivateKey& KeyManager::getPrivateKey() {
         std::lock_guard<std::mutex> lock(m_mutex);
 
         if (m_future.valid()) {

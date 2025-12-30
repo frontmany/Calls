@@ -55,8 +55,8 @@ namespace network
         using namespace std::chrono_literals;
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        std::chrono::seconds pingGap = 1s;
-        std::chrono::seconds checkPingGap = 5s;
+        std::chrono::milliseconds pingGap = 500ms;
+        std::chrono::seconds checkPingGap = 1s;
 
         std::chrono::steady_clock::time_point lastPing = begin;
         std::chrono::steady_clock::time_point lastCheck = begin;

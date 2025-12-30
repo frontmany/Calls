@@ -13,10 +13,16 @@ namespace calls
     class CallStateManager {
     public:
         CallStateManager() = default;
+
         bool isOutgoingCall() const;
         bool isActiveCall() const;
+        bool isCallParticipantConnectionLost() const;
         const OutgoingCall& getOutgoingCall() const;
         const Call& getActiveCall() const;
+        void setActiveCall(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey);
+        void setActiveCall(const IncomingCall& incomingCall);
+        void setCallParticipantConnectionLost(bool value);
+        void clear();
 
         template <typename Rep, typename Period, typename Callable>
         void setOutgoingCall(const std::string& nickname,
@@ -30,13 +36,6 @@ namespace calls
             m_activeCall = std::nullopt;
             m_outgoingCall.emplace(nickname, timeout, std::forward<Callable>(onTimeout));
         }
-
-        void setActiveCall(const std::string& friendNickname,
-            const CryptoPP::RSA::PublicKey& friendPublicKey);
-
-        void setActiveCall(const IncomingCall& incomingCall);
-
-        void clear();
 
     private:
         std::optional<OutgoingCall> m_outgoingCall;

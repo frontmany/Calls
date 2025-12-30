@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -17,6 +18,7 @@ namespace calls
 
         bool isAuthorized() const;
         bool isConnectionDown() const;
+        bool isCallParticipantConnectionLost() const;
         bool isScreenSharing() const;
         bool isCameraSharing() const;
         bool isViewingRemoteScreen() const;
@@ -24,6 +26,7 @@ namespace calls
 
         void setAuthorized(bool value);
         void setConnectionDown(bool value);
+        void setCallParticipantConnectionLost(bool value);
         void setScreenSharing(bool value);
         void setCameraSharing(bool value);
         void setViewingRemoteScreen(bool value);
@@ -33,6 +36,10 @@ namespace calls
         void setMyNickname(const std::string& nickname);
         void clearMyNickname();
 
+        const std::string& getMyToken() const;
+        void setMyToken(const std::string& token);
+        void clearMyToken();
+
         const CallStateManager& getCallStateManager() const;
 
         template <typename Rep, typename Period, typename Callable>
@@ -40,19 +47,19 @@ namespace calls
             const std::chrono::duration<Rep, Period>& timeout,
             Callable&& onTimeout)
         {
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_callStateManager.setOutgoingCall(nickname, timeout, onTimeout);
         }
 
         void setActiveCall(const std::string& nickname,
             const CryptoPP::RSA::PublicKey& publicKey);
 
-        void setActiveCall(const IncomingCall& incomingCall);
+        void setActiveCallFromIncoming(const IncomingCall& incomingCall);
 
         void clearCallState();
 
         const std::unordered_map<std::string, IncomingCall>& getIncomingCalls() const;
-
-        // TODO implement participant experiencing connection problems and restored also figure out 2 min timer, should or not set up
+        int getIncomingCallsCount() const;
 
         template <typename Rep, typename Period, typename Callable>
         void addIncomingCall(const std::string& nickname,
@@ -61,7 +68,10 @@ namespace calls
             const std::chrono::duration<Rep, Period>& timeout,
             Callable&& onTimeout)
         {
-            m_incomingCalls.emplace(nickname, nickname, publicKey, callKey, timeout, std::forward<Callable>(onTimeout));
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            IncomingCall incomingCall(nickname, publicKey, callKey, timeout, std::forward<Callable>(onTimeout));
+            m_incomingCalls.emplace(nickname, std::move(incomingCall));
         }
         
         void removeIncomingCall(const std::string& nickname);
@@ -71,6 +81,7 @@ namespace calls
         void reset();
 
     private:
+        mutable std::mutex m_mutex;
         CallStateManager m_callStateManager;
         std::atomic_bool m_authorized;
         std::atomic_bool m_connectionDown;
@@ -78,9 +89,8 @@ namespace calls
         std::atomic_bool m_viewingRemoteScreen;
         std::atomic_bool m_cameraSharing;
         std::atomic_bool m_viewingRemoteCamera;
-
         std::string m_myNickname;
+        std::string m_myToken;
         std::unordered_map<std::string, IncomingCall> m_incomingCalls;
     };
 }
-

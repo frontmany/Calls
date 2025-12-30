@@ -85,7 +85,7 @@ namespace network {
                 if (m_pingController) {
                     m_pingController->setConnectionError();
                 }
-                };
+            };
 
             auto pingReceivedHandler = [this](uint32_t pingType) {
                 if (pingType == 0) {
@@ -105,7 +105,7 @@ namespace network {
 
             auto sendPingCallback = [this]() {
                 sendPing();
-                };
+            };
 
             m_pingController = std::make_unique<PingController>(sendPingCallback, m_onConnectionDown, m_onConnectionRestored);
 

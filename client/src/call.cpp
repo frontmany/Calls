@@ -13,10 +13,14 @@ namespace calls
 		createCallKey();
 	}
 
-	Call::Call(const IncomingCall& incomingCallData) {
-		m_nickname = incomingCallData.friendNickname;
-		m_publicKey = incomingCallData.friendPublicKey;
-		m_callKey = incomingCallData.callKey;
+	Call::Call(const IncomingCall& incomingCall) {
+		m_nickname = incomingCall.getNickname();
+		m_publicKey = incomingCall.getPublicKey();
+		m_callKey = incomingCall.getCallKey();
+	}
+
+	bool Call::isParticipantConnectionLost() const {
+		return m_participantConnectionLost;
 	}
 
 	const CryptoPP::SecByteBlock& Call::getCallKey() const {
@@ -29,6 +33,10 @@ namespace calls
 
 	const std::string& Call::getNickname() const {
 		return m_nickname;
+	}
+
+	void Call::setParticipantConnectionLost(bool value) {
+		m_participantConnectionLost = value;
 	}
 
 	void Call::createCallKey() {

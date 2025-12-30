@@ -9,6 +9,7 @@ namespace calls {
         // only send
         AUTHORIZATION = 2,
         LOGOUT,
+        RECONNECT,
         GET_USER_INFO,
 
         // send and receive
@@ -29,8 +30,8 @@ namespace calls {
         // only receive
         AUTHORIZATION_SUCCESS,
         AUTHORIZATION_FAIL,
-        AUTHORIZATION_SUCCESS,
-        AUTHORIZATION_FAIL,
+        RECONNECT_SUCCESS,
+        RECONNECT_FAIL,
         GET_USER_INFO_SUCCESS,
         GET_USER_INFO_FAIL,
         CONNECTION_DOWN_WITH_USER,
@@ -42,6 +43,7 @@ namespace calls {
             // only send
             case PacketType::AUTHORIZATION: return "AUTHORIZATION";
             case PacketType::LOGOUT: return "LOGOUT";
+            case PacketType::RECONNECT: return "RECONNECT";
             case PacketType::GET_USER_INFO: return "GET_USER_INFO";
 
             // send and receive
@@ -62,6 +64,8 @@ namespace calls {
             // only receive
             case PacketType::AUTHORIZATION_SUCCESS: return "AUTHORIZATION_SUCCESS";
             case PacketType::AUTHORIZATION_FAIL: return "AUTHORIZATION_FAIL";
+            case PacketType::RECONNECT_SUCCESS: return "RECONNECT_SUCCESS";
+            case PacketType::RECONNECT_FAIL: return "RECONNECT_FAIL";
             case PacketType::GET_USER_INFO_SUCCESS: return "GET_USER_INFO_SUCCESS";
             case PacketType::GET_USER_INFO_FAIL: return "GET_USER_INFO_FAIL";
             case PacketType::CONNECTION_DOWN_WITH_USER: return "CONNECTION_DOWN_WITH_USER";

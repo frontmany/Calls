@@ -28,6 +28,6 @@ namespace utilities
         CryptoPP::SecByteBlock deserializeAESKey(const std::string& keyStr);
 
         std::string calculateHash(const std::string& text);
-        std::string generateUUID();
+        std::string generateUID();
     }
 }

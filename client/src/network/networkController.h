@@ -6,7 +6,6 @@
 #include <thread>
 #include <vector>
 
-#include "packetTypes.h"
 #include "packetSender.h"
 #include "packetReceiver.h"
 

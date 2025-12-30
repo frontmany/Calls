@@ -5,9 +5,9 @@
 
 namespace calls 
 {
-    class ClientEventsListener {
+    class EventListener {
     public:
-        virtual ~ClientEventsListener() = default;
+        virtual ~EventListener() = default;
 
         virtual void onAuthorizationResult(std::error_code ec) = 0;
         virtual void onLogoutCompleted() = 0;
@@ -37,10 +37,11 @@ namespace calls
         virtual void onIncomingCallExpired(const std::string& nickname) = 0;
         virtual void onCallEndedByRemote() = 0;
 
-        virtual void onCallParticipantConnectionLost(const std::string& nickname) = 0;
+        virtual void onCallParticipantConnectionDown(const std::string& nickname) = 0;
         virtual void onCallParticipantConnectionRestored(const std::string& nickname) = 0;
 
         virtual void onConnectionDown() = 0;
         virtual void onConnectionRestored() = 0;
+        virtual void onConnectionRestoredAuthorizationNeeded() = 0;
     };
 }

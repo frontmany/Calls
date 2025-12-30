@@ -1,7 +1,6 @@
 #include "packetProcessor.h"
 
 #include "jsonTypes.h"
-#include "errorCode.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
 #include "utilities/timer.h"
@@ -38,6 +37,33 @@ PacketProcessor::PacketProcessor(
     , m_sendStartCalling(sendStartCalling)
     , m_onPacketConfirmed(onPacketConfirmed)
 {
+    m_receiveHandlers.emplace(PacketType::AUTHORIZE_SUCCESS, [this](const nlohmann::json& json) { onAuthorizationSuccess(json); });
+    m_receiveHandlers.emplace(PacketType::AUTHORIZE_FAIL, [this](const nlohmann::json& json) { onAuthorizationFail(json); });
+    m_receiveHandlers.emplace(PacketType::GET_FRIEND_INFO_SUCCESS, [this](const nlohmann::json& json) { onFriendInfoSuccess(json); });
+    m_receiveHandlers.emplace(PacketType::GET_FRIEND_INFO_FAIL, [this](const nlohmann::json& json) { onFriendInfoFail(json); });
+    m_receiveHandlers.emplace(PacketType::START_CALLING_OK, [this](const nlohmann::json& json) { onStartCallingOk(json); });
+    m_receiveHandlers.emplace(PacketType::START_CALLING_FAIL, [this](const nlohmann::json& json) { onStartCallingFail(json); });
+    m_receiveHandlers.emplace(PacketType::END_CALL_OK, [this](const nlohmann::json& json) { onEndCallOk(json); });
+    m_receiveHandlers.emplace(PacketType::STOP_CALLING_OK, [this](const nlohmann::json& json) { onStopCallingOk(json); });
+    m_receiveHandlers.emplace(PacketType::CALL_ACCEPTED_OK, [this](const nlohmann::json& json) { onCallAcceptedOk(json); });
+    m_receiveHandlers.emplace(PacketType::CALL_ACCEPTED_FAIL, [this](const nlohmann::json& json) { onCallAcceptedFail(json); });
+    m_receiveHandlers.emplace(PacketType::CALL_DECLINED_OK, [this](const nlohmann::json& json) { onCallDeclinedOk(json); });
+    m_receiveHandlers.emplace(PacketType::LOGOUT_OK, [this](const nlohmann::json& json) { onLogoutOk(json); });
+    m_receiveHandlers.emplace(PacketType::CALL_ACCEPTED, [this](const nlohmann::json& json) { onCallAccepted(json); });
+    m_receiveHandlers.emplace(PacketType::CALL_DECLINED, [this](const nlohmann::json& json) { onCallDeclined(json); });
+    m_receiveHandlers.emplace(PacketType::STOP_CALLING, [this](const nlohmann::json& json) { onStopCalling(json); });
+    m_receiveHandlers.emplace(PacketType::END_CALL, [this](const nlohmann::json& json) { onEndCall(json); });
+    m_receiveHandlers.emplace(PacketType::START_CALLING, [this](const nlohmann::json& json) { onIncomingCall(json); });
+    m_receiveHandlers.emplace(PacketType::START_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStarted(json); });
+    m_receiveHandlers.emplace(PacketType::STOP_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStopped(json); });
+    m_receiveHandlers.emplace(PacketType::START_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStartedOk(json); });
+    m_receiveHandlers.emplace(PacketType::START_SCREEN_SHARING_FAIL, [this](const nlohmann::json& json) { onScreenSharingStartedFail(json); });
+    m_receiveHandlers.emplace(PacketType::STOP_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStoppedOk(json); });
+    m_receiveHandlers.emplace(PacketType::START_CAMERA_SHARING, [this](const nlohmann::json& json) { onIncomingCameraSharingStarted(json); });
+    m_receiveHandlers.emplace(PacketType::STOP_CAMERA_SHARING, [this](const nlohmann::json& json) { onIncomingCameraSharingStopped(json); });
+    m_receiveHandlers.emplace(PacketType::START_CAMERA_SHARING_OK, [this](const nlohmann::json& json) { onCameraSharingStartedOk(json); });
+    m_receiveHandlers.emplace(PacketType::START_CAMERA_SHARING_FAIL, [this](const nlohmann::json& json) { onCameraSharingStartedFail(json); });
+    m_receiveHandlers.emplace(PacketType::STOP_CAMERA_SHARING_OK, [this](const nlohmann::json& json) { onCameraSharingStoppedOk(json); });
 }
 
 void PacketProcessor::processPacket(PacketType type, const nlohmann::json& jsonObject)
