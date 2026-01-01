@@ -1,8 +1,5 @@
 #include "clientStateManager.h"
 
-#include "jsonTypes.h"
-#include "json.hpp"
-
 using namespace calls;
 
 ClientStateManager::ClientStateManager()
@@ -14,15 +11,28 @@ ClientStateManager::ClientStateManager()
 {
 }
 
+bool ClientStateManager::isOutgoingCall() const
+{
+    return m_callStateManager.isOutgoingCall();
+}
+
+bool ClientStateManager::isActiveCall() const
+{
+    return m_callStateManager.isActiveCall();
+}
+
+bool ClientStateManager::isCallParticipantConnectionLost() const
+{
+    return m_callStateManager.isCallParticipantConnectionDown();
+}
+
 bool ClientStateManager::isConnectionDown() const
 {
     return m_connectionDown.load();
 }
 
-bool ClientStateManager::isCallParticipantConnectionLost() const
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return m_callStateManager.isCallParticipantConnectionLost();
+bool ClientStateManager::isIncomingCalls() const {
+    return getIncomingCallsCount() != 0;
 }
 
 bool ClientStateManager::isScreenSharing() const
@@ -60,10 +70,10 @@ void ClientStateManager::setConnectionDown(bool value)
     m_connectionDown.store(value);
 }
 
-void ClientStateManager::setCallParticipantConnectionLost(bool value)
+void ClientStateManager::setCallParticipantConnectionDown(bool value)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_callStateManager.setCallParticipantConnectionLost(value);
+    m_callStateManager.setCallParticipantConnectionDown(value);
 }
 
 void ClientStateManager::setScreenSharing(bool value)
@@ -111,6 +121,16 @@ const std::string& ClientStateManager::getMyToken() const
     return m_myToken;
 }
 
+const OutgoingCall& ClientStateManager::getOutgoingCall() const
+{
+    return m_callStateManager.getOutgoingCall();
+}
+
+const Call& ClientStateManager::getActiveCall() const
+{
+    return m_callStateManager.getActiveCall();
+}
+
 void ClientStateManager::setMyToken(const std::string& token) 
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -123,23 +143,11 @@ void ClientStateManager::clearMyToken()
     m_myToken.clear();
 }
 
-const CallStateManager& ClientStateManager::getCallStateManager() const
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return m_callStateManager;
-}
-
 void ClientStateManager::setActiveCall(const std::string& nickname,
-    const CryptoPP::RSA::PublicKey& publicKey)
+    const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& callKey)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_callStateManager.setActiveCall(nickname, publicKey);
-}
-
-void ClientStateManager::setActiveCallFromIncoming(const IncomingCall& incomingCall)
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_callStateManager.setActiveCall(incomingCall);
+    m_callStateManager.setActiveCall(nickname, publicKey, callKey);
 }
 
 void ClientStateManager::clearCallState()

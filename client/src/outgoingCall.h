@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 #include "utilities/timer.h"
 
 namespace calls
@@ -8,13 +9,13 @@ namespace calls
     class OutgoingCall
     {
     public:
-        template <typename Rep, typename Period, typename Callable>
+        template <typename Rep, typename Period>
         explicit OutgoingCall(const std::string& nickname,
             const std::chrono::duration<Rep, Period>& timeout,
-            Callable&& onTimeout)
+            std::function<void()> onTimeout)
             : m_nickname(nickname)
         {
-            m_timer.start(timeout, std::forward<Callable>(onTimeout));
+            m_timer.start(timeout, std::move(onTimeout));
         }
         OutgoingCall(const OutgoingCall& other) = delete;
         OutgoingCall(OutgoingCall&& other) noexcept;

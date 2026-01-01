@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <functional>
 
 #include "utilities/crypto.h"
 #include "utilities/timer.h"
@@ -11,18 +12,18 @@ namespace calls
 {
 	class IncomingCall {
 	public:
-		template <typename Rep, typename Period, typename Callable>
+		template <typename Rep, typename Period>
 		explicit IncomingCall(const std::string& nickname,
 			const CryptoPP::RSA::PublicKey& publicKey,
 			const CryptoPP::SecByteBlock& callKey,
 			const std::chrono::duration<Rep, Period>& timeout,
-			Callable&& onTimeout)
+			std::function<void()> onTimeout)
 			: m_nickname(nickname)
 			, m_publicKey(publicKey)
 			, m_callKey(callKey)
 			, m_timer(std::make_unique<utilities::tic::SingleShotTimer>())
 		{
-			m_timer->start(timeout, std::forward<Callable>(onTimeout));
+			m_timer->start(timeout, std::move(onTimeout));
 		}
 		IncomingCall(const IncomingCall& other) = delete;
 		IncomingCall(IncomingCall&& other) noexcept;

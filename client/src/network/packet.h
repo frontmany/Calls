@@ -7,7 +7,7 @@
 #include <mutex>
 #include <vector>
 
-#include "packetTypes.h"
+#include "packetType.h"
 
 namespace network 
 {

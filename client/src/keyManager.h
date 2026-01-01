@@ -18,8 +18,8 @@ namespace calls
         bool isKeys() const;
         bool isGeneratingKeys() const;
         void awaitKeysGeneration();
-        const CryptoPP::RSA::PublicKey& getPublicKey();
-        const CryptoPP::RSA::PrivateKey& getPrivateKey();
+        const CryptoPP::RSA::PublicKey& getMyPublicKey();
+        const CryptoPP::RSA::PrivateKey& getMyPrivateKey();
 
     private:
         mutable std::mutex m_mutex;

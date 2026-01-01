@@ -11,8 +11,8 @@ namespace calls
 
         virtual void onAuthorizationResult(std::error_code ec) = 0;
         virtual void onLogoutCompleted() = 0;
-        virtual void onStartCallingResult(std::error_code ec) = 0;
-        virtual void onStopCallingResult(std::error_code ec) = 0;
+        virtual void onStartOutgoingCallResult(std::error_code ec) = 0;
+        virtual void onStopOutgoingCallResult(std::error_code ec) = 0;
         virtual void onAcceptCallResult(std::error_code ec) = 0;
         virtual void onDeclineCallResult(std::error_code ec) = 0;
         virtual void onEndCallResult(std::error_code ec) = 0;
@@ -37,8 +37,8 @@ namespace calls
         virtual void onIncomingCallExpired(const std::string& nickname) = 0;
         virtual void onCallEndedByRemote() = 0;
 
-        virtual void onCallParticipantConnectionDown(const std::string& nickname) = 0;
-        virtual void onCallParticipantConnectionRestored(const std::string& nickname) = 0;
+        virtual void onCallParticipantConnectionDown() = 0;
+        virtual void onCallParticipantConnectionRestored() = 0;
 
         virtual void onConnectionDown() = 0;
         virtual void onConnectionRestored() = 0;

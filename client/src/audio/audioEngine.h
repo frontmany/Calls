@@ -30,16 +30,16 @@ namespace audio
 
         InitializationStatus init(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
         void refreshAudioDevices();
-        bool initialized();
-        bool isStream();
+        bool initialized() const;
+        bool isStream() const;
         bool startStream();
         bool stopStream();
         void playAudio(const unsigned char* data, int length);
         std::string getLastError() const;
         void muteMicrophone(bool isMute);
         void muteSpeaker(bool isMute);
-        bool isSpeakerMuted();
-        bool isMicrophoneMuted();
+        bool isSpeakerMuted() const;
+        bool isMicrophoneMuted() const;
         void setInputVolume(int volume);  
         void setOutputVolume(int volume);
         int getInputVolume() const;

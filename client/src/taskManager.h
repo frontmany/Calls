@@ -24,8 +24,8 @@ namespace calls
 			const std::chrono::duration<Rep, Period>& period,
 			int maxAttempts,
 			std::function<void()>&& attempt,
-			std::function<void()>&& onFinishedSuccessfully,
-			std::function<void()>&& onFailed)
+			std::function<void(std::optional<nlohmann::json>)>&& onFinishedSuccessfully,
+			std::function<void(std::optional<nlohmann::json>)>&& onFailed)
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -37,26 +37,26 @@ namespace calls
 			std::lock_guard<std::mutex> lock(m_mutex);
 
 			if (m_tasks.contains(uid)) {
-				auto [uid, task] = m_tasks.at(uid);
+				auto& task = m_tasks.at(uid);
 				task.start();
 			}
 		}
 
-		void completeTask(const std::string& uid) {
+		void completeTask(const std::string& uid, std::optional<nlohmann::json> completionContext = std::nullopt) {
 			std::lock_guard<std::mutex> lock(m_mutex);
 			
 			if (m_tasks.contains(uid)) {
-				auto [uid, task] = m_tasks.at(uid);
-				task.complete();
+				auto& task = m_tasks.at(uid);
+				task.complete(completionContext);
 			}
 		}
 
-		void failTask(const std::string& uid) {
+		void failTask(const std::string& uid, std::optional<nlohmann::json> failureContext = std::nullopt) {
 			std::lock_guard<std::mutex> lock(m_mutex);
 
 			if (m_tasks.contains(uid)) {
-				auto [uid, task] = m_tasks.at(uid);
-				task.fail();
+				auto& task = m_tasks.at(uid);
+				task.fail(failureContext);
 			}
 		}
 
@@ -64,12 +64,13 @@ namespace calls
 			std::lock_guard<std::mutex> lock(m_mutex);
 
 			if (m_tasks.contains(uid)) {
-				auto [uid, task] = m_tasks.at(uid);
+				auto& task = m_tasks.at(uid);
 				task.cancel();
 			}
 		}
 
 		void cancelAllTasks() {
+			std::lock_guard<std::mutex> lock(m_mutex);
 			m_tasks.clear();
 		}
 

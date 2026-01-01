@@ -3,10 +3,11 @@
 #include <string>
 #include <functional>
 #include <chrono>
-#include <memory>
+#include <optional>
 
 #include "utilities/timer.h"
 #include "utilities/logger.h"
+#include "json.hpp"
 
 namespace calls
 {
@@ -17,8 +18,8 @@ namespace calls
 			const std::chrono::duration<Rep, Period>& period,
 			int maxAttempts,
 			std::function<void()>&& attempt,
-			std::function<void()>&& onFinishedSuccessfully,
-			std::function<void()>&& onFailed)
+			std::function<void(std::optional<nlohmann::json>)>&& onFinishedSuccessfully,
+			std::function<void(std::optional<nlohmann::json>)>&& onFailed)
 			: m_uid(uid),
 			m_timer(),
 			m_period(period),
@@ -50,19 +51,19 @@ namespace calls
 					m_attemptsCount++;
 				}
 				catch (const std::exception& e) {
-					log::LOG_ERROR("Exception during task attempt {}", e.what());
+					LOG_ERROR("Exception during task attempt {}", e.what());
 				}
 			});
 		}
 
-		void complete() {
+		void complete(std::optional<nlohmann::json> completionContext = std::nullopt) {
 			m_timer.stop();
-			m_onFinishedSuccessfully();
+			m_onFinishedSuccessfully(completionContext);
 		}
 
-		void fail() {
+		void fail(std::optional<nlohmann::json> failureContext = std::nullopt) {
 			m_timer.stop();
-			m_onFailed();
+			m_onFailed(failureContext);
 		}
 
 		void cancel() {
@@ -77,10 +78,10 @@ namespace calls
 		std::string m_uid;
 		int m_attemptsCount = 0;
 		int m_maxAttempts;
-		const std::chrono::duration<Rep, Period>& m_period;
+		std::chrono::duration<Rep, Period> m_period;
 		utilities::tic::RapidTimer m_timer;
 		std::function<void()> m_attempt;
-		std::function<void()> m_onFinishedSuccessfully;
-		std::function<void()> m_onFailed;
+		std::function<void(std::optional<nlohmann::json>)> m_onFinishedSuccessfully;
+		std::function<void(std::optional<nlohmann::json>)> m_onFailed;
 	};
 }

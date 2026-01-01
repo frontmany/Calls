@@ -6,7 +6,7 @@
 
 #include "logger.h"
 #include "packet.h"
-#include "packetTypes.h"
+#include "packetType.h"
 
 namespace network {
     NetworkController::NetworkController()
@@ -130,7 +130,8 @@ namespace network {
     }
 
     void NetworkController::stop() {
-        if (!m_running.exchange(false) && !m_asioThread.joinable()) {
+        bool wasRunning = m_running.exchange(false);
+        if (!wasRunning && !m_asioThread.joinable()) {
             return;
         }
 

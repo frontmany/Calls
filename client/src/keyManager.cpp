@@ -55,7 +55,7 @@ namespace calls {
         m_generating.store(false);
     }
 
-    const CryptoPP::RSA::PublicKey& KeyManager::getPublicKey() {
+    const CryptoPP::RSA::PublicKey& KeyManager::getMyPublicKey() {
         std::lock_guard<std::mutex> lock(m_mutex);
 
         if (m_future.valid()) {
@@ -65,7 +65,7 @@ namespace calls {
         return m_publicKey;
     }
 
-    const CryptoPP::RSA::PrivateKey& KeyManager::getPrivateKey() {
+    const CryptoPP::RSA::PrivateKey& KeyManager::getMyPrivateKey() {
         std::lock_guard<std::mutex> lock(m_mutex);
 
         if (m_future.valid()) {

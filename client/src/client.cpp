@@ -1,14 +1,22 @@
 #include "client.h"
+#include "jsonType.h"
 #include "packetFactory.h"
-#include "jsonTypes.h"
+#include "utilities/crypto.h"
+#include "errorCode.h"
+#include "json.hpp"
 
 #include "utilities/logger.h"
 
 using namespace utilities;
 using namespace std::chrono_literals;
 
-namespace calls 
+namespace calls
 {
+    CallsClient::CallsClient()
+        : m_packetProcessor(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener)
+    {
+    }
+
     CallsClient::~CallsClient() {
         reset();
         m_networkController.stop();
@@ -22,7 +30,7 @@ namespace calls
 
     bool CallsClient::init(const std::string& host,
         const std::string& port,
-        std::unique_ptr<EventListener>&& eventListener)
+        std::shared_ptr<EventListener> eventListener)
     {
         m_eventListener = std::move(eventListener);
 
@@ -33,69 +41,85 @@ namespace calls
                 onReceive(data, length, static_cast<PacketType>(type));
             },
             [this]() {
-                log::LOG_ERROR("Connection down - ping failed");
+                LOG_ERROR("Connection down - ping failed");
                 m_stateManager.setConnectionDown(true);
+
+                if (m_stateManager.isOutgoingCall()) {
+                    m_stateManager.clearCallState();
+                    m_eventListener->onOutgoingCallTimeout();
+                }
+
+                if (m_stateManager.isIncomingCalls()) {
+                    auto& incomingCalls = m_stateManager.getIncomingCalls();
+
+                    for (auto& [nickname, incomingCall] : incomingCalls) {
+                        m_eventListener->onIncomingCallExpired(nickname);
+                    }
+
+                    m_stateManager.clearIncomingCalls();
+                }
+
                 m_eventListener->onConnectionDown();
             },
             [this]() {
-                log::LOG_INFO("Ping restored");
+                LOG_INFO("Ping restored");
 
-                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyToken());
+                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
+
                 m_taskManager.createTask(uid, 1500ms, 5,
-                    [this, packet]() {m_networkController.send(packet, static_cast<uint32_t>(PacketType::RECONNECT)); },
-                    [this]() { 
+                    [this, packet]() {
+                        m_networkController.send(packet, static_cast<uint32_t>(PacketType::RECONNECT));
+                    },
+                    [this](std::optional<nlohmann::json> completionContext) {
                         if (m_stateManager.isAuthorized())
                             m_eventListener->onConnectionRestored();
                         else
                             m_eventListener->onConnectionRestoredAuthorizationNeeded();
                     },
-                    [this]() {
-                        log::LOG_ERROR("Reconnect task failed");
+                    [this](std::optional<nlohmann::json> failureContext) {
+                        LOG_ERROR("Reconnect task failed");
                     }
                 );
 
                 m_taskManager.startTask(uid);
             });
 
+        m_keyManager.generateKeys();
+
+        if (!m_networkController.isRunning())
+            m_networkController.run();
+
         if (audioInitialized && networkInitialized) {
-            log::LOG_INFO("Calls client initialized successfully");
+            LOG_INFO("Calls client initialized successfully");
             return true;
         }
         else {
-            log::LOG_ERROR("Calls client initialization failed - audio: {}, network: {}", audioInitialized, networkInitialized);
+            LOG_ERROR("Calls client initialization failed - audio: {}, network: {}", audioInitialized, networkInitialized);
             return false;
         }
+    }
 
-        m_keysManager.generateKeys();
+    void CallsClient::reset() {
+        m_stateManager.reset();
+        m_keyManager.resetKeys();
+        m_taskManager.cancelAllTasks();
 
-        if (!m_networkController.isRunning()) 
-            m_networkController.run();
+        if (m_audioEngine.isStream())
+            m_audioEngine.stopStream();
     }
 
     void CallsClient::onReceive(const unsigned char* data, int length, PacketType type) {
-        if (type == PacketType::VOICE) {
-            onVoice(data, length);
-        }
-        else if (type == PacketType::SCREEN) {
-            onScreen(data, length);
-        }
-        else if (type == PacketType::CAMERA) {
-            onCamera(data, length);
-        }
-        else {
-            nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
-            m_packetProcessor.processPacket(jsonObject, type);
-        }
+        m_packetProcessor.processPacket(data, length, type);
     }
 
-    std::vector<std::string> CallsClient::getCallers() {
-        auto incomingCalls = m_stateManager.getIncomingCalls();
+    std::vector<std::string> CallsClient::getCallers() const {
+        auto& incomingCalls = m_stateManager.getIncomingCalls();
 
         std::vector<std::string> callersNicknames;
-        for (auto& [nickname, incomingCallData] : incomingCalls) {
+        for (auto& [nickname, incomingCall] : incomingCalls) {
             callersNicknames.push_back(nickname);
         }
-        
+
         return callersNicknames;
     }
 
@@ -107,27 +131,27 @@ namespace calls
         m_audioEngine.muteSpeaker(isMute);
     }
 
-    bool CallsClient::isScreenSharing() {
+    bool CallsClient::isScreenSharing() const {
         return m_stateManager.isScreenSharing();
     }
 
-    bool CallsClient::isViewingRemoteScreen() {
+    bool CallsClient::isViewingRemoteScreen() const {
         return m_stateManager.isViewingRemoteScreen();
     }
 
-    bool CallsClient::isCameraSharing() {
-        m_stateManager.isCameraSharing();
+    bool CallsClient::isCameraSharing() const {
+        return m_stateManager.isCameraSharing();
     }
 
-    bool CallsClient::isViewingRemoteCamera() {
-        m_stateManager.isViewingRemoteCamera();
+    bool CallsClient::isViewingRemoteCamera() const {
+        return m_stateManager.isViewingRemoteCamera();
     }
 
-    bool CallsClient::isMicrophoneMuted() {
+    bool CallsClient::isMicrophoneMuted() const {
         return m_audioEngine.isMicrophoneMuted();
     }
 
-    bool CallsClient::isSpeakerMuted() {
+    bool CallsClient::isSpeakerMuted() const {
         return m_audioEngine.isSpeakerMuted();
     }
 
@@ -156,11 +180,11 @@ namespace calls
     }
 
     bool CallsClient::isOutgoingCall() const {
-        return m_stateManager.getCallStateManager().isOutgoingCall();
+        return m_stateManager.isOutgoingCall();
     }
 
     bool CallsClient::isActiveCall() const {
-        return m_stateManager.getCallStateManager().isActiveCall();
+        return m_stateManager.isActiveCall();
     }
 
     bool CallsClient::isConnectionDown() const {
@@ -176,35 +200,76 @@ namespace calls
     }
 
     const std::string& CallsClient::getNicknameWhomCalling() const {
-        return m_stateManager.getCallStateManager().getOutgoingCall().getNickname();
+        return m_stateManager.getOutgoingCall().getNickname();
     }
 
     const std::string& CallsClient::getNicknameInCallWith() const {
-        return m_stateManager.getCallStateManager().getActiveCall().getNickname();
+        return m_stateManager.getActiveCall().getNickname();
     }
 
-    void CallsClient::reset() {
-        m_stateManager.reset();
-        m_keysManager.resetKeys();
-        m_taskManager.cancelAllTasks();
+    bool CallsClient::authorize(const std::string& nickname) {
+        if (m_stateManager.isAuthorized()) return false;
 
-        if (m_audioEngine.isStream()) 
-            m_audioEngine.stopStream();
+        if (!m_keyManager.isKeys()) {
+            if (m_keyManager.isGeneratingKeys()) {
+            }
+            else {
+                m_keyManager.generateKeys();
+            }
+        }
+
+        m_keyManager.awaitKeysGeneration();
+
+        auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey());
+
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::AUTHORIZATION));
+            },
+            [this, nickname](std::optional<nlohmann::json> completionContext) {
+                if (completionContext.has_value()) {
+                    auto& context = completionContext.value();
+
+                    bool successfullyAuthorized = context[RESULT].get<bool>();
+
+                    if (successfullyAuthorized) {
+                        m_stateManager.setMyNickname(nickname);
+                        m_eventListener->onAuthorizationResult({});
+                    }
+                    else {
+                        m_eventListener->onAuthorizationResult(CallsErrorCode::taken_nickname);
+                    }
+                }
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                if (!m_stateManager.isConnectionDown()) {
+                    LOG_ERROR("Authorization task failed");
+                    m_eventListener->onAuthorizationResult(CallsErrorCode::network_error);
+                }
+            }
+        );
+
+        m_taskManager.startTask(uid);
+
+        return true;
     }
 
     bool CallsClient::logout() {
         if (!m_stateManager.isAuthorized()) return false;
 
         auto [uid, packet] = PacketFactory::getLogoutPacket(m_stateManager.getMyNickname());
+
         m_taskManager.createTask(uid, 1500ms, 5,
             [this, packet]() {
                 m_networkController.send(packet, static_cast<uint32_t>(PacketType::LOGOUT));
             },
-            [this]() {
+            [this](std::optional<nlohmann::json> completionContext) {
                 reset();
                 m_eventListener->onLogoutCompleted();
             },
-            [this]() {
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Logout task failed");
+
                 reset();
                 m_eventListener->onLogoutCompleted();
             }
@@ -215,1113 +280,467 @@ namespace calls
         return true;
     }
 
-    bool CallsClient::authorize(const std::string& nickname) {
-        if (m_stateManager.isAuthorized()) return false;
+    bool CallsClient::startOutgoingCall(const std::string& userNickname) {
+        if (!m_stateManager.isAuthorized() || m_stateManager.isActiveCall()) return false;
 
-        auto [uid, packet] = PacketFactory::getAuthorizationPacket(m_stateManager.getMyNickname());
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::LOGOUT));
-            },
-            [this]() {
-                if (m_stateManager.isAuthorized())
-                    m_eventListener->onAuthorizationResult();
-                else
-                    m_eventListener->onAuthorizationResult();
-            },
-            [this]() {
-                if (!m_stateManager.isConnectionDown())
-                    m_eventListener->onAuthorizationResult();
-            }
-        );
+        auto& icomingCalls = m_stateManager.getIncomingCalls();
 
-
-
-        {
-            std::lock_guard<std::mutex> lock(m_dataMutex);
-            if (m_state != ClientState::UNAUTHORIZED) return false;
-            m_myNickname = nickname;
-
-            if (!m_keysManager.isKeys()) {
-                if (m_keysManager.isGeneratingKeys()) {
-                }
-                else {
-                    m_keysManager.generateKeys();
-                }
+        bool acceptExistingCall = false;
+        for (auto& [nickname, incomingCall] : icomingCalls) {
+            if (nickname == userNickname) {
+                acceptExistingCall = true;
             }
         }
 
-        m_keysManager.awaitKeysGeneration();
-        sendAuthorizationPacket();
+        if (acceptExistingCall) {
+            acceptCall(userNickname);
+        }
+        else {
+            auto [uid, packet] = PacketFactory::getRequestUserInfoPacket(m_stateManager.getMyNickname(), userNickname);
+
+            m_taskManager.createTask(uid, 1500ms, 5,
+                [this, packet]() {
+                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::GET_USER_INFO));
+                },
+                [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                    if (completionContext.has_value()) {
+                        auto& context = completionContext.value();
+
+                        bool userInfoFound = context[RESULT].get<bool>();
+
+                        if (userInfoFound) {
+                            const std::string& userNicknameHash = context[NICKNAME_HASH];
+                            const std::string& userPublicKeyString = context[PUBLIC_KEY];
+                            auto userPublicKey = crypto::deserializePublicKey(userPublicKeyString);
+
+                            CryptoPP::SecByteBlock callKey;
+                            crypto::generateAESKey(callKey);
+
+                            auto [uid, packet] = PacketFactory::getStartOutgoingCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), userPublicKey, callKey);
+
+                            m_taskManager.createTask(uid, 1500ms, 5,
+                                [this, packet]() {
+                                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALLING_BEGIN));
+                                },
+                                [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                                    m_stateManager.setOutgoingCall(userNickname, 32s, [this]() {
+                                        m_stateManager.clearCallState();
+                                        m_eventListener->onOutgoingCallTimeout();
+                                        });
+
+                                    m_eventListener->onStartOutgoingCallResult({});
+                                },
+                                [this](std::optional<nlohmann::json> failureContext) {
+                                    LOG_ERROR("Start outgoing call task failed");
+                                    m_eventListener->onStartOutgoingCallResult(CallsErrorCode::network_error);
+                                }
+                            );
+
+                            m_taskManager.startTask(uid);
+                        }
+                        else {
+                            m_eventListener->onStartOutgoingCallResult(CallsErrorCode::unexisting_user);
+                        }
+                    }
+                },
+                [this](std::optional<nlohmann::json> failureContext) {
+                    LOG_ERROR("Request user info task failed");
+                    m_eventListener->onStartOutgoingCallResult(CallsErrorCode::network_error);
+                }
+            );
+
+            m_taskManager.startTask(uid);
+        }
+
+        return true;
+    }
+
+    bool CallsClient::stopOutgoingCall() {
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isOutgoingCall()) return false;
+
+        auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), m_stateManager.getOutgoingCall().getNickname());
+
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALLING_END));
+            },
+            [this](std::optional<nlohmann::json> completionContext) {
+                m_eventListener->onStopOutgoingCallResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Stop outgoing call task failed");
+                m_eventListener->onStopOutgoingCallResult(CallsErrorCode::network_error);
+            }
+        );
+
+        m_taskManager.startTask(uid);
+
+        return true;
+    }
+
+    bool CallsClient::acceptCall(const std::string& userNickname) {
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isIncomingCalls()) return false;
+
+        auto& incomingCalls = m_stateManager.getIncomingCalls();
+        if (!incomingCalls.contains(userNickname)) return false;
+
+        for (auto& [nickname, incomingCallData] : incomingCalls) {
+            if (nickname != userNickname) {
+                auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), nickname);
+
+                m_taskManager.createTask(uid, 1500ms, 5,
+                    [this, packet]() {
+                        m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_DECLINE));
+                    },
+                    [this, nickname](std::optional<nlohmann::json> completionContext) {
+                        auto& incomingCalls = m_stateManager.getIncomingCalls();
+                        m_stateManager.removeIncomingCall(nickname);
+                    },
+                    [this](std::optional<nlohmann::json> failureContext) {
+                        LOG_ERROR("Decline incoming call task failed (as part of accept call operation)");
+                    }
+                );
+
+                m_taskManager.startTask(uid);
+            }
+        }
+
+        if (m_stateManager.isOutgoingCall()) {
+            auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), m_stateManager.getOutgoingCall().getNickname());
+
+            m_taskManager.createTask(uid, 1500ms, 5,
+                [this, packet]() {
+                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALLING_END));
+                },
+                [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                    auto& incomingCalls = m_stateManager.getIncomingCalls();
+                    auto& incomingCall = incomingCalls.at(userNickname);
+                    auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+
+                    m_taskManager.createTask(uid, 1500ms, 5,
+                        [this, packet]() {
+                            m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_ACCEPT));
+                        },
+                        [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                            auto& incomingCalls = m_stateManager.getIncomingCalls();
+                            auto& incomingCall = incomingCalls.at(userNickname);
+                            m_stateManager.setActiveCall(incomingCall.getNickname(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+                            m_stateManager.removeIncomingCall(userNickname);
+
+                            m_audioEngine.startStream();
+                            m_eventListener->onAcceptCallResult({});
+                        },
+                        [this](std::optional<nlohmann::json> failureContext) {
+                            LOG_ERROR("Accept call task failed");
+                            m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
+                        }
+                    );
+
+                    m_taskManager.startTask(uid);
+                },
+                [this](std::optional<nlohmann::json> failureContext) {
+                    LOG_ERROR("Stop outgoing call task failed (as part of accept call operation)");
+                    m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
+                }
+            );
+
+            m_taskManager.startTask(uid);
+        }
+        else if (m_stateManager.isActiveCall()) {
+            auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), m_stateManager.getActiveCall().getNickname());
+
+            m_taskManager.createTask(uid, 1500ms, 5,
+                [this, packet]() {
+                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_END));
+                },
+                [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                    m_stateManager.setScreenSharing(false);
+                    m_stateManager.setCameraSharing(false);
+                    m_stateManager.setViewingRemoteScreen(false);
+                    m_stateManager.setViewingRemoteCamera(false);
+                    m_stateManager.clearCallState();
+                    m_audioEngine.stopStream();
+
+                    auto& incomingCalls = m_stateManager.getIncomingCalls();
+                    auto& incomingCall = incomingCalls.at(userNickname);
+                    auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+
+                    m_taskManager.createTask(uid, 1500ms, 5,
+                        [this, packet]() {
+                            m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_ACCEPT));
+                        },
+                        [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                            auto& incomingCalls = m_stateManager.getIncomingCalls();
+                            auto& incomingCall = incomingCalls.at(userNickname);
+                            m_stateManager.setActiveCall(incomingCall.getNickname(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+                            m_stateManager.removeIncomingCall(userNickname);
+
+                            m_audioEngine.startStream();
+                            m_eventListener->onAcceptCallResult({});
+                        },
+                        [this](std::optional<nlohmann::json> failureContext) {
+                            LOG_ERROR("Accept call task failed");
+                            m_eventListener->onEndCallResult({});
+                            m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
+                        }
+                    );
+
+                    m_taskManager.startTask(uid);
+                },
+                [this](std::optional<nlohmann::json> failureContext) {
+                    LOG_ERROR("End active call task failed (as part of accept new call operation)");
+                    m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
+                }
+            );
+
+            m_taskManager.startTask(uid);
+        }
+        else {
+            auto& incomingCalls = m_stateManager.getIncomingCalls();
+            auto& incomingCall = incomingCalls.at(userNickname);
+            auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+
+            m_taskManager.createTask(uid, 1500ms, 5,
+                [this, packet]() {
+                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_ACCEPT));
+                },
+                [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                    auto& incomingCalls = m_stateManager.getIncomingCalls();
+                    auto& incomingCall = incomingCalls.at(userNickname);
+                    m_stateManager.setActiveCall(incomingCall.getNickname(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+                    m_stateManager.removeIncomingCall(userNickname);
+
+                    m_audioEngine.startStream();
+                    m_eventListener->onAcceptCallResult({});
+                },
+                [this](std::optional<nlohmann::json> failureContext) {
+                    LOG_ERROR("Accept call task failed");
+                    m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
+                }
+            );
+
+            m_taskManager.startTask(uid);
+        }
+
+        return true;
+    } 
+
+    bool CallsClient::declineCall(const std::string& userNickname) {
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isIncomingCalls()) return false;
+
+        auto& incomingCalls = m_stateManager.getIncomingCalls();
+        if (!incomingCalls.contains(userNickname)) return false;
+
+        auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), userNickname);
+
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_DECLINE));
+            },
+            [this, userNickname](std::optional<nlohmann::json> completionContext) {
+                auto& incomingCalls = m_stateManager.getIncomingCalls();
+                m_stateManager.removeIncomingCall(userNickname);
+
+                m_eventListener->onDeclineCallResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Decline incoming call task failed");
+                m_eventListener->onDeclineCallResult(CallsErrorCode::network_error);
+            }
+        );
+
+        m_taskManager.startTask(uid);
 
         return true;
     }
 
     bool CallsClient::endCall() {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall()) return false;
 
-        if (m_state != ClientState::BUSY) return false;
+        auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), m_stateManager.getActiveCall().getNickname());
 
-        sendEndCallPacket(true);
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_END));
+            },
+            [this](std::optional<nlohmann::json> completionContext) {
+                m_stateManager.setScreenSharing(false);
+                m_stateManager.setCameraSharing(false);
+                m_stateManager.setViewingRemoteScreen(false);
+                m_stateManager.setViewingRemoteCamera(false);
+                m_stateManager.clearCallState();
+                m_audioEngine.stopStream();
 
-        m_viewingRemoteScreen = false;
-        m_state = ClientState::FREE;
-        m_call = std::nullopt;
-        m_audioEngine.stopStream();
-        m_audioEngine.refreshAudioDevices();
-
-        return true;
-    }
-
-    bool CallsClient::startCalling(const std::string& friendNickname) {
-        bool acceptExistingCall = false;
-        {
-            std::lock_guard<std::mutex> lock(m_dataMutex);
-
-            if (m_state == ClientState::UNAUTHORIZED || m_state == ClientState::BUSY) return false;
-
-            // calling the person who are already calling us
-            for (auto& [timer, incomingCall] : m_incomingCalls) {
-                if (incomingCall.friendNickname == friendNickname) {
-                    acceptExistingCall = true;
-                }
+                m_eventListener->onEndCallResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Stop outgoing call task failed");
+                m_eventListener->onEndCallResult(CallsErrorCode::network_error);
             }
+        );
 
-            if (!acceptExistingCall) {
-                m_state = ClientState::CALLING;
-                m_nicknameWhomCalling = friendNickname;
-
-                sendRequestFriendInfoPacket(friendNickname);
-
-                return true;
-            }
-        }
-
-        acceptCall(friendNickname);
-        return true;
-    }
-
-    bool CallsClient::stopCalling() {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
-
-        if (m_state != ClientState::CALLING) return false;
-
-        sendStopCallingPacket(true);
-
-        m_callingTimer.stop();
-        m_state = ClientState::FREE;
-        m_call = std::nullopt;
-        m_nicknameWhomCalling.clear();
-
-        return true;
-    }
-
-    bool CallsClient::declineCall(const std::string& friendNickname) {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
-
-        if (m_state == ClientState::UNAUTHORIZED || m_incomingCalls.empty()) return false;
-
-        auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [&friendNickname](const auto& pair) {
-            return pair.second.friendNickname == friendNickname;
-            });
-
-        if (it == m_incomingCalls.end()) return false;
-
-        m_incomingCalls.erase(it);
-
-        sendDeclineCallPacket(friendNickname, true);
-
-        return true;
-    }
-
-    bool CallsClient::acceptCall(const std::string& friendNickname) {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
-
-        if (m_state == ClientState::UNAUTHORIZED || m_incomingCalls.empty()) return false;
-
-        auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [&friendNickname](const auto& pair) {
-            return pair.second.friendNickname == friendNickname;
-            });
-
-        if (it == m_incomingCalls.end()) return false;
-
-        if (m_state == ClientState::CALLING)
-            sendStopCallingPacket(true);
-
-        if (m_state == ClientState::BUSY)
-            sendEndCallPacket(true);
-
-        for (auto& [timer, incomingCallData] : m_incomingCalls) {
-            timer->stop();
-            if (incomingCallData.friendNickname != friendNickname)
-                sendDeclineCallPacket(incomingCallData.friendNickname, true);
-        }
-
-        sendAcceptCallPacket(friendNickname);
+        m_taskManager.startTask(uid);
 
         return true;
     }
 
     bool CallsClient::startScreenSharing() {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall() || m_stateManager.isScreenSharing() || m_stateManager.isViewingRemoteScreen()) return false;
 
-        if (m_state != ClientState::BUSY || m_screenSharing || m_viewingRemoteScreen) return false;
-        if (!m_call) {
-            LOG_WARN("Attempted to start screen sharing without active call context");
-            return false;
-        }
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
+        auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        sendStartScreenSharingPacket();
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN));
+            },
+            [this](std::optional<nlohmann::json> completionContext) {
+                m_eventListener->onStartScreenSharingResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Start screen sharing task failed");
+                m_eventListener->onStartScreenSharingResult(CallsErrorCode::network_error);
+            }
+        );
+
+        m_taskManager.startTask(uid);
 
         return true;
     }
 
     bool CallsClient::stopScreenSharing() {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall() || !m_stateManager.isScreenSharing()) return false;
 
-        if (!m_screenSharing) return false;
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
+        auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        m_screenSharing = false;
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::SCREEN_SHARING_END));
+            },
+            [this](std::optional<nlohmann::json> completionContext) {
+                m_eventListener->onStopScreenSharingResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Stop screen sharing task failed");
+                m_eventListener->onStopScreenSharingResult(CallsErrorCode::network_error);
+            }
+        );
 
-        if (m_state != ClientState::BUSY) return false;
-        if (!m_call) {
-            LOG_WARN("Screen sharing stop requested but call data is missing");
-            return false;
-        }
-
-        sendStopScreenSharingPacket(true);
+        m_taskManager.startTask(uid);
 
         return true;
     }
 
     bool CallsClient::sendScreen(const std::vector<unsigned char>& data) {
-        if (!m_screenSharing) return false;
-        if (m_state != ClientState::BUSY) return false;
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall() || !m_stateManager.isScreenSharing()) return false;
 
-        CryptoPP::SecByteBlock callKey;
-        {
-            std::lock_guard<std::mutex> lock(m_dataMutex);
-            if (!m_call) return false;
-
-            callKey = m_call.value().getCallKey();
-        }
+        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
 
         try {
             size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
             std::vector<CryptoPP::byte> cipherData(cipherDataLength);
 
-            utilities::AESEncrypt(callKey,
+            crypto::AESEncrypt(callKey,
                 reinterpret_cast<const CryptoPP::byte*>(data.data()),
                 data.size(),
                 cipherData.data(),
                 cipherDataLength);
 
-            m_networkController.send(std::move(cipherData), PacketType::SCREEN);
+            m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::SCREEN));
             return true;
         }
         catch (const std::exception& e) {
-            log::LOG_ERROR("Error during screen sending");
+            LOG_ERROR("Screen sending error");
             return false;
         }
     }
 
     bool CallsClient::startCameraSharing() {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall() || m_stateManager.isCameraSharing()) return false;
 
-        if (m_state != ClientState::BUSY || m_cameraSharing) return false;
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
+        auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        if (!m_call) {
-            LOG_WARN("Attempted to start camera sharing without active call context");
-            return false;
-        }
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN));
+            },
+            [this](std::optional<nlohmann::json> completionContext) {
+                m_eventListener->onStartCameraSharingResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Start camera sharing task failed");
+                m_eventListener->onStartCameraSharingResult(CallsErrorCode::network_error);
+            }
+        );
 
-        sendStartCameraSharingPacket();
+        m_taskManager.startTask(uid);
 
         return true;
     }
 
     bool CallsClient::stopCameraSharing() {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall() || !m_stateManager.isCameraSharing()) return false;
 
-        if (!m_cameraSharing) return false;
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
+        auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        m_cameraSharing = false;
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CAMERA_SHARING_END));
+            },
+            [this](std::optional<nlohmann::json> completionContext) {
+                m_eventListener->onStopCameraSharingResult({});
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Stop camera sharing task failed");
+                m_eventListener->onStopCameraSharingResult(CallsErrorCode::network_error);
+            }
+        );
 
-        if (m_state != ClientState::BUSY) return false;
-        if (!m_call) {
-            LOG_WARN("Camera sharing stop requested but call data is missing");
-            return false;
-        }
-
-        sendStopCameraSharingPacket(true);
+        m_taskManager.startTask(uid);
 
         return true;
     }
 
     bool CallsClient::sendCamera(const std::vector<unsigned char>& data) {
-        if (!m_cameraSharing) return false;
-        if (m_state != ClientState::BUSY) return false;
+        if (!m_stateManager.isAuthorized() || !m_stateManager.isActiveCall() || !m_stateManager.isCameraSharing()) return false;
 
-        CryptoPP::SecByteBlock callKey;
-        {
-            std::lock_guard<std::mutex> lock(m_dataMutex);
-            if (!m_call) return false;
-
-            callKey = m_call.value().getCallKey();
-        }
+        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
 
         try {
             size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
             std::vector<CryptoPP::byte> cipherData(cipherDataLength);
 
-            utilities::AESEncrypt(callKey,
+            crypto::AESEncrypt(callKey,
                 reinterpret_cast<const CryptoPP::byte*>(data.data()),
                 data.size(),
                 cipherData.data(),
                 cipherDataLength);
 
-            m_networkController.send(std::move(cipherData), PacketType::CAMERA);
+            m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::CAMERA));
             return true;
         }
         catch (const std::exception& e) {
-            log::LOG_ERROR("Error during screen sending");
+            LOG_ERROR("Camera sending error");
             return false;
         }
-    }
-
-
-
-    //----------------------------------------------------------------------------
-    //----------------------------------------------------------------------------
-    //----------------------------------------------------------------------------
-
-    void CallsClient::onVoice(const unsigned char* data, int length) {
-        if (m_call && m_audioEngine && m_audioEngine.isStream()) {
-            size_t decryptedLength = static_cast<size_t>(length) - CryptoPP::AES::BLOCKSIZE;
-            std::vector<CryptoPP::byte> decryptedData(decryptedLength);
-
-            utilities::AESDecrypt(m_call.value().getCallKey(), data, length,
-                decryptedData.data(), decryptedData.size()
-            );
-
-            m_audioEngine.playAudio(decryptedData.data(), static_cast<int>(decryptedLength));
-        }
-    }
-
-    void CallsClient::onAuthorizationSuccess(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        log::LOG_INFO("User authorized successfully");
-        m_state = ClientState::FREE;
-        m_callbacksQueue.push([this]() {m_eventListener->onAuthorizationResult(ErrorCode::OK); });
-    }
-
-    void CallsClient::onAuthorizationFail(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        LOG_WARN("Authorization failed - nickname already taken");
-        m_myNickname.clear();
-        m_callbacksQueue.push([this]() {m_eventListener->onAuthorizationResult(ErrorCode::TAKEN_NICKNAME); });
-    }
-
-    void CallsClient::onLogoutOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-    }
-
-    void CallsClient::onCallAcceptedOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        std::string nicknameHash = jsonObject[NICKNAME_HASH_SENDER];
-
-        auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [&nicknameHash](const auto& pair) {
-            return utilities::calculateHash(pair.second.friendNickname) == nicknameHash;
-            });
-
-        if (it == m_incomingCalls.end()) return;
-
-        m_state = ClientState::BUSY;
-        m_call = Call(it->second);
-        m_viewingRemoteScreen = false;
-
-        m_incomingCalls.clear();
-        const std::string friendNickname = m_call.value().getFriendNickname();
-
-        m_callbacksQueue.push([this, friendNickname]() {
-            if (m_audioEngine) {
-                m_audioEngine.refreshAudioDevices();
-                m_audioEngine.startStream();
-            }
-            m_eventListener->onAcceptCallResult(ErrorCode::OK, friendNickname);
-            });
-    }
-
-    void CallsClient::onCallAcceptedFail(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string nicknameHash = jsonObject[NICKNAME_HASH_RECEIVER];
-
-        auto it = std::find_if(m_incomingCalls.begin(), m_incomingCalls.end(), [&nicknameHash](const auto& pair) {
-            return utilities::calculateHash(pair.second.friendNickname) == nicknameHash;
-            });
-
-        if (it == m_incomingCalls.end()) return;
-
-        m_callbacksQueue.push([this, nickname = it->second.friendNickname]() {m_eventListener->onAcceptCallResult(ErrorCode::UNEXISTING_USER, nickname); });
-
-        m_call = std::nullopt;
-        m_incomingCalls.erase(it);
-    }
-
-    void CallsClient::onCallDeclinedOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-    }
-
-    void CallsClient::onScreenSharingStartedFail(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        m_screenSharing = false;
-        LOG_WARN("Screen sharing start rejected by server");
-
-        m_callbacksQueue.push([this]() {m_eventListener->onStartScreenSharingError(); });
-    }
-
-    void CallsClient::onScreenSharingStartedOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        m_screenSharing = true;
-        log::LOG_INFO("Screen sharing started successfully");
-
-        m_callbacksQueue.push([this]() {m_eventListener->onScreenSharingStarted(); });
-    }
-
-    void CallsClient::onScreenSharingStoppedOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-    }
-
-    void CallsClient::onScreen(const unsigned char* data, int length) {
-        if (!m_viewingRemoteScreen) {
-            return;
-        }
-
-        if (!data || length <= 0) {
-            return;
-        }
-
-        if (!m_call) {
-            LOG_WARN("Screen frame received but call state is empty");
-            return;
-        }
-
-        if (length <= CryptoPP::AES::BLOCKSIZE) {
-            LOG_WARN("Screen frame too small to decrypt: {} bytes", length);
-            return;
-        }
-
-        std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
-
-        try {
-            utilities::AESDecrypt(m_call.value().getCallKey(),
-                data,
-                length,
-                decrypted.data(),
-                decrypted.size());
-        }
-        catch (const std::exception& e) {
-            log::LOG_ERROR("Failed to decrypt screen frame: {}", e.what());
-            return;
-        }
-
-        std::vector<unsigned char> screenData(decrypted.begin(), decrypted.end());
-
-        log::LOG_INFO("Screen frame : {} bytes", screenData.size());
-
-        m_callbacksQueue.push([this, screenData = std::move(screenData)]() mutable {
-            if (m_eventListener) {
-                m_eventListener->onIncomingScreen(screenData);
-            }
-            });
-    }
-
-    void CallsClient::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
-        if (m_state != ClientState::BUSY) return;
-
-        sendConfirmationPacket(jsonObject, PacketType::START_SCREEN_SHARING_OK);
-        m_viewingRemoteScreen = true;
-
-        m_callbacksQueue.push([this]() {m_eventListener->onIncomingScreenSharingStarted(); });
-    }
-
-    void CallsClient::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
-        if (m_state != ClientState::BUSY) return;
-
-        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-        if (needConfirmation)
-            sendConfirmationPacket(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
-
-        m_viewingRemoteScreen = false;
-
-        m_callbacksQueue.push([this]() {m_eventListener->onIncomingScreenSharingStopped(); });
-    }
-
-    void CallsClient::onCameraSharingStartedFail(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        m_cameraSharing = false;
-        LOG_WARN("Camera sharing start rejected by server");
-
-        m_callbacksQueue.push([this]() {m_eventListener->onStartCameraSharingError(); });
-    }
-
-    void CallsClient::onCameraSharingStartedOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        m_cameraSharing = true;
-        log::LOG_INFO("Camera sharing started successfully");
-
-        m_callbacksQueue.push([this]() {m_eventListener->onCameraSharingStarted(); });
-    }
-
-    void CallsClient::onCameraSharingStoppedOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-    }
-
-    void CallsClient::onCamera(const unsigned char* data, int length) {
-        if (!m_viewingRemoteCamera) return;
-
-        if (!data || length <= 0) return;
-
-        if (!m_call) {
-            LOG_WARN("Camera frame received but call state is empty");
-            return;
-        }
-
-        if (length <= CryptoPP::AES::BLOCKSIZE) {
-            LOG_WARN("Camera frame too small to decrypt: {} bytes", length);
-            return;
-        }
-
-        std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
-
-        try {
-            utilities::AESDecrypt(m_call.value().getCallKey(),
-                data,
-                length,
-                decrypted.data(),
-                decrypted.size());
-        }
-        catch (const std::exception& e) {
-            log::LOG_ERROR("Failed to decrypt camera frame: {}", e.what());
-            return;
-        }
-
-        std::vector<unsigned char> cameraData(decrypted.begin(), decrypted.end());
-
-        log::LOG_INFO("Camera frame : {} bytes", cameraData.size());
-
-        m_callbacksQueue.push([this, cameraData = std::move(cameraData)]() mutable {
-            if (m_eventListener) {
-                m_eventListener->onIncomingCamera(cameraData);
-            }
-            });
-    }
-
-    void CallsClient::onIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
-        if (m_state != ClientState::BUSY) return;
-
-        sendConfirmationPacket(jsonObject, PacketType::START_CAMERA_SHARING_OK);
-        m_viewingRemoteCamera = true;
-
-        m_callbacksQueue.push([this]() {m_eventListener->onIncomingCameraSharingStarted(); });
-    }
-
-    void CallsClient::onIncomingCameraSharingStopped(const nlohmann::json& jsonObject) {
-        if (m_state != ClientState::BUSY) return;
-
-        bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-        if (needConfirmation)
-            sendConfirmationPacket(jsonObject, PacketType::STOP_CAMERA_SHARING_OK);
-
-        m_viewingRemoteCamera = false;
-
-        m_callbacksQueue.push([this]() {m_eventListener->onIncomingCameraSharingStopped(); });
-    }
-
-    void CallsClient::onStartCallingFail(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        m_state = ClientState::FREE;
-        m_call = std::nullopt;
-        m_nicknameWhomCalling.clear();
-
-        m_callbacksQueue.push([this]() {m_eventListener->onStartCallingResult(ErrorCode::UNEXISTING_USER); });
-    }
-
-    void CallsClient::onEndCallOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-    }
-
-    void CallsClient::onFriendInfoSuccess(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        m_call = Call(jsonObject[NICKNAME_HASH], m_nicknameWhomCalling, utilities::deserializePublicKey(jsonObject[PUBLIC_KEY]));
-        m_call.value().createCallKey();
-
-        sendStartCallingPacket(m_call->getFriendNickname(), m_call->getFriendPublicKey(), m_call->getCallKey());
-    }
-
-    void CallsClient::onFriendInfoFail(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        m_state = ClientState::FREE;
-        m_nicknameWhomCalling.clear();
-
-        m_callbacksQueue.push([this]() {m_eventListener->onStartCallingResult(ErrorCode::UNEXISTING_USER); });
-    }
-
-    void CallsClient::onStartCallingOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
-
-        m_callingTimer.start(32s, [this]() {
-            std::lock_guard<std::mutex> lock(m_dataMutex);
-            m_callbacksQueue.push([this]() {m_eventListener->onMaximumCallingTimeReached(); });
-            });
-
-        m_callbacksQueue.push([this]() {m_eventListener->onStartCallingResult(ErrorCode::OK); });
-    }
-
-    void CallsClient::onStopCallingOk(const nlohmann::json& jsonObject) {
-        auto packetValid = validatePacket(jsonObject);
-        if (!packetValid) return;
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        onPacketConfirmed(uuid);
     }
 
     void CallsClient::onInputVoice(const unsigned char* data, int length) {
-        const CryptoPP::SecByteBlock* callKey;
-        {
-            std::lock_guard<std::mutex> lock(m_dataMutex);
-            if (!m_call) return;
-
-            size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
-            std::vector<CryptoPP::byte> cipherData(cipherDataLength);
-            utilities::AESEncrypt(m_call.value().getCallKey(), data, length, cipherData.data(), cipherDataLength);
-            m_networkController.send(std::move(cipherData), PacketType::VOICE);
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-    void CallsClient::sendAuthorizationPacket() {
-        auto [uuid, packet] = PacketsFactory::getAuthorizationPacket(m_myNickname, m_keysManager.getPublicKey());
-
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::AUTHORIZE,
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    auto& task = m_tasks.at(uuid);
-                    m_callbacksQueue.push([this, task]() {task->retry(); });
-                }
-            },
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                }
-
-                m_callbacksQueue.push([this]() {m_eventListener->onAuthorizationResult(ErrorCode::TIMEOUT); });
-            },
-            1
-        );
-
-        m_tasks.emplace(uuid, task);
-    }
-
-    void CallsClient::sendLogoutPacket(bool createTask) {
-        auto [uuid, packet] = PacketsFactory::getLogoutPacket(m_myNickname, createTask);
-
-        if (createTask) {
-            std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::LOGOUT,
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        auto& task = m_tasks.at(uuid);
-                        m_callbacksQueue.push([this, task]() {task->retry(); });
-                    }
-                },
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                    }
-                },
-                3
-            );
-
-            m_tasks.emplace(uuid, task);
-            return;
-        }
-
-        m_networkController.send(std::move(packet), PacketType::LOGOUT);
-    }
-
-    void CallsClient::sendRequestFriendInfoPacket(const std::string& friendNickname) {
-        auto [uuid, packet] = PacketsFactory::getRequestFriendInfoPacket(m_myNickname, friendNickname);
-
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::GET_FRIEND_INFO,
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    auto& task = m_tasks.at(uuid);
-                    m_callbacksQueue.push([this, task]() {task->retry(); });
-                }
-            },
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                }
-
-                std::string emptyNickname;
-                m_callbacksQueue.push([this, nickname = emptyNickname]() {
-                    m_state = ClientState::FREE;
-                    m_nicknameWhomCalling.clear();
-                    m_eventListener->onStartCallingResult(ErrorCode::TIMEOUT);
-                    });
-            },
-            3
-        );
-
-        m_tasks.emplace(uuid, task);
-    }
-
-    void CallsClient::sendAcceptCallPacket(const std::string& friendNickname) {
-        auto [uuid, packet] = PacketsFactory::getAcceptCallPacket(m_myNickname, friendNickname);
-
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::CALL_ACCEPTED,
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    auto& task = m_tasks.at(uuid);
-                    m_callbacksQueue.push([this, task]() {task->retry(); });
-                }
-            },
-            [this, uuid, nickname = friendNickname]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                }
-
-                m_callbacksQueue.push([this, nickname]() {
-                    m_eventListener->onAcceptCallResult(ErrorCode::TIMEOUT, nickname);
-                    });
-            },
-            3
-        );
-
-        m_tasks.emplace(uuid, task);
-    }
-
-    void CallsClient::sendDeclineCallPacket(const std::string& friendNickname, bool createTask) {
-        auto [uuid, packet] = PacketsFactory::getDeclineCallPacket(m_myNickname, friendNickname, createTask);
-
-        if (createTask) {
-            std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::CALL_DECLINED,
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        auto& task = m_tasks.at(uuid);
-                        m_callbacksQueue.push([this, task]() {task->retry(); });
-                    }
-                },
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                    }
-                },
-                3
-            );
-
-            m_tasks.emplace(uuid, task);
-            return;
-        }
-
-        m_networkController.send(std::move(packet), PacketType::CALL_DECLINED);
-    }
-
-    void CallsClient::sendStartCallingPacket(const std::string& friendNickname, const CryptoPP::RSA::PublicKey& friendPublicKey, const CryptoPP::SecByteBlock& callKey) {
-        auto [uuid, packet] = PacketsFactory::getStartCallingPacket(m_myNickname, m_keysManager.getPublicKey(), friendNickname, friendPublicKey, callKey);
-
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_CALLING,
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    auto& task = m_tasks.at(uuid);
-                    m_callbacksQueue.push([this, task]() {task->retry(); });
-                }
-            },
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                }
-
-                m_state = ClientState::FREE;
-                m_call = std::nullopt;
-                m_nicknameWhomCalling.clear();
-
-                m_callbacksQueue.push([this]() {m_eventListener->onStartCallingResult(ErrorCode::TIMEOUT); });
-            },
-            3
-        );
-
-        m_tasks.emplace(uuid, task);
-    }
-
-    void CallsClient::sendStartScreenSharingPacket() {
-        if (!m_call) {
-            LOG_WARN("Cannot send start screen sharing packet without active call");
-            return;
-        }
-
-        auto [uuid, packet] = PacketsFactory::getStartScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash());
-
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_SCREEN_SHARING,
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    auto& task = m_tasks.at(uuid);
-                    m_callbacksQueue.push([this, task]() {task->retry(); });
-                }
-            },
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                }
-
-                m_callbacksQueue.push([this]() {
-                    m_eventListener->onStartScreenSharingError();
-                    });
-            },
-            3
-        );
-
-        m_tasks.emplace(uuid, task);
-    }
-
-    void CallsClient::sendStopScreenSharingPacket(bool createTask) {
-        if (!m_call) {
-            LOG_WARN("Cannot send stop screen sharing packet without active call");
-            return;
-        }
-
-        auto [uuid, packet] = PacketsFactory::getStopScreenSharingPacket(m_myNickname, m_call->getFriendNicknameHash(), createTask);
-
-        if (createTask) {
-            std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::STOP_SCREEN_SHARING,
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        auto& task = m_tasks.at(uuid);
-                        m_callbacksQueue.push([this, task]() {task->retry(); });
-                    }
-                },
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                    }
-                },
-                3
-            );
-
-            m_tasks.emplace(uuid, task);
-            return;
-        }
-
-        m_networkController.send(std::move(packet), PacketType::STOP_SCREEN_SHARING);
-    }
-
-    void CallsClient::sendStartCameraSharingPacket() {
-        if (!m_call) {
-            LOG_WARN("Cannot send start screen sharing packet without active call");
-            return;
-        }
-
-        auto [uuid, packet] = PacketsFactory::getStartCameraSharingPacket(m_myNickname, m_call->getFriendNicknameHash());
-
-        std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::START_CAMERA_SHARING,
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    auto& task = m_tasks.at(uuid);
-                    m_callbacksQueue.push([this, task]() {task->retry(); });
-                }
-            },
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                if (m_tasks.contains(uuid)) {
-                    m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                }
-
-                m_callbacksQueue.push([this]() {
-                    m_eventListener->onStartCameraSharingError();
-                    });
-            },
-            3
-        );
-
-        m_tasks.emplace(uuid, task);
-    }
-
-    void CallsClient::sendStopCameraSharingPacket(bool createTask) {
-        if (!m_call) {
-            LOG_WARN("Cannot send stop screen sharing packet without active call");
-            return;
-        }
-
-        auto [uuid, packet] = PacketsFactory::getStopCameraSharingPacket(m_myNickname, m_call->getFriendNicknameHash(), createTask);
-
-        if (createTask) {
-            std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::STOP_CAMERA_SHARING,
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        auto& task = m_tasks.at(uuid);
-                        m_callbacksQueue.push([this, task]() {task->retry(); });
-                    }
-                },
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                    }
-                },
-                3
-            );
-
-            m_tasks.emplace(uuid, task);
-            return;
-        }
-
-        m_networkController.send(std::move(packet), PacketType::STOP_CAMERA_SHARING);
-    }
-
-    void CallsClient::sendStopCallingPacket(bool createTask) {
-        auto [uuid, packet] = PacketsFactory::getStopCallingPacket(m_myNickname, m_nicknameWhomCalling, createTask);
-
-        if (createTask) {
-            std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::STOP_CALLING,
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        auto& task = m_tasks.at(uuid);
-                        m_callbacksQueue.push([this, task]() {task->retry(); });
-                    }
-                },
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                    }
-                },
-                3
-            );
-
-            m_tasks.emplace(uuid, task);
-            return;
-        }
-
-        m_networkController.send(std::move(packet), PacketType::STOP_CALLING);
-    }
-
-    void CallsClient::sendEndCallPacket(bool createTask) {
-        auto [uuid, packet] = PacketsFactory::getEndCallPacket(m_myNickname, createTask);
-
-        if (createTask) {
-            std::shared_ptr<Task> task = std::make_shared<Task>(m_networkController, uuid, std::move(packet), PacketType::END_CALL,
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        auto& task = m_tasks.at(uuid);
-                        m_callbacksQueue.push([this, task]() {task->retry(); });
-                    }
-                },
-                [this, uuid]() {
-                    std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                    if (m_tasks.contains(uuid)) {
-                        m_callbacksQueue.push([this, uuid]() {m_tasks.erase(uuid); });
-                    }
-                },
-                3
-            );
-
-            m_tasks.emplace(uuid, task);
-            return;
-        }
-
-        m_networkController.send(std::move(packet), PacketType::END_CALL);
-    }
-
-    void CallsClient::sendConfirmation(const std::string& uid, const std::string& nicknameHashTo) {
-        auto packet = PacketsFactory::getConfirmationPacket(m_myNickname, nicknameHashTo, uid);
-        m_networkController.send(std::move(packet), static_cast<uint32_t>(PacketType::CALL_ACCEPTED_OK));
-    }
-
-    void CallsClient::sendConfirmationPacket(const nlohmann::json& jsonObject, PacketType confirmationType) {
-        if (!jsonObject.contains(UUID)) {
-            LOG_WARN("Cannot send confirmation: packet missing UUID");
-            return;
-        }
-
-        std::string uuid = jsonObject[UUID].get<std::string>();
-        std::string nicknameHashTo = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
-
-        sendConfirmation(uuid, nicknameHashTo);
-    }
-
-    bool CallsClient::validatePacket(const nlohmann::json& jsonObject) {
-        if (!jsonObject.contains(UUID)) {
-            LOG_WARN("Packet validation failed: missing UUID");
-            return false;
-        }
-        return true;
-    }
-
-    void CallsClient::sendPacketWithConfirmation(const std::string& uuid, std::vector<unsigned char> packet,
-        PacketType packetType, int maxRetries)
-    {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
-
-        PendingPacket pendingPacket;
-        pendingPacket.data = packet;
-        pendingPacket.type = packetType;
-        pendingPacket.uuid = uuid;
-
-        m_pendingPackets.emplace(uuid, pendingPacket);
-
-        m_tasksManager.createTask(uuid, maxRetries,
-            [this, uuid, packetType]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                auto it = m_pendingPackets.find(uuid);
-                if (it != m_pendingPackets.end()) {
-                    m_networkController.send(it->second.data, static_cast<uint32_t>(it->second.type));
-                    log::LOG_INFO("Retrying packet with UUID: {}", uuid);
-                }
-            },
-            [this, uuid]() {
-                std::lock_guard<std::mutex> lock(m_dataMutex);
-
-                m_pendingPackets.erase(uuid);
-                LOG_WARN("Packet delivery failed after max retries: {}", uuid);
-            }
-        );
-
-        m_networkController.send(std::move(packet), static_cast<uint32_t>(packetType));
-    }
-
-    void CallsClient::onPacketConfirmed(const std::string& uuid) {
-        std::lock_guard<std::mutex> lock(m_dataMutex);
-
-        if (m_tasksManager.hasTask(uuid)) {
-            m_tasksManager.finishTask(uuid);
-            m_pendingPackets.erase(uuid);
-            log::LOG_INFO("Packet confirmed and task finished: {}", uuid);
-        }
-        else if (m_pendingPackets.find(uuid) != m_pendingPackets.end()) {
-            m_pendingPackets.erase(uuid);
-            LOG_WARN("Received confirmation for packet without active task: {}", uuid);
-        }
+        if (!m_stateManager.isActiveCall() || m_stateManager.isConnectionDown()) return;
+
+        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
+
+        size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
+        std::vector<CryptoPP::byte> cipherData(cipherDataLength);
+        crypto::AESEncrypt(callKey, data, length, cipherData.data(), cipherDataLength);
+        
+        m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
     }
 }

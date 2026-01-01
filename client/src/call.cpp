@@ -6,21 +6,16 @@ using namespace utilities;
 namespace calls
 {
 	Call::Call(const std::string& nickname,
-		const CryptoPP::RSA::PublicKey& publicKey)
+		const CryptoPP::RSA::PublicKey& publicKey,
+		const CryptoPP::SecByteBlock& callKey)
 		: m_nickname(nickname),
-		m_publicKey(publicKey)
+		m_publicKey(publicKey),
+		m_callKey(callKey)
 	{
-		createCallKey();
 	}
 
-	Call::Call(const IncomingCall& incomingCall) {
-		m_nickname = incomingCall.getNickname();
-		m_publicKey = incomingCall.getPublicKey();
-		m_callKey = incomingCall.getCallKey();
-	}
-
-	bool Call::isParticipantConnectionLost() const {
-		return m_participantConnectionLost;
+	bool Call::isParticipantConnectionDown() const {
+		return m_participantConnectionDown;
 	}
 
 	const CryptoPP::SecByteBlock& Call::getCallKey() const {
@@ -35,11 +30,7 @@ namespace calls
 		return m_nickname;
 	}
 
-	void Call::setParticipantConnectionLost(bool value) {
-		m_participantConnectionLost = value;
-	}
-
-	void Call::createCallKey() {
-		crypto::generateAESKey(m_callKey);
+	void Call::setParticipantConnectionDown(bool value) {
+		m_participantConnectionDown = value;
 	}
 }

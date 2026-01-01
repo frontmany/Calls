@@ -1,687 +1,392 @@
 #include "packetProcessor.h"
 
-#include "jsonTypes.h"
+#include "jsonType.h"
+#include "packetFactory.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
-#include "utilities/timer.h"
-#include "call.h"
-#include "incomingCallData.h"
-#include "keysManager.h"
-#include "callbacksInterface.h"
+#include "network/networkController.h"
 #include "audio/audioEngine.h"
 
-#include <algorithm>
-#include <chrono>
+#include "clientStateManager.h"
+#include "keyManager.h"
+#include "eventListener.h"
 
 using namespace calls;
 using namespace utilities;
 using namespace std::chrono_literals;
 
-PacketProcessor::PacketProcessor(
-    ClientStateManager& stateManager,
-    KeysManager& keysManager,
-    CallbacksInterface* callbackHandler,
-    audio::AudioEngine* audioEngine,
-    SendPacketCallback sendPacket,
-    SendConfirmationCallback sendConfirmation,
-    SendDeclineCallCallback sendDeclineCall,
-    SendStartCallingCallback sendStartCalling,
-    OnPacketConfirmedCallback onPacketConfirmed)
-    : m_stateManager(stateManager)
-    , m_keysManager(keysManager)
-    , m_callbackHandler(callbackHandler)
-    , m_audioEngine(audioEngine)
-    , m_sendPacket(sendPacket)
-    , m_sendConfirmation(sendConfirmation)
-    , m_sendDeclineCall(sendDeclineCall)
-    , m_sendStartCalling(sendStartCalling)
-    , m_onPacketConfirmed(onPacketConfirmed)
+PacketProcessor::PacketProcessor(ClientStateManager& stateManager,
+    KeyManager& keyManager,
+    TaskManager<long long, std::milli>& taskManager,
+    network::NetworkController& networkController,
+    audio::AudioEngine& audioEngine,
+    std::shared_ptr<EventListener> eventListener)
+    : m_stateManager(stateManager),
+    m_keysManager(keyManager),
+    m_taskManager(taskManager),
+    m_networkController(networkController),
+    m_audioEngine(audioEngine),
+    m_eventListener(eventListener)
 {
-    m_receiveHandlers.emplace(PacketType::AUTHORIZE_SUCCESS, [this](const nlohmann::json& json) { onAuthorizationSuccess(json); });
-    m_receiveHandlers.emplace(PacketType::AUTHORIZE_FAIL, [this](const nlohmann::json& json) { onAuthorizationFail(json); });
-    m_receiveHandlers.emplace(PacketType::GET_FRIEND_INFO_SUCCESS, [this](const nlohmann::json& json) { onFriendInfoSuccess(json); });
-    m_receiveHandlers.emplace(PacketType::GET_FRIEND_INFO_FAIL, [this](const nlohmann::json& json) { onFriendInfoFail(json); });
-    m_receiveHandlers.emplace(PacketType::START_CALLING_OK, [this](const nlohmann::json& json) { onStartCallingOk(json); });
-    m_receiveHandlers.emplace(PacketType::START_CALLING_FAIL, [this](const nlohmann::json& json) { onStartCallingFail(json); });
-    m_receiveHandlers.emplace(PacketType::END_CALL_OK, [this](const nlohmann::json& json) { onEndCallOk(json); });
-    m_receiveHandlers.emplace(PacketType::STOP_CALLING_OK, [this](const nlohmann::json& json) { onStopCallingOk(json); });
-    m_receiveHandlers.emplace(PacketType::CALL_ACCEPTED_OK, [this](const nlohmann::json& json) { onCallAcceptedOk(json); });
-    m_receiveHandlers.emplace(PacketType::CALL_ACCEPTED_FAIL, [this](const nlohmann::json& json) { onCallAcceptedFail(json); });
-    m_receiveHandlers.emplace(PacketType::CALL_DECLINED_OK, [this](const nlohmann::json& json) { onCallDeclinedOk(json); });
-    m_receiveHandlers.emplace(PacketType::LOGOUT_OK, [this](const nlohmann::json& json) { onLogoutOk(json); });
-    m_receiveHandlers.emplace(PacketType::CALL_ACCEPTED, [this](const nlohmann::json& json) { onCallAccepted(json); });
-    m_receiveHandlers.emplace(PacketType::CALL_DECLINED, [this](const nlohmann::json& json) { onCallDeclined(json); });
-    m_receiveHandlers.emplace(PacketType::STOP_CALLING, [this](const nlohmann::json& json) { onStopCalling(json); });
-    m_receiveHandlers.emplace(PacketType::END_CALL, [this](const nlohmann::json& json) { onEndCall(json); });
-    m_receiveHandlers.emplace(PacketType::START_CALLING, [this](const nlohmann::json& json) { onIncomingCall(json); });
-    m_receiveHandlers.emplace(PacketType::START_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStarted(json); });
-    m_receiveHandlers.emplace(PacketType::STOP_SCREEN_SHARING, [this](const nlohmann::json& json) { onIncomingScreenSharingStopped(json); });
-    m_receiveHandlers.emplace(PacketType::START_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStartedOk(json); });
-    m_receiveHandlers.emplace(PacketType::START_SCREEN_SHARING_FAIL, [this](const nlohmann::json& json) { onScreenSharingStartedFail(json); });
-    m_receiveHandlers.emplace(PacketType::STOP_SCREEN_SHARING_OK, [this](const nlohmann::json& json) { onScreenSharingStoppedOk(json); });
-    m_receiveHandlers.emplace(PacketType::START_CAMERA_SHARING, [this](const nlohmann::json& json) { onIncomingCameraSharingStarted(json); });
-    m_receiveHandlers.emplace(PacketType::STOP_CAMERA_SHARING, [this](const nlohmann::json& json) { onIncomingCameraSharingStopped(json); });
-    m_receiveHandlers.emplace(PacketType::START_CAMERA_SHARING_OK, [this](const nlohmann::json& json) { onCameraSharingStartedOk(json); });
-    m_receiveHandlers.emplace(PacketType::START_CAMERA_SHARING_FAIL, [this](const nlohmann::json& json) { onCameraSharingStartedFail(json); });
-    m_receiveHandlers.emplace(PacketType::STOP_CAMERA_SHARING_OK, [this](const nlohmann::json& json) { onCameraSharingStoppedOk(json); });
+    m_packetHandlers.emplace(PacketType::CONFIRMATION, [this](const nlohmann::json& json) {onConfirmation(json); });
+    m_packetHandlers.emplace(PacketType::AUTHORIZATION_RESULT, [this](const nlohmann::json& json) {onAuthorizationResult(json); });
+    m_packetHandlers.emplace(PacketType::RECONNECT_RESULT, [this](const nlohmann::json& json) {onReconnectResult(json); });
+    m_packetHandlers.emplace(PacketType::GET_USER_INFO_RESULT, [this](const nlohmann::json& json) {onUserInfoResult(json); });
+    m_packetHandlers.emplace(PacketType::CALLING_BEGIN, [this](const nlohmann::json& json) {onIncomingCallBegin(json); });
+    m_packetHandlers.emplace(PacketType::CALLING_END, [this](const nlohmann::json& json) {onIncomingCallEnded(json); });
+    m_packetHandlers.emplace(PacketType::CALL_ACCEPT, [this](const nlohmann::json& json) {onCallAccepted(json); });
+    m_packetHandlers.emplace(PacketType::CALL_DECLINE, [this](const nlohmann::json& json) {onCallDeclined(json); });
+    m_packetHandlers.emplace(PacketType::CALL_END, [this](const nlohmann::json& json) {onCallEnded(json); });
+    m_packetHandlers.emplace(PacketType::SCREEN_SHARING_BEGIN, [this](const nlohmann::json& json) {onScreenSharingBegin(json); });
+    m_packetHandlers.emplace(PacketType::SCREEN_SHARING_END, [this](const nlohmann::json& json) {onScreenSharingEnded(json); });
+    m_packetHandlers.emplace(PacketType::CAMERA_SHARING_BEGIN, [this](const nlohmann::json& json) {onCameraSharingBegin(json); });
+    m_packetHandlers.emplace(PacketType::CAMERA_SHARING_END, [this](const nlohmann::json& json) {onCameraSharingEnded(json); });
+    m_packetHandlers.emplace(PacketType::CONNECTION_DOWN_WITH_USER, [this](const nlohmann::json& json) {onConnectionDownWithUser(json); });
+    m_packetHandlers.emplace(PacketType::CONNECTION_RESTORED_WITH_USER, [this](const nlohmann::json& json) {onConnectionRestoredWithUser(json); });
 }
 
-void PacketProcessor::processPacket(PacketType type, const nlohmann::json& jsonObject)
+void PacketProcessor::processPacket(const unsigned char* data, int length, PacketType type)
 {
-    auto& handlers = m_stateManager.getReceiveHandlers();
-    if (handlers.contains(type))
-    {
-        handlers[type](jsonObject);
+    if (type == PacketType::VOICE) {
+        onVoice(data, length);
     }
-}
-
-bool PacketProcessor::validatePacket(const nlohmann::json& jsonObject)
-{
-    if (!jsonObject.contains(UUID))
-    {
-        LOG_WARN("Packet validation failed: missing UUID");
-        return false;
+    else if (type == PacketType::SCREEN) {
+        onScreen(data, length);
     }
-    return true;
-}
-
-void PacketProcessor::onAuthorizationSuccess(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
+    else if (type == PacketType::CAMERA) {
+        onCamera(data, length);
     }
-
-    log::LOG_INFO("User authorized successfully");
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-    m_stateManager.setState(ClientState::FREE);
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onAuthorizationResult(ErrorCode::OK);
+    else {
+        if (m_packetHandlers.contains(type)) {
+            try {
+                nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
+                m_packetHandlers[type](jsonObject);
+            }
+            catch (const nlohmann::json::exception& e) {
+                LOG_ERROR("Failed to parse JSON packet: {}", e.what());
+            }
         }
-    });
-}
-
-void PacketProcessor::onAuthorizationFail(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-
-    LOG_WARN("Authorization failed - nickname already taken");
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-    m_stateManager.clearMyNickname();
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onAuthorizationResult(ErrorCode::TAKEN_NICKNAME);
+        else {
+            LOG_WARN("Unknown packet type");
         }
-    });
+    }
 }
 
-void PacketProcessor::onLogoutOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
+void PacketProcessor::sendConfirmation(const std::string& userNicknameHash, const std::string& uid) {
+    auto myNicknameHash = crypto::calculateHash(m_stateManager.getMyNickname());
+    auto packet = PacketFactory::getConfirmationPacket(myNicknameHash, userNicknameHash, uid);
 
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
+    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CONFIRMATION));
+}
+
+void PacketProcessor::onVoice(const unsigned char* data, int length) {
+    if (m_stateManager.isActiveCall() && m_audioEngine.isStream()) {
+        size_t decryptedLength = static_cast<size_t>(length) - CryptoPP::AES::BLOCKSIZE;
+        std::vector<CryptoPP::byte> decryptedData(decryptedLength);
+
+        crypto::AESDecrypt(m_stateManager.getActiveCall().getCallKey(), data, length,
+            decryptedData.data(), decryptedData.size()
+        );
+
+        m_audioEngine.playAudio(decryptedData.data(), static_cast<int>(decryptedLength));
     }
+}
+
+void PacketProcessor::onScreen(const unsigned char* data, int length) {
+    if (!m_stateManager.isActiveCall() || !m_stateManager.isViewingRemoteScreen() || !data || length <= 0) return;
+
+    if (length <= CryptoPP::AES::BLOCKSIZE) {
+        LOG_WARN("Screen frame too small to decrypt: {} bytes", length);
+        return;
+    }
+
+    std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
+    auto& callKey = m_stateManager.getActiveCall().getCallKey();
+
+    try {
+        crypto::AESDecrypt(callKey,
+            data,
+            length,
+            decrypted.data(),
+            decrypted.size());
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Failed to decrypt screen frame: {}", e.what());
+        return;
+    }
+
+    std::vector<unsigned char> screenData(decrypted.begin(), decrypted.end());
+
+    m_eventListener->onIncomingScreen(screenData);
+}
+
+void PacketProcessor::onCamera(const unsigned char* data, int length) {
+    if (!m_stateManager.isActiveCall() || !m_stateManager.isViewingRemoteCamera() || !data || length <= 0) return;
+
+    if (length <= CryptoPP::AES::BLOCKSIZE) {
+        LOG_WARN("Camera frame too small to decrypt: {} bytes", length);
+        return;
+    }
+
+    std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
+    auto& callKey = m_stateManager.getActiveCall().getCallKey();
+
+    try {
+        crypto::AESDecrypt(callKey,
+            data,
+            length,
+            decrypted.data(),
+            decrypted.size());
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Failed to decrypt camera frame: {}", e.what());
+        return;
+    }
+
+    std::vector<unsigned char> cameraData(decrypted.begin(), decrypted.end());
+
+    m_eventListener->onIncomingCamera(cameraData);
+}
+
+void PacketProcessor::onConfirmation(const nlohmann::json& jsonObject) {
+    const std::string& uid = jsonObject[UID];
+
+    if (m_taskManager.hasTask(uid)) {
+        m_taskManager.completeTask(uid, jsonObject);
+    }
+}
+
+void PacketProcessor::onAuthorizationResult(const nlohmann::json& jsonObject)
+{
+    const std::string& uid = jsonObject[UID];
+
+    if (m_taskManager.hasTask(uid)) {
+        m_taskManager.completeTask(uid, jsonObject);
+    }
+}
+
+void PacketProcessor::onReconnectResult(const nlohmann::json& jsonObject)
+{
+    const std::string& uid = jsonObject[UID];
+
+    if (m_taskManager.hasTask(uid)) {
+        m_taskManager.completeTask(uid, jsonObject);
+    }
+}
+
+void PacketProcessor::onUserInfoResult(const nlohmann::json& jsonObject)
+{
+    const std::string& uid = jsonObject[UID];
+
+    if (m_taskManager.hasTask(uid)) {
+        m_taskManager.completeTask(uid, jsonObject);
+    }
+}
+
+void PacketProcessor::onIncomingCallBegin(const nlohmann::json& jsonObject)
+{
+    auto packetKey = crypto::RSADecryptAESKey(m_keysManager.getMyPrivateKey(), jsonObject[PACKET_KEY]);
+    std::string senderNickname = crypto::AESDecrypt(packetKey, jsonObject[SENDER_ENCRYPTED_NICKNAME]);
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string uid = jsonObject[UID];
+    auto senderPublicKey = crypto::deserializePublicKey(jsonObject[SENDER_PUBLIC_KEY]);
+    auto callKey = crypto::RSADecryptAESKey(m_keysManager.getMyPrivateKey(), jsonObject[ENCRYPTED_CALL_KEY]);
+
+    sendConfirmation(senderNicknameHash, uid);
+
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown()) return;
+
+    auto& incomingCalls = m_stateManager.getIncomingCalls();
+    if (incomingCalls.contains(senderNickname)) return;
+
+    m_stateManager.addIncomingCall(senderNickname, senderPublicKey, callKey, 32s, [this, senderNickname]() {
+        m_stateManager.removeIncomingCall(senderNickname);
+        m_eventListener->onIncomingCallExpired(senderNickname);
+    });
+
+    m_eventListener->onIncomingCall(senderNickname);
+}
+
+void PacketProcessor::onIncomingCallEnded(const nlohmann::json& jsonObject)
+{
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
+
+    sendConfirmation(senderNicknameHash, uid);
+
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isIncomingCalls()) return;
+
+    auto& incomingCalls = m_stateManager.getIncomingCalls();
+    auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&senderNicknameHash](const auto& pair) {
+        return crypto::calculateHash(pair.first) == senderNicknameHash;
+    });
+
+    if (it == incomingCalls.end()) return;
+
+    const std::string& userNickname = it->second.getNickname();
+    m_stateManager.removeIncomingCall(userNickname);
+    m_eventListener->onIncomingCallExpired(userNickname);
 }
 
 void PacketProcessor::onCallAccepted(const nlohmann::json& jsonObject)
 {
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    if (m_stateManager.getState() != ClientState::CALLING) return;
+    auto packetKey = crypto::RSADecryptAESKey(m_keysManager.getMyPrivateKey(), jsonObject[PACKET_KEY]);
+    std::string senderNickname = crypto::AESDecrypt(packetKey, jsonObject[SENDER_ENCRYPTED_NICKNAME]);
+    auto senderPublicKey = crypto::deserializePublicKey(jsonObject[SENDER_PUBLIC_KEY]);
+    auto callKey = crypto::RSADecryptAESKey(m_keysManager.getMyPrivateKey(), jsonObject[ENCRYPTED_CALL_KEY]);
 
-    std::string nicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
-    if (calculateHash(m_stateManager.getNicknameWhomCalling()) != nicknameHash) return;
 
-    log::LOG_INFO("Call accepted by {}", m_stateManager.getOutgoingCallNickname());
-    m_stateManager.getCallState().getOutgoingCall().stop();
-    m_stateManager.clearCallState();
-    m_stateManager.setState(ClientState::BUSY);
+    sendConfirmation(senderNicknameHash, uid);
 
-    for (auto& [timer, incomingCallData] : m_stateManager.getIncomingCalls())
-    {
-        timer->stop();
-        m_sendDeclineCall(incomingCallData.nickname, true);
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isOutgoingCall()) return;
+
+    if (crypto::calculateHash(m_stateManager.getOutgoingCall().getNickname()) != senderNicknameHash) return;
+
+    auto& incomingCalls = m_stateManager.getIncomingCalls();
+
+    for (auto& [nickname, incomingCallData] : incomingCalls) {
+        auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), nickname);
+
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet]() {
+                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_DECLINE));
+            },
+            [this, nickname](std::optional<nlohmann::json> completionContext) {
+                auto& incomingCalls = m_stateManager.getIncomingCalls();
+                m_stateManager.removeIncomingCall(nickname);
+            },
+            [this](std::optional<nlohmann::json> failureContext) {
+                LOG_ERROR("Decline incoming call task failed (on call accepted packet)");
+            }
+        );
+
+        m_taskManager.startTask(uid);
     }
 
-    m_sendConfirmation(jsonObject, PacketType::CALL_ACCEPTED_OK);
+    m_stateManager.clearCallState();
+    m_stateManager.setActiveCall(senderNickname, senderPublicKey, callKey);
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onCallingAccepted();
-        }
-        if (m_audioEngine)
-        {
-            m_audioEngine->startStream();
-        }
-    });
+    m_audioEngine.startStream();
+    m_eventListener->onOutgoingCallAccepted();
 }
 
 void PacketProcessor::onCallDeclined(const nlohmann::json& jsonObject)
 {
-    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-    if (needConfirmation)
-    {
-        m_sendConfirmation(jsonObject, PacketType::CALL_DECLINED_OK);
-    }
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
+    sendConfirmation(senderNicknameHash, uid);
 
-    if (!m_stateManager.isOutgoingCall()) return;
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isOutgoingCall()) return;
 
-    m_stateManager.getCallState().getOutgoingCall().stop();
     m_stateManager.clearCallState();
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onCallingDeclined();
-        }
-    });
+    m_eventListener->onOutgoingCallDeclined();
 }
 
-void PacketProcessor::onStopCalling(const nlohmann::json& jsonObject)
+
+void PacketProcessor::onCallEnded(const nlohmann::json& jsonObject)
 {
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    if (m_stateManager.getState() == ClientState::UNAUTHORIZED || m_stateManager.getIncomingCalls().size() == 0) return;
+    sendConfirmation(senderNicknameHash, uid);
 
-    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-    if (needConfirmation)
-    {
-        m_sendConfirmation(jsonObject, PacketType::STOP_CALLING_OK);
-    }
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isActiveCall() || crypto::calculateHash(m_stateManager.getActiveCall().getNickname()) != senderNicknameHash) return;
 
-    const std::string& friendNicknameHash = jsonObject[NICKNAME_HASH_SENDER];
-    auto& incomingCalls = m_stateManager.getIncomingCalls();
-    auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&friendNicknameHash](const auto& pair) {
-        return calculateHash(pair.second.nickname) == friendNicknameHash;
-    });
-
-    if (it == incomingCalls.end()) return;
-
-    it->first->stop();
-    std::string nickname = it->second.nickname;
-    m_stateManager.getCallbacksQueue().push([this, nickname]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onIncomingCallExpired(nickname);
-        }
-    });
-    incomingCalls.erase(it);
-}
-
-void PacketProcessor::onEndCall(const nlohmann::json& jsonObject)
-{
-    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-    if (needConfirmation)
-    {
-        m_sendConfirmation(jsonObject, PacketType::END_CALL_OK);
-    }
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    if (m_stateManager.getState() != ClientState::BUSY) return;
-
-    const std::string& senderNicknameHash = jsonObject[NICKNAME_HASH_SENDER].get<std::string>();
-    if (!m_stateManager.getCall() || senderNicknameHash != m_stateManager.getCall()->getFriendNicknameHash()) return;
-
-    m_stateManager.setViewingRemoteScreen(false);
-
-    log::LOG_INFO("Call ended by remote user");
-    m_stateManager.setState(ClientState::FREE);
-    m_stateManager.clearCall();
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_audioEngine)
-        {
-            m_audioEngine->stopStream();
-        }
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onRemoteUserEndedCall();
-        }
-    });
-}
-
-void PacketProcessor::onIncomingCall(const nlohmann::json& jsonObject)
-{
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    if (m_stateManager.getState() == ClientState::UNAUTHORIZED) return;
-
-    m_sendConfirmation(jsonObject, PacketType::START_CALLING_OK);
-
-    auto packetAesKey = RSADecryptAESKey(m_keysManager.getPrivateKey(), jsonObject[PACKET_KEY]);
-    std::string nickname = AESDecrypt(packetAesKey, jsonObject[NICKNAME]);
-    log::LOG_INFO("Incoming call from {}", nickname);
-    auto callKey = RSADecryptAESKey(m_keysManager.getPrivateKey(), jsonObject[CALL_KEY]);
-
-    auto& incomingCalls = m_stateManager.getIncomingCalls();
-    auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [nickname](const auto& pair) {
-        return pair.second.nickname == nickname;
-    });
-
-    if (it != incomingCalls.end()) return;
-
-    IncomingCallData incomingCallData(nickname, deserializePublicKey(jsonObject[PUBLIC_KEY]), callKey);
-    auto timer = std::make_unique<utilities::tic::SingleShotTimer>();
-
-    timer->start(32s, [this, nickname]() {
-        std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-        auto& incomingCalls = m_stateManager.getIncomingCalls();
-        auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&nickname](const auto& pair) {
-            return pair.second.nickname == nickname;
-        });
-
-        if (it != incomingCalls.end())
-        {
-            m_stateManager.getCallbacksQueue().push([this, nickname]() {
-                std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-                auto& incomingCalls = m_stateManager.getIncomingCalls();
-                auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&nickname](const auto& pair) {
-                    return pair.second.nickname == nickname;
-                });
-                if (it != incomingCalls.end())
-                {
-                    incomingCalls.erase(it);
-                }
-                if (m_callbackHandler)
-                {
-                    m_callbackHandler->onIncomingCallExpired(nickname);
-                }
-            });
-        }
-    });
-
-    incomingCalls.emplace_back(std::move(timer), std::move(incomingCallData));
-
-    m_stateManager.getCallbacksQueue().push([this, nickname]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onIncomingCall(nickname);
-        }
-    });
-}
-
-void PacketProcessor::onCallAcceptedOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    std::string nicknameHash = jsonObject[NICKNAME_HASH_SENDER];
-
-    auto& incomingCalls = m_stateManager.getIncomingCalls();
-    auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&nicknameHash](const auto& pair) {
-        return calculateHash(pair.second.nickname) == nicknameHash;
-    });
-
-    if (it == incomingCalls.end()) return;
-
-    m_stateManager.setState(ClientState::BUSY);
-    m_stateManager.setCall(Call(it->second));
-    m_stateManager.setViewingRemoteScreen(false);
-
-    incomingCalls.clear();
-    const std::string friendNickname = m_stateManager.getCall()->getFriendNickname();
-
-    m_stateManager.getCallbacksQueue().push([this, friendNickname]() {
-        if (m_audioEngine)
-        {
-            m_audioEngine->refreshAudioDevices();
-            m_audioEngine->startStream();
-        }
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onAcceptCallResult(ErrorCode::OK, friendNickname);
-        }
-    });
-}
-
-void PacketProcessor::onCallAcceptedFail(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    std::string nicknameHash = jsonObject[NICKNAME_HASH_RECEIVER];
-
-    auto& incomingCalls = m_stateManager.getIncomingCalls();
-    auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&nicknameHash](const auto& pair) {
-        return calculateHash(pair.second.nickname) == nicknameHash;
-    });
-
-    if (it == incomingCalls.end()) return;
-
-    std::string nickname = it->second.nickname;
-    m_stateManager.getCallbacksQueue().push([this, nickname]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onAcceptCallResult(ErrorCode::UNEXISTING_USER, nickname);
-        }
-    });
-
-    m_stateManager.clearCall();
-    incomingCalls.erase(it);
-}
-
-void PacketProcessor::onCallDeclinedOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-}
-
-void PacketProcessor::onScreenSharingStartedOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-    m_stateManager.setScreenSharing(true);
-    log::LOG_INFO("Screen sharing started successfully");
-
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onScreenSharingStarted();
-        }
-    });
-}
-
-void PacketProcessor::onScreenSharingStartedFail(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
     m_stateManager.setScreenSharing(false);
-    LOG_WARN("Screen sharing start rejected by server");
+    m_stateManager.setCameraSharing(false);
+    m_stateManager.setViewingRemoteScreen(false);
+    m_stateManager.setViewingRemoteCamera(false);
+    m_stateManager.clearCallState();
+    m_audioEngine.stopStream();
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onStartScreenSharingError();
-        }
-    });
+    m_eventListener->onCallEndedByRemote();
 }
 
-void PacketProcessor::onScreenSharingStoppedOk(const nlohmann::json& jsonObject)
+void PacketProcessor::onScreenSharingBegin(const nlohmann::json& jsonObject)
 {
-    if (!validatePacket(jsonObject)) return;
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-}
+    sendConfirmation(senderNicknameHash, uid);
 
-void PacketProcessor::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject)
-{
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isActiveCall() || m_stateManager.isViewingRemoteScreen()) return;
 
-    if (m_stateManager.getState() != ClientState::BUSY) return;
-
-    m_sendConfirmation(jsonObject, PacketType::START_SCREEN_SHARING_OK);
     m_stateManager.setViewingRemoteScreen(true);
-
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onIncomingScreenSharingStarted();
-        }
-    });
+    
+    m_eventListener->onIncomingScreenSharingStarted();
 }
 
-void PacketProcessor::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject)
+void PacketProcessor::onScreenSharingEnded(const nlohmann::json& jsonObject)
 {
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    if (m_stateManager.getState() != ClientState::BUSY) return;
+    sendConfirmation(senderNicknameHash, uid);
 
-    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-    if (needConfirmation)
-    {
-        m_sendConfirmation(jsonObject, PacketType::STOP_SCREEN_SHARING_OK);
-    }
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isActiveCall() || !m_stateManager.isViewingRemoteScreen()) return;
 
     m_stateManager.setViewingRemoteScreen(false);
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onIncomingScreenSharingStopped();
-        }
-    });
+    m_eventListener->onIncomingScreenSharingStopped();
 }
 
-void PacketProcessor::onCameraSharingStartedOk(const nlohmann::json& jsonObject)
+void PacketProcessor::onCameraSharingBegin(const nlohmann::json& jsonObject)
 {
-    if (!validatePacket(jsonObject)) return;
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
+    sendConfirmation(senderNicknameHash, uid);
 
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-    m_stateManager.setCameraSharing(true);
-    log::LOG_INFO("Camera sharing started successfully");
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isActiveCall() || m_stateManager.isViewingRemoteCamera()) return;
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onCameraSharingStarted();
-        }
-    });
-}
-
-void PacketProcessor::onCameraSharingStartedFail(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-    m_stateManager.setCameraSharing(false);
-    LOG_WARN("Camera sharing start rejected by server");
-
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onStartCameraSharingError();
-        }
-    });
-}
-
-void PacketProcessor::onCameraSharingStoppedOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-}
-
-void PacketProcessor::onIncomingCameraSharingStarted(const nlohmann::json& jsonObject)
-{
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    if (m_stateManager.getState() != ClientState::BUSY) return;
-
-    m_sendConfirmation(jsonObject, PacketType::START_CAMERA_SHARING_OK);
     m_stateManager.setViewingRemoteCamera(true);
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onIncomingCameraSharingStarted();
-        }
-    });
+    m_eventListener->onIncomingCameraSharingStarted();
 }
 
-void PacketProcessor::onIncomingCameraSharingStopped(const nlohmann::json& jsonObject)
+void PacketProcessor::onCameraSharingEnded(const nlohmann::json& jsonObject)
 {
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
+    std::string uid = jsonObject[UID];
+    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
+    std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
 
-    if (m_stateManager.getState() != ClientState::BUSY) return;
+    sendConfirmation(senderNicknameHash, uid);
 
-    bool needConfirmation = jsonObject[NEED_CONFIRMATION].get<bool>();
-    if (needConfirmation)
-    {
-        m_sendConfirmation(jsonObject, PacketType::STOP_CAMERA_SHARING_OK);
-    }
+    if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isActiveCall() || !m_stateManager.isViewingRemoteCamera()) return;
 
     m_stateManager.setViewingRemoteCamera(false);
 
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onIncomingCameraSharingStopped();
-        }
-    });
+    m_eventListener->onIncomingCameraSharingStopped();
 }
 
-void PacketProcessor::onFriendInfoSuccess(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
+void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject) {
+    m_stateManager.setScreenSharing(false);
+    m_stateManager.setCameraSharing(false);
+    m_stateManager.setViewingRemoteScreen(false);
+    m_stateManager.setViewingRemoteCamera(false);
+    m_stateManager.setCallParticipantConnectionDown(true);
 
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    m_stateManager.setCall(Call(jsonObject[NICKNAME_HASH], m_stateManager.getNicknameWhomCalling(), deserializePublicKey(jsonObject[PUBLIC_KEY])));
-    m_stateManager.getCall()->createCallKey();
-
-    m_sendStartCalling(m_stateManager.getCall()->getFriendNickname(), m_stateManager.getCall()->getFriendPublicKey(), m_stateManager.getCall()->getCallKey());
+    m_eventListener->onCallParticipantConnectionDown();
 }
 
-void PacketProcessor::onFriendInfoFail(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
+void PacketProcessor::onConnectionRestoredWithUser(const nlohmann::json& jsonObject) {
+    m_stateManager.setScreenSharing(false);
+    m_stateManager.setCameraSharing(false);
+    m_stateManager.setViewingRemoteScreen(false);
+    m_stateManager.setViewingRemoteCamera(false);
+    m_stateManager.setCallParticipantConnectionDown(false);
 
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    m_stateManager.setState(ClientState::FREE);
-    m_stateManager.clearNicknameWhomCalling();
-
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onStartCallingResult(ErrorCode::UNEXISTING_USER);
-        }
-    });
+    m_eventListener->onCallParticipantConnectionRestored();
 }
-
-void PacketProcessor::onStartCallingOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    m_stateManager.getCallState().getOutgoingCall().getTimer().start(32s, [this]() {
-        std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-        m_stateManager.getCallbacksQueue().push([this]() {
-            if (m_callbackHandler)
-            {
-                m_callbackHandler->onMaximumCallingTimeReached();
-            }
-        });
-    });
-
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onStartCallingResult(ErrorCode::OK);
-        }
-    });
-}
-
-void PacketProcessor::onStartCallingFail(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::lock_guard<std::mutex> lock(m_stateManager.getMutex());
-
-    m_stateManager.setState(ClientState::FREE);
-    m_stateManager.clearCall();
-    m_stateManager.clearNicknameWhomCalling();
-
-    m_stateManager.getCallbacksQueue().push([this]() {
-        if (m_callbackHandler)
-        {
-            m_callbackHandler->onStartCallingResult(ErrorCode::UNEXISTING_USER);
-        }
-    });
-}
-
-void PacketProcessor::onStopCallingOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-}
-
-void PacketProcessor::onEndCallOk(const nlohmann::json& jsonObject)
-{
-    if (!validatePacket(jsonObject)) return;
-
-    std::string uuid = jsonObject[UUID].get<std::string>();
-    if (m_onPacketConfirmed)
-    {
-        m_onPacketConfirmed(uuid);
-    }
-}
-

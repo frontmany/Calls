@@ -4,6 +4,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <functional>
 
 #include "call.h"
 #include "callStateManager.h"
@@ -18,15 +19,18 @@ namespace calls
 
         bool isAuthorized() const;
         bool isConnectionDown() const;
-        bool isCallParticipantConnectionLost() const;
+        bool isIncomingCalls() const;
         bool isScreenSharing() const;
         bool isCameraSharing() const;
         bool isViewingRemoteScreen() const;
         bool isViewingRemoteCamera() const;
+        bool isOutgoingCall() const;
+        bool isActiveCall() const;
+        bool isCallParticipantConnectionLost() const;
 
         void setAuthorized(bool value);
         void setConnectionDown(bool value);
-        void setCallParticipantConnectionLost(bool value);
+        void setCallParticipantConnectionDown(bool value);
         void setScreenSharing(bool value);
         void setCameraSharing(bool value);
         void setViewingRemoteScreen(bool value);
@@ -40,37 +44,36 @@ namespace calls
         void setMyToken(const std::string& token);
         void clearMyToken();
 
-        const CallStateManager& getCallStateManager() const;
+        const OutgoingCall& getOutgoingCall() const;
+        const Call& getActiveCall() const;
 
-        template <typename Rep, typename Period, typename Callable>
+        template <typename Rep, typename Period>
         void setOutgoingCall(const std::string& nickname,
             const std::chrono::duration<Rep, Period>& timeout,
-            Callable&& onTimeout)
+            std::function<void()> onTimeout)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_callStateManager.setOutgoingCall(nickname, timeout, onTimeout);
+            m_callStateManager.setOutgoingCall(nickname, timeout, std::move(onTimeout));
         }
 
         void setActiveCall(const std::string& nickname,
-            const CryptoPP::RSA::PublicKey& publicKey);
-
-        void setActiveCallFromIncoming(const IncomingCall& incomingCall);
+            const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& callKey);
 
         void clearCallState();
 
         const std::unordered_map<std::string, IncomingCall>& getIncomingCalls() const;
         int getIncomingCallsCount() const;
 
-        template <typename Rep, typename Period, typename Callable>
+        template <typename Rep, typename Period>
         void addIncomingCall(const std::string& nickname,
             const CryptoPP::RSA::PublicKey& publicKey,
             const CryptoPP::SecByteBlock& callKey,
             const std::chrono::duration<Rep, Period>& timeout,
-            Callable&& onTimeout)
+            std::function<void()> onTimeout)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            IncomingCall incomingCall(nickname, publicKey, callKey, timeout, std::forward<Callable>(onTimeout));
+            IncomingCall incomingCall(nickname, publicKey, callKey, timeout, std::move(onTimeout));
             m_incomingCalls.emplace(nickname, std::move(incomingCall));
         }
         

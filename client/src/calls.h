@@ -4,19 +4,19 @@
 #include <vector>
 #include <functional>
 
-#include "callsClient.h"
+#include "client.h"
 #include "jsonTypes.h"
 
 namespace calls {
     inline bool init(
         const std::string& host,
         const std::string& port,
-        std::unique_ptr<CallbacksInterface>&& handler)
+        std::shared_ptr<EventListener> eventListener)
     {
         return CallsClient::get().init(
             host,
             port,
-            std::move(handler));
+            eventListener);
     }
 
     inline void run()

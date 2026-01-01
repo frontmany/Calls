@@ -28,12 +28,9 @@ namespace calls {
         VOICE,
 
         // only receive
-        AUTHORIZATION_SUCCESS,
-        AUTHORIZATION_FAIL,
-        RECONNECT_SUCCESS,
-        RECONNECT_FAIL,
-        GET_USER_INFO_SUCCESS,
-        GET_USER_INFO_FAIL,
+        AUTHORIZATION_RESULT,
+        RECONNECT_RESULT,
+        GET_USER_INFO_RESULT,
         CONNECTION_DOWN_WITH_USER,
         CONNECTION_RESTORED_WITH_USER
     };
@@ -62,12 +59,9 @@ namespace calls {
             case PacketType::VOICE: return "VOICE";
 
             // only receive
-            case PacketType::AUTHORIZATION_SUCCESS: return "AUTHORIZATION_SUCCESS";
-            case PacketType::AUTHORIZATION_FAIL: return "AUTHORIZATION_FAIL";
-            case PacketType::RECONNECT_SUCCESS: return "RECONNECT_SUCCESS";
-            case PacketType::RECONNECT_FAIL: return "RECONNECT_FAIL";
-            case PacketType::GET_USER_INFO_SUCCESS: return "GET_USER_INFO_SUCCESS";
-            case PacketType::GET_USER_INFO_FAIL: return "GET_USER_INFO_FAIL";
+            case PacketType::AUTHORIZATION_RESULT: return "AUTHORIZATION_RESULT";
+            case PacketType::RECONNECT_RESULT: return "RECONNECT_RESULT";
+            case PacketType::GET_USER_INFO_RESULT: return "GET_USER_INFO_RESULT";
             case PacketType::CONNECTION_DOWN_WITH_USER: return "CONNECTION_DOWN_WITH_USER";
             case PacketType::CONNECTION_RESTORED_WITH_USER: return "CONNECTION_RESTORED_WITH_USER";
 

@@ -10,8 +10,8 @@
 #include <thread>
 #include <vector>
 
-#include "packetTypes.h"
-#include "safeQueue.h"
+#include "packetType.h"
+#include "utilities/safeQueue.h"
 
 namespace network 
 {

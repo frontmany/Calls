@@ -185,11 +185,11 @@ namespace audio {
         m_speakerMuted = isMute;
     }
 
-    bool AudioEngine::isMicrophoneMuted() {
+    bool AudioEngine::isMicrophoneMuted() const {
         return  m_microphoneMuted;
     }
 
-    bool AudioEngine::isSpeakerMuted() {
+    bool AudioEngine::isSpeakerMuted() const {
         return m_speakerMuted;
     }
 
@@ -367,11 +367,11 @@ namespace audio {
         return paContinue;
     }
 
-    bool AudioEngine::initialized() {
+    bool AudioEngine::initialized() const {
         return m_isInitialized;
     }
 
-    bool AudioEngine::isStream() {
+    bool AudioEngine::isStream() const {
         return  m_isStream;
     }
 }
