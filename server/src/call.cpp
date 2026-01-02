@@ -1,27 +1,23 @@
 #include "call.h"
 
-Call::Call(const std::string& initiatorNicknameHash, const std::string& responderNicknameHash)
-	: m_initiatorNicknameHash(initiatorNicknameHash),
-	m_responderNicknameHash(responderNicknameHash)
+Call::Call(const UserPtr& initiator, const UserPtr& responder)
+	: m_initiator(initiator),
+	m_responder(responder)
 {
 }
 
-void Call::setActive() {
-	m_state = Status::ACTIVE;
+const UserPtr& Call::getInitiator() const {
+	return m_initiator;
 }
 
-void Call::setEnded() {
-	m_state = Status::ENDED;
+const UserPtr& Call::getResponder() const {
+	return m_responder;
 }
 
-Call::Status Call::status() const{
-	return m_state;
+bool Call::isEstablished() {
+	return m_established;
 }
 
-const std::string& Call::getInitiatorNicknameHash() const {
-	return m_initiatorNicknameHash;
-}
-
-const std::string& Call::getResponderNicknameHash() const {
-	return m_responderNicknameHash;
+void Call::setEstablished() {
+	m_established = true;
 }

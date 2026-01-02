@@ -6,6 +6,8 @@
 #include <memory>
 #include <atomic>
 #include <queue>
+#include <string>
+#include <optional>
 
 #include "encoder.h"
 #include "decoder.h"
@@ -15,6 +17,20 @@
 
 namespace audio 
 {
+    struct DeviceInfo {
+        int deviceIndex;
+        std::string name;
+        int maxInputChannels;
+        int maxOutputChannels;
+        double defaultLowInputLatency;
+        double defaultLowOutputLatency;
+        double defaultHighInputLatency;
+        double defaultHighOutputLatency;
+        double defaultSampleRate;
+        bool isDefaultInput;
+        bool isDefaultOutput;
+    };
+
     class AudioEngine {
     public:
         enum InitializationStatus {
@@ -44,6 +60,23 @@ namespace audio
         void setOutputVolume(int volume);
         int getInputVolume() const;
         int getOutputVolume() const;
+
+        // Device selection API
+        static int getDeviceCount();
+        static std::optional<DeviceInfo> getDeviceInfo(int deviceIndex);
+        static std::vector<DeviceInfo> getInputDevices();
+        static std::vector<DeviceInfo> getOutputDevices();
+        static std::vector<DeviceInfo> getAllDevices();
+        static int getDefaultInputDeviceIndex();
+        static int getDefaultOutputDeviceIndex();
+        
+        bool isFormatSupported(int inputDevice, int outputDevice, double sampleRate, 
+                               int inputChannels, int outputChannels) const;
+        
+        bool setInputDevice(int deviceIndex);
+        bool setOutputDevice(int deviceIndex);
+        int getCurrentInputDevice() const;
+        int getCurrentOutputDevice() const;
 
     private:
         AudioEngine::InitializationStatus init();
@@ -78,6 +111,9 @@ namespace audio
         int m_framesPerBuffer = 960;
         int m_inputChannels = 1;
         int m_outputChannels = 1;
+
+        std::optional<int> m_inputDeviceIndex;
+        std::optional<int> m_outputDeviceIndex;
 
         std::vector<unsigned char> m_encodedInputBuffer;
         std::vector<float> m_decodedOutputBuffer;

@@ -19,6 +19,7 @@
 #include "packetProcessor.h"
 #include "network/networkController.h"
 #include "audio/audioEngine.h"
+#include "json.hpp"
 
 namespace calls
 {
@@ -79,6 +80,13 @@ namespace calls
         void onCamera(const unsigned char* data, int length);
         void onInputVoice(const unsigned char* data, int length);
         void reset();
+
+        void createAndStartTask(
+            const std::string& uid,
+            const std::vector<unsigned char>& packet,
+            PacketType packetType,
+            std::function<void(std::optional<nlohmann::json>)> onCompletion,
+            std::function<void(std::optional<nlohmann::json>)> onFailure);
 
     private:
         TaskManager<long long, std::milli> m_taskManager;

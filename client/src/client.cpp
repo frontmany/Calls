@@ -66,10 +66,7 @@ namespace calls
 
                 auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
 
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    [this, packet]() {
-                        m_networkController.send(packet, static_cast<uint32_t>(PacketType::RECONNECT));
-                    },
+                createAndStartTask(uid, packet, PacketType::RECONNECT,
                     [this](std::optional<nlohmann::json> completionContext) {
                         if (m_stateManager.isAuthorized())
                             m_eventListener->onConnectionRestored();
@@ -80,8 +77,6 @@ namespace calls
                         LOG_ERROR("Reconnect task failed");
                     }
                 );
-
-                m_taskManager.startTask(uid);
             });
 
         m_keyManager.generateKeys();
@@ -106,6 +101,24 @@ namespace calls
 
         if (m_audioEngine.isStream())
             m_audioEngine.stopStream();
+    }
+
+    void CallsClient::createAndStartTask(
+        const std::string& uid,
+        const std::vector<unsigned char>& packet,
+        PacketType packetType,
+        std::function<void(std::optional<nlohmann::json>)> onCompletion,
+        std::function<void(std::optional<nlohmann::json>)> onFailure)
+    {
+        m_taskManager.createTask(uid, 1500ms, 5,
+            [this, packet, packetType]() {
+                m_networkController.send(packet, static_cast<uint32_t>(packetType));
+            },
+            std::move(onCompletion),
+            std::move(onFailure)
+        );
+
+        m_taskManager.startTask(uid);
     }
 
     void CallsClient::onReceive(const unsigned char* data, int length, PacketType type) {
@@ -222,10 +235,7 @@ namespace calls
 
         auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey());
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::AUTHORIZATION));
-            },
+        createAndStartTask(uid, packet, PacketType::AUTHORIZATION,
             [this, nickname](std::optional<nlohmann::json> completionContext) {
                 if (completionContext.has_value()) {
                     auto& context = completionContext.value();
@@ -233,7 +243,10 @@ namespace calls
                     bool successfullyAuthorized = context[RESULT].get<bool>();
 
                     if (successfullyAuthorized) {
+                        std::string token = context[TOKEN];
+
                         m_stateManager.setMyNickname(nickname);
+                        m_stateManager.setMyToken(token);
                         m_eventListener->onAuthorizationResult({});
                     }
                     else {
@@ -249,8 +262,6 @@ namespace calls
             }
         );
 
-        m_taskManager.startTask(uid);
-
         return true;
     }
 
@@ -259,10 +270,7 @@ namespace calls
 
         auto [uid, packet] = PacketFactory::getLogoutPacket(m_stateManager.getMyNickname());
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::LOGOUT));
-            },
+        createAndStartTask(uid, packet, PacketType::LOGOUT,
             [this](std::optional<nlohmann::json> completionContext) {
                 reset();
                 m_eventListener->onLogoutCompleted();
@@ -274,8 +282,6 @@ namespace calls
                 m_eventListener->onLogoutCompleted();
             }
         );
-
-        m_taskManager.startTask(uid);
 
         return true;
     }
@@ -298,10 +304,7 @@ namespace calls
         else {
             auto [uid, packet] = PacketFactory::getRequestUserInfoPacket(m_stateManager.getMyNickname(), userNickname);
 
-            m_taskManager.createTask(uid, 1500ms, 5,
-                [this, packet]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::GET_USER_INFO));
-                },
+            createAndStartTask(uid, packet, PacketType::GET_USER_INFO,
                 [this, userNickname](std::optional<nlohmann::json> completionContext) {
                     if (completionContext.has_value()) {
                         auto& context = completionContext.value();
@@ -318,10 +321,7 @@ namespace calls
 
                             auto [uid, packet] = PacketFactory::getStartOutgoingCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), userPublicKey, callKey);
 
-                            m_taskManager.createTask(uid, 1500ms, 5,
-                                [this, packet]() {
-                                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALLING_BEGIN));
-                                },
+                            createAndStartTask(uid, packet, PacketType::CALLING_BEGIN,
                                 [this, userNickname](std::optional<nlohmann::json> completionContext) {
                                     m_stateManager.setOutgoingCall(userNickname, 32s, [this]() {
                                         m_stateManager.clearCallState();
@@ -335,8 +335,6 @@ namespace calls
                                     m_eventListener->onStartOutgoingCallResult(CallsErrorCode::network_error);
                                 }
                             );
-
-                            m_taskManager.startTask(uid);
                         }
                         else {
                             m_eventListener->onStartOutgoingCallResult(CallsErrorCode::unexisting_user);
@@ -348,8 +346,6 @@ namespace calls
                     m_eventListener->onStartOutgoingCallResult(CallsErrorCode::network_error);
                 }
             );
-
-            m_taskManager.startTask(uid);
         }
 
         return true;
@@ -360,10 +356,7 @@ namespace calls
 
         auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), m_stateManager.getOutgoingCall().getNickname());
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALLING_END));
-            },
+        createAndStartTask(uid, packet, PacketType::CALLING_END,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_eventListener->onStopOutgoingCallResult({});
             },
@@ -372,8 +365,6 @@ namespace calls
                 m_eventListener->onStopOutgoingCallResult(CallsErrorCode::network_error);
             }
         );
-
-        m_taskManager.startTask(uid);
 
         return true;
     }
@@ -388,10 +379,7 @@ namespace calls
             if (nickname != userNickname) {
                 auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), nickname);
 
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    [this, packet]() {
-                        m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_DECLINE));
-                    },
+                createAndStartTask(uid, packet, PacketType::CALL_DECLINE,
                     [this, nickname](std::optional<nlohmann::json> completionContext) {
                         auto& incomingCalls = m_stateManager.getIncomingCalls();
                         m_stateManager.removeIncomingCall(nickname);
@@ -400,27 +388,19 @@ namespace calls
                         LOG_ERROR("Decline incoming call task failed (as part of accept call operation)");
                     }
                 );
-
-                m_taskManager.startTask(uid);
             }
         }
 
         if (m_stateManager.isOutgoingCall()) {
             auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), m_stateManager.getOutgoingCall().getNickname());
 
-            m_taskManager.createTask(uid, 1500ms, 5,
-                [this, packet]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALLING_END));
-                },
+            createAndStartTask(uid, packet, PacketType::CALLING_END,
                 [this, userNickname](std::optional<nlohmann::json> completionContext) {
                     auto& incomingCalls = m_stateManager.getIncomingCalls();
                     auto& incomingCall = incomingCalls.at(userNickname);
                     auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
 
-                    m_taskManager.createTask(uid, 1500ms, 5,
-                        [this, packet]() {
-                            m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_ACCEPT));
-                        },
+                    createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
                         [this, userNickname](std::optional<nlohmann::json> completionContext) {
                             auto& incomingCalls = m_stateManager.getIncomingCalls();
                             auto& incomingCall = incomingCalls.at(userNickname);
@@ -435,24 +415,17 @@ namespace calls
                             m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
                         }
                     );
-
-                    m_taskManager.startTask(uid);
                 },
                 [this](std::optional<nlohmann::json> failureContext) {
                     LOG_ERROR("Stop outgoing call task failed (as part of accept call operation)");
                     m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
                 }
             );
-
-            m_taskManager.startTask(uid);
         }
         else if (m_stateManager.isActiveCall()) {
             auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), m_stateManager.getActiveCall().getNickname());
 
-            m_taskManager.createTask(uid, 1500ms, 5,
-                [this, packet]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_END));
-                },
+            createAndStartTask(uid, packet, PacketType::CALL_END,
                 [this, userNickname](std::optional<nlohmann::json> completionContext) {
                     m_stateManager.setScreenSharing(false);
                     m_stateManager.setCameraSharing(false);
@@ -465,10 +438,7 @@ namespace calls
                     auto& incomingCall = incomingCalls.at(userNickname);
                     auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
 
-                    m_taskManager.createTask(uid, 1500ms, 5,
-                        [this, packet]() {
-                            m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_ACCEPT));
-                        },
+                    createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
                         [this, userNickname](std::optional<nlohmann::json> completionContext) {
                             auto& incomingCalls = m_stateManager.getIncomingCalls();
                             auto& incomingCall = incomingCalls.at(userNickname);
@@ -484,26 +454,19 @@ namespace calls
                             m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
                         }
                     );
-
-                    m_taskManager.startTask(uid);
                 },
                 [this](std::optional<nlohmann::json> failureContext) {
                     LOG_ERROR("End active call task failed (as part of accept new call operation)");
                     m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
                 }
             );
-
-            m_taskManager.startTask(uid);
         }
         else {
             auto& incomingCalls = m_stateManager.getIncomingCalls();
             auto& incomingCall = incomingCalls.at(userNickname);
             auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
 
-            m_taskManager.createTask(uid, 1500ms, 5,
-                [this, packet]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_ACCEPT));
-                },
+            createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
                 [this, userNickname](std::optional<nlohmann::json> completionContext) {
                     auto& incomingCalls = m_stateManager.getIncomingCalls();
                     auto& incomingCall = incomingCalls.at(userNickname);
@@ -518,8 +481,6 @@ namespace calls
                     m_eventListener->onAcceptCallResult(CallsErrorCode::network_error);
                 }
             );
-
-            m_taskManager.startTask(uid);
         }
 
         return true;
@@ -533,10 +494,7 @@ namespace calls
 
         auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), userNickname);
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_DECLINE));
-            },
+        createAndStartTask(uid, packet, PacketType::CALL_DECLINE,
             [this, userNickname](std::optional<nlohmann::json> completionContext) {
                 auto& incomingCalls = m_stateManager.getIncomingCalls();
                 m_stateManager.removeIncomingCall(userNickname);
@@ -549,8 +507,6 @@ namespace calls
             }
         );
 
-        m_taskManager.startTask(uid);
-
         return true;
     }
 
@@ -559,10 +515,7 @@ namespace calls
 
         auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), m_stateManager.getActiveCall().getNickname());
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CALL_END));
-            },
+        createAndStartTask(uid, packet, PacketType::CALL_END,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_stateManager.setScreenSharing(false);
                 m_stateManager.setCameraSharing(false);
@@ -579,8 +532,6 @@ namespace calls
             }
         );
 
-        m_taskManager.startTask(uid);
-
         return true;
     }
 
@@ -591,10 +542,7 @@ namespace calls
         std::string friendNicknameHash = crypto::calculateHash(friendNickname);
         auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN));
-            },
+        createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_BEGIN,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_eventListener->onStartScreenSharingResult({});
             },
@@ -603,8 +551,6 @@ namespace calls
                 m_eventListener->onStartScreenSharingResult(CallsErrorCode::network_error);
             }
         );
-
-        m_taskManager.startTask(uid);
 
         return true;
     }
@@ -616,10 +562,7 @@ namespace calls
         std::string friendNicknameHash = crypto::calculateHash(friendNickname);
         auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::SCREEN_SHARING_END));
-            },
+        createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_END,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_eventListener->onStopScreenSharingResult({});
             },
@@ -628,8 +571,6 @@ namespace calls
                 m_eventListener->onStopScreenSharingResult(CallsErrorCode::network_error);
             }
         );
-
-        m_taskManager.startTask(uid);
 
         return true;
     }
@@ -665,10 +606,7 @@ namespace calls
         std::string friendNicknameHash = crypto::calculateHash(friendNickname);
         auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN));
-            },
+        createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_BEGIN,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_eventListener->onStartCameraSharingResult({});
             },
@@ -677,8 +615,6 @@ namespace calls
                 m_eventListener->onStartCameraSharingResult(CallsErrorCode::network_error);
             }
         );
-
-        m_taskManager.startTask(uid);
 
         return true;
     }
@@ -690,10 +626,7 @@ namespace calls
         std::string friendNicknameHash = crypto::calculateHash(friendNickname);
         auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
 
-        m_taskManager.createTask(uid, 1500ms, 5,
-            [this, packet]() {
-                m_networkController.send(packet, static_cast<uint32_t>(PacketType::CAMERA_SHARING_END));
-            },
+        createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_END,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_eventListener->onStopCameraSharingResult({});
             },
@@ -702,8 +635,6 @@ namespace calls
                 m_eventListener->onStopCameraSharingResult(CallsErrorCode::network_error);
             }
         );
-
-        m_taskManager.startTask(uid);
 
         return true;
     }

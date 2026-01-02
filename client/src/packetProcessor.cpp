@@ -372,6 +372,10 @@ void PacketProcessor::onCameraSharingEnded(const nlohmann::json& jsonObject)
 }
 
 void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject) {
+    std::string uid = jsonObject[UID];
+
+    sendConfirmation("server", uid);
+
     m_stateManager.setScreenSharing(false);
     m_stateManager.setCameraSharing(false);
     m_stateManager.setViewingRemoteScreen(false);
@@ -382,6 +386,10 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
 }
 
 void PacketProcessor::onConnectionRestoredWithUser(const nlohmann::json& jsonObject) {
+    std::string uid = jsonObject[UID];
+
+    sendConfirmation("server", uid);
+
     m_stateManager.setScreenSharing(false);
     m_stateManager.setCameraSharing(false);
     m_stateManager.setViewingRemoteScreen(false);

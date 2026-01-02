@@ -15,29 +15,29 @@ ClientCallbacksHandler::ClientCallbacksHandler(MainWindow* mainWindow)
     qRegisterMetaType<std::vector<unsigned char>>("std::vector<unsigned char>");
 }
 
-void ClientCallbacksHandler::onAuthorizationResult(calls::ErrorCode ec)
+void ClientCallbacksHandler::onAuthorizationResult(calls::CallsErrorCode ec)
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onAuthorizationResult",
-            Qt::QueuedConnection, Q_ARG(calls::ErrorCode, ec));
+            Qt::QueuedConnection, Q_ARG(calls::CallsErrorCode, ec));
     }
 }
 
-void ClientCallbacksHandler::onStartCallingResult(calls::ErrorCode ec)
+void ClientCallbacksHandler::onStartCallingResult(calls::CallsErrorCode ec)
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onStartCallingResult",
-            Qt::QueuedConnection, Q_ARG(calls::ErrorCode, ec));
+            Qt::QueuedConnection, Q_ARG(calls::CallsErrorCode, ec));
     }
 }
 
-void ClientCallbacksHandler::onAcceptCallResult(calls::ErrorCode ec, const std::string& nickname)
+void ClientCallbacksHandler::onAcceptCallResult(calls::CallsErrorCode ec, const std::string& nickname)
 {
     if (m_mainWindow) {
         QString qNickname = QString::fromStdString(nickname);
         QMetaObject::invokeMethod(m_mainWindow, "onAcceptCallResult",
             Qt::QueuedConnection,
-            Q_ARG(calls::ErrorCode, ec),
+            Q_ARG(calls::CallsErrorCode, ec),
             Q_ARG(const QString&, qNickname));
     }
 }

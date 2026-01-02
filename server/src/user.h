@@ -1,39 +1,43 @@
 #pragma once
 
-#include <optional>
 #include <memory>
-#include <chrono>
+#include <string>
+#include <functional>
 
-#include "crypto.h"
+#include "utilities/crypto.h"
+#include "utilities/timer.h"
 #include "asio.hpp"
 
 class Call;
+typedef std::shared_ptr<Call> CallPtr;
 
 class User {
 public:
-	enum class CallRole {
-		EMPTY,
-		INITIATOR,
-		RESPONDER
-	};
+	User(const std::string& nicknameHash,
+		const CryptoPP::RSA::PublicKey& publicKey,
+		asio::ip::udp::endpoint endpoint,
+		std::function<void()> onReconnectionTimeout
+	);
 
-	User(const std::string& nicknameHash, const CryptoPP::RSA::PublicKey& publicKey, asio::ip::udp::endpoint endpoint);
+	bool isInCall() const;
+	bool isConnectionDown();
+	
 	const CryptoPP::RSA::PublicKey& getPublicKey() const;
 	const std::string& getNicknameHash() const;
 	const asio::ip::udp::endpoint& getEndpoint() const;
+	CallPtr getCall() const;
 
-	void setCall(std::shared_ptr<Call> callPtr, CallRole role);
-	bool isInCall() const;
-	std::shared_ptr<Call> getCall();
+	void setConnectionDown(bool value);
+	void setCall(CallPtr call);
 	void resetCall();
-	void setCallAccepted(bool accepted);
-	std::string inCallWith() const;
 
 private:
+	bool m_connectionDown = false;
 	std::string m_nicknameHash;
+	std::weak_ptr<Call> m_call;
 	CryptoPP::RSA::PublicKey m_publicKey;
 	asio::ip::udp::endpoint m_endpoint;
 
-	std::shared_ptr<Call> m_call;
-	CallRole m_role = CallRole::EMPTY;
+	std::function<void()> m_onReconnectionTimeout;
+	utilities::tic::SingleShotTimer m_reconnectionTimeoutTimer;
 };

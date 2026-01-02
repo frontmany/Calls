@@ -1,23 +1,22 @@
 #pragma once
 
 #include <string>
+#include <memory>
+
+class User;
+
+typedef std::shared_ptr<User> UserPtr;
 
 class Call {
 public:
-	enum class Status {
-		ACTIVE,
-		ENDED
-	};
-
-	Call(const std::string& initiatorNicknameHash, const std::string& responderNicknameHash);
-	Status status() const;
-	const std::string& getInitiatorNicknameHash() const;
-	const std::string& getResponderNicknameHash() const;
-	void setActive();
-	void setEnded();
+	Call(const UserPtr& initiator, const UserPtr& responder);
+	bool isEstablished();
+	void setEstablished();
+	const UserPtr& getInitiator() const;
+	const UserPtr& getResponder() const;
 
 private:
-	Status m_state = Status::ACTIVE;
-	std::string m_initiatorNicknameHash;
-	std::string m_responderNicknameHash;
+	bool m_established = false;
+	UserPtr m_initiator;
+	UserPtr m_responder;
 };

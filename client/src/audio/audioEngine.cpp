@@ -49,7 +49,7 @@ namespace audio {
         memset(&outputParameters, 0, sizeof(outputParameters));
 
         if (m_inputChannels > 0) {
-            inputParameters.device = Pa_GetDefaultInputDevice();
+            inputParameters.device = m_inputDeviceIndex.has_value() ? m_inputDeviceIndex.value() : Pa_GetDefaultInputDevice();
             if (inputParameters.device == paNoDevice) {
                 Pa_Terminate();
                 return NO_INPUT_DEVICE;
@@ -62,7 +62,7 @@ namespace audio {
         }
 
         if (m_outputChannels > 0) {
-            outputParameters.device = Pa_GetDefaultOutputDevice();
+            outputParameters.device = m_outputDeviceIndex.has_value() ? m_outputDeviceIndex.value() : Pa_GetDefaultOutputDevice();
             if (outputParameters.device == paNoDevice) {
                 Pa_Terminate();
                 return NO_OUTPUT_DEVICE;
@@ -103,7 +103,7 @@ namespace audio {
         memset(&outputParameters, 0, sizeof(outputParameters));
 
         if (m_inputChannels > 0) {
-            inputParameters.device = Pa_GetDefaultInputDevice();
+            inputParameters.device = m_inputDeviceIndex.has_value() ? m_inputDeviceIndex.value() : Pa_GetDefaultInputDevice();
             if (inputParameters.device == paNoDevice) {
                 Pa_Terminate();
                 return NO_INPUT_DEVICE;
@@ -116,7 +116,7 @@ namespace audio {
         }
 
         if (m_outputChannels > 0) {
-            outputParameters.device = Pa_GetDefaultOutputDevice();
+            outputParameters.device = m_outputDeviceIndex.has_value() ? m_outputDeviceIndex.value() : Pa_GetDefaultOutputDevice();
             if (outputParameters.device == paNoDevice) {
                 Pa_Terminate();
                 return NO_OUTPUT_DEVICE;
@@ -373,5 +373,354 @@ namespace audio {
 
     bool AudioEngine::isStream() const {
         return  m_isStream;
+    }
+
+    int AudioEngine::getDeviceCount() {
+        bool needsInit = (Pa_GetDeviceCount() < 0);
+        if (needsInit) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return 0;
+            }
+        }
+
+        int count = Pa_GetDeviceCount();
+        int result = (count < 0) ? 0 : count;
+
+        if (needsInit) {
+            Pa_Terminate();
+        }
+
+        return result;
+    }
+
+    std::optional<DeviceInfo> AudioEngine::getDeviceInfo(int deviceIndex) {
+        bool needsInit = (Pa_GetDeviceCount() < 0);
+        if (needsInit) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return std::nullopt;
+            }
+        }
+
+        int deviceCount = Pa_GetDeviceCount();
+        if (deviceCount < 0 || deviceIndex < 0 || deviceIndex >= deviceCount) {
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            return std::nullopt;
+        }
+
+        const PaDeviceInfo* paDeviceInfo = Pa_GetDeviceInfo(deviceIndex);
+        if (!paDeviceInfo) {
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            return std::nullopt;
+        }
+
+        DeviceInfo info;
+        info.deviceIndex = deviceIndex;
+        info.name = paDeviceInfo->name ? paDeviceInfo->name : "";
+        info.maxInputChannels = paDeviceInfo->maxInputChannels;
+        info.maxOutputChannels = paDeviceInfo->maxOutputChannels;
+        info.defaultLowInputLatency = paDeviceInfo->defaultLowInputLatency;
+        info.defaultLowOutputLatency = paDeviceInfo->defaultLowOutputLatency;
+        info.defaultHighInputLatency = paDeviceInfo->defaultHighInputLatency;
+        info.defaultHighOutputLatency = paDeviceInfo->defaultHighOutputLatency;
+        info.defaultSampleRate = paDeviceInfo->defaultSampleRate;
+        info.isDefaultInput = (deviceIndex == Pa_GetDefaultInputDevice());
+        info.isDefaultOutput = (deviceIndex == Pa_GetDefaultOutputDevice());
+
+        if (needsInit) {
+            Pa_Terminate();
+        }
+
+        return info;
+    }
+
+    std::vector<DeviceInfo> AudioEngine::getInputDevices() {
+        std::vector<DeviceInfo> devices;
+        int deviceCount = getDeviceCount();
+
+        for (int i = 0; i < deviceCount; ++i) {
+            auto info = getDeviceInfo(i);
+            if (info.has_value() && info->maxInputChannels > 0) {
+                devices.push_back(info.value());
+            }
+        }
+
+        return devices;
+    }
+
+    std::vector<DeviceInfo> AudioEngine::getOutputDevices() {
+        std::vector<DeviceInfo> devices;
+        int deviceCount = getDeviceCount();
+
+        for (int i = 0; i < deviceCount; ++i) {
+            auto info = getDeviceInfo(i);
+            if (info.has_value() && info->maxOutputChannels > 0) {
+                devices.push_back(info.value());
+            }
+        }
+
+        return devices;
+    }
+
+    std::vector<DeviceInfo> AudioEngine::getAllDevices() {
+        std::vector<DeviceInfo> devices;
+        int deviceCount = getDeviceCount();
+
+        for (int i = 0; i < deviceCount; ++i) {
+            auto info = getDeviceInfo(i);
+            if (info.has_value()) {
+                devices.push_back(info.value());
+            }
+        }
+
+        return devices;
+    }
+
+    int AudioEngine::getDefaultInputDeviceIndex() {
+        bool needsInit = (Pa_GetDeviceCount() < 0);
+        if (needsInit) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return -1;
+            }
+        }
+
+        PaDeviceIndex device = Pa_GetDefaultInputDevice();
+        int result = (device == paNoDevice) ? -1 : static_cast<int>(device);
+
+        if (needsInit) {
+            Pa_Terminate();
+        }
+
+        return result;
+    }
+
+    int AudioEngine::getDefaultOutputDeviceIndex() {
+        bool needsInit = (Pa_GetDeviceCount() < 0);
+        if (needsInit) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return -1;
+            }
+        }
+
+        PaDeviceIndex device = Pa_GetDefaultOutputDevice();
+        int result = (device == paNoDevice) ? -1 : static_cast<int>(device);
+
+        if (needsInit) {
+            Pa_Terminate();
+        }
+
+        return result;
+    }
+
+    bool AudioEngine::isFormatSupported(int inputDevice, int outputDevice, double sampleRate,
+                                       int inputChannels, int outputChannels) const {
+        if (!m_isInitialized) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return false;
+            }
+        }
+
+        PaStreamParameters inputParams = {};
+        PaStreamParameters outputParams = {};
+        const PaStreamParameters* inputParamsPtr = nullptr;
+        const PaStreamParameters* outputParamsPtr = nullptr;
+
+        if (inputChannels > 0 && inputDevice >= 0) {
+            const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(inputDevice);
+            if (!deviceInfo || deviceInfo->maxInputChannels < inputChannels) {
+                if (!m_isInitialized) {
+                    Pa_Terminate();
+                }
+                return false;
+            }
+
+            inputParams.device = inputDevice;
+            inputParams.channelCount = inputChannels;
+            inputParams.sampleFormat = paFloat32;
+            inputParams.suggestedLatency = deviceInfo->defaultLowInputLatency;
+            inputParams.hostApiSpecificStreamInfo = nullptr;
+            inputParamsPtr = &inputParams;
+        }
+
+        if (outputChannels > 0 && outputDevice >= 0) {
+            const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(outputDevice);
+            if (!deviceInfo || deviceInfo->maxOutputChannels < outputChannels) {
+                if (!m_isInitialized) {
+                    Pa_Terminate();
+                }
+                return false;
+            }
+
+            outputParams.device = outputDevice;
+            outputParams.channelCount = outputChannels;
+            outputParams.sampleFormat = paFloat32;
+            outputParams.suggestedLatency = deviceInfo->defaultLowOutputLatency;
+            outputParams.hostApiSpecificStreamInfo = nullptr;
+            outputParamsPtr = &outputParams;
+        }
+
+        PaError err = Pa_IsFormatSupported(inputParamsPtr, outputParamsPtr, sampleRate);
+
+        if (!m_isInitialized) {
+            Pa_Terminate();
+        }
+
+        return err == paFormatIsSupported;
+    }
+
+    bool AudioEngine::setInputDevice(int deviceIndex) {
+        bool needsInit = !m_isInitialized;
+        if (needsInit) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return false;
+            }
+        }
+
+        int deviceCount = Pa_GetDeviceCount();
+        if (deviceCount < 0 || deviceIndex < 0 || deviceIndex >= deviceCount) {
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            return false;
+        }
+
+        const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(deviceIndex);
+        if (!deviceInfo || deviceInfo->maxInputChannels < m_inputChannels) {
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            return false;
+        }
+
+        bool wasStreaming = m_isStream;
+        if (wasStreaming) {
+            stopStream();
+        }
+
+        bool wasInitialized = m_isInitialized;
+        if (wasInitialized) {
+            if (m_stream) {
+                Pa_CloseStream(m_stream);
+                m_stream = nullptr;
+            }
+            Pa_Terminate();
+            m_isInitialized = false;
+        }
+
+        m_inputDeviceIndex = deviceIndex;
+
+        if (needsInit) {
+            Pa_Terminate();
+        }
+
+        if (wasInitialized) {
+            InitializationStatus status = init();
+            if (status != INITIALIZED) {
+                m_inputDeviceIndex = std::nullopt;
+                return false;
+            }
+
+            if (wasStreaming) {
+                startStream();
+            }
+        }
+
+        return true;
+    }
+
+    bool AudioEngine::setOutputDevice(int deviceIndex) {
+        bool needsInit = !m_isInitialized;
+        if (needsInit) {
+            PaError err = Pa_Initialize();
+            if (err != paNoError) {
+                return false;
+            }
+        }
+
+        int deviceCount = Pa_GetDeviceCount();
+        if (deviceCount < 0 || deviceIndex < 0 || deviceIndex >= deviceCount) {
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            return false;
+        }
+
+        const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(deviceIndex);
+        if (!deviceInfo || deviceInfo->maxOutputChannels < m_outputChannels) {
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            return false;
+        }
+
+        bool wasStreaming = m_isStream;
+        if (wasStreaming) {
+            stopStream();
+        }
+
+        bool wasInitialized = m_isInitialized;
+        if (wasInitialized) {
+            if (m_stream) {
+                Pa_CloseStream(m_stream);
+                m_stream = nullptr;
+            }
+            Pa_Terminate();
+            m_isInitialized = false;
+        }
+
+        m_outputDeviceIndex = deviceIndex;
+
+        if (needsInit) {
+            Pa_Terminate();
+        }
+
+        if (wasInitialized) {
+            InitializationStatus status = init();
+            if (status != INITIALIZED) {
+                m_outputDeviceIndex = std::nullopt;
+                return false;
+            }
+
+            if (wasStreaming) {
+                startStream();
+            }
+        }
+
+        return true;
+    }
+
+    int AudioEngine::getCurrentInputDevice() const {
+        if (m_inputDeviceIndex.has_value()) {
+            return m_inputDeviceIndex.value();
+        }
+        
+        if (m_isInitialized) {
+            PaDeviceIndex device = Pa_GetDefaultInputDevice();
+            return (device == paNoDevice) ? -1 : static_cast<int>(device);
+        }
+        
+        return getDefaultInputDeviceIndex();
+    }
+
+    int AudioEngine::getCurrentOutputDevice() const {
+        if (m_outputDeviceIndex.has_value()) {
+            return m_outputDeviceIndex.value();
+        }
+        
+        if (m_isInitialized) {
+            PaDeviceIndex device = Pa_GetDefaultOutputDevice();
+            return (device == paNoDevice) ? -1 : static_cast<int>(device);
+        }
+        
+        return getDefaultOutputDeviceIndex();
     }
 }
