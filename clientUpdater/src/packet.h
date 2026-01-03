@@ -5,7 +5,7 @@
 #include <string>    
 #include <stdexcept>   
 
-namespace updater {
+namespace callifornia {
 
 class Packet {
 private:
@@ -41,7 +41,8 @@ private:
 
 private:
     PacketHeader m_header{};
-    std::vector<uint8_t> m_body{};
-};
+	std::vector<uint8_t> m_body{};
+	};
 
+	}
 }

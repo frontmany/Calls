@@ -1,34 +1,30 @@
-#include "clientUpdater.h"
+#include "updater.h"
 
-namespace updater {
+namespace callifornia {
+	namespace updater {
 
-ClientUpdater& ClientUpdater::get() {
-	static ClientUpdater s_instance;
-	return s_instance;
-}
-
-ClientUpdater::ClientUpdater()
+		Updater::Updater()
 	: m_networkController(
-		[this](UpdatesCheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_callbacksHandler->onUpdatesCheckResult(result); }); },
-		[this](double progress) {m_queue.push_back([this, progress]() {m_callbacksHandler->onLoadingProgress(progress); m_processingProgress = true; }); },
-		[this](bool emptyUpdate) {m_queue.push_back([this, emptyUpdate]() {m_state = State::AWAITING_UPDATES_CHECK; m_callbacksHandler->onUpdateLoaded(emptyUpdate); m_processingProgress = false; }); },
+		[this](UpdateCheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_eventListener->onUpdateCheckResult(result); }); },
+		[this](double progress) {m_queue.push_back([this, progress]() {m_eventListener->onLoadingProgress(progress); m_processingProgress = true; }); },
+		[this](bool emptyUpdate) {m_queue.push_back([this, emptyUpdate]() {m_state = State::AWAITING_UPDATES_CHECK; m_eventListener->onUpdateLoaded(emptyUpdate); m_processingProgress = false; }); },
 		[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK;});  },
-		[this]() {m_queue.push_back([this]() {m_callbacksHandler->onError(); }); })
+		[this]() {m_queue.push_back([this]() {m_eventListener->onNetworkError(); }); })
 {
 }
 
-ClientUpdater::~ClientUpdater() {
+Updater::~Updater() {
 	m_running = false;
 	if (m_queueProcessingThread.joinable()) {
 		m_queueProcessingThread.join();
 	}
 }
 
-void ClientUpdater::init(std::unique_ptr<CallbacksInterface>&& callbacksHandler) {
-	m_callbacksHandler = std::move(callbacksHandler);
+void Updater::init(std::shared_ptr<EventListener> eventListener) {
+	m_eventListener = eventListener;
 }
 
-bool ClientUpdater::connect(const std::string& host, const std::string& port) {
+bool Updater::connect(const std::string& host, const std::string& port) {
 	m_serverHost = host;
 	m_serverPort = port;
 
@@ -43,7 +39,7 @@ bool ClientUpdater::connect(const std::string& host, const std::string& port) {
 	return true;
 }
 
-void ClientUpdater::disconnect() {
+void Updater::disconnect() {
 	m_networkController.requestShutdown();
 	m_networkController.disconnect();
 	m_state = State::DISCONNECTED;
@@ -56,7 +52,7 @@ void ClientUpdater::disconnect() {
 	m_queue.clear();
 }
 
-void ClientUpdater::processQueue() {
+		void Updater::processQueue() {
 	while (m_running) {
 		if (m_queue.size() != 0) {
 			auto callback = m_queue.pop_front();
@@ -69,7 +65,7 @@ void ClientUpdater::processQueue() {
 	}
 }
 
-void ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
+void Updater::checkUpdates(const std::string& currentVersionNumber) {
 	m_checkUpdatesFuture = std::async(std::launch::async, [this, currentVersionNumber]() {
 		auto startTime = std::chrono::steady_clock::now();
 		auto timeout = std::chrono::seconds(5);
@@ -92,7 +88,7 @@ void ClientUpdater::checkUpdates(const std::string& currentVersionNumber) {
 	});
 }
 
-bool ClientUpdater::startUpdate(OperationSystemType type) {
+bool Updater::startUpdate(OperationSystemType type) {
 	if (m_state != State::AWAITING_START_UPDATE) return false;
 
 	nlohmann::json jsonObject;
@@ -120,31 +116,31 @@ bool ClientUpdater::startUpdate(OperationSystemType type) {
 	return true;
 }
 
-bool ClientUpdater::isConnected() {
+bool Updater::isConnected() {
 	return m_state != State::DISCONNECTED;
 }
 
-bool ClientUpdater::isAwaitingServerResponse() {
+bool Updater::isAwaitingServerResponse() {
 	return m_state == State::AWAITING_SERVER_RESPONSE;
 }
 
-bool ClientUpdater::isAwaitingCheckUpdatesFunctionCall() {
+bool Updater::isAwaitingCheckUpdatesFunctionCall() {
 	return m_state == State::AWAITING_UPDATES_CHECK;
 }
 
-bool ClientUpdater::isAwaitingStartUpdateFunctionCall() {
+bool Updater::isAwaitingStartUpdateFunctionCall() {
 	return m_state == State::AWAITING_START_UPDATE;
 }
 
-const::std::string& ClientUpdater::getServerHost() {
+const std::string& Updater::getServerHost() {
 	return m_serverHost;
 }
 
-const::std::string& ClientUpdater::getServerPort() {
+const std::string& Updater::getServerPort() {
 	return m_serverPort;
 }
 
-std::string ClientUpdater::normalizePath(const std::filesystem::path& path) {
+std::string Updater::normalizePath(const std::filesystem::path& path) {
 	std::string normalized = path.generic_string();
 
 	if (normalized.find("./") == 0) {
@@ -154,7 +150,7 @@ std::string ClientUpdater::normalizePath(const std::filesystem::path& path) {
 	return normalized;
 }
 
-std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFilePathsWithHashes() {
+std::vector<std::pair<std::filesystem::path, std::string>> Updater::getFilePathsWithHashes() {
 	std::vector<std::pair<std::filesystem::path, std::string>> result;
 
 	try {
@@ -186,10 +182,11 @@ std::vector<std::pair<std::filesystem::path, std::string>> ClientUpdater::getFil
 		}
 	}
 	catch (const std::filesystem::filesystem_error& e) {
-		m_callbacksHandler->onError();
+		m_eventListener->onNetworkError();
 	}
 
 	return result;
 }
 
+	}
 }

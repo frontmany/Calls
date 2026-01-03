@@ -1,7 +1,8 @@
 #include "packet.h"
 #include <cstring>
 
-namespace updater {
+namespace callifornia {
+	namespace updater {
 
 Packet::Packet() {
     clear();
@@ -96,7 +97,8 @@ uint32_t Packet::size() const {
 }
 
 size_t Packet::sizeOfHeader() {
-    return sizeof(PacketHeader);
+	return sizeof(PacketHeader);
 }
 
+	}
 }

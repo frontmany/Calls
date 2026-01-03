@@ -1,11 +1,13 @@
 #pragma once
 
-namespace updater {
+namespace callifornia {
+	namespace updater {
 
-enum class UpdatesCheckResult : int {
-	UPDATE_NOT_NEEDED,
-	REQUIRED_UPDATE,
-	POSSIBLE_UPDATE
-};
+		enum class UpdateCheckResult : int {
+			update_not_needed,
+			required_update,
+			possible_update
+		};
 
+	}
 }

@@ -5,10 +5,11 @@
 
 #include "json.hpp"
 
-namespace updater {
+namespace callifornia {
+	namespace updater {
 
 NetworkController::NetworkController(
-	std::function<void(UpdatesCheckResult)>&& onCheckResult,
+	std::function<void(UpdateCheckResult)>&& onCheckResult,
 	std::function<void(double)>&& onLoadingProgress,
 	std::function<void(bool)>&& onAllFilesLoaded,
 	std::function<void()>&& onConnected,
@@ -187,12 +188,12 @@ void NetworkController::readCheckResult() {
 				}
 			}
 			else {
-				if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::POSSIBLE_UPDATE))
-					m_onCheckResult(UpdatesCheckResult::POSSIBLE_UPDATE);
-				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::REQUIRED_UPDATE))
-					m_onCheckResult(UpdatesCheckResult::REQUIRED_UPDATE);
-				else if (m_metadata.header().type == static_cast<int>(UpdatesCheckResult::UPDATE_NOT_NEEDED))
-					m_onCheckResult(UpdatesCheckResult::UPDATE_NOT_NEEDED);
+				if (m_metadata.header().type == static_cast<int>(UpdateCheckResult::possible_update))
+					m_onCheckResult(UpdateCheckResult::possible_update);
+				else if (m_metadata.header().type == static_cast<int>(UpdateCheckResult::required_update))
+					m_onCheckResult(UpdateCheckResult::required_update);
+				else if (m_metadata.header().type == static_cast<int>(UpdateCheckResult::update_not_needed))
+					m_onCheckResult(UpdateCheckResult::update_not_needed);
 				else
 					m_onError();
 
@@ -479,6 +480,6 @@ void NetworkController::moveConfigFromTemp() {
 			return;
 		}
 	}
-}
+	}
 
 }

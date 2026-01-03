@@ -215,7 +215,7 @@ def _scenario_audio_test(client, handler):
 def run_server_in_process(port, stop_event):
     """Runs server in a separate process"""
     try:
-        server = callsServerPy.CallsServer(port)
+        server = callsServerPy.Server(port)
         
         def server_thread():
             server.run()

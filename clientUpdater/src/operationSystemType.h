@@ -1,11 +1,13 @@
 #pragma once
 
-namespace updater {
+namespace callifornia {
+	namespace updater {
 
-enum class OperationSystemType : int {
-	WINDOWS = 0,
-	LINUX,
-	MAC
-};
+		enum class OperationSystemType : int {
+			WINDOWS = 0,
+			LINUX,
+			MAC
+		};
 
+	}
 }

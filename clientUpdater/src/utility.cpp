@@ -4,7 +4,8 @@
 #include <sstream>
 #include <iomanip>
 
-namespace updater {
+namespace callifornia {
+	namespace updater {
 
 std::string calculateFileHash(std::filesystem::path filepath) {
     std::ifstream file(filepath, std::ios::binary);
@@ -112,4 +113,5 @@ uint64_t scramble(uint64_t inputNumber) {
 	return out ^ 0xC0DEFACE12345678;
 }
 
+	}
 }

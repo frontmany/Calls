@@ -1,6 +1,6 @@
 #pragma once
 
-namespace updater {
+namespace callifornia {
 
 static constexpr const char* RELATIVE_FILE_PATH = "RelativeFilePath";
 static constexpr const char* FILES = "files";
@@ -12,4 +12,5 @@ static constexpr const char* IS_ACCEPTED = "isAccepted";
 static constexpr const char* FILES_TO_DOWNLOAD = "filesToDownload";
 static constexpr const char* FILES_TO_DELETE = "filesToDelete";
 
+	}
 }
