@@ -4,7 +4,7 @@
 #include <vector>
 #include "utilities/crypto.h"
 
-namespace callifornia {
+namespace core {
 
     class PacketFactory {
     public:

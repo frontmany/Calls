@@ -10,7 +10,7 @@
 #include "callStateManager.h"
 #include "incomingCall.h"
 
-namespace callifornia
+namespace core
 {
     class ClientStateManager {
     public:

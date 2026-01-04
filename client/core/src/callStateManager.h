@@ -9,7 +9,7 @@
 #include "outgoingCall.h"
 #include "utilities/crypto.h"
 
-namespace callifornia
+namespace core
 {
     class CallStateManager {
     public:

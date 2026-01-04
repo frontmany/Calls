@@ -3,9 +3,9 @@
 
 #include "json.hpp"
 
-using namespace utilities;
+using namespace core::utilities;
 
-namespace callifornia
+namespace core
 {
     namespace 
     {

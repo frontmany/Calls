@@ -1,6 +1,6 @@
 #pragma once 
 
-namespace callifornia
+namespace core
 {
     static constexpr const char* UID = "UID";
     static constexpr const char* RESULT = "result";

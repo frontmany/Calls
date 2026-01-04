@@ -1,12 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
 set(CMAKE_CXX_STANDARD 20)
-project(server_updater)
+project(calliforniaServerUpdater)
 
 if(NOT DEFINED ROOT_DIR)
     get_filename_component(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 endif()
 
-file(GLOB SOURCES "src/*.cpp" "src/*.h")
+file(GLOB SOURCES 
+    "src/*.cpp" 
+    "src/*.h"
+    "src/network/*.cpp"
+    "src/network/*.h"
+    "src/utilities/*.cpp"
+    "src/utilities/*.h"
+)
 source_group("Source Files" FILES ${SOURCES})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -41,7 +48,8 @@ else()
 endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ../vendor/asio/asio/include
-    ../vendor/json/include
-    ../vendor/spdlog/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${ROOT_DIR}/vendor/asio/asio/include
+    ${ROOT_DIR}/vendor/json/include
+    ${ROOT_DIR}/vendor/spdlog/include
 )

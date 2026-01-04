@@ -1,6 +1,6 @@
 #include "outgoingCall.h"
 
-namespace callifornia
+namespace core
 {
     OutgoingCall::OutgoingCall(OutgoingCall&& other) noexcept
         : m_nickname(std::move(other.m_nickname)),
@@ -16,7 +16,7 @@ namespace callifornia
         return m_nickname;
     }
 
-    const utilities::tic::SingleShotTimer& OutgoingCall::getTimer() const {
+    const tic::SingleShotTimer& OutgoingCall::getTimer() const {
         return m_timer;
     }
 

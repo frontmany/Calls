@@ -5,7 +5,7 @@
 #include <QSharedMemory>
 #include <QJsonObject>
 
-#include "logger.h"
+#include "utilities/logger.h"
 
 
 static void makeRemainingReplacements() {

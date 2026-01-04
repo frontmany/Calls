@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <cctype>
 
+using namespace serverUpdater;
+
+namespace serverUpdater
+{
 Version::Version(const std::string& versionAsString)
     : m_version(versionAsString)
 {
@@ -157,4 +161,5 @@ bool Version::operator<=(const std::string& other) const
 bool Version::operator>=(const std::string& other) const
 {
     return *this >= Version(other);
+}
 }

@@ -4,24 +4,27 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "taskManager.h"
 #include "packetType.h"
 #include "clientStateManager.h"
 #include "json.hpp"
 
-namespace audio
+namespace core
 {
-    class AudioEngine;
+    namespace audio
+    {
+        class AudioEngine;
+    }
 }
 
-namespace network
+namespace core
 {
-    class NetworkController;
-}
-
-namespace callifornia
-{
+    namespace network
+    {
+        class NetworkController;
+    }
     class ClientStateManager;
     class KeyManager;
 
@@ -32,8 +35,8 @@ namespace callifornia
         PacketProcessor(ClientStateManager& stateManager, 
             KeyManager& keysManager,
             TaskManager<long long, std::milli>& taskManager,
-            network::NetworkController& networkController,
-            audio::AudioEngine& audioEngine,
+            core::network::NetworkController& networkController,
+            core::audio::AudioEngine& audioEngine,
             std::shared_ptr<EventListener> eventListener
         );
 
@@ -63,8 +66,9 @@ namespace callifornia
         void sendConfirmation(const std::string& userNickname, const std::string& uid);
 
     private:
-        network::NetworkController& m_networkController;
-        audio::AudioEngine& m_audioEngine;
+        mutable std::mutex m_mutex;
+        core::network::NetworkController& m_networkController;
+        core::audio::AudioEngine& m_audioEngine;
         ClientStateManager& m_stateManager;
         TaskManager<long long, std::milli>& m_taskManager;
         KeyManager& m_keysManager;

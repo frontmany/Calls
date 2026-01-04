@@ -1,6 +1,6 @@
 #include "callStateManager.h"
 
-namespace callifornia
+namespace core
 {
     bool CallStateManager::isOutgoingCall() const {
         return m_outgoingCall.has_value();

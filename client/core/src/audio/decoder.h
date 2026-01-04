@@ -6,9 +6,11 @@
 #include <mutex>
 #include <cstdint>
 
-namespace audio 
+namespace core
 {
-    class Decoder {
+    namespace audio 
+    {
+        class Decoder {
     public:
         struct Config {
             int sampleRate = 48000;
@@ -30,4 +32,5 @@ namespace audio
         bool m_initialized = false;
         mutable std::mutex m_mutex;
     };
+    }
 }

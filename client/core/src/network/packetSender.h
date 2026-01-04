@@ -11,8 +11,10 @@
 
 #include <asio.hpp>
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     class PacketSender
     {
     public:
@@ -33,7 +35,7 @@ namespace network
         void writeUint64(std::vector<unsigned char>& buffer, uint64_t value);
 
     private:
-        utilities::SafeQueue<Packet> m_packetQueue;
+        core::utilities::SafeQueue<Packet> m_packetQueue;
         std::atomic<bool> m_isSending;
 
         asio::ip::udp::endpoint m_serverEndpoint;
@@ -46,4 +48,5 @@ namespace network
         const std::size_t m_maxPayloadSize = 1300;
         const std::size_t m_headerSize = 18;
     };
+    }
 }

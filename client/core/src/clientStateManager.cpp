@@ -1,6 +1,6 @@
 #include "clientStateManager.h"
 
-using namespace callifornia;
+using namespace core;
 
 ClientStateManager::ClientStateManager()
     : m_connectionDown(false),

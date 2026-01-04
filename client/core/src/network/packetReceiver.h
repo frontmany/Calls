@@ -13,8 +13,10 @@
 #include "packetType.h"
 #include "utilities/safeQueue.h"
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     class PacketReceiver {
     private:
         struct PendingPacket {
@@ -60,11 +62,12 @@ namespace network
         std::atomic<bool> m_running;
         std::mutex m_stateMutex;
         PendingPacket m_pendingPacket;
-        utilities::SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
+        core::utilities::SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
         std::thread m_processingThread;
         const std::size_t m_headerSize = 18;
         std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
         std::function<void()> m_onErrorCallback;
         std::function<void(uint32_t)> m_onPingReceived;
     };
+    }
 }

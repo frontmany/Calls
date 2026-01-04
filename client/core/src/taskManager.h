@@ -8,9 +8,9 @@
 #include <mutex>
 #include <functional>
 
-using namespace utilities;
+using namespace core::utilities;
 
-namespace callifornia
+namespace core
 {
 	template <typename Rep, typename Period>
 	class TaskManager
@@ -83,6 +83,6 @@ namespace callifornia
 
 	private:
 		mutable std::mutex m_mutex;
-		std::unordered_map<std::string, callifornia::Task<Rep, Period>> m_tasks;
+		std::unordered_map<std::string, core::Task<Rep, Period>> m_tasks;
 	};
 }

@@ -1,6 +1,6 @@
 #include "keyManager.h"
 
-namespace callifornia {
+namespace core {
     KeyManager::~KeyManager()
     {
         if (m_future.valid()) {
@@ -15,7 +15,7 @@ namespace callifornia {
 
         std::lock_guard<std::mutex> lock(m_mutex);
         m_future = std::async(std::launch::async, [this]() {
-            utilities::crypto::generateRSAKeyPair(m_privateKey, m_publicKey);
+            core::utilities::crypto::generateRSAKeyPair(m_privateKey, m_publicKey);
             m_generating.store(false);
             m_keysReady.store(true);
         });

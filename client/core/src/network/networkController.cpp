@@ -8,7 +8,8 @@
 #include "packet.h"
 #include "packetType.h"
 
-namespace network {
+namespace core {
+    namespace network {
     NetworkController::NetworkController()
         : m_socket(m_context),
         m_workGuard(asio::make_work_guard(m_context)),
@@ -235,5 +236,6 @@ namespace network {
         if (m_pingController) {
             m_pingController->setConnectionError();
         }
+    }
     }
 }

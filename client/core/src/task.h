@@ -5,11 +5,11 @@
 #include <chrono>
 #include <optional>
 
-#include "utilities/timer.h"
+#include "ticTimer.h"
 #include "utilities/logger.h"
 #include "json.hpp"
 
-namespace callifornia 
+namespace core 
 {
 	template <typename Rep, typename Period>
 	class Task {
@@ -84,7 +84,7 @@ namespace callifornia
 		int m_attemptsCount = 0;
 		int m_maxAttempts;
 		std::chrono::duration<Rep, Period> m_period;
-		utilities::tic::RapidTimer m_timer;
+		tic::RapidTimer m_timer;
 		std::function<void()> m_attempt;
 		std::function<void(std::optional<nlohmann::json>)> m_onFinishedSuccessfully;
 		std::function<void(std::optional<nlohmann::json>)> m_onFailed;

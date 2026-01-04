@@ -2,9 +2,9 @@
 
 #include <string>
 #include <functional>
-#include "utilities/timer.h"
+#include "ticTimer.h"
 
-namespace callifornia
+namespace core
 {
     class OutgoingCall
     {
@@ -22,11 +22,11 @@ namespace callifornia
         ~OutgoingCall();
 
         const std::string& getNickname() const;
-        const utilities::tic::SingleShotTimer& getTimer() const;
+        const tic::SingleShotTimer& getTimer() const;
         void stop();
 
     private:
         std::string m_nickname;
-        utilities::tic::SingleShotTimer m_timer;
+        tic::SingleShotTimer m_timer;
     };
 }

@@ -4,7 +4,7 @@
 #include <vector>
 #include <system_error>
 
-namespace callifornia 
+namespace core 
 {
     class EventListener {
     public:

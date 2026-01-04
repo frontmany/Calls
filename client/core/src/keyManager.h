@@ -6,7 +6,7 @@
 
 #include "utilities/crypto.h"
 
-namespace callifornia 
+namespace core 
 {
     class KeyManager {
     public:

@@ -12,15 +12,15 @@
 #include "keyManager.h"
 #include "eventListener.h"
 
-using namespace callifornia;
-using namespace utilities;
+using namespace core;
+using namespace core::utilities;
 using namespace std::chrono_literals;
 
 PacketProcessor::PacketProcessor(ClientStateManager& stateManager,
     KeyManager& keyManager,
     TaskManager<long long, std::milli>& taskManager,
-    network::NetworkController& networkController,
-    audio::AudioEngine& audioEngine,
+    core::network::NetworkController& networkController,
+    core::audio::AudioEngine& audioEngine,
     std::shared_ptr<EventListener> eventListener)
     : m_stateManager(stateManager),
     m_keysManager(keyManager),
@@ -59,10 +59,18 @@ void PacketProcessor::processPacket(const unsigned char* data, int length, Packe
         onCamera(data, length);
     }
     else {
-        if (m_packetHandlers.contains(type)) {
+        std::function<void(const nlohmann::json&)> handler;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_packetHandlers.contains(type)) {
+                handler = m_packetHandlers[type];
+            }
+        }
+
+        if (handler) {
             try {
                 nlohmann::json jsonObject = nlohmann::json::parse(data, data + length);
-                m_packetHandlers[type](jsonObject);
+                handler(jsonObject);
             }
             catch (const nlohmann::json::exception& e) {
                 LOG_ERROR("Failed to parse JSON packet: {}", e.what());

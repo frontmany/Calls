@@ -3,8 +3,10 @@
 #include <string>
 #include <vector>
 
-#include "jsonTypes.h"
+#include "jsonType.h"
 
+namespace serverUpdater
+{
 class Version {
 public:
     explicit Version(const std::string& versionAsString = VERSION_LOST);
@@ -32,3 +34,4 @@ private:
 private:
     std::string m_version;
 };
+}

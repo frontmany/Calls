@@ -1,8 +1,10 @@
 #include "pingController.h"
 #include "utilities/logger.h"
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     PingController::PingController(std::function<void()> sendPing,
         std::function<void()> onConnectionDown,
         std::function<void()> onConnectionRestored)
@@ -113,6 +115,7 @@ namespace network
                 m_connectionError = true;
             }
         }
+    }
     }
 }
 

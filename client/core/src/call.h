@@ -5,7 +5,7 @@
 #include "utilities/crypto.h"
 #include "incomingCall.h"
 
-namespace callifornia
+namespace core
 {
 	class Call {
 	public:

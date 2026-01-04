@@ -2,8 +2,10 @@
 #include <iostream>
 #include <cstring>
 
-namespace audio 
+namespace core
 {
+    namespace audio 
+    {
     Decoder::Decoder(const Config& config)
         : m_config(config)
     {
@@ -42,5 +44,6 @@ namespace audio
         if (!m_initialized || !m_decoder) return OPUS_INVALID_STATE;
 
         return opus_decode_float(m_decoder, data, dataLength, pcm, frameSize, decodeFec);
+    }
     }
 }

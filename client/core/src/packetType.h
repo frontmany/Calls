@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <string>
 
-namespace callifornia {
+namespace core {
     enum class PacketType : uint32_t {
         // only send
         AUTHORIZATION = 2,

@@ -8,10 +8,12 @@
 #include <memory>
 #include <functional>
 
-namespace utilities 
+namespace core
 {
-    template<typename T>
-    class SafeQueue {
+    namespace utilities 
+    {
+        template<typename T>
+        class SafeQueue {
     public:
         SafeQueue() = default;
         SafeQueue(const SafeQueue&) = delete;
@@ -176,4 +178,5 @@ namespace utilities
         std::queue<T> m_queue;
         std::condition_variable m_cond;
     };
+    }
 }

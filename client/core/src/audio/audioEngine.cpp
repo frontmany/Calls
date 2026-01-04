@@ -4,7 +4,8 @@
 #include <cstring>
 #include <string>
 
-namespace audio {
+namespace core {
+    namespace audio {
     AudioEngine::AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> encodedInputCallback, Encoder::Config encoderConfig, Decoder::Config decoderConfig)
         : m_sampleRate(sampleRate),
         m_framesPerBuffer(framesPerBuffer),
@@ -722,5 +723,6 @@ namespace audio {
         }
         
         return getDefaultOutputDeviceIndex();
+    }
     }
 }

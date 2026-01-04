@@ -1,9 +1,9 @@
 #include "call.h"
 #include "incomingCall.h"
 
-using namespace utilities;
+using namespace core::utilities;
 
-namespace callifornia
+namespace core
 {
 	Call::Call(const std::string& nickname,
 		const CryptoPP::RSA::PublicKey& publicKey,

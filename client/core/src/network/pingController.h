@@ -5,8 +5,10 @@
 #include <functional>
 #include <thread>
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     class PingController {
     public:
         PingController(std::function<void()> sendPing,
@@ -33,5 +35,6 @@ namespace network
         std::function<void()> m_onConnectionDown;
         std::function<void()> m_onConnectionRestored;
     };
+    }
 }
 

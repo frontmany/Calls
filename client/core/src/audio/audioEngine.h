@@ -15,8 +15,10 @@
 
 #include <portaudio.h>
 
-namespace audio 
+namespace core
 {
+    namespace audio 
+    {
     struct DeviceInfo {
         int deviceIndex;
         std::string name;
@@ -118,4 +120,5 @@ namespace audio
         std::vector<unsigned char> m_encodedInputBuffer;
         std::vector<float> m_decodedOutputBuffer;
     };
+    }
 }

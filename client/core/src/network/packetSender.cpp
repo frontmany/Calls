@@ -4,8 +4,10 @@
 
 #include "utilities/logger.h"
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     PacketSender::PacketSender()
         : m_isSending(false), m_currentDatagramIndex(0)
     {
@@ -178,5 +180,6 @@ namespace network
         }
 
         return packets;
+    }
     }
 }

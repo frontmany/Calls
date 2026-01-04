@@ -21,7 +21,7 @@
 #include "audio/audioEngine.h"
 #include "json.hpp"
 
-namespace callifornia
+namespace core
 {
     class Client {
     public:
@@ -90,8 +90,8 @@ namespace callifornia
         TaskManager<long long, std::milli> m_taskManager;
         ClientStateManager m_stateManager;
         KeyManager m_keyManager;
-        network::NetworkController m_networkController;
-        audio::AudioEngine m_audioEngine;
+        core::network::NetworkController m_networkController;
+        core::audio::AudioEngine m_audioEngine;
         std::shared_ptr<EventListener> m_eventListener;
         PacketProcessor m_packetProcessor;
     };

@@ -7,10 +7,10 @@
 
 #include "utilities/logger.h"
 
-using namespace utilities;
+using namespace core::utilities;
 using namespace std::chrono_literals;
 
-namespace callifornia
+namespace core
 {
     Client::Client()
         : m_packetProcessor(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener)

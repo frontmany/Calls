@@ -6,9 +6,9 @@
 #include <functional>
 
 #include "utilities/crypto.h"
-#include "utilities/timer.h"
+#include "ticTimer.h"
 
-namespace callifornia 
+namespace core 
 {
 	class IncomingCall {
 	public:
@@ -32,12 +32,12 @@ namespace callifornia
 		const std::string& getNickname() const;
 		const CryptoPP::RSA::PublicKey& getPublicKey() const;
 		const CryptoPP::SecByteBlock& getCallKey() const;
-		const utilities::tic::SingleShotTimer& getTimer() const;
+		const tic::SingleShotTimer& getTimer() const;
 
 	private:
 		std::string m_nickname;
 		CryptoPP::RSA::PublicKey m_publicKey;
 		CryptoPP::SecByteBlock m_callKey;
-		utilities::tic::SingleShotTimer m_timer;
+		tic::SingleShotTimer m_timer;
 	};
 } 

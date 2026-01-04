@@ -1,22 +1,27 @@
 #include <filesystem>
-#include <regex>
 
-#include "connection.h"
-#include "packet.h"
-#include "networkController.h"
+#include "network/networkController.h"
+#include "network/connection.h"
+#include "network/packet.h"
+
 #include "operationSystemType.h"
-#include "jsonTypes.h"
+#include "jsonType.h"
 #include "checkResult.h"
 #include "version.h"
-#include "logger.h"
-#include "utility.h"
+#include "utilities/logger.h"
+#include "utilities/utilities.h"
 
 #include "json.hpp"
+
+using namespace serverUpdater;
+using namespace serverUpdater::utilities;
 
 constexpr const char* MAJOR_UPDATE = "major";
 constexpr const char* MINOR_UPDATE = "minor";
 const std::filesystem::path versionsDirectory = "versions";
 
+namespace serverUpdater
+{
 std::pair<std::filesystem::path, std::string> findLatestVersion()
 {
     std::string latestVersion;
@@ -228,7 +233,7 @@ void onUpdateAccepted(ConnectionPtr connection, Packet&& packet)
             if (entry.is_regular_file()) {
                 std::filesystem::path relativePath = std::filesystem::relative(entry.path(), osSpecificPath);
                 
-                std::string fileHash = calculateFileHash(entry.path());
+                std::string fileHash = utilities::calculateFileHash(entry.path());
                 newVersionFiles[relativePath] = fileHash;
             }
         }
@@ -320,6 +325,7 @@ void runServerUpdater()
 
     networkController.start();
 }
+}
 
 int main()
 {
@@ -329,7 +335,7 @@ int main()
     LOG_INFO("Version directory: {}", versionsDirectory.string());
     
     try {
-        runServerUpdater();
+        serverUpdater::runServerUpdater();
     }
     catch (const std::exception& e) {
         LOG_ERROR("Fatal error: {}", e.what());

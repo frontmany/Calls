@@ -5,9 +5,11 @@
 #include <mutex>
 #include <cstdint>
 
-namespace audio 
+namespace core
 {
-    class Encoder {
+    namespace audio 
+    {
+        class Encoder {
     public:
         enum class EncoderMode {
             VOIP = OPUS_APPLICATION_VOIP,
@@ -39,4 +41,5 @@ namespace audio
         bool m_initialized = false;
         mutable std::mutex m_mutex;
     };
+    }
 }

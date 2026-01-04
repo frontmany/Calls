@@ -8,10 +8,12 @@
 #include "osrng.h"
 #include "base64.h"  
 
-namespace utilities 
+namespace core
 {
-    namespace crypto
+    namespace utilities 
     {
+        namespace crypto
+        {
         void generateRSAKeyPair(CryptoPP::RSA::PrivateKey& privateKey, CryptoPP::RSA::PublicKey& publicKey);
         std::string RSAEncryptAESKey(const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& data);
         CryptoPP::SecByteBlock RSADecryptAESKey(const CryptoPP::RSA::PrivateKey& privateKey, const std::string& base64Cipher);
@@ -29,5 +31,6 @@ namespace utilities
 
         std::string calculateHash(const std::string& text);
         std::string generateUID();
+        }
     }
 }

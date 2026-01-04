@@ -2,7 +2,7 @@
 #include <system_error>
 #include <string>
 
-namespace callifornia
+namespace core
 {
     enum class ErrorCode {
         network_error,
@@ -49,5 +49,5 @@ namespace callifornia
 namespace std
 {
     template<>
-    struct is_error_code_enum<callifornia::ErrorCode> : true_type {};
+    struct is_error_code_enum<core::ErrorCode> : true_type {};
 }

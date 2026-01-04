@@ -6,8 +6,10 @@
 
 #include "utilities/logger.h"
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     PacketReceiver::PacketReceiver()
         : m_running(false) {
     }
@@ -314,5 +316,6 @@ namespace network
         if (m_onErrorCallback) {
             m_onErrorCallback();
         }
+    }
     }
 }

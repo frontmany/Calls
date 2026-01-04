@@ -7,8 +7,10 @@
 #include <iostream>
 
 
-namespace utilities::log
+namespace core
 {
+    namespace utilities::log
+    {
     namespace details
     {
         inline std::shared_ptr<spdlog::logger>& get_logger_instance() noexcept
@@ -99,76 +101,47 @@ namespace utilities::log
             details::get_logger_instance().reset();
         }
     }
+    }
 }
 
 #define LOG_TRACE(...) \
     do { \
-        if (auto logger = utilities::log::get()) { \
+        if (auto logger = core::utilities::log::get()) { \
             logger->trace(__VA_ARGS__); \
         } \
     } while(0)
 
 #define LOG_DEBUG(...) \
     do { \
-        if (auto logger = utilities::log::get()) { \
+        if (auto logger = core::utilities::log::get()) { \
             logger->debug(__VA_ARGS__); \
         } \
     } while(0)
 
 #define LOG_INFO(...) \
     do { \
-        if (auto logger = utilities::log::get()) { \
+        if (auto logger = core::utilities::log::get()) { \
             logger->info(__VA_ARGS__); \
         } \
     } while(0)
 
 #define LOG_WARN(...) \
     do { \
-        if (auto logger = utilities::log::get()) { \
+        if (auto logger = core::utilities::log::get()) { \
             logger->warn(__VA_ARGS__); \
         } \
     } while(0)
 
 #define LOG_ERROR(...) \
     do { \
-        if (auto logger = utilities::log::get()) { \
+        if (auto logger = core::utilities::log::get()) { \
             logger->error(__VA_ARGS__); \
         } \
     } while(0)
 
 #define LOG_CRITICAL(...) \
     do { \
-        if (auto logger = utilities::log::get()) { \
+        if (auto logger = core::utilities::log::get()) { \
             logger->critical(__VA_ARGS__); \
         } \
     } while(0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

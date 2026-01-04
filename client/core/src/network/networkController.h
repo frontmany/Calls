@@ -11,8 +11,10 @@
 
 #include "asio.hpp"
 
-namespace network 
+namespace core
 {
+    namespace network 
+    {
     class PingController;
 
     class NetworkController {
@@ -58,4 +60,5 @@ namespace network
         std::function<void()> m_onConnectionRestored;
     };
 
+    }
 }
