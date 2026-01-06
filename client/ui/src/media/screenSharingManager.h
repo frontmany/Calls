@@ -4,6 +4,7 @@
 #include <QPixmap>
 #include <vector>
 #include <QStatusBar>
+#include <memory>
 
 #include "client.h"
 #include "widgets/screen.h"
@@ -18,11 +19,9 @@ class ScreenSharingManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit ScreenSharingManager(callifornia::Client* client, QObject* parent = nullptr);
+    explicit ScreenSharingManager(std::shared_ptr<callifornia::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent = nullptr);
     
-    void setControllers(ScreenCaptureController* screenController, DialogsController* dialogsController);
     void setWidgets(CallWidget* callWidget, QStatusBar* statusBar);
-    void setCameraCaptureController(CameraCaptureController* cameraController);
 
     void stopLocalScreenCapture();
 
@@ -44,7 +43,7 @@ signals:
 private:
     void showTransientStatusMessage(const QString& message, int durationMs);
 
-    callifornia::Client* m_client = nullptr;
+    std::shared_ptr<callifornia::Client> m_client = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
     CallWidget* m_callWidget = nullptr;

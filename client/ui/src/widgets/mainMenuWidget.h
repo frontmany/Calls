@@ -71,7 +71,10 @@ class MainMenuWidget : public QWidget {
 public:
     MainMenuWidget(QWidget* parent = nullptr);
     void setNickname(const QString& nickname);
-    void setState(callifornia::State state);
+    void setStatusLabelOnline();
+    void setStatusLabelCalling();
+    void setStatusLabelBusy();
+    void setStatusLabelOffline();
     void addIncomingCall(const QString& friendNickname, int remainingTime = 32);
     void removeIncomingCall(const QString& friendNickname);
     void clearIncomingCalls();

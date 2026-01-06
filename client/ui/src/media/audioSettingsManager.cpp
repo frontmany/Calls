@@ -2,7 +2,7 @@
 #include "managers/configManager.h"
 #include "client.h"
 
-AudioSettingsManager::AudioSettingsManager(callifornia::Client* client, ConfigManager* configManager, QObject* parent)
+AudioSettingsManager::AudioSettingsManager(std::shared_ptr<callifornia::Client> client, ConfigManager* configManager, QObject* parent)
     : QObject(parent)
     , m_client(client)
     , m_configManager(configManager)

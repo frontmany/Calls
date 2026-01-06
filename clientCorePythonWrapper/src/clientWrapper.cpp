@@ -3,7 +3,7 @@
 #include <pybind11/stl.h>
 #include <system_error>
 
-#include "client.h"
+#include "core.h"
 #include "eventListener.h"
 #include "errorCode.h"
 #include "network/networkController.h"
@@ -203,7 +203,7 @@ PYBIND11_MODULE(callsClientPy, m) {
     // Client class
     py::class_<core::Client>(m, "Client")
         .def(py::init<>())
-        .def("init", &core::Client::init,
+        .def("init", &core::Client::start,
             "Initialize calls client",
             py::arg("host"), py::arg("port"), py::arg("event_listener"))
         .def("refresh_audio_devices", &core::Client::refreshAudioDevices,

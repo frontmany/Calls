@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <memory>
 
 #include "client.h"
 #include "updater.h"
@@ -18,10 +19,9 @@ class NetworkErrorHandler : public QObject {
     Q_OBJECT
 
 public:
-    explicit NetworkErrorHandler(callifornia::Client* client, callifornia::updater::Updater* updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent = nullptr);
+    explicit NetworkErrorHandler(std::shared_ptr<callifornia::Client> client, std::shared_ptr<callifornia::updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
-    void setAudioManager(AudioEffectsManager* audioManager);
 
 public slots:
     void onClientNetworkError();
@@ -29,8 +29,8 @@ public slots:
     void onConnectionRestored();
 
 private:
-    callifornia::Client* m_client = nullptr;
-    callifornia::updater::Updater* m_updater = nullptr;
+    std::shared_ptr<callifornia::Client> m_client = nullptr;
+    std::shared_ptr<callifornia::updater::Client> m_updater = nullptr;
     NavigationController* m_navigationController = nullptr;
     UpdateManager* m_updateManager = nullptr;
     ConfigManager* m_configManager = nullptr;

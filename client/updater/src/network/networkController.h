@@ -11,80 +11,69 @@
 
 #include "../updateCheckResult.h"
 #include "packet.h"
+#include "packetReceiver.h"
+#include "packetSender.h"
+#include "fileReceiver.h"
+#include "connectionResolver.h"
+#include "updateSession.h"
+#include "../utilities/safeQueue.h"
 
 #include <asio.hpp>
 #include <asio/ts/buffer.hpp>
 #include <asio/ts/internet.hpp>
+#include <optional>
 
 namespace updater
 {
 	namespace network
 	{
-		class NetworkController {
-		private:
-			struct FileMetadata {
-				std::filesystem::path relativeFilePath;
-				std::string fileHash;
-				int expectedChunksCount;
-				uint64_t lastChunkSize;
-			};
-
+		class NetworkController
+		{
 		public:
-			NetworkController(std::function<void(UpdateCheckResult)>&& onCheckResult, std::function<void(double)>&& onLoadingProgress, std::function<void(bool)>&& onAllFilesLoaded, std::function<void()>&& onConnected, std::function<void()>&& onError);
+			NetworkController(std::function<void(UpdateCheckResult)>&& onCheckResult,
+				std::function<void(double)>&& onLoadingProgress,
+				std::function<void(bool)>&& onAllFilesLoaded,
+				std::function<void()>&& onConnectError,
+				std::function<void()>&& onNetworkError,
+				std::function<std::vector<FileMetadata>(Packet&)>&& onMetadata
+			);
+
+			~NetworkController();
+
 			void sendPacket(const Packet& packet);
 			void connect(const std::string& host, const std::string& port);
 			void disconnect();
-			void requestShutdown();
+			bool isConnected() const;
 
 		private:
-			void writeHeader(const Packet& packet);
-			void writeBody(const Packet& packet);
-
-			void readChunk();
-			void readHandshake();
-			void readHandshakeConfirmation();
-			void readCheckResult();
-			void readMetadataHeader();
-			void readMetadataBody();
-			void writeHandshake();
-
-			void parseMetadata();
-			void createConnection(const std::string& host, const uint16_t port);
+			void processPacketQueue();
+			void handleCheckResultPacket(Packet&& packet);
+			void handleMetadataPacket(Packet&& packet);
+			void handleFileDownloaded();
 			void reset(bool stopContext);
-			void finalizeReceiving();
-			void openFile();
-			void deleteTempDirectory();
-			void moveConfigFromTemp();
-			bool shouldIgnoreError(const std::error_code& ec) const;
+			void initializeAfterHandshake();
 
 		private:
-			static constexpr int c_chunkSize = 8192;
-
-			uint64_t m_handshakeOut = 0;
-			uint64_t m_handshakeIn = 0;
-			uint64_t m_handshakeConfirmation = 0;
-
-			int m_currentChunksCount = 0;
-			uint64_t m_bytesReceived = 0;
-			uint64_t m_totalBytes = 0;
-
-			Packet m_metadata;
-			std::queue<FileMetadata> m_expectedFiles;
-			std::vector<std::filesystem::path> m_filesToDelete;
-
-			std::array<char, c_chunkSize> m_receiveBuffer{};
-			std::ofstream m_fileStream;
-
 			asio::io_context m_context;
 			asio::ip::tcp::socket m_socket;
 			std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
 			std::thread m_asioThread;
 
+			utilities::SafeQueue<Packet> m_packetQueue;
+			std::thread m_packetQueueThread;
+
+			std::optional<UpdateSession> m_updateSession;
+			std::unique_ptr<ConnectionResolver> m_connectionResolver;
+			std::unique_ptr<PacketReceiver> m_packetReceiver;
+			std::unique_ptr<PacketSender> m_packetSender;
+			std::unique_ptr<FileReceiver> m_fileReceiver;
+
+			std::function<std::vector<FileMetadata>(Packet&)> m_onMetadata;
 			std::function<void(UpdateCheckResult)> m_onCheckResult;
 			std::function<void(double)> m_onLoadingProgress;
 			std::function<void(bool)> m_onAllFilesLoaded;
-			std::function<void()> m_onConnected;
-			std::function<void()> m_onError;
+			std::function<void()> m_onConnectError;
+			std::function<void()> m_onNetworkError;
 
 			std::atomic_bool m_shuttingDown = false;
 		};

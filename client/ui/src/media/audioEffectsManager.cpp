@@ -2,8 +2,9 @@
 #include <QSoundEffect>
 #include "client.h"
 
-AudioEffectsManager::AudioEffectsManager(QObject* parent)
+AudioEffectsManager::AudioEffectsManager(std::shared_ptr<callifornia::Client> client, QObject* parent)
     : QObject(parent)
+    , m_client(client)
 {
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);

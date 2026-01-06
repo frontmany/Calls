@@ -1,34 +1,47 @@
 #include "network/networkController.h"
-#include "../operationSystemType.h"
 #include "../utilities/utilities.h"
+#include "../packetType.h"
+#include "../updateCheckResult.h"
+#include "json.hpp"
 #include "../jsonType.h"
 
-#include "json.hpp"
+#include <chrono>
 
 namespace updater
 {
 	namespace network
 	{
 		NetworkController::NetworkController(
-			std::function<void(UpdateCheckResult)>&& onCheckResult,
-			std::function<void(double)>&& onLoadingProgress,
-			std::function<void(bool)>&& onAllFilesLoaded,
-			std::function<void()>&& onConnected,
-			std::function<void()>&& onError)
-			: m_onCheckResult(onCheckResult),
-			m_onLoadingProgress(onLoadingProgress),
-			m_onAllFilesLoaded(onAllFilesLoaded),
-			m_onConnected(onConnected),
-			m_onError(onError),
+			std::function<void(UpdateCheckResult)>&& onUpdateCheckResult,
+			std::function<void(double)>&& onUpdateLoadingProgress,
+			std::function<void(bool)>&& onUpdateLoaded,
+			std::function<void()>&& onConnectError,
+			std::function<void()>&& onNetworkError,
+			std::function<std::vector<FileMetadata>(Packet&)>&& onMetadata)
+			: m_onCheckResult(onUpdateCheckResult),
+			m_onLoadingProgress(onUpdateLoadingProgress),
+			m_onAllFilesLoaded(onUpdateLoaded),
+			m_onConnectError(onConnectError),
+			m_onNetworkError(onNetworkError),
+			m_onMetadata(onMetadata),
 			m_socket(m_context)
 		{
 		}
 
-		void NetworkController::sendPacket(const Packet& packet) {
-			writeHeader(packet);
+		NetworkController::~NetworkController()
+		{
+			disconnect();
 		}
 
-		void NetworkController::connect(const std::string& host, const std::string& port) {
+		void NetworkController::sendPacket(const Packet& packet)
+		{
+			if (m_packetSender) {
+				m_packetSender->sendPacket(packet);
+			}
+		}
+
+		void NetworkController::connect(const std::string& host, const std::string& port)
+		{
 			if (m_context.stopped()) {
 				m_context.restart();
 				m_socket = asio::ip::tcp::socket(m_context);
@@ -41,10 +54,16 @@ namespace updater
 				m_asioThread = std::thread([this]() { m_context.run(); });
 			}
 
-			createConnection(host, std::stoi(port));
+			m_connectionResolver = std::make_unique<ConnectionResolver>(m_context, m_socket);
+			m_connectionResolver->connect(host, std::stoi(port),
+				[this]() { initializeAfterHandshake(); },
+				[this]() { m_onConnectError(); });
 		}
 
-		void NetworkController::disconnect() {
+		void NetworkController::disconnect()
+		{
+			m_shuttingDown = true;
+
 			if (m_socket.is_open()) {
 				std::error_code ec;
 				m_socket.cancel(ec);
@@ -52,378 +71,106 @@ namespace updater
 				m_socket.close(ec);
 			}
 
-			if (m_fileStream.is_open()) {
-				m_fileStream.close();
+			if (m_packetQueueThread.joinable()) {
+				m_packetQueueThread.join();
 			}
 
 			reset(true);
-			m_shuttingDown = false;
 		}
 
-		void NetworkController::requestShutdown() {
-			m_shuttingDown = true;
-			if (!m_socket.is_open()) {
+		bool NetworkController::isConnected() const
+		{
+			return m_socket.is_open() && !m_shuttingDown;
+		}
+
+		void NetworkController::processPacketQueue()
+		{
+			while (!m_shuttingDown) {
+				auto packet = m_packetQueue.pop_for(std::chrono::milliseconds(100));
+				if (packet.has_value()) {
+					Packet p = std::move(packet.value());
+					
+					auto type = static_cast<PacketType>(p.type());
+
+					if (type == PacketType::UPDATE_CHECK_RESULT) {
+						handleCheckResultPacket(std::move(p));
+					}
+					else if (type == PacketType::UPDATE_METADATA) {
+						handleMetadataPacket(std::move(p));
+					}
+					else {
+						m_onNetworkError();
+					}
+				}
+			}
+		}
+
+		void NetworkController::handleCheckResultPacket(Packet&& packet)
+		{
+			nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
+			UpdateCheckResult result = static_cast<UpdateCheckResult>(jsonObject[UPDATE_CHECK_RESULT].get<uint32_t>());
+			m_onCheckResult(result);
+		}
+
+		void NetworkController::handleMetadataPacket(Packet&& packet)
+		{
+			std::vector<FileMetadata> files = m_onMetadata(packet);
+			m_updateSession = UpdateSession(files);
+
+			if (m_updateSession->isEmpty()) {
+				m_onAllFilesLoaded(true);
+				if (m_packetReceiver) {
+					m_packetReceiver->resume();
+				}
 				return;
 			}
 
-			asio::post(m_context, [this]() {
-				std::error_code ec;
-				m_socket.cancel(ec);
-				});
-		}
-
-
-		void NetworkController::createConnection(const std::string& host, const uint16_t port) {
-			try {
-				asio::ip::tcp::resolver resolver(m_context);
-				const asio::ip::tcp::resolver::results_type& serverEndpoint = resolver.resolve(host, std::to_string(port));
-
-				asio::async_connect(m_socket, serverEndpoint,
-					[this](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
-						if (ec) {
-							if (!shouldIgnoreError(ec)) {
-								m_onError();
-							}
-						}
-						else {
-							readHandshake();
-						}
-					});
+			if (m_packetReceiver) {
+				m_packetReceiver->pause();
 			}
-			catch (std::exception& e) {
-				m_onError();
+
+			if (m_fileReceiver) {
+				m_fileReceiver->startReceivingFile(m_updateSession->nextFile());
+				m_fileReceiver->receiveChunk();
 			}
 		}
 
-		void NetworkController::writeHeader(const Packet& packet) {
-			asio::async_write(
-				m_socket,
-				asio::buffer(&packet.header(), Packet::sizeOfHeader()),
-				[this, packet](std::error_code ec, std::size_t length) {
-					if (ec)
-					{
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else
-					{
-						if (packet.body().size() > 0)
-							writeBody(packet);
-					}
-				}
-			);
-		}
-
-		void NetworkController::writeBody(const Packet& packet) {
-			asio::async_write(
-				m_socket,
-				asio::buffer(packet.body().data(), packet.body().size()),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-				}
-			);
-		}
-
-		void NetworkController::readHandshake() {
-			asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						m_handshakeOut = updater::utilities::scramble(m_handshakeIn);
-						writeHandshake();
-					}
-				});
-		}
-
-		void NetworkController::readHandshakeConfirmation() {
-			asio::async_read(m_socket, asio::buffer(&m_handshakeConfirmation, sizeof(uint64_t)),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						if (m_handshakeConfirmation == m_handshakeOut) {
-							m_onConnected();
-							readCheckResult();
-						}
-						else {
-							if (!shouldIgnoreError(ec)) {
-								m_onError();
-							}
-						}
-					}
-				});
-		}
-
-		void NetworkController::writeHandshake() {
-			asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						readHandshakeConfirmation();
-					}
-				});
-		}
-
-		void NetworkController::readCheckResult() {
-			asio::async_read(m_socket, asio::buffer(&m_metadata.header_mut(), Packet::sizeOfHeader()),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						if (m_metadata.header().type == static_cast<int>(UpdateCheckResult::possible_update))
-							m_onCheckResult(UpdateCheckResult::possible_update);
-						else if (m_metadata.header().type == static_cast<int>(UpdateCheckResult::required_update))
-							m_onCheckResult(UpdateCheckResult::required_update);
-						else if (m_metadata.header().type == static_cast<int>(UpdateCheckResult::update_not_needed))
-							m_onCheckResult(UpdateCheckResult::update_not_needed);
-						else
-							m_onError();
-
-						readMetadataHeader();
-					}
-				});
-		}
-
-		void NetworkController::readMetadataHeader() {
-			asio::async_read(m_socket, asio::buffer(&m_metadata.header_mut(), Packet::sizeOfHeader()),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						m_metadata.body_mut().resize(m_metadata.size() - Packet::sizeOfHeader());
-						readMetadataBody();
-					}
-				});
-		}
-
-		void NetworkController::readMetadataBody() {
-			asio::async_read(m_socket, asio::buffer(m_metadata.body_mut().data(), m_metadata.body().size()),
-				[this](std::error_code ec, std::size_t length) {
-					if (ec) {
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						deleteTempDirectory();
-						parseMetadata();
-
-						if (m_expectedFiles.empty()) {
-							moveConfigFromTemp();
-							m_onAllFilesLoaded(true);
-							return;
-						}
-
-						openFile();
-						readChunk();
-					}
-				});
-		}
-
-		void NetworkController::parseMetadata() {
-			nlohmann::json jsonObject = nlohmann::json::parse(m_metadata.data());
-
-			const std::filesystem::path tempDirectory = "update_temp";
-
-			try {
-				if (jsonObject.contains(VERSION)) {
-					if (!std::filesystem::exists(tempDirectory)) {
-						std::filesystem::create_directories(tempDirectory);
-					}
-
-					const std::filesystem::path newConfigPath = tempDirectory / "config.json";
-
-					std::ofstream outFile(newConfigPath);
-					if (outFile.is_open()) {
-						nlohmann::json versionJson;
-						versionJson[VERSION] = jsonObject[VERSION].get<std::string>();
-						outFile << versionJson.dump(4);
-						outFile.close();
-					}
-				}
-
-				m_totalBytes = 0;
-				m_bytesReceived = 0;
-
-				if (jsonObject.contains(FILES_TO_DOWNLOAD)) {
-					for (const auto& fileEntry : jsonObject[FILES_TO_DOWNLOAD]) {
-						if (fileEntry.contains(RELATIVE_FILE_PATH) && fileEntry.contains(FILE_SIZE) && fileEntry.contains(FILE_HASH)) {
-							std::string relativeFilePath = fileEntry[RELATIVE_FILE_PATH].get<std::string>();
-							std::string fileHash = fileEntry[FILE_HASH].get<std::string>();
-							uint64_t fileSize = fileEntry[FILE_SIZE].get<uint64_t>();
-
-							m_totalBytes += fileSize;
-
-							int chunksCount = static_cast<int>(std::ceil(static_cast<double>(fileSize) / c_chunkSize));
-							uint64_t lastChunkSize = fileSize % c_chunkSize;
-
-							if (lastChunkSize == 0) {
-								lastChunkSize = c_chunkSize;
-							}
-
-							FileMetadata fileInfo;
-							fileInfo.fileHash = fileHash;
-							fileInfo.expectedChunksCount = chunksCount;
-							fileInfo.relativeFilePath = tempDirectory / relativeFilePath;
-							fileInfo.lastChunkSize = lastChunkSize;
-
-							m_expectedFiles.push(std::move(fileInfo));
-						}
-						else {
-							m_onError();
-							return;
-						}
-					}
-				}
-
-				if (jsonObject.contains(FILES_TO_DELETE)) {
-					for (const auto& filePath : jsonObject[FILES_TO_DELETE]) {
-						if (filePath.is_string()) {
-							std::filesystem::path pathToDelete = filePath.get<std::string>();
-							m_filesToDelete.push_back(std::move(pathToDelete));
-						}
-						else {
-							m_onError();
-							return;
-						}
-					}
-				}
-
-				nlohmann::json removeJson;
-				nlohmann::json filesArray = nlohmann::json::array();
-
-				for (const auto& filePath : m_filesToDelete) {
-					filesArray.push_back(filePath.string());
-				}
-
-				removeJson[FILES] = filesArray;
-
-				std::filesystem::path removeJsonPath = tempDirectory / "remove.json";
-				std::ofstream file(removeJsonPath);
-				if (file) {
-					file << std::setw(4) << removeJson << std::endl;
-					file.close();
-				}
-
-				m_currentChunksCount = 0;
-			}
-			catch (const nlohmann::json::exception& e) {
-				m_onError();
-			}
-		}
-
-		void NetworkController::readChunk() {
-			asio::async_read(m_socket,
-				asio::buffer(m_receiveBuffer.data(), c_chunkSize),
-				[this](std::error_code ec, std::size_t bytesTransferred) {
-					if (ec) {
-						reset(false);
-						deleteTempDirectory();
-						if (!shouldIgnoreError(ec)) {
-							m_onError();
-						}
-					}
-					else {
-						m_bytesReceived += bytesTransferred;
-
-						double progress = 0;
-						if (m_totalBytes > 0) {
-							progress = (static_cast<double>(m_bytesReceived) * 100.0) / static_cast<double>(m_totalBytes);
-							progress = std::max(0.0, std::min(100.0, progress));
-							progress = std::round(progress * 100.0) / 100.0;
-						}
-						m_onLoadingProgress(progress);
-
-						m_currentChunksCount++;
-						if (m_currentChunksCount < m_expectedFiles.front().expectedChunksCount) {
-							m_fileStream.write(m_receiveBuffer.data(), c_chunkSize);
-							readChunk();
-						}
-						else if (m_currentChunksCount == m_expectedFiles.front().expectedChunksCount) {
-							m_fileStream.write(m_receiveBuffer.data(), m_expectedFiles.front().lastChunkSize);
-
-							m_currentChunksCount = 0;
-							m_fileStream.close();
-
-							if (m_expectedFiles.size() == 1) {
-								if (m_expectedFiles.front().fileHash != updater::utilities::calculateFileHash(m_expectedFiles.front().relativeFilePath)) {
-									m_onError();
-									return;
-								}
-
-								m_expectedFiles.pop();
-								finalizeReceiving();
-							}
-							else {
-								if (m_expectedFiles.front().fileHash != updater::utilities::calculateFileHash(m_expectedFiles.front().relativeFilePath)) {
-									m_onError();
-								}
-								else {
-									m_expectedFiles.pop();
-									openFile();
-									readChunk();
-								}
-							}
-						}
-					}
-				});
-		}
-
-		void NetworkController::finalizeReceiving() {
-			m_onLoadingProgress(100.0);
-			reset(false);
-			m_onAllFilesLoaded(false);
-		}
-
-		void NetworkController::openFile() {
-			try {
-				const std::filesystem::path tempDirectory = "update_temp";
-				std::filesystem::create_directories(tempDirectory);
-
-				if (m_expectedFiles.empty()) return;
-
-				std::filesystem::path filePath = m_expectedFiles.front().relativeFilePath;
-				std::filesystem::create_directories(filePath.parent_path());
-
-				m_fileStream.open(filePath, std::ios::binary | std::ios::trunc);
-
-				if (!m_fileStream.is_open()) {
-					m_onError();
-				}
-			}
-			catch (const std::exception& e) {
-				m_onError();
+		void NetworkController::handleFileDownloaded()
+		{
+			if (!m_updateSession.has_value() || m_updateSession->isEmpty() || !m_fileReceiver) {
 				return;
 			}
+
+			const FileMetadata& completedFile = m_fileReceiver->getCurrentFile();
+			if (completedFile.fileHash != updater::utilities::calculateFileHash(completedFile.relativeFilePath)) {
+				m_onNetworkError();
+				return;
+			}
+
+			m_updateSession->onFileCompleted();
+
+			if (!m_updateSession->hasRemainingFiles()) {
+				reset(false);
+				m_onLoadingProgress(100.0);
+				m_onAllFilesLoaded(false);
+
+				if (m_packetReceiver) {
+					m_packetReceiver->resume();
+				}
+			}
+			else {
+				m_fileReceiver->startReceivingFile(m_updateSession->nextFile());
+				m_fileReceiver->receiveChunk();
+			}
 		}
 
-		void NetworkController::reset(bool stopContext) {
-			if (m_fileStream.is_open()) {
-				m_fileStream.close();
-			}
-			m_metadata.clear();
+
+		void NetworkController::reset(bool stopContext)
+		{
+			m_connectionResolver.reset();
+			m_packetReceiver.reset();
+			m_packetSender.reset();
+			m_fileReceiver.reset();
 
 			m_workGuard.reset();
 
@@ -434,53 +181,40 @@ namespace updater
 				}
 			}
 
-			std::queue<FileMetadata> emptyQueue;
-			m_expectedFiles.swap(emptyQueue);
+			m_updateSession.reset();
 
-			m_currentChunksCount = 0;
-			m_handshakeOut = 0;
-			m_handshakeIn = 0;
+			m_packetQueue.clear();
 
-			m_totalBytes = 0;
-			m_bytesReceived = 0;
-
-			m_filesToDelete.clear();
+			m_shuttingDown = false;
 		}
 
-		bool NetworkController::shouldIgnoreError(const std::error_code& ec) const {
-			if (!m_shuttingDown) {
-				return false;
+		void NetworkController::initializeAfterHandshake()
+		{
+			m_packetSender = std::make_unique<PacketSender>(m_socket,
+				[this]() { m_onNetworkError(); });
+
+			m_fileReceiver = std::make_unique<FileReceiver>(m_socket,
+				[this](double fileProgress) {
+					if (m_updateSession.has_value()) {
+						double totalProgress = m_updateSession->getTotalProgress(fileProgress);
+						m_onLoadingProgress(totalProgress);
+					}
+				},
+				[this]() { m_onNetworkError(); },
+				[this]() { handleFileDownloaded(); });
+
+			m_packetReceiver = std::make_unique<PacketReceiver>(m_socket,
+				[this](Packet&& packet) {
+					m_packetQueue.push(std::move(packet));
+				},
+				[this]() { m_onNetworkError(); });
+
+			if (!m_packetQueueThread.joinable()) {
+				m_packetQueueThread = std::thread([this]() { processPacketQueue(); });
 			}
 
-			return ec == asio::error::operation_aborted || ec == asio::error::bad_descriptor;
-		}
-		void NetworkController::deleteTempDirectory() {
-			const std::filesystem::path tempDirectory = "update_temp";
-			std::filesystem::remove_all(tempDirectory);
-			std::filesystem::remove(tempDirectory);
+			m_packetReceiver->startReceiving();
 		}
 
-		void NetworkController::moveConfigFromTemp() {
-			const std::filesystem::path tempDirectory = "update_temp";
-			const std::filesystem::path tempConfigPath = tempDirectory / "config.json";
-			const std::filesystem::path currentConfigPath = "config.json";
-
-			if (std::filesystem::exists(tempConfigPath)) {
-				try {
-					if (std::filesystem::exists(currentConfigPath)) {
-						std::filesystem::remove(currentConfigPath);
-					}
-					std::filesystem::rename(tempConfigPath, currentConfigPath);
-
-					if (std::filesystem::is_empty(tempDirectory)) {
-						std::filesystem::remove(tempDirectory);
-					}
-				}
-				catch (const std::exception& e) {
-					m_onError();
-					return;
-				}
-			}
-		}
 	}
 }

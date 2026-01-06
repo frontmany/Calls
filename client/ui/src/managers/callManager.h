@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QStackedLayout>
+#include <memory>
 
 #include "client.h"
 #include "../state.h"
@@ -11,17 +12,16 @@ class AudioEffectsManager;
 class MainMenuWidget;
 class CallWidget;
 class NavigationController;
+class ScreenCaptureController;
+class CameraCaptureController;
 
 class CallManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit CallManager(callifornia::Client* client, AudioEffectsManager* audioManager, NavigationController* navigationController, QObject* parent = nullptr);
+    explicit CallManager(std::shared_ptr<callifornia::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent = nullptr);
     
     void setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout);
-    void setScreenCaptureController(class ScreenCaptureController* controller);
-    void setCameraCaptureController(class CameraCaptureController* controller);
-    void setNavigationController(NavigationController* navigationController);
 
 public slots:
     void onStartCallingButtonClicked(const QString& friendNickname);
@@ -51,12 +51,12 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
 
-    callifornia::Client* m_client = nullptr;
+    std::shared_ptr<callifornia::Client> m_client = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     NavigationController* m_navigationController = nullptr;
+    ScreenCaptureController* m_screenCaptureController = nullptr;
+    CameraCaptureController* m_cameraCaptureController = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;
-    class ScreenCaptureController* m_screenCaptureController = nullptr;
-    class CameraCaptureController* m_cameraCaptureController = nullptr;
 };

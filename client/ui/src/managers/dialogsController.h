@@ -17,6 +17,10 @@ public:
 
     void showUpdatingDialog();
     void hideUpdatingDialog();
+    void setUpdateLoadingProgress(double progress);
+    void setUpdateDialogStatus(const QString& statusText, bool hideProgress = true);
+    void swapUpdatingToRestarting();
+    void swapUpdatingToUpToDate();
 
     void showScreenShareDialog(const QList<QScreen*>& screens);
     void hideScreenShareDialog();
@@ -29,10 +33,6 @@ public:
 
     void showFirstLaunchDialog(const QString& imagePath = ":/resources/welcome.jpg", const QString& descriptionText = "");
     void hideFirstLaunchDialog();
-
-    void updateLoadingProgress(double progress);
-	void swapUpdatingToRestarting();
-	void swapUpdatingToUpToDate();
 
 signals:
 	void closeRequested();

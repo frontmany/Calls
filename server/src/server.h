@@ -16,6 +16,7 @@
 #include "network/networkController.h"
 #include "taskManager.h"
 #include "packetType.h"
+#include "confirmationKey.h"
 
 #include "json.hpp"
 
@@ -51,6 +52,10 @@ namespace server
 		bool resetOutgoingPendingCall(const UserPtr& user);
 		void removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall);
 
+		void addPendingAction(const ConfirmationKey& key, std::function<void()> action);
+		void removePendingAction(const ConfirmationKey& key);
+		void clearPendingActionsForUser(const std::string& nicknameHash);
+
 	private:
 		mutable std::mutex m_mutex;
 		std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;
@@ -63,5 +68,7 @@ namespace server
 		TaskManager<long long, std::milli> m_taskManager;
 
 		std::unordered_map<PacketType, std::function<void(const nlohmann::json&, const asio::ip::udp::endpoint&)>> m_packetHandlers;
+		std::unordered_map<ConfirmationKey, std::function<void()>> m_pendingActions;
+		std::unordered_map<std::string, std::unordered_set<ConfirmationKey>> m_nicknameHashToConfirmationKeys;
 	};
 }

@@ -26,8 +26,8 @@ public:
     void stop();
 
 private:
-    void waitForClientConnections();
     void processQueue();
+    void waitForClientConnections();
     void handlePacket(OwnedPacket&& packet);
     void createConnection(asio::ip::tcp::socket socket);
     void onDisconnect(ConnectionPtr connection);

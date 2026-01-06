@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <memory>
 
 #include "client.h"
 
@@ -10,7 +11,7 @@ class AudioSettingsManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit AudioSettingsManager(callifornia::Client* client, ConfigManager* configManager, QObject* parent = nullptr);
+    explicit AudioSettingsManager(std::shared_ptr<callifornia::Client> client, ConfigManager* configManager, QObject* parent = nullptr);
 
 public slots:
     void onRefreshAudioDevicesButtonClicked();
@@ -20,6 +21,6 @@ public slots:
     void onMuteSpeakerButtonClicked(bool mute);
 
 private:
-    callifornia::Client* m_client = nullptr;
+    std::shared_ptr<callifornia::Client> m_client = nullptr;
     ConfigManager* m_configManager = nullptr;
 };

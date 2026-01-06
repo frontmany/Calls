@@ -41,6 +41,10 @@ struct StyleAuthorizationWidget {
     static QString notificationGreenLabelStyle();
     static QString notificationLilacLabelStyle();
     static QString notificationUpdateAvailableStyle();
+    static QString updateAvailableButtonStyle();
+    static QString notificationRedTextStyle();
+    static QString notificationLilacTextStyle();
+    static QString notificationGreenTextStyle();
 };
 
 class AuthorizationWidget : public QWidget {
@@ -49,26 +53,26 @@ class AuthorizationWidget : public QWidget {
 public:
     AuthorizationWidget(QWidget* parent = nullptr);
     void setAuthorizationDisabled(bool disabled);
-    void setErrorMessage(const QString& errorText);
+    void setErrorMessage(const QString& errorText, int durationMs = 2500);
     void clearErrorMessage();
     void startBlurAnimation();
+    void stopBlurAnimation();
+    void waitForBlurAnimation();
     void resetBlur();
     void showNetworkErrorNotification();
     void hideNetworkErrorNotification();
-    void showConnectionRestoredNotification(int durationMs);
     void showUpdatesCheckingNotification();
     void hideUpdatesCheckingNotification();
     void showUpdateAvailableNotification();
     void hideUpdateAvailableNotification();
+    void showConnectionRestoredNotification(int durationMs);
 
 private slots:
     void onAuthorizationClicked();
     void onTextChanged(const QString& text);
-    void onUpdateAvailableClicked();
 
 signals:
     void authorizationButtonClicked(const QString& friendNickname);
-    void blurAnimationFinished();
     void updateButtonClicked();
 
 private:
@@ -90,7 +94,6 @@ private:
     QHBoxLayout* m_notificationLayout;
     QLabel* m_notificationLabel;
 
-    // Update available notification as button
     QPushButton* m_updateAvailableButton;
     QWidget* m_updateAvailableWidget;
     QHBoxLayout* m_updateAvailableLayout;

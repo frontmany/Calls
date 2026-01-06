@@ -294,7 +294,7 @@ void DialogsController::hideUpdatingErrorDialog()
 	}
 }
 
-void DialogsController::updateLoadingProgress(double progress)
+void DialogsController::setUpdateLoadingProgress(double progress)
 {
 	if (m_updatingProgressLabel)
 	{
@@ -742,6 +742,23 @@ QWidget* DialogsController::createUpdatingDialog(OverlayWidget* overlay)
     connect(exitButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
 
 	return dialog;
+}
+
+void DialogsController::setUpdateDialogStatus(const QString& statusText, bool hideProgress) {
+    if (m_updatingGifLabel && m_updatingGifLabel->movie())
+    {
+        m_updatingGifLabel->movie()->stop();
+    }
+
+    if (m_updatingLabel)
+    {
+        m_updatingLabel->setText(statusText);
+    }
+
+    if (m_updatingProgressLabel && hideProgress)
+    {
+        m_updatingProgressLabel->setVisible(false);
+    }
 }
 
 void DialogsController::swapUpdatingToRestarting()

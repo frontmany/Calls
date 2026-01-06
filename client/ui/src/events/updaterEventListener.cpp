@@ -10,9 +10,9 @@ UpdaterEventListener::UpdaterEventListener(UpdateManager* updateManager)
 {
 }
 
-void UpdaterEventListener::onUpdateCheckResult(callifornia::updater::UpdateCheckResult updateCheckResult) {
+void UpdaterEventListener::onUpdateCheckResult(updater::UpdateStatus status) {
     QMetaObject::invokeMethod(m_updateManager, "onUpdaterCheckResult",
-        Qt::QueuedConnection, Q_ARG(callifornia::updater::UpdateCheckResult, updateCheckResult));
+        Qt::QueuedConnection, Q_ARG(updater::UpdateStatus, status));
 }
 
 void UpdaterEventListener::onLoadingProgress(double progress) {
@@ -25,6 +25,6 @@ void UpdaterEventListener::onUpdateLoaded(bool emptyUpdate) {
         Qt::QueuedConnection, Q_ARG(bool, emptyUpdate));
 }
 
-void UpdaterEventListener::onNetworkError() {
-    QMetaObject::invokeMethod(m_updateManager, "onUpdaterNetworkError", Qt::QueuedConnection);
+void UpdaterEventListener::onUpdateLoadingFailed() {
+    QMetaObject::invokeMethod(m_updateManager, "onUpdateLoadingFailed", Qt::QueuedConnection);
 }

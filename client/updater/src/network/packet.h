@@ -26,6 +26,8 @@ namespace updater
 
         private:
             friend class NetworkController;
+            friend class PacketSender;
+            friend class PacketReceiver;
 
             uint32_t size() const;
             static size_t sizeOfHeader();

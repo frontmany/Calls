@@ -3,7 +3,12 @@
 namespace serverUpdater
 {
 enum class PacketType : int {
-	CHECK_UPDATES,
-	UPDATE_ACCEPT
+	// only receive
+	UPDATE_CHECK,
+	UPDATE_ACCEPT,
+
+	// only send
+	UPDATE_METADATA,
+	UPDATE_RESULT,
 };
 }

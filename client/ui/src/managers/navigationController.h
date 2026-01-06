@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QStackedLayout>
 #include <QString>
+#include <memory>
 
 #include "client.h"
 
@@ -14,9 +15,9 @@ class NavigationController : public QObject {
     Q_OBJECT
 
 public:
-    explicit NavigationController(callifornia::Client* client, QStackedLayout* stackedLayout, QObject* parent = nullptr);
+    explicit NavigationController(std::shared_ptr<callifornia::Client> client, QObject* parent = nullptr);
     
-    void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget);
+    void setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget);
 
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
@@ -33,7 +34,7 @@ signals:
     void callWidgetActivated(const QString& friendNickname);
 
 private:
-    callifornia::Client* m_client = nullptr;
+    std::shared_ptr<callifornia::Client> m_client = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;

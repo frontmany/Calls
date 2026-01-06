@@ -5,16 +5,12 @@
 #include "managers/configManager.h"
 #include "client.h"
 
-CameraSharingManager::CameraSharingManager(callifornia::Client* client, ConfigManager* configManager, QObject* parent)
+CameraSharingManager::CameraSharingManager(std::shared_ptr<callifornia::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, QObject* parent)
     : QObject(parent)
     , m_client(client)
     , m_configManager(configManager)
+    , m_cameraCaptureController(cameraController)
 {
-}
-
-void CameraSharingManager::setControllers(CameraCaptureController* cameraController)
-{
-    m_cameraCaptureController = cameraController;
 }
 
 void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget, QStatusBar* statusBar)

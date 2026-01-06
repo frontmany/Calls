@@ -1,12 +1,7 @@
 #include "mainWindow.h"
-#include <QFontDatabase>
 #include <QApplication>
-#include <QStatusBar>
-#include <QEvent>
 #include <QTimer>
-#include <QIcon>
 #include <QCloseEvent>
-#include <QWindowStateChangeEvent>
 
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
@@ -14,10 +9,9 @@
 #include "managers/dialogsController.h"
 #include "media/screenCaptureController.h"
 #include "media/cameraCaptureController.h"
-#include "prerequisites.h"
-#include "events/calliforniaEventListener.h"
 #include "managers/configManager.h"
 #include "utilities/logger.h"
+#include "utilities/utilities.h"
 
 #include "media/audioEffectsManager.h"
 #include "media/audioSettingsManager.h"
@@ -29,87 +23,76 @@
 #include "media/cameraSharingManager.h"
 #include "network/networkErrorHandler.h"
 
-#include "client.h"
+#include "events/coreEventListener.h"
+#include "events/updaterEventListener.h"s
+
+#include "core.h"
 #include "updater.h"
 
-MainWindow::MainWindow() {
-    m_configManager = new ConfigManager();
-    m_configManager->loadConfig();
-}
-
-MainWindow::~MainWindow() 
-{
-}
-
-void MainWindow::executePrerequisites() {
-    makeRemainingReplacements();
-}
-
 void MainWindow::init() {
-    // Create Client instance
-    m_client = std::make_unique<callifornia::Client>();
-    std::shared_ptr<ClientCallbacksHandler> callsClientHandler = std::make_shared<ClientCallbacksHandler>(this);
-    
-    if (!m_client->init(m_configManager->getServerHost().toStdString(), 
-                       m_configManager->getPort().toStdString(), 
-                       callsClientHandler)) {
-        LOG_ERROR("Failed to initialize client");
-        return;
-    }
-    
-    m_client->setOutputVolume(m_configManager->getOutputVolume());
-    m_client->setInputVolume(m_configManager->getInputVolume());
-    m_client->muteMicrophone(m_configManager->isMicrophoneMuted());
-    m_client->muteSpeaker(m_configManager->isSpeakerMuted());
-
-    // Create Updater instance
-    m_updater = std::make_unique<callifornia::updater::Updater>();
-
     LOG_INFO("Initializing main window");
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
-    // Create managers (navigation controller created after UI setup)
-    m_audioManager = new AudioEffectsManager(m_client.get(), this);
-    m_audioSettingsManager = new AudioSettingsManager(m_client.get(), m_configManager, this);
-    m_updateManager = new UpdateManager(m_client.get(), m_updater.get(), m_configManager, this);
-    m_authorizationManager = nullptr; // Created after navigation controller
-    m_callManager = new CallManager(m_client.get(), m_audioManager, nullptr, this); // Navigation controller set later
-    m_screenSharingManager = new ScreenSharingManager(m_client.get(), this);
-    m_cameraSharingManager = new CameraSharingManager(m_client.get(), m_configManager, this);
-    m_networkErrorHandler = nullptr; // Created after navigation controller
+    m_configManager = new ConfigManager();
+    m_configManager->loadConfig();
+
+    m_client = std::make_shared<core::Client>();
+    m_client->init(m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(), std::make_shared<CoreEventListener>(this));
+
+    m_updater = std::make_shared<updater::Client>();
+    m_updater->init(std::make_shared<UpdaterEventListener>(this));
 
     loadFonts();
-    setupUI();
-    setupManagerConnections();
-    setSettingsFromConfig();
+
+    initializeCentralStackedWidget();
+    initializeAuthorizationWidget();
+    initializeMainMenuWidget();
+    initializeCallWidget();
+
+    initializeScreenCaptureController();
+    initializeCameraCaptureController();
+    initializeDialogsController();
+    initializeAudioManager();
+    initializeAudioSettingsManager();
+    initializeNavigationController();
+    initializeUpdateManager();
+    initializeAuthorizationManager();
+    initializeCallManager();
+    initializeScreenSharingManager();
+    initializeCameraSharingManager();
+    initializeNetworkErrorHandler();
+
+    connectWidgetsToManagers();
+    applyAudioSettings();
+
     showMaximized();
+}
 
-    QTimer::singleShot(0, [this]() {
-        bool firstInstance = isFirstInstance();
-        bool multipleInstancesAllowed = m_configManager->isMultiInstanceAllowed();
+void MainWindow::showEvent(QShowEvent* event) {
+    if (!isFirstInstance() && !m_configManager->isMultiInstanceAllowed()) {
+        m_dialogsController->showAlreadyRunningDialog();
+    }
+    else {
+        LOG_INFO("Connecting to Updater server: {}:{}", m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
+        m_updater->connect(m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
 
-        if (!firstInstance && !multipleInstancesAllowed) {
-            if (m_dialogsController) {
-                m_dialogsController->showAlreadyRunningDialog();
-            }
-        } 
-        else {
-            if (m_updateManager) {
-                m_updateManager->checkUpdates();
-            }
-        }
-    });
+        LOG_INFO("Checking updates, current application version: {}", m_configManager->getVersion().toStdString());
+        m_updater->checkUpdates(m_configManager->getVersion().toStdString());
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    if (m_client) {
-        m_client.reset();
-    }
     if (m_updater) {
         m_updater->disconnect();
-        m_updater.reset();
     }
-    event->accept();
+
+    if (m_client && m_client->isAuthorized()) {
+        m_client->logout();
+        event->ignore();
+    }
+    else {
+        event->accept();
+    }
 }
 
 void MainWindow::changeEvent(QEvent* event)
@@ -146,8 +129,89 @@ void MainWindow::loadFonts() {
     }
 }
 
+void MainWindow::initializeCentralStackedWidget() {
+    m_centralWidget = new QWidget(this);
+    setCentralWidget(m_centralWidget);
 
-void MainWindow::setSettingsFromConfig() {
+    m_mainLayout = new QHBoxLayout(m_centralWidget);
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
+    m_mainLayout->setSpacing(0);
+
+    m_stackedLayout = new QStackedLayout();
+    m_mainLayout->addLayout(m_stackedLayout);
+}
+
+void MainWindow::initializeScreenCaptureController() {
+    m_screenCaptureController = new ScreenCaptureController(this);
+}
+
+void MainWindow::initializeCameraCaptureController() {
+    m_CameraCaptureController = new CameraCaptureController(this);
+}
+
+void MainWindow::initializeDialogsController() {
+    m_dialogsController = new DialogsController(this);
+    connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
+}
+
+void MainWindow::initializeNavigationController() {
+    m_navigationController = new NavigationController(m_client, this);
+    if (m_stackedLayout && m_authorizationWidget && m_mainMenuWidget && m_callWidget) {
+        m_navigationController->setWidgets(m_stackedLayout, m_authorizationWidget, m_mainMenuWidget, m_callWidget);
+    }
+}
+
+void MainWindow::initializeAudioManager() {
+    m_audioManager = new AudioEffectsManager(m_client, this);
+}
+
+void MainWindow::initializeAudioSettingsManager() {
+    m_audioSettingsManager = new AudioSettingsManager(m_client, m_configManager, this);
+}
+
+void MainWindow::initializeUpdateManager() {
+    m_updateManager = new UpdateManager(m_client, m_updater, m_configManager, this);
+    if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
+        m_updateManager->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
+    }
+}
+
+void MainWindow::initializeAuthorizationManager() {
+    m_authorizationManager = new AuthorizationManager(m_client, m_navigationController, m_configManager, m_dialogsController, this);
+    if (m_authorizationWidget && m_mainMenuWidget) {
+        m_authorizationManager->setWidgets(m_authorizationWidget, m_mainMenuWidget);
+    }
+}
+
+void MainWindow::initializeCallManager() {
+    m_callManager = new CallManager(m_client, m_audioManager, m_navigationController, m_screenCaptureController, m_CameraCaptureController, this);
+    if (m_mainMenuWidget && m_callWidget && m_stackedLayout) {
+        m_callManager->setWidgets(m_mainMenuWidget, m_callWidget, m_stackedLayout);
+    }
+}
+
+void MainWindow::initializeScreenSharingManager() {
+    m_screenSharingManager = new ScreenSharingManager(m_client, m_screenCaptureController, m_dialogsController, m_CameraCaptureController, this);
+    if (m_callWidget) {
+        m_screenSharingManager->setWidgets(m_callWidget, statusBar());
+    }
+}
+
+void MainWindow::initializeCameraSharingManager() {
+    m_cameraSharingManager = new CameraSharingManager(m_client, m_configManager, m_CameraCaptureController, this);
+    if (m_callWidget && m_mainMenuWidget) {
+        m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget, statusBar());
+    }
+}
+
+void MainWindow::initializeNetworkErrorHandler() {
+    m_networkErrorHandler = new NetworkErrorHandler(m_client, m_updater, m_navigationController, m_updateManager, m_configManager, m_audioManager, this);
+    if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
+        m_networkErrorHandler->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
+    }
+}
+
+void MainWindow::applyAudioSettings() {
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
         m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
@@ -158,391 +222,148 @@ void MainWindow::setSettingsFromConfig() {
         m_callWidget->setInputVolume(m_configManager->getInputVolume());
         m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
     }
+
+    m_client->setInputVolume(m_configManager->getInputVolume());
+    m_client->setOutputVolume(m_configManager->getOutputVolume());
+    m_client->muteMicrophone(m_configManager->isMicrophoneMuted());
+    m_client->muteSpeaker(m_configManager->isSpeakerMuted());
 }
 
-void MainWindow::setupUI() {
-    m_centralWidget = new QWidget(this);
-    setCentralWidget(m_centralWidget);
-
-    m_mainLayout = new QHBoxLayout(m_centralWidget);
-    m_mainLayout->setContentsMargins(0, 0, 0, 0);
-    m_mainLayout->setSpacing(0);
-
-    m_stackedLayout = new QStackedLayout();
-    m_mainLayout->addLayout(m_stackedLayout);
-
-    // Create dialogs controller first (needed for AuthorizationManager)
-    m_dialogsController = new DialogsController(this);
-    connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
-
-    // Create navigation controller with layout
-    m_navigationController = new NavigationController(m_client.get(), m_stackedLayout, this);
-    // Update managers that depend on navigation controller
-    if (m_authorizationManager) {
-        delete m_authorizationManager;
-    }
-    m_authorizationManager = new AuthorizationManager(m_client.get(), m_navigationController, m_configManager, m_dialogsController, this);
-    if (m_callManager) {
-        m_callManager->setNavigationController(m_navigationController);
-    }
-    if (m_networkErrorHandler) {
-        delete m_networkErrorHandler;
-    }
-    m_networkErrorHandler = new NetworkErrorHandler(m_client.get(), m_updater.get(), m_navigationController, m_updateManager, m_configManager, this);
-
-    m_authorizationWidget = new AuthorizationWidget(this);
-    connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
-    connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, this, &MainWindow::onAuthorizationButtonClicked);
-    connect(m_authorizationWidget, &AuthorizationWidget::blurAnimationFinished, this, &MainWindow::onBlurAnimationFinished);
-
-    m_stackedLayout->addWidget(m_authorizationWidget);
-
-    m_mainMenuWidget = new MainMenuWidget(this);
-    connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, this, &MainWindow::onUpdateButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, this, &MainWindow::onStartCallingButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, this, &MainWindow::onStopCallingButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::refreshAudioDevicesButtonClicked, this, &MainWindow::onRefreshAudioDevicesButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, this, &MainWindow::onInputVolumeChanged);
-    connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
-    connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
-    connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, this, &MainWindow::onActivateCameraButtonClicked);
-    m_stackedLayout->addWidget(m_mainMenuWidget); 
-
-    m_callWidget = new CallWidget(this);
-    connect(m_callWidget, &CallWidget::hangupClicked, this, &MainWindow::onEndCallButtonClicked);
-    connect(m_callWidget, &CallWidget::inputVolumeChanged, this, &MainWindow::onInputVolumeChanged);
-    connect(m_callWidget, &CallWidget::outputVolumeChanged, this, &MainWindow::onOutputVolumeChanged);
-    connect(m_callWidget, &CallWidget::muteSpeakerClicked, this, &MainWindow::onMuteSpeakerButtonClicked);
-    connect(m_callWidget, &CallWidget::muteMicrophoneClicked, this, &MainWindow::onMuteMicrophoneButtonClicked);
-    connect(m_callWidget, &CallWidget::acceptCallButtonClicked, this, &MainWindow::onAcceptCallButtonClicked);
-    connect(m_callWidget, &CallWidget::declineCallButtonClicked, this, &MainWindow::onDeclineCallButtonClicked);
-    connect(m_callWidget, &CallWidget::screenShareClicked, this, &MainWindow::onScreenShareButtonClicked);
-    connect(m_callWidget, &CallWidget::cameraClicked, this, &MainWindow::onCameraButtonClicked);
-    connect(m_callWidget, &CallWidget::requestEnterFullscreen, this, &MainWindow::onCallWidgetEnterFullscreenRequested);
-    connect(m_callWidget, &CallWidget::requestExitFullscreen, this, &MainWindow::onCallWidgetExitFullscreenRequested);
-    m_stackedLayout->addWidget(m_callWidget);
-
-    m_screenCaptureController = new ScreenCaptureController(this);
-    connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, this, &MainWindow::onScreenCaptureStarted);
-    connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, this, &MainWindow::onScreenCaptureStopped);
-    connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, this, &MainWindow::onScreenCaptured);
-
-    m_CameraCaptureController = new CameraCaptureController(this);
-    connect(m_CameraCaptureController, &CameraCaptureController::cameraCaptured, this, &MainWindow::onCameraCaptured);
-    connect(m_CameraCaptureController, &CameraCaptureController::captureStarted, this, &MainWindow::onCameraCaptureStarted);
-    connect(m_CameraCaptureController, &CameraCaptureController::captureStopped, this, &MainWindow::onCameraCaptureStopped);
-    connect(m_CameraCaptureController, &CameraCaptureController::errorOccurred, this, &MainWindow::onCameraErrorOccurred);
-
-    connect(m_dialogsController, &DialogsController::screenSelected, this, &MainWindow::onScreenSelected);
-    connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {
-        if (m_callWidget) {
-            m_callWidget->setScreenShareButtonActive(false);
+void MainWindow::connectWidgetsToManagers() {
+    // AuthorizationWidget connections
+    if (m_authorizationWidget) {
+        if (m_updateManager) {
+            connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
         }
-    });
+        if (m_authorizationManager) {
+            connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, m_authorizationManager, &AuthorizationManager::onAuthorizationButtonClicked);
+        }
+    }
 
-    QTimer::singleShot(2000, [this]() {
-        if (m_updater && m_updater->isAwaitingServerResponse()) {
-            if (m_authorizationWidget) {
-                m_authorizationWidget->showUpdatesCheckingNotification();
-                m_authorizationWidget->setAuthorizationDisabled(true);
+    // MainMenuWidget connections
+    if (m_mainMenuWidget) {
+        if (m_audioSettingsManager) {
+            connect(m_mainMenuWidget, &MainMenuWidget::refreshAudioDevicesButtonClicked, m_audioSettingsManager, &AudioSettingsManager::onRefreshAudioDevicesButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
+            connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
+            connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+        }
+        if (m_updateManager) {
+            connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
+        }
+        if (m_callManager) {
+            connect(m_mainMenuWidget, &MainMenuWidget::acceptCallButtonClicked, m_callManager, &CallManager::onAcceptCallButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, m_callManager, &CallManager::onDeclineCallButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, m_callManager, &CallManager::onStartCallingButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, m_callManager, &CallManager::onStopCallingButtonClicked);
+        }
+        if (m_cameraSharingManager) {
+            connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, m_cameraSharingManager, &CameraSharingManager::onActivateCameraButtonClicked);
+        }
+    }
+
+    // CallWidget connections
+    if (m_callWidget) {
+        if (m_navigationController) {
+            connect(m_callWidget, &CallWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onCallWidgetEnterFullscreenRequested);
+            connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onCallWidgetExitFullscreenRequested);
+        }
+        if (m_audioSettingsManager) {
+            connect(m_callWidget, &CallWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
+            connect(m_callWidget, &CallWidget::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
+            connect(m_callWidget, &CallWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+            connect(m_callWidget, &CallWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
+        }
+        if (m_callManager) {
+            connect(m_callWidget, &CallWidget::hangupClicked, m_callManager, &CallManager::onEndCallButtonClicked);
+            connect(m_callWidget, &CallWidget::acceptCallButtonClicked, m_callManager, &CallManager::onAcceptCallButtonClicked);
+            connect(m_callWidget, &CallWidget::declineCallButtonClicked, m_callManager, &CallManager::onDeclineCallButtonClicked);
+        }
+        if (m_screenSharingManager) {
+            connect(m_callWidget, &CallWidget::screenShareClicked, m_screenSharingManager, &ScreenSharingManager::onScreenShareButtonClicked);
+        }
+        if (m_cameraSharingManager) {
+            connect(m_callWidget, &CallWidget::cameraClicked, m_cameraSharingManager, &CameraSharingManager::onCameraButtonClicked);
+        }
+    }
+
+    // ScreenCaptureController connections
+    if (m_screenCaptureController && m_screenSharingManager) {
+        connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, m_screenSharingManager, &ScreenSharingManager::onScreenCaptureStarted);
+        connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, m_screenSharingManager, &ScreenSharingManager::onScreenCaptureStopped);
+        connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, m_screenSharingManager, &ScreenSharingManager::onScreenCaptured);
+    }
+
+    // CameraCaptureController connections
+    if (m_CameraCaptureController && m_cameraSharingManager) {
+        connect(m_CameraCaptureController, &CameraCaptureController::cameraCaptured, m_cameraSharingManager, &CameraSharingManager::onCameraCaptured);
+        connect(m_CameraCaptureController, &CameraCaptureController::captureStarted, m_cameraSharingManager, &CameraSharingManager::onCameraCaptureStarted);
+        connect(m_CameraCaptureController, &CameraCaptureController::captureStopped, m_cameraSharingManager, &CameraSharingManager::onCameraCaptureStopped);
+        connect(m_CameraCaptureController, &CameraCaptureController::errorOccurred, m_cameraSharingManager, &CameraSharingManager::onCameraErrorOccurred);
+    }
+
+    // DialogsController connections
+    if (m_dialogsController && m_screenSharingManager) {
+        connect(m_dialogsController, &DialogsController::screenSelected, m_screenSharingManager, &ScreenSharingManager::onScreenSelected);
+        connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {
+            if (m_callWidget) {
+                m_callWidget->setScreenShareButtonActive(false);
             }
-        }
-    });
-}
+        });
+    }
 
-void MainWindow::setupManagerConnections() {
-    // Setup NavigationController
+    // Manager to MainWindow connections
     if (m_navigationController) {
-        m_navigationController->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_callWidget);
         connect(m_navigationController, &NavigationController::windowTitleChanged, this, &MainWindow::onWindowTitleChanged);
         connect(m_navigationController, &NavigationController::windowFullscreenRequested, this, &MainWindow::onWindowFullscreenRequested);
         connect(m_navigationController, &NavigationController::windowMaximizedRequested, this, &MainWindow::onWindowMaximizedRequested);
         connect(m_navigationController, &NavigationController::callWidgetActivated, this, &MainWindow::onCallWidgetActivated);
-        connect(m_callWidget, &CallWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onCallWidgetEnterFullscreenRequested);
-        connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onCallWidgetExitFullscreenRequested);
     }
-
-    // Setup UpdateManager
     if (m_updateManager) {
-        m_updateManager->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
         connect(m_updateManager, &UpdateManager::stopAllRingtonesRequested, this, &MainWindow::onStopAllRingtonesRequested);
     }
-
-    // Setup AuthorizationManager
-    if (m_authorizationManager) {
-        m_authorizationManager->setAuthorizationWidget(m_authorizationWidget);
-        m_authorizationManager->setMainMenuWidget(m_mainMenuWidget);
-    }
-
-    // Setup CallManager
     if (m_callManager) {
-        m_callManager->setWidgets(m_mainMenuWidget, m_callWidget, m_stackedLayout);
-        m_callManager->setScreenCaptureController(m_screenCaptureController);
-        m_callManager->setCameraCaptureController(m_CameraCaptureController);
         connect(m_callManager, &CallManager::stopScreenCaptureRequested, this, &MainWindow::onStopScreenCaptureRequested);
         connect(m_callManager, &CallManager::stopCameraCaptureRequested, this, &MainWindow::onStopCameraCaptureRequested);
         connect(m_callManager, &CallManager::endCallFullscreenExitRequested, this, &MainWindow::onEndCallFullscreenExitRequested);
     }
-
-    // Setup ScreenSharingManager
     if (m_screenSharingManager) {
-        m_screenSharingManager->setControllers(m_screenCaptureController, m_dialogsController);
-        m_screenSharingManager->setWidgets(m_callWidget, statusBar());
-        m_screenSharingManager->setCameraCaptureController(m_CameraCaptureController);
         connect(m_screenSharingManager, &ScreenSharingManager::fullscreenExitRequested, this, &MainWindow::onWindowMaximizedRequested);
     }
-
-    // Setup CameraSharingManager
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->setControllers(m_CameraCaptureController);
-        m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget, statusBar());
-    }
-
-    // Hide status bar to prevent resize handle from appearing
-    statusBar()->hide();
-
-    // Setup NetworkErrorHandler
-    if (m_networkErrorHandler) {
-        m_networkErrorHandler->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
-        m_networkErrorHandler->setAudioManager(m_audioManager);
-    }
 }
 
-// Delegation methods - these forward to the appropriate managers
-void MainWindow::onUpdateButtonClicked() {
-    if (m_updateManager) {
-        m_updateManager->onUpdateButtonClicked();
-    }
+void MainWindow::initializeAuthorizationWidget() {
+    m_authorizationWidget = new AuthorizationWidget(this);
+    m_stackedLayout->addWidget(m_authorizationWidget);
 }
 
-void MainWindow::onStartCallingButtonClicked(const QString& friendNickname) {
-    if (m_callManager) {
-        m_callManager->onStartCallingButtonClicked(friendNickname);
-    }
+void MainWindow::initializeMainMenuWidget() {
+    m_mainMenuWidget = new MainMenuWidget(this);
+    m_stackedLayout->addWidget(m_mainMenuWidget);
 }
 
-void MainWindow::onStopCallingButtonClicked() {
-    if (m_callManager) {
-        m_callManager->onStopCallingButtonClicked();
-    }
+void MainWindow::initializeCallWidget() {
+    m_callWidget = new CallWidget(this);
+    m_stackedLayout->addWidget(m_callWidget);
 }
 
-void MainWindow::onAcceptCallButtonClicked(const QString& friendNickname) {
-    if (m_callManager) {
-        m_callManager->onAcceptCallButtonClicked(friendNickname);
-    }
-}
-
-void MainWindow::onDeclineCallButtonClicked(const QString& friendNickname) {
-    if (m_callManager) {
-        m_callManager->onDeclineCallButtonClicked(friendNickname);
-    }
-}
-
-void MainWindow::onEndCallButtonClicked() {
-    if (m_callManager) {
-        m_callManager->onEndCallButtonClicked();
-    }
-}
-
-void MainWindow::onAuthorizationButtonClicked(const QString& friendNickname) {
-    if (m_authorizationManager) {
-        m_authorizationManager->onAuthorizationButtonClicked(friendNickname);
-    }
-}
-
-void MainWindow::onBlurAnimationFinished() {
-    if (m_authorizationManager) {
-        m_authorizationManager->onBlurAnimationFinished();
-    }
-}
-
-void MainWindow::onRefreshAudioDevicesButtonClicked() {
-    if (m_audioSettingsManager) {
-        m_audioSettingsManager->onRefreshAudioDevicesButtonClicked();
-    }
-}
-
-void MainWindow::onInputVolumeChanged(int newVolume) {
-    if (m_audioSettingsManager) {
-        m_audioSettingsManager->onInputVolumeChanged(newVolume);
-    }
-}
-
-void MainWindow::onOutputVolumeChanged(int newVolume) {
-    if (m_audioSettingsManager) {
-        m_audioSettingsManager->onOutputVolumeChanged(newVolume);
-    }
-}
-
-void MainWindow::onMuteMicrophoneButtonClicked(bool mute) {
-    if (m_audioSettingsManager) {
-        m_audioSettingsManager->onMuteMicrophoneButtonClicked(mute);
-    }
-}
-
-void MainWindow::onMuteSpeakerButtonClicked(bool mute) {
-    if (m_audioSettingsManager) {
-        m_audioSettingsManager->onMuteSpeakerButtonClicked(mute);
-    }
-}
-
-void MainWindow::onActivateCameraButtonClicked(bool activated) {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onActivateCameraButtonClicked(activated);
-    }
-}
-
-void MainWindow::onScreenSelected(int screenIndex) {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onScreenSelected(screenIndex);
-    }
-}
-
-void MainWindow::onScreenShareButtonClicked(bool toggled) {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onScreenShareButtonClicked(toggled);
-    }
-}
-
-void MainWindow::onScreenCaptureStarted() {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onScreenCaptureStarted();
-    }
-}
-
-void MainWindow::onScreenCaptureStopped() {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onScreenCaptureStopped();
-    }
-}
-
-void MainWindow::onScreenCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData) {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onScreenCaptured(pixmap, imageData);
-    }
-}
-
-void MainWindow::onScreenSharingStarted() {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onScreenSharingStarted();
-    }
-}
-
-void MainWindow::onStartScreenSharingError() {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onStartScreenSharingError();
-    }
-}
-
-void MainWindow::onIncomingScreenSharingStarted() {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onIncomingScreenSharingStarted();
-    }
-}
-
-void MainWindow::onIncomingScreenSharingStopped() {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onIncomingScreenSharingStopped();
-    }
-}
-
-void MainWindow::onIncomingScreen(const std::vector<unsigned char>& data) {
-    if (m_screenSharingManager) {
-        m_screenSharingManager->onIncomingScreen(data);
-    }
-}
-
-void MainWindow::onCameraButtonClicked(bool toggled) {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onCameraButtonClicked(toggled);
-    }
-}
-
-void MainWindow::onCameraSharingStarted() {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onCameraSharingStarted();
-    }
-}
-
-void MainWindow::onStartCameraSharingError() {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onStartCameraSharingError();
-    }
-}
-
-void MainWindow::onIncomingCameraSharingStarted() {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onIncomingCameraSharingStarted();
-    }
-}
-
-void MainWindow::onIncomingCameraSharingStopped() {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onIncomingCameraSharingStopped();
-    }
-}
-
-void MainWindow::onIncomingCamera(const std::vector<unsigned char>& data) {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onIncomingCamera(data);
-    }
-}
-
-void MainWindow::onCameraCaptured(const QPixmap& pixmap, const std::vector<unsigned char>& imageData) {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onCameraCaptured(pixmap, imageData);
-    }
-}
-
-void MainWindow::onCameraCaptureStarted() {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onCameraCaptureStarted();
-    }
-}
-
-void MainWindow::onCameraCaptureStopped() {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onCameraCaptureStopped();
-    }
-}
-
-void MainWindow::onCameraErrorOccurred(const QString& errorMessage) {
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->onCameraErrorOccurred(errorMessage);
-    }
-}
-
-void MainWindow::onCallWidgetEnterFullscreenRequested() {
-    if (m_navigationController) {
-        m_navigationController->onCallWidgetEnterFullscreenRequested();
-    }
-}
-
-void MainWindow::onCallWidgetExitFullscreenRequested() {
-    if (m_navigationController) {
-        m_navigationController->onCallWidgetExitFullscreenRequested();
-    }
-}
 
 
 // Callbacks from ClientCallbacksHandler - delegate to managers
-void MainWindow::onAuthorizationResult(callifornia::ErrorCode ec) {
+void MainWindow::onAuthorizationResult(std::error_code ec) {
     if (m_authorizationManager) {
         m_authorizationManager->onAuthorizationResult(ec);
     }
 }
 
-void MainWindow::onStartCallingResult(callifornia::ErrorCode ec) {
+void MainWindow::onStartCallingResult(std::error_code ec) {
     if (m_callManager) {
         m_callManager->onStartCallingResult(ec);
     }
 }
 
-void MainWindow::onAcceptCallResult(callifornia::ErrorCode ec, const QString& nickname) {
+void MainWindow::onAcceptCallResult(std::error_code ec, const QString& nickname) {
     if (m_callManager) {
         m_callManager->onAcceptCallResult(ec, nickname);
     }

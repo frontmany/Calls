@@ -6,27 +6,19 @@
 #include "client.h"
 #include <QTimer>
 
-ScreenSharingManager::ScreenSharingManager(callifornia::Client* client, QObject* parent)
+ScreenSharingManager::ScreenSharingManager(std::shared_ptr<callifornia::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent)
     : QObject(parent)
     , m_client(client)
+    , m_screenCaptureController(screenController)
+    , m_dialogsController(dialogsController)
+    , m_cameraCaptureController(cameraController)
 {
-}
-
-void ScreenSharingManager::setControllers(ScreenCaptureController* screenController, DialogsController* dialogsController)
-{
-    m_screenCaptureController = screenController;
-    m_dialogsController = dialogsController;
 }
 
 void ScreenSharingManager::setWidgets(CallWidget* callWidget, QStatusBar* statusBar)
 {
     m_callWidget = callWidget;
     m_statusBar = statusBar;
-}
-
-void ScreenSharingManager::setCameraCaptureController(CameraCaptureController* cameraController)
-{
-    m_cameraCaptureController = cameraController;
 }
 
 void ScreenSharingManager::stopLocalScreenCapture()

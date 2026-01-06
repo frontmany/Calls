@@ -95,7 +95,7 @@ void ConfigManager::setDefaultValues() {
     m_firstLaunch = true; // Default to true for first launch
 }
 
-QString ConfigManager::getUpdaterHost() const {
+const QString& ConfigManager::getUpdaterHost() const {
     return m_updaterHost;
 }
 
@@ -123,12 +123,23 @@ bool ConfigManager::isMultiInstanceAllowed() const {
     return m_isMultiInstanceAllowed;
 }
 
-QString ConfigManager::getPort() const {
+const QString& ConfigManager::getPort() const {
     return m_port;
 }
 
-QString ConfigManager::getServerHost() const {
+const QString& ConfigManager::getVersion() const {
+    return m_version;
+}
+
+const QString& ConfigManager::getServerHost() const {
     return m_serverHost;
+}
+
+void ConfigManager::setVersion(const QString& version) {
+    if (m_version != version) {
+        m_version = version;
+        saveConfig();
+    }
 }
 
 void ConfigManager::setUpdaterHost(const QString& host) {

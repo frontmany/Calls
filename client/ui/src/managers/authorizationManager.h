@@ -1,31 +1,30 @@
 #pragma once
 
 #include <QObject>
-#include <QString>
+#include <memory>
 
-#include "client.h"
+#include "core.h"
 
 class AuthorizationWidget;
 class NavigationController;
 class ConfigManager;
 class DialogsController;
+class MainMenuWidget;
 
 class AuthorizationManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit AuthorizationManager(callifornia::Client* client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, QObject* parent = nullptr);
+    explicit AuthorizationManager(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, QObject* parent = nullptr);
     
-    void setAuthorizationWidget(AuthorizationWidget* authWidget);
-    void setMainMenuWidget(class MainMenuWidget* mainMenuWidget);
+    void setWidgets(AuthorizationWidget* authorizationWidget, MainMenuWidget* mainMenuWidget);
 
 public slots:
     void onAuthorizationButtonClicked(const QString& friendNickname);
-    void onAuthorizationResult(callifornia::ErrorCode ec);
-    void onBlurAnimationFinished();
+    void onAuthorizationResult(std::error_code ec);
 
 private:
-    callifornia::Client* m_client = nullptr;
+    std::shared_ptr<core::Client> m_client = nullptr;
     AuthorizationWidget* m_authorizationWidget = nullptr;
     class MainMenuWidget* m_mainMenuWidget = nullptr;
     NavigationController* m_navigationController = nullptr;

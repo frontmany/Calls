@@ -120,7 +120,7 @@ namespace core {
         }
     }
 
-    void NetworkController::run() {
+    void NetworkController::start() {
         if (m_running.exchange(true)) {
             return;
         }

@@ -76,7 +76,7 @@ void NetworkController::onDisconnect(ConnectionPtr connection) {
 }
 
 void NetworkController::handlePacket(OwnedPacket&& packet) {
-    if (packet.packet.type() == static_cast<int>(PacketType::CHECK_UPDATES)) {
+    if (packet.packet.type() == static_cast<int>(PacketType::UPDATE_CHECK)) {
         LOG_DEBUG("[SERVER] Handling CHECK_UPDATES request");
         m_onUpdatesCheck(packet.connection, std::move(packet.packet));
     }

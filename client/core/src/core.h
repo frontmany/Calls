@@ -12,6 +12,7 @@
 #include <memory>
 
 #include "keyManager.h"
+#include "errorCode.h"
 #include "taskManager.h"
 #include "packetType.h"
 #include "eventListener.h"
@@ -19,6 +20,7 @@
 #include "packetProcessor.h"
 #include "network/networkController.h"
 #include "audio/audioEngine.h"
+#include "userOperationManager.h"
 #include "json.hpp"
 
 namespace core
@@ -28,10 +30,8 @@ namespace core
         Client();
         ~Client();
 
-        bool init(const std::string& host,
-            const std::string& port,
-            std::shared_ptr<EventListener> eventListener
-        );
+        bool start(const std::string& host, const std::string& port, std::shared_ptr<EventListener> eventListener);
+        void stop();
 
         void refreshAudioDevices();
         void muteMicrophone(bool isMute);
@@ -57,19 +57,19 @@ namespace core
         const std::string& getNicknameWhomCalling() const;
         const std::string& getNicknameInCallWith() const;
 
-        bool authorize(const std::string& nickname);
-        bool logout();
-        bool startOutgoingCall(const std::string& friendNickname);
-        bool stopOutgoingCall();
-        bool acceptCall(const std::string& friendNickname);
-        bool declineCall(const std::string& friendNickname);
-        bool endCall();
-        bool startScreenSharing();
-        bool stopScreenSharing();
-        bool sendScreen(const std::vector<unsigned char>& data);
-        bool startCameraSharing();
-        bool stopCameraSharing();
-        bool sendCamera(const std::vector<unsigned char>& data);
+        std::error_code authorize(const std::string& nickname);
+        std::error_code logout();
+        std::error_code startOutgoingCall(const std::string& friendNickname);
+        std::error_code stopOutgoingCall();
+        std::error_code acceptCall(const std::string& friendNickname);
+        std::error_code declineCall(const std::string& friendNickname);
+        std::error_code endCall();
+        std::error_code startScreenSharing();
+        std::error_code stopScreenSharing();
+        std::error_code sendScreen(const std::vector<unsigned char>& data);
+        std::error_code startCameraSharing();
+        std::error_code stopCameraSharing();
+        std::error_code sendCamera(const std::vector<unsigned char>& data);
 
     private:
         void onReceive(const unsigned char* data, int length, PacketType type);
@@ -94,5 +94,6 @@ namespace core
         core::audio::AudioEngine m_audioEngine;
         std::shared_ptr<EventListener> m_eventListener;
         PacketProcessor m_packetProcessor;
+        UserOperationManager m_operationManager;
     };
 }

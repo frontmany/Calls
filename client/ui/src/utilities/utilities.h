@@ -1,7 +1,6 @@
-#pragma once 
+#pragma once
 
-#include <cstdint>
-#include <QScreen>
+#include <QSharedMemory>
 #include <QApplication>
 
 static qreal getDeviceScaleFactor() {
@@ -31,4 +30,18 @@ static int extraScale(int size, int count) {
     }
 
     return result;
+}
+
+inline static bool isFirstInstance() {
+    static QSharedMemory sharedMemory("callifornia");
+
+    if (sharedMemory.attach()) {
+        return false;
+    }
+
+    if (!sharedMemory.create(1)) {
+        return false;
+    }
+
+    return true;
 }

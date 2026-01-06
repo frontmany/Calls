@@ -8,11 +8,13 @@
 #include "client.h"
 #include "utilities/logger.h"
 
-CallManager::CallManager(callifornia::Client* client, AudioEffectsManager* audioManager, NavigationController* navigationController, QObject* parent)
+CallManager::CallManager(std::shared_ptr<callifornia::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent)
     : QObject(parent)
     , m_client(client)
     , m_audioManager(audioManager)
     , m_navigationController(navigationController)
+    , m_screenCaptureController(screenCaptureController)
+    , m_cameraCaptureController(cameraCaptureController)
 {
 }
 
@@ -21,21 +23,6 @@ void CallManager::setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWid
     m_mainMenuWidget = mainMenuWidget;
     m_callWidget = callWidget;
     m_stackedLayout = stackedLayout;
-}
-
-void CallManager::setScreenCaptureController(ScreenCaptureController* controller)
-{
-    m_screenCaptureController = controller;
-}
-
-void CallManager::setCameraCaptureController(CameraCaptureController* controller)
-{
-    m_cameraCaptureController = controller;
-}
-
-void CallManager::setNavigationController(NavigationController* navigationController)
-{
-    m_navigationController = navigationController;
 }
 
 void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
@@ -71,7 +58,7 @@ void CallManager::onStopCallingButtonClicked()
     }
     else {
         m_mainMenuWidget->removeCallingPanel();
-        m_mainMenuWidget->setState(callifornia::State::FREE);
+        m_mainMenuWidget->setStatusLabelOnline();
         if (m_audioManager) {
             m_audioManager->stopCallingRingtone();
         }
@@ -138,7 +125,7 @@ void CallManager::onEndCallButtonClicked()
     emit stopCameraCaptureRequested();
 
     if (m_mainMenuWidget) {
-        m_mainMenuWidget->setState(callifornia::State::FREE);
+        m_mainMenuWidget->setStatusLabelOnline();
     }
 
     if (m_navigationController) {
@@ -163,7 +150,7 @@ void CallManager::onStartCallingResult(callifornia::ErrorCode ec)
         // Success
         LOG_INFO("Started calling user: {}", m_client->getNicknameWhomCalling());
         m_mainMenuWidget->showCallingPanel(QString::fromStdString(m_client->getNicknameWhomCalling()));
-        m_mainMenuWidget->setState(callifornia::State::CALLING);
+        m_mainMenuWidget->setStatusLabelCalling();
         if (m_audioManager) {
             m_audioManager->playCallingRingtone();
         }
@@ -226,7 +213,7 @@ void CallManager::onMaximumCallingTimeReached()
     if (!m_mainMenuWidget) return;
 
     m_mainMenuWidget->removeCallingPanel();
-    m_mainMenuWidget->setState(callifornia::State::FREE);
+    m_mainMenuWidget->setStatusLabelOnline();
     if (m_audioManager) {
         m_audioManager->stopCallingRingtone();
     }
@@ -244,7 +231,7 @@ void CallManager::onCallingAccepted()
     }
 
     m_mainMenuWidget->removeCallingPanel();
-    m_mainMenuWidget->setState(callifornia::State::BUSY);
+    m_mainMenuWidget->setStatusLabelBusy();
 
     if (m_navigationController) {
         m_navigationController->switchToCallWidget(QString::fromStdString(m_client->getNicknameInCallWith()));
@@ -261,7 +248,7 @@ void CallManager::onCallingDeclined()
 
     LOG_INFO("Outgoing call was declined");
     m_mainMenuWidget->removeCallingPanel();
-    m_mainMenuWidget->setState(callifornia::State::FREE);
+    m_mainMenuWidget->setStatusLabelOnline();
 
     if (m_audioManager) {
         m_audioManager->stopCallingRingtone();
@@ -293,7 +280,7 @@ void CallManager::onRemoteUserEndedCall()
     }
 
     if (m_mainMenuWidget) {
-        m_mainMenuWidget->setState(callifornia::State::FREE);
+        m_mainMenuWidget->setStatusLabelOnline();
     }
 
     if (m_audioManager) {

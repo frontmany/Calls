@@ -10,20 +10,22 @@ public:
     void loadConfig();
     void saveConfig();
     void setDefaultValues();
-    const QString& getConfigPath();
+
     bool isConfigLoaded();
-    
+    bool isFirstLaunch() const;
     bool isCameraActive() const;
     bool isSpeakerMuted() const;
     bool isMicrophoneMuted() const;
+    bool isMultiInstanceAllowed() const;
     int getOutputVolume() const; // speaker
     int getInputVolume() const; // mic
-    bool isMultiInstanceAllowed() const;
-    QString getPort() const;
-    QString getServerHost() const;
-    QString getUpdaterHost() const;
-    bool isFirstLaunch() const;
+    const QString& getConfigPath();
+    const QString& getVersion() const;
+    const QString& getPort() const;
+    const QString& getServerHost() const;
+    const QString& getUpdaterHost() const;
 
+    void setVersion(const QString& version);
     void setUpdaterHost(const QString& host);
     void setSpeakerMuted(bool muted);
     void setMicrophoneMuted(bool muted);

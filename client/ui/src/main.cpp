@@ -11,7 +11,6 @@ int main(int argc, char* argv[])
     // 92.255.165.77 server global ip
 
     MainWindow* mainWindow = new MainWindow();
-    mainWindow->executePrerequisites();
     mainWindow->init();
 
     return app.exec();

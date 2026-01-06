@@ -1,51 +1,42 @@
-#include "calliforniaEventListener.h"
+#include "coreEventListener.h"
 #include <QApplication>
-#include <QMetaObject>
-#include <QMetaType>
-
 #include <vector>
-#include "errorCode.h"
 
+#include "errorCode.h"
 #include "../mainWindow.h"
 
-Q_DECLARE_METATYPE(std::vector<unsigned char>)
-
-ClientCallbacksHandler::ClientCallbacksHandler(MainWindow* mainWindow)
+CoreEventListener::CoreEventListener(MainWindow* mainWindow)
     : m_mainWindow(mainWindow)
 {
-    qRegisterMetaType<std::vector<unsigned char>>("std::vector<unsigned char>");
 }
 
-void ClientCallbacksHandler::onAuthorizationResult(std::error_code ec)
+void CoreEventListener::onAuthorizationResult(std::error_code ec)
 {
     if (m_mainWindow) {
-        core::ErrorCode errorCode = static_cast<core::ErrorCode>(ec.value());
         QMetaObject::invokeMethod(m_mainWindow, "onAuthorizationResult",
-            Qt::QueuedConnection, Q_ARG(core::ErrorCode, errorCode));
+            Qt::QueuedConnection, Q_ARG(std::error_code, ec));
     }
 }
 
-void ClientCallbacksHandler::onStartOutgoingCallResult(std::error_code ec)
+void CoreEventListener::onStartOutgoingCallResult(std::error_code ec)
 {
     if (m_mainWindow) {
-        core::ErrorCode errorCode = static_cast<core::ErrorCode>(ec.value());
         QMetaObject::invokeMethod(m_mainWindow, "onStartCallingResult",
-            Qt::QueuedConnection, Q_ARG(core::ErrorCode, errorCode));
+            Qt::QueuedConnection, Q_ARG(std::error_code, ec));
     }
 }
 
-void ClientCallbacksHandler::onAcceptCallResult(std::error_code ec)
+void CoreEventListener::onAcceptCallResult(std::error_code ec)
 {
     if (m_mainWindow) {
-        core::ErrorCode errorCode = static_cast<core::ErrorCode>(ec.value());
         QMetaObject::invokeMethod(m_mainWindow, "onAcceptCallResult",
             Qt::QueuedConnection,
-            Q_ARG(core::ErrorCode, errorCode),
+            Q_ARG(std::error_code, ec),
             Q_ARG(const QString&, QString()));
     }
 }
 
-void ClientCallbacksHandler::onStartScreenSharingResult(std::error_code ec) {
+void CoreEventListener::onStartScreenSharingResult(std::error_code ec) {
     if (m_mainWindow) {
         if (ec) {
             QMetaObject::invokeMethod(m_mainWindow, "onStartScreenSharingError",
@@ -57,32 +48,32 @@ void ClientCallbacksHandler::onStartScreenSharingResult(std::error_code ec) {
     }
 }
 
-void ClientCallbacksHandler::onStopScreenSharingResult(std::error_code ec) {
+void CoreEventListener::onStopScreenSharingResult(std::error_code ec) {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onIncomingScreenSharingStarted() {
+void CoreEventListener::onIncomingScreenSharingStarted() {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreenSharingStarted",
             Qt::QueuedConnection);
     }
 }
 
-void ClientCallbacksHandler::onIncomingScreenSharingStopped() {
+void CoreEventListener::onIncomingScreenSharingStopped() {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreenSharingStopped",
             Qt::QueuedConnection);
     }
 }
 
-void ClientCallbacksHandler::onIncomingScreen(const std::vector<unsigned char>& data) {
+void CoreEventListener::onIncomingScreen(const std::vector<unsigned char>& data) {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingScreen",
             Qt::QueuedConnection, Q_ARG(const std::vector<unsigned char>&, data));
     }
 }
 
-void ClientCallbacksHandler::onStartCameraSharingResult(std::error_code ec) {
+void CoreEventListener::onStartCameraSharingResult(std::error_code ec) {
     if (m_mainWindow) {
         if (ec) {
             QMetaObject::invokeMethod(m_mainWindow, "onStartCameraSharingError",
@@ -94,32 +85,32 @@ void ClientCallbacksHandler::onStartCameraSharingResult(std::error_code ec) {
     }
 }
 
-void ClientCallbacksHandler::onStopCameraSharingResult(std::error_code ec) {
+void CoreEventListener::onStopCameraSharingResult(std::error_code ec) {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onIncomingCameraSharingStarted() {
+void CoreEventListener::onIncomingCameraSharingStarted() {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingCameraSharingStarted",
             Qt::QueuedConnection);
     }
 }
 
-void ClientCallbacksHandler::onIncomingCameraSharingStopped() {
+void CoreEventListener::onIncomingCameraSharingStopped() {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingCameraSharingStopped",
             Qt::QueuedConnection);
     }
 }
 
-void ClientCallbacksHandler::onIncomingCamera(const std::vector<unsigned char>& data) {
+void CoreEventListener::onIncomingCamera(const std::vector<unsigned char>& data) {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onIncomingCamera",
             Qt::QueuedConnection, Q_ARG(const std::vector<unsigned char>&, data));
     }
 }
 
-void ClientCallbacksHandler::onOutgoingCallAccepted()
+void CoreEventListener::onOutgoingCallAccepted()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onCallingAccepted",
@@ -127,7 +118,7 @@ void ClientCallbacksHandler::onOutgoingCallAccepted()
     }
 }
 
-void ClientCallbacksHandler::onOutgoingCallDeclined()
+void CoreEventListener::onOutgoingCallDeclined()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onCallingDeclined",
@@ -135,7 +126,7 @@ void ClientCallbacksHandler::onOutgoingCallDeclined()
     }
 }
 
-void ClientCallbacksHandler::onOutgoingCallTimeout(std::error_code ec)
+void CoreEventListener::onOutgoingCallTimeout(std::error_code ec)
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onMaximumCallingTimeReached",
@@ -143,7 +134,7 @@ void ClientCallbacksHandler::onOutgoingCallTimeout(std::error_code ec)
     }
 }
 
-void ClientCallbacksHandler::onIncomingCall(const std::string& friendNickname)
+void CoreEventListener::onIncomingCall(const std::string& friendNickname)
 {
     if (m_mainWindow) {
         QString qFriendNickname = QString::fromStdString(friendNickname);
@@ -152,7 +143,7 @@ void ClientCallbacksHandler::onIncomingCall(const std::string& friendNickname)
     }
 }
 
-void ClientCallbacksHandler::onIncomingCallExpired(std::error_code ec, const std::string& friendNickname)
+void CoreEventListener::onIncomingCallExpired(std::error_code ec, const std::string& friendNickname)
 {
     if (m_mainWindow) {
         QString qNickname = QString::fromStdString(friendNickname);
@@ -161,7 +152,7 @@ void ClientCallbacksHandler::onIncomingCallExpired(std::error_code ec, const std
     }
 }
 
-void ClientCallbacksHandler::onConnectionDown()
+void CoreEventListener::onConnectionDown()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onClientNetworkError",
@@ -169,7 +160,7 @@ void ClientCallbacksHandler::onConnectionDown()
     }
 }
 
-void ClientCallbacksHandler::onConnectionRestored()
+void CoreEventListener::onConnectionRestored()
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onConnectionRestored",
@@ -177,42 +168,42 @@ void ClientCallbacksHandler::onConnectionRestored()
     }
 }
 
-void ClientCallbacksHandler::onLogoutCompleted()
+void CoreEventListener::onLogoutCompleted()
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onStopOutgoingCallResult(std::error_code ec)
+void CoreEventListener::onStopOutgoingCallResult(std::error_code ec)
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onDeclineCallResult(std::error_code ec)
+void CoreEventListener::onDeclineCallResult(std::error_code ec)
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onEndCallResult(std::error_code ec)
+void CoreEventListener::onEndCallResult(std::error_code ec)
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onCallParticipantConnectionDown()
+void CoreEventListener::onCallParticipantConnectionDown()
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onCallParticipantConnectionRestored()
+void CoreEventListener::onCallParticipantConnectionRestored()
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onConnectionRestoredAuthorizationNeeded()
+void CoreEventListener::onConnectionRestoredAuthorizationNeeded()
 {
     // Not used in UI
 }
 
-void ClientCallbacksHandler::onCallEndedByRemote(std::error_code ec)
+void CoreEventListener::onCallEndedByRemote(std::error_code ec)
 {
     if (m_mainWindow) {
         QMetaObject::invokeMethod(m_mainWindow, "onRemoteUserEndedCall",

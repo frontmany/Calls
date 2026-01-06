@@ -4,15 +4,15 @@
 #include "widgets/callWidget.h"
 #include "client.h"
 
-NavigationController::NavigationController(callifornia::Client* client, QStackedLayout* stackedLayout, QObject* parent)
+NavigationController::NavigationController(std::shared_ptr<callifornia::Client> client, QObject* parent)
     : QObject(parent)
     , m_client(client)
-    , m_stackedLayout(stackedLayout)
 {
 }
 
-void NavigationController::setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget)
+void NavigationController::setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget)
 {
+    m_stackedLayout = stackedLayout;
     m_authorizationWidget = authWidget;
     m_mainMenuWidget = mainMenuWidget;
     m_callWidget = callWidget;

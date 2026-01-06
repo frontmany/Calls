@@ -662,23 +662,24 @@ void MainMenuWidget::setNickname(const QString& nickname) {
     m_avatarLabel->setStyleSheet(StyleMainMenuWidget::avatarStyle());
 }
 
-void MainMenuWidget::setState(callifornia::State state) {
-    if (state == callifornia::State::FREE) {
-        m_statusLabel->setText("Online");
-        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_primaryColor.name()));
-    }
-    else if (state == callifornia::State::CALLING) {
-        m_statusLabel->setText("Calling...");
-        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
-    }
-    else if (state == callifornia::State::BUSY) {
-        m_statusLabel->setText("Busy");
-        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
-    }
-    else if (state == callifornia::State::UNAUTHORIZED) {
-        m_statusLabel->setText("Offline");
-        m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_offlineColor.name()));
-    }
+void MainMenuWidget::setStatusLabelOnline() {
+    m_statusLabel->setText("Online");
+    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_primaryColor.name()));
+}
+
+void MainMenuWidget::setStatusLabelCalling() {
+    m_statusLabel->setText("Calling...");
+    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
+}
+
+void MainMenuWidget::setStatusLabelBusy() {
+    m_statusLabel->setText("Busy");
+    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
+}
+
+void MainMenuWidget::setStatusLabelOffline() {
+    m_statusLabel->setText("Offline");
+    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_offlineColor.name()));
 }
 
 

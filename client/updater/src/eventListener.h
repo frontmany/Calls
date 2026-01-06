@@ -9,6 +9,7 @@ namespace updater
 		virtual void onUpdateCheckResult(UpdateCheckResult updateCheckResult) = 0;
 		virtual void onLoadingProgress(double progress) = 0;
 		virtual void onUpdateLoaded(bool emptyUpdate) = 0;
+		virtual void onConnectError() = 0;
 		virtual void onNetworkError() = 0;
 	};
 }

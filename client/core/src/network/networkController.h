@@ -28,7 +28,7 @@ namespace core
             std::function<void()> onConnectionDown,
             std::function<void()> onConnectionRestored);
 
-        void run();
+        void start();
         void stop();
         bool isRunning() const;
         bool send(const std::vector<unsigned char>& data, uint32_t type);

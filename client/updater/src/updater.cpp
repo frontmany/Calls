@@ -2,97 +2,84 @@
 
 #include <thread>
 #include <chrono>
+#include <cmath>
+#include <iomanip>
 
 namespace updater
 {
-	Updater::Updater()
+	Client::Client()
 		: m_networkController(
-			[this](UpdateCheckResult result) {m_queue.push_back([this, result]() {m_state = State::AWAITING_START_UPDATE; m_eventListener->onUpdateCheckResult(result); }); },
-			[this](double progress) {m_queue.push_back([this, progress]() {m_eventListener->onLoadingProgress(progress); m_processingProgress = true; }); },
-			[this](bool emptyUpdate) {m_queue.push_back([this, emptyUpdate]() {m_state = State::AWAITING_UPDATES_CHECK; m_eventListener->onUpdateLoaded(emptyUpdate); m_processingProgress = false; }); },
-			[this]() {m_queue.push_back([this]() {m_state = State::AWAITING_UPDATES_CHECK;});  },
-			[this]() {m_queue.push_back([this]() {m_eventListener->onNetworkError(); }); })
+			[this](UpdateCheckResult status) {
+				if (m_eventListener) {
+					m_eventListener->onUpdateCheckResult(status);
+				}
+			},
+			[this](double progress) {
+				if (m_eventListener) {
+					m_eventListener->onLoadingProgress(progress);
+				}
+			},
+			[this](bool emptyUpdate) {
+				if (m_eventListener) {
+					m_eventListener->onUpdateLoaded(emptyUpdate);
+				}
+			},
+			[this]() {
+				if (m_eventListener) {
+					m_eventListener->onConnectError();
+				}
+			},
+			[this]() {
+				if (m_eventListener) {
+					m_eventListener->onNetworkError();
+				}
+			},
+			[this](network::Packet& packet) {
+				return parseMetadata(packet);
+			})
 	{
 	}
 
-	Updater::~Updater() {
-		m_running = false;
-		if (m_queueProcessingThread.joinable()) {
-			m_queueProcessingThread.join();
-		}
+	Client::~Client()
+	{
+		stop();
 	}
 
-	void Updater::init(std::shared_ptr<EventListener> eventListener) {
+	void Client::init(std::shared_ptr<EventListener> eventListener,
+		const std::string& tempDirectory,
+		const std::string& deletionListFileName,
+		const std::unordered_set<std::string>& ignoredFiles,
+		const std::unordered_set<std::string>& excludedDirectories)
+	{
 		m_eventListener = eventListener;
+		m_tempDirectory = tempDirectory;
+		m_deletionListFileName = deletionListFileName;
+		m_ignoredFiles = ignoredFiles;
+		m_excludedDirectories = excludedDirectories;
 	}
 
-	bool Updater::connect(const std::string& host, const std::string& port) {
+	void Client::start(const std::string& host, const std::string& port)
+	{
 		m_serverHost = host;
 		m_serverPort = port;
-
-		if (m_state != State::DISCONNECTED || m_running) return false;
-
-		m_state = State::AWAITING_SERVER_RESPONSE;
 		m_networkController.connect(host, port);
-
-		m_running = true;
-		m_queueProcessingThread = std::thread([this]() {processQueue(); });
-
-		return true;
 	}
 
-	void Updater::disconnect() {
-		m_networkController.requestShutdown();
+	void Client::stop()
+	{
 		m_networkController.disconnect();
-		m_state = State::DISCONNECTED;
-
-		m_running = false;
-		if (m_queueProcessingThread.joinable()) {
-			m_queueProcessingThread.join();
-		}
-
-		m_queue.clear();
 	}
 
-	void Updater::processQueue() {
-		while (m_running) {
-			if (m_queue.size() != 0) {
-				auto callback = m_queue.pop_front();
-				callback();
-			}
-			
-			if (!m_processingProgress) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			}
-		}
+	void Client::checkUpdates(const std::string& currentVersionNumber)
+	{
+		nlohmann::json jsonObject;
+		jsonObject[VERSION] = currentVersionNumber;
+		network::Packet packet(static_cast<uint32_t>(PacketType::UPDATE_CHECK), jsonObject.dump());
+		m_networkController.sendPacket(packet);
 	}
 
-	void Updater::checkUpdates(const std::string& currentVersionNumber) {
-		m_checkUpdatesFuture = std::async(std::launch::async, [this, currentVersionNumber]() {
-			auto startTime = std::chrono::steady_clock::now();
-			auto timeout = std::chrono::seconds(5);
-
-			while (std::chrono::steady_clock::now() - startTime < timeout) {
-				if (m_state == State::AWAITING_UPDATES_CHECK) {
-					break;
-				}
-			}
-
-			if (m_state != State::AWAITING_UPDATES_CHECK) return;
-
-			nlohmann::json jsonObject;
-			jsonObject["version"] = currentVersionNumber;
-			network::Packet packet(static_cast<int>(PacketType::CHECK_UPDATES), jsonObject.dump());
-
-			m_networkController.sendPacket(packet);
-
-			m_state = State::AWAITING_SERVER_RESPONSE;
-		});
-	}
-
-	bool Updater::startUpdate(OperationSystemType type) {
-		if (m_state != State::AWAITING_START_UPDATE) return false;
-
+	bool Client::startUpdate(OperationSystemType type)
+	{
 		nlohmann::json jsonObject;
 		jsonObject[OPERATION_SYSTEM] = static_cast<int>(type);
 
@@ -111,38 +98,18 @@ namespace updater
 
 		std::string jsonString = jsonObject.dump();
 
-		network::Packet packet(static_cast<int>(PacketType::UPDATE_ACCEPT), jsonString);
+		network::Packet packet(static_cast<uint32_t>(PacketType::UPDATE_ACCEPT), jsonString);
 		m_networkController.sendPacket(packet);
 
-		m_state = State::AWAITING_SERVER_RESPONSE;
 		return true;
 	}
 
-	bool Updater::isConnected() {
-		return m_state != State::DISCONNECTED;
+	bool Client::isConnected()
+	{
+		return m_networkController.isConnected();
 	}
 
-	bool Updater::isAwaitingServerResponse() {
-		return m_state == State::AWAITING_SERVER_RESPONSE;
-	}
-
-	bool Updater::isAwaitingCheckUpdatesFunctionCall() {
-		return m_state == State::AWAITING_UPDATES_CHECK;
-	}
-
-	bool Updater::isAwaitingStartUpdateFunctionCall() {
-		return m_state == State::AWAITING_START_UPDATE;
-	}
-
-	const std::string& Updater::getServerHost() {
-		return m_serverHost;
-	}
-
-	const std::string& Updater::getServerPort() {
-		return m_serverPort;
-	}
-
-	std::string Updater::normalizePath(const std::filesystem::path& path) {
+	std::string Client::normalizePath(const std::filesystem::path& path) {
 		std::string normalized = path.generic_string();
 
 		if (normalized.find("./") == 0) {
@@ -152,7 +119,7 @@ namespace updater
 		return normalized;
 	}
 
-	std::vector<std::pair<std::filesystem::path, std::string>> Updater::getFilePathsWithHashes() {
+	std::vector<std::pair<std::filesystem::path, std::string>> Client::getFilePathsWithHashes() {
 		std::vector<std::pair<std::filesystem::path, std::string>> result;
 
 		try {
@@ -161,17 +128,25 @@ namespace updater
 			for (const auto& entry : std::filesystem::recursive_directory_iterator(currentPath)) {
 				if (entry.is_regular_file()) {
 					std::filesystem::path relativePath = std::filesystem::relative(entry.path(), currentPath);
+					std::string filename = entry.path().filename().string();
 
-					if (entry.path().filename() == "config.json" ||
-						entry.path().filename() == "update_applier.exe" ||
-						entry.path().filename() == "update_applier" ||
-						entry.path().filename() == "callifornia.exe.manifest" ||
-						entry.path().filename() == "unins000.dat" ||
-						entry.path().filename() == "unins000.exe") {
+					if (m_ignoredFiles.find(filename) != m_ignoredFiles.end()) {
 						continue;
 					}
 
-					if (relativePath.string().find("update_temp") == 0 || relativePath.string().find("logs") == 0) {
+					std::string relativePathStr = relativePath.string();
+					if (relativePathStr.find(m_tempDirectory) == 0) {
+						continue;
+					}
+
+					bool isExcluded = false;
+					for (const auto& excludedDir : m_excludedDirectories) {
+						if (relativePathStr.find(excludedDir) == 0) {
+							isExcluded = true;
+							break;
+						}
+					}
+					if (isExcluded) {
 						continue;
 					}
 
@@ -184,9 +159,87 @@ namespace updater
 			}
 		}
 		catch (const std::filesystem::filesystem_error& e) {
-			m_eventListener->onNetworkError();
+			if (m_eventListener) {
+				m_eventListener->onNetworkError();
+			}
 		}
 
 		return result;
+	}
+
+	void Client::deleteTempDirectory()
+	{
+		std::filesystem::path tempDirectory = m_tempDirectory;
+		std::filesystem::remove_all(tempDirectory);
+		std::filesystem::remove(tempDirectory);
+	}
+
+	std::vector<network::FileMetadata> Client::parseMetadata(network::Packet& packet)
+	{
+		deleteTempDirectory();
+
+		nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
+
+		std::filesystem::path tempDirectory = m_tempDirectory;
+		std::vector<network::FileMetadata> files;
+
+		try {
+			if (!std::filesystem::exists(tempDirectory)) {
+				std::filesystem::create_directories(tempDirectory);
+			}
+
+			if (jsonObject.contains(FILES_TO_DOWNLOAD)) {
+				for (const auto& fileEntry : jsonObject[FILES_TO_DOWNLOAD]) {
+					if (fileEntry.contains(RELATIVE_FILE_PATH) && fileEntry.contains(FILE_SIZE) && fileEntry.contains(FILE_HASH)) {
+						std::string relativeFilePath = fileEntry[RELATIVE_FILE_PATH].get<std::string>();
+						std::string fileHash = fileEntry[FILE_HASH].get<std::string>();
+						uint64_t fileSize = fileEntry[FILE_SIZE].get<uint64_t>();
+
+						int chunksCount = static_cast<int>(std::ceil(static_cast<double>(fileSize) / network::FileReceiver::c_chunkSize));
+						uint64_t lastChunkSize = fileSize % network::FileReceiver::c_chunkSize;
+
+						if (lastChunkSize == 0) {
+							lastChunkSize = network::FileReceiver::c_chunkSize;
+						}
+
+						network::FileMetadata fileInfo;
+						fileInfo.fileHash = fileHash;
+						fileInfo.expectedChunksCount = chunksCount;
+						fileInfo.relativeFilePath = tempDirectory / relativeFilePath;
+						fileInfo.lastChunkSize = lastChunkSize;
+						fileInfo.fileSize = fileSize;
+
+						files.push_back(std::move(fileInfo));
+					}
+				}
+			}
+
+			if (jsonObject.contains(FILES_TO_DELETE)) {
+				nlohmann::json removeJson;
+				nlohmann::json filesArray = nlohmann::json::array();
+
+				for (const auto& filePath : jsonObject[FILES_TO_DELETE]) {
+					if (filePath.is_string()) {
+						filesArray.push_back(filePath.get<std::string>());
+					}
+				}
+
+				removeJson[FILES] = filesArray;
+
+				std::filesystem::path removeJsonPath = tempDirectory / m_deletionListFileName;
+				std::ofstream file(removeJsonPath);
+				if (file) {
+					file << std::setw(4) << removeJson << std::endl;
+					file.close();
+				}
+			}
+		}
+		catch (const nlohmann::json::exception& e) {
+			if (m_eventListener) {
+				m_eventListener->onNetworkError();
+			}
+		}
+
+		return files;
 	}
 }

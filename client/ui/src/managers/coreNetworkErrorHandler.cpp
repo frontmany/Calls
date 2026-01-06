@@ -9,13 +9,14 @@
 #include "updater.h"
 #include "client.h"
 
-NetworkErrorHandler::NetworkErrorHandler(callifornia::Client* client, callifornia::updater::Updater* updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent)
+NetworkErrorHandler::NetworkErrorHandler(std::shared_ptr<callifornia::Client> client, std::shared_ptr<callifornia::updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
     : QObject(parent)
     , m_client(client)
     , m_updater(updater)
     , m_navigationController(navigationController)
     , m_updateManager(updateManager)
     , m_configManager(configManager)
+    , m_audioManager(audioManager)
 {
 }
 
@@ -24,11 +25,6 @@ void NetworkErrorHandler::setWidgets(AuthorizationWidget* authWidget, MainMenuWi
     m_authorizationWidget = authWidget;
     m_mainMenuWidget = mainMenuWidget;
     m_dialogsController = dialogsController;
-}
-
-void NetworkErrorHandler::setAudioManager(AudioEffectsManager* audioManager)
-{
-    m_audioManager = audioManager;
 }
 
 void NetworkErrorHandler::onClientNetworkError()
