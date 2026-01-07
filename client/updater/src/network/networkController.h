@@ -33,9 +33,9 @@ namespace updater
 			NetworkController(std::function<void(UpdateCheckResult)>&& onCheckResult,
 				std::function<void(double)>&& onLoadingProgress,
 				std::function<void(bool)>&& onAllFilesLoaded,
-				std::function<void()>&& onConnectError,
 				std::function<void()>&& onNetworkError,
-				std::function<std::vector<FileMetadata>(Packet&)>&& onMetadata
+				std::function<std::vector<FileMetadata>(Packet&)>&& onMetadata,
+				std::function<void()>&& onConnected = nullptr
 			);
 
 			~NetworkController();
@@ -72,10 +72,11 @@ namespace updater
 			std::function<void(UpdateCheckResult)> m_onCheckResult;
 			std::function<void(double)> m_onLoadingProgress;
 			std::function<void(bool)> m_onAllFilesLoaded;
-			std::function<void()> m_onConnectError;
 			std::function<void()> m_onNetworkError;
+			std::function<void()> m_onConnected;
 
 			std::atomic_bool m_shuttingDown = false;
+			std::atomic_bool m_connecting = false;
 		};
 	}
 }

@@ -15,15 +15,15 @@ namespace updater
 			std::function<void(UpdateCheckResult)>&& onUpdateCheckResult,
 			std::function<void(double)>&& onUpdateLoadingProgress,
 			std::function<void(bool)>&& onUpdateLoaded,
-			std::function<void()>&& onConnectError,
 			std::function<void()>&& onNetworkError,
-			std::function<std::vector<FileMetadata>(Packet&)>&& onMetadata)
+			std::function<std::vector<FileMetadata>(Packet&)>&& onMetadata,
+			std::function<void()>&& onConnected)
 			: m_onCheckResult(onUpdateCheckResult),
 			m_onLoadingProgress(onUpdateLoadingProgress),
 			m_onAllFilesLoaded(onUpdateLoaded),
-			m_onConnectError(onConnectError),
 			m_onNetworkError(onNetworkError),
 			m_onMetadata(onMetadata),
+			m_onConnected(std::move(onConnected)),
 			m_socket(m_context)
 		{
 		}
@@ -42,6 +42,10 @@ namespace updater
 
 		void NetworkController::connect(const std::string& host, const std::string& port)
 		{
+			if (m_connecting.exchange(true)) {
+				return;
+			}
+
 			if (m_context.stopped()) {
 				m_context.restart();
 				m_socket = asio::ip::tcp::socket(m_context);
@@ -56,8 +60,14 @@ namespace updater
 
 			m_connectionResolver = std::make_unique<ConnectionResolver>(m_context, m_socket);
 			m_connectionResolver->connect(host, std::stoi(port),
-				[this]() { initializeAfterHandshake(); },
-				[this]() { m_onConnectError(); });
+				[this]() { 
+					m_connecting = false;
+					initializeAfterHandshake(); 
+				},
+				[this]() { 
+					m_connecting = false;
+					m_onNetworkError(); 
+				});
 		}
 
 		void NetworkController::disconnect()
@@ -186,6 +196,7 @@ namespace updater
 			m_packetQueue.clear();
 
 			m_shuttingDown = false;
+			m_connecting = false;
 		}
 
 		void NetworkController::initializeAfterHandshake()
@@ -214,6 +225,10 @@ namespace updater
 			}
 
 			m_packetReceiver->startReceiving();
+
+			if (m_onConnected) {
+				m_onConnected();
+			}
 		}
 
 	}

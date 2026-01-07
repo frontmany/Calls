@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <condition_variable>
+#include <mutex>
 #include <string>
 #include <memory>
 #include <fstream>
@@ -47,6 +48,7 @@ namespace updater
 		std::vector<std::pair<std::filesystem::path, std::string>> getFilePathsWithHashes();
 		void deleteTempDirectory();
 		std::vector<network::FileMetadata> parseMetadata(network::Packet& packet);
+		void reconnectLoop();
 
 	private:
 		std::future<void> m_checkUpdatesFuture;
@@ -58,5 +60,10 @@ namespace updater
 		std::string m_deletionListFileName;
 		std::unordered_set<std::string> m_ignoredFiles;
 		std::unordered_set<std::string> m_excludedDirectories;
+		std::atomic_bool m_reconnecting = false;
+		std::atomic_bool m_stopReconnectThread = false;
+		std::thread m_reconnectThread;
+		std::mutex m_reconnectMutex;
+		std::condition_variable m_reconnectCondition;
 	};
 }

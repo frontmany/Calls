@@ -25,24 +25,33 @@ namespace updater
 				}
 			},
 			[this]() {
-				if (m_eventListener) {
-					m_eventListener->onConnectError();
-				}
-			},
-			[this]() {
-				if (m_eventListener) {
-					m_eventListener->onNetworkError();
+				if (!m_reconnecting.exchange(true)) {
+					if (m_eventListener) {
+						m_eventListener->onNetworkError();
+					}
+					m_reconnectCondition.notify_one();
 				}
 			},
 			[this](network::Packet& packet) {
 				return parseMetadata(packet);
+			},
+			[this]() {
+				m_reconnecting = false;
 			})
 	{
+		m_reconnectThread = std::thread([this]() {
+			reconnectLoop();
+		});
 	}
 
 	Client::~Client()
 	{
 		stop();
+		if (m_reconnectThread.joinable()) {
+			m_stopReconnectThread = true;
+			m_reconnectCondition.notify_one();
+			m_reconnectThread.join();
+		}
 	}
 
 	void Client::init(std::shared_ptr<EventListener> eventListener,
@@ -62,12 +71,43 @@ namespace updater
 	{
 		m_serverHost = host;
 		m_serverPort = port;
+		m_reconnecting = false;
 		m_networkController.connect(host, port);
 	}
 
 	void Client::stop()
 	{
+		m_reconnecting = false;
 		m_networkController.disconnect();
+		m_reconnectCondition.notify_one();
+	}
+
+	void Client::reconnectLoop()
+	{
+		constexpr auto reconnectInterval = std::chrono::seconds(5);
+		std::unique_lock<std::mutex> lock(m_reconnectMutex);
+
+		while (!m_stopReconnectThread) {
+			if (m_reconnecting && !m_serverHost.empty() && !m_serverPort.empty()) {
+				lock.unlock();
+
+				if (!m_networkController.isConnected()) {
+					m_networkController.connect(m_serverHost, m_serverPort);
+					std::this_thread::sleep_for(std::chrono::milliseconds(500));
+				}
+				else {
+					m_reconnecting = false;
+				}
+
+				lock.lock();
+				if (m_reconnecting && !m_stopReconnectThread) {
+					m_reconnectCondition.wait_for(lock, reconnectInterval);
+				}
+			}
+			else {
+				m_reconnectCondition.wait(lock);
+			}
+		}
 	}
 
 	void Client::checkUpdates(const std::string& currentVersionNumber)
