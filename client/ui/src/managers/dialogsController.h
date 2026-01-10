@@ -27,6 +27,8 @@ public:
 	
 	void showConnectionErrorDialog();
 	void hideUpdatingErrorDialog();
+	void showReconnectingDialog();
+	void hideReconnectingDialog();
 
     void showAlreadyRunningDialog();
     void hideAlreadyRunningDialog();
@@ -46,6 +48,7 @@ private:
     QWidget* createAlreadyRunningDialog(OverlayWidget* overlay);
     QWidget* createUpdatingDialog(OverlayWidget* overlay);
     QWidget* createConnectionErrorDialog(OverlayWidget* overlay);
+    QWidget* createReconnectingDialog(OverlayWidget* overlay);
     QWidget* createScreenShareDialog(OverlayWidget* overlay);
     QWidget* createFirstLaunchDialog(OverlayWidget* overlay, const QString& imagePath = "", const QString& descriptionText = "");
     void refreshScreenSharePreviews();
@@ -63,6 +66,9 @@ private:
 
     OverlayWidget* m_connectionErrorOverlay;
     QWidget* m_connectionErrorDialog;
+    OverlayWidget* m_reconnectingOverlay;
+    QWidget* m_reconnectingDialog;
+    QLabel* m_reconnectingLabel;
 
     OverlayWidget* m_screenShareOverlay;
     QWidget* m_screenShareDialog;

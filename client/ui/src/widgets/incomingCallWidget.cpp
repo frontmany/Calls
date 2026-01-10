@@ -3,7 +3,7 @@
 
 #include <QPainter>
 #include <QFontDatabase>
-#include "../scaleFactor.h"
+#include "utilities/utilities.h"
 
 // Style definitions
 const QColor StyleIncomingCallWidget::m_backgroundColor = QColor(235, 235, 235, 110);

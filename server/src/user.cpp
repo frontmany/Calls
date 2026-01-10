@@ -191,7 +191,7 @@ void User::removeIncomingPendingCall(PendingCallPtr pendingCall)
 				++it;
 			}
 		} else {
-			// Удаляем expired weak_ptr
+			// Remove expired weak_ptr
 			it = m_incomingPendingCalls.erase(it);
 		}
 	}

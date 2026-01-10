@@ -73,9 +73,6 @@ namespace core
 
     private:
         void onReceive(const unsigned char* data, int length, PacketType type);
-        void onVoice(const unsigned char* data, int length);
-        void onScreen(const unsigned char* data, int length);
-        void onCamera(const unsigned char* data, int length);
         void onInputVoice(const unsigned char* data, int length);
         void reset();
 
@@ -93,7 +90,7 @@ namespace core
         core::network::NetworkController m_networkController;
         core::audio::AudioEngine m_audioEngine;
         std::shared_ptr<EventListener> m_eventListener;
-        PacketProcessor m_packetProcessor;
+        std::unique_ptr<PacketProcessor> m_packetProcessor;
         UserOperationManager m_operationManager;
     };
 }

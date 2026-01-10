@@ -4,15 +4,20 @@
 #include "managers/navigationController.h"
 #include "managers/configManager.h"
 #include "managers/dialogsController.h"
+#include "managers/updateManager.h"
 
 #include "../utilities/logger.h"
+#include "errorCode.h"
+#include <QApplication>
+#include <system_error>
 
-AuthorizationManager::AuthorizationManager(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, QObject* parent)
+AuthorizationManager::AuthorizationManager(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
-    , m_client(client)
+    , m_coreClient(client)
     , m_navigationController(navigationController)
     , m_configManager(configManager)
     , m_dialogsController(dialogsController)
+    , m_updateManager(updateManager)
 {
 }
 
@@ -23,45 +28,87 @@ void AuthorizationManager::setWidgets(AuthorizationWidget* authorizationWidget, 
 }
 
 void AuthorizationManager::onAuthorizationButtonClicked(const QString& friendNickname) {
-    if (m_client->authorize(friendNickname.toStdString())) {
-        m_authorizationWidget->startBlurAnimation();
+    std::error_code ec = m_coreClient->authorize(friendNickname.toStdString());
+    
+    if (ec) {
+        if (ec == core::make_error_code(core::ErrorCode::connection_down)) {
+            LOG_ERROR("Authorization failed: connection down");
+
+            QString errorMessage = "Connection down. Please check your connection and try again.";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
+        else if (ec == core::make_error_code(core::ErrorCode::already_authorized)) {
+            LOG_WARN("Authorization failed: already authorized");
+
+            QString errorMessage = "You are already authorized.";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
+        else if (ec == core::make_error_code(core::ErrorCode::operation_in_progress)) {
+            LOG_WARN("Authorization failed: operation in progress");
+
+            QString errorMessage = "Authorization is already in progress. Please wait.";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
+        else {
+            LOG_ERROR("Authorization failed: unknown error");
+
+            QString errorMessage = "Failed to send authorization request. Please try again.";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
     }
     else {
-        QString errorMessage = "Failed to send authorization request. Please try again.";
-        m_authorizationWidget->setErrorMessage(errorMessage);
+        m_authorizationWidget->startBlurAnimation();
     }
 }
 
 void AuthorizationManager::onAuthorizationResult(std::error_code ec) {
     m_authorizationWidget->waitForBlurAnimation();
-    m_authorizationWidget->resetBlur();
+    m_authorizationWidget->resetBlur(); 
 
-    if (ec == core::ErrorCode::network_error) {
-        LOG_ERROR("Authorization failed: network error");
+    if (ec) {
+        if (ec == core::make_error_code(core::ErrorCode::network_error)) {
+            LOG_ERROR("Authorization failed: network error");
 
-        QString errorMessage = "Network error (please try again)";
-        m_authorizationWidget->setErrorMessage(errorMessage);
-    }
-    else if (ec == core::ErrorCode::taken_nickname) {
-        LOG_WARN("Authorization failed: nickname already taken");
+            QString errorMessage = "Network error (please try again)";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
+        else if (ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
+            LOG_WARN("Authorization failed: nickname already taken");
 
-        QString errorMessage = "Taken nickname";
-        m_authorizationWidget->setErrorMessage(errorMessage);
+            QString errorMessage = "Taken nickname";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
+        else {
+            LOG_WARN("Authorization failed: unknown error");
+
+            QString errorMessage = "Unknown error";
+            m_authorizationWidget->setErrorMessage(errorMessage);
+        }
     }
     else {
-        LOG_INFO("User authorization successful");
 
         m_authorizationWidget->clearErrorMessage();
 
         m_navigationController->switchToMainMenuWidget();
         
         m_mainMenuWidget->setStatusLabelOnline();
-        m_mainMenuWidget->setNickname(QString::fromStdString(m_client->getMyNickname()));
+        m_mainMenuWidget->setNickname(QString::fromStdString(m_coreClient->getMyNickname()));
         m_mainMenuWidget->setFocusToLineEdit();
         
         if (m_configManager->isFirstLaunch()) {
-            m_dialogsController->showFirstLaunchDialog();
             m_configManager->setFirstLaunch(false);
+            m_dialogsController->showFirstLaunchDialog();
         }
+    }
+}
+
+void AuthorizationManager::onLogoutCompleted()
+{
+
+    if (m_updateManager->shouldRestart()) {
+        m_updateManager->launchUpdateApplier();
+    }
+    else {
+        QApplication::quit();
     }
 }

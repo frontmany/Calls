@@ -1,7 +1,7 @@
 #include "settingsPanelWidget.h"
 #include "buttons.h"
 #include <QIcon>
-#include "../scaleFactor.h"
+#include "utilities/utilities.h"
 
 const QColor SettingsPanel::StyleSettingsPanel::primaryColor = QColor(224, 168, 0);
 const QColor SettingsPanel::StyleSettingsPanel::hoverColor = QColor(219, 164, 0);
@@ -181,7 +181,7 @@ void SettingsPanel::setupUI() {
     refreshLayout->addSpacing(scale(12));
 
 
-    // Microphone section - микрофон, уровень громкости и mute
+    // Microphone section - microphone, volume level and mute
     QHBoxLayout* micLayout = new QHBoxLayout();
     micLayout->setContentsMargins(0, 0, 0, 0);
     micLayout->setSpacing(scale(10));
@@ -209,7 +209,7 @@ void SettingsPanel::setupUI() {
     micLayout->addWidget(m_micMuteButton);
     micLayout->addWidget(m_micSlider, 1);
 
-    // Speaker section - спикер, уровень громкости
+    // Speaker section - speaker, volume level
     QHBoxLayout* speakerLayout = new QHBoxLayout();
     speakerLayout->setContentsMargins(0, 0, 0, 0);
     speakerLayout->setSpacing(scale(10));

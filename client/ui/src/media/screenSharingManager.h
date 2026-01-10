@@ -6,7 +6,7 @@
 #include <QStatusBar>
 #include <memory>
 
-#include "client.h"
+#include "core.h"
 #include "widgets/screen.h"
 #include "utilities/logger.h"
 
@@ -19,7 +19,7 @@ class ScreenSharingManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit ScreenSharingManager(std::shared_ptr<callifornia::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent = nullptr);
+    explicit ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent = nullptr);
     
     void setWidgets(CallWidget* callWidget, QStatusBar* statusBar);
 
@@ -36,6 +36,7 @@ public slots:
     void onIncomingScreenSharingStarted();
     void onIncomingScreenSharingStopped();
     void onIncomingScreen(const std::vector<unsigned char>& data);
+    void onStopScreenSharingResult(std::error_code ec);
 
 signals:
     void fullscreenExitRequested();
@@ -43,7 +44,7 @@ signals:
 private:
     void showTransientStatusMessage(const QString& message, int durationMs);
 
-    std::shared_ptr<callifornia::Client> m_client = nullptr;
+    std::shared_ptr<core::Client> m_coreClient = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
     CallWidget* m_callWidget = nullptr;

@@ -3,11 +3,10 @@
 #include "widgets/callWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/configManager.h"
-#include "client.h"
 
-CameraSharingManager::CameraSharingManager(std::shared_ptr<callifornia::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, QObject* parent)
+CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, QObject* parent)
     : QObject(parent)
-    , m_client(client)
+    , m_coreClient(client)
     , m_configManager(configManager)
     , m_cameraCaptureController(cameraController)
 {
@@ -27,10 +26,6 @@ void CameraSharingManager::stopLocalCameraCapture()
     if (m_cameraCaptureController->isCapturing()) {
         m_cameraCaptureController->stopCapture();
     }
-
-    if (m_client) {
-        m_client->stopCameraSharing();
-    }
 }
 
 void CameraSharingManager::initializeCameraForCall()
@@ -43,71 +38,78 @@ void CameraSharingManager::initializeCameraForCall()
     m_callWidget->setCameraButtonActive(shouldStartCamera);
 
     if (shouldStartCamera) {
-        if (!m_client || !m_client->startCameraSharing()) {
+        if (!m_coreClient) {
             m_configManager->setCameraActive(false);
             m_mainMenuWidget->setCameraActive(false);
             m_callWidget->setCameraButtonActive(false);
+        } else {
+            std::error_code ec = m_coreClient->startCameraSharing();
+            if (ec) {
+                m_configManager->setCameraActive(false);
+                m_mainMenuWidget->setCameraActive(false);
+                m_callWidget->setCameraButtonActive(false);
+            }
         }
     }
 }
 
 void CameraSharingManager::onCameraButtonClicked(bool toggled)
 {
-    if (!m_callWidget || !m_configManager || !m_mainMenuWidget) return;
+    if (!m_callWidget || !m_configManager || !m_mainMenuWidget || !m_coreClient) return;
 
     bool active = toggled;
 
-    m_configManager->setCameraActive(active);
-    m_mainMenuWidget->setCameraActive(active);
-
     if (active) {
         if (!m_cameraCaptureController || !m_cameraCaptureController->isCameraAvailable()) {
-            m_callWidget->showErrorNotification("No cameras available", 1500);
+            if (!m_coreClient->isConnectionDown()) {
+                m_callWidget->showErrorNotification("No cameras available", 1500);
+            }
             m_callWidget->setCameraButtonActive(false);
             return;
         }
 
-        if (!m_client) {
-            m_callWidget->showErrorNotification("Client not available", 1500);
-            m_callWidget->setCameraButtonActive(false);
-            return;
-        }
-        const std::string friendNickname = m_client->getNicknameInCallWith();
+        const std::string friendNickname = m_coreClient->getNicknameInCallWith();
         if (friendNickname.empty()) {
-            m_callWidget->showErrorNotification("No active call to share camera with", 1500);
+            if (!m_coreClient->isConnectionDown()) {
+                m_callWidget->showErrorNotification("No active call to share camera with", 1500);
+            }
             m_callWidget->setCameraButtonActive(false);
             return;
         }
 
-        if (!m_client || !m_client->startCameraSharing()) {
-            m_callWidget->showErrorNotification("Failed to send camera sharing request", 1500);
+        std::error_code ec = m_coreClient->startCameraSharing();
+        if (ec) {
+            if (!m_coreClient->isConnectionDown()) {
+                m_callWidget->showErrorNotification("Failed to send camera sharing request", 1500);
+            }
             m_callWidget->setCameraButtonActive(false);
-            return;
         }
     }
     else {
-        if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
-            m_cameraCaptureController->stopCapture();
-        }
-
-        if (m_client) {
-            if (m_callWidget->isMainScreenVisible() && (!m_client->isViewingRemoteScreen() && !m_client->isViewingRemoteCamera())) {
-                m_callWidget->hideMainScreen();
-            }
-
-            if (m_callWidget->isAdditionalScreenVisible(QString::fromStdString(m_client->getMyNickname())) && (m_client->isViewingRemoteScreen() || m_client->isViewingRemoteCamera())) {
-                m_callWidget->removeAdditionalScreen(QString::fromStdString(m_client->getMyNickname()));
+        std::error_code ec = m_coreClient->stopCameraSharing();
+        if (ec) {
+            if (!m_coreClient->isConnectionDown()) {
+                showTransientStatusMessage("Failed to stop camera sharing", 2000);
+                if (m_callWidget) {
+                    m_callWidget->setCameraButtonActive(true);
+                }
             }
         }
-
-        if (m_client) {
-        m_client->stopCameraSharing();
-    }
     }
 }
 
 void CameraSharingManager::onCameraSharingStarted()
 {
+    if (m_configManager) {
+        m_configManager->setCameraActive(true);
+    }
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->setCameraActive(true);
+    }
+    if (m_callWidget) {
+        m_callWidget->setCameraButtonActive(true);
+    }
+
     if (m_cameraCaptureController) {
         m_cameraCaptureController->startCapture();
     }
@@ -115,7 +117,15 @@ void CameraSharingManager::onCameraSharingStarted()
 
 void CameraSharingManager::onStartCameraSharingError()
 {
-    showTransientStatusMessage("Camera sharing rejected by server", 3000);
+    if (m_coreClient && !m_coreClient->isConnectionDown()) {
+        showTransientStatusMessage("Camera sharing rejected by server", 3000);
+    }
+    if (m_configManager) {
+        m_configManager->setCameraActive(false);
+    }
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->setCameraActive(false);
+    }
     if (m_callWidget) {
         m_callWidget->setCameraButtonActive(false);
     }
@@ -123,7 +133,6 @@ void CameraSharingManager::onStartCameraSharingError()
 
 void CameraSharingManager::onCameraCaptureStarted()
 {
-    LOG_INFO("Camera capture started locally");
 }
 
 void CameraSharingManager::onCameraCaptureStopped()
@@ -131,8 +140,8 @@ void CameraSharingManager::onCameraCaptureStopped()
     if (!m_callWidget) return;
 
     if (m_isCameraInAdditionalScreen) {
-        if (m_client) {
-            m_callWidget->removeAdditionalScreen(QString::fromStdString(m_client->getMyNickname()));
+        if (m_coreClient) {
+            m_callWidget->removeAdditionalScreen(m_coreClient->getMyNickname());
         }
         m_isCameraInAdditionalScreen = false;
     }
@@ -146,19 +155,19 @@ void CameraSharingManager::onCameraCaptured(const QPixmap& pixmap, const std::ve
     if (!m_callWidget) return;
 
     if (!pixmap.isNull()) {
-        if (!m_client) return;
-        bool shouldBeInAdditionalScreen = m_client->isViewingRemoteScreen() || m_client->isViewingRemoteCamera() || m_client->isScreenSharing();
+        if (!m_coreClient) return;
+        bool shouldBeInAdditionalScreen = m_coreClient->isViewingRemoteScreen() || m_coreClient->isViewingRemoteCamera() || m_coreClient->isScreenSharing();
 
         if (shouldBeInAdditionalScreen) {
             if (!m_isCameraInAdditionalScreen) {
                 m_callWidget->hideMainScreen();
                 m_isCameraInAdditionalScreen = true;
             }
-            m_callWidget->showFrameInAdditionalScreen(pixmap, QString::fromStdString(m_client->getMyNickname()));
+            m_callWidget->showFrameInAdditionalScreen(pixmap, m_coreClient->getMyNickname());
         }
         else {
             if (m_isCameraInAdditionalScreen) {
-                m_callWidget->removeAdditionalScreen(QString::fromStdString(m_client->getMyNickname()));
+                m_callWidget->removeAdditionalScreen(m_coreClient->getMyNickname());
                 m_isCameraInAdditionalScreen = false;
             }
             m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::CropToFit);
@@ -167,7 +176,7 @@ void CameraSharingManager::onCameraCaptured(const QPixmap& pixmap, const std::ve
 
     if (imageData.empty()) return;
 
-    if (!m_client || !m_client->sendCamera(imageData)) {
+    if (!m_coreClient || !m_coreClient->sendCamera(imageData)) {
         showTransientStatusMessage("Failed to send camera frame", 2000);
     }
 }
@@ -176,8 +185,8 @@ void CameraSharingManager::onIncomingCameraSharingStarted()
 {
     if (!m_callWidget) return;
 
-    if (!m_client) return;
-    bool shouldBeInAdditionalScreen = m_client->isScreenSharing() || m_client->isViewingRemoteScreen();
+    if (!m_coreClient) return;
+    bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
 
     if (!shouldBeInAdditionalScreen) {
         m_callWidget->showEnterFullscreenButton();
@@ -189,8 +198,8 @@ void CameraSharingManager::onIncomingCameraSharingStopped()
     if (!m_callWidget) return;
 
     if (m_isRemoteCameraInAdditionalScreen) {
-        if (m_client) {
-            m_callWidget->removeAdditionalScreen(QString::fromStdString(m_client->getNicknameInCallWith()));
+        if (m_coreClient) {
+            m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
         }
         m_isRemoteCameraInAdditionalScreen = false;
     }
@@ -199,31 +208,31 @@ void CameraSharingManager::onIncomingCameraSharingStopped()
     }
 
     // Hide fullscreen button if no remote content to view
-    if (!m_client || (!m_client->isViewingRemoteScreen() && !m_client->isViewingRemoteCamera())) {
+    if (!m_coreClient || (!m_coreClient->isViewingRemoteScreen() && !m_coreClient->isViewingRemoteCamera())) {
         m_callWidget->hideEnterFullscreenButton();
     }
 }
 
 void CameraSharingManager::onIncomingCamera(const std::vector<unsigned char>& data)
 {
-    if (!m_callWidget || data.empty() || !m_client || !m_client->isViewingRemoteCamera()) return;
+    if (!m_callWidget || data.empty() || !m_coreClient || !m_coreClient->isViewingRemoteCamera()) return;
 
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG")) {
-        bool shouldBeInAdditionalScreen = m_client->isScreenSharing() || m_client->isViewingRemoteScreen();
+        bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
 
         if (shouldBeInAdditionalScreen) {
             if (!m_isRemoteCameraInAdditionalScreen) {
                 m_callWidget->hideMainScreen();
                 m_isRemoteCameraInAdditionalScreen = true;
             }
-            m_callWidget->showFrameInAdditionalScreen(frame, QString::fromStdString(m_client->getNicknameInCallWith()));
+            m_callWidget->showFrameInAdditionalScreen(frame, m_coreClient->getNicknameInCallWith());
         }
         else {
             if (m_isRemoteCameraInAdditionalScreen) {
-                m_callWidget->removeAdditionalScreen(QString::fromStdString(m_client->getNicknameInCallWith()));
+                m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
                 m_isRemoteCameraInAdditionalScreen = false;
             }
             m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::CropToFit);
@@ -246,6 +255,45 @@ void CameraSharingManager::onActivateCameraButtonClicked(bool activated)
 {
     if (m_configManager) {
         m_configManager->setCameraActive(activated);
+    }
+}
+
+void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
+{
+    if (ec) {
+        LOG_WARN("Failed to stop camera sharing: {}", ec.message());
+        if (m_coreClient && !m_coreClient->isConnectionDown()) {
+            showTransientStatusMessage("Failed to stop camera sharing", 2000);
+            if (m_callWidget) {
+                m_callWidget->setCameraButtonActive(true);
+            }
+        }
+    }
+    else {
+        
+        if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
+            m_cameraCaptureController->stopCapture();
+        }
+
+        if (m_configManager) {
+            m_configManager->setCameraActive(false);
+        }
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setCameraActive(false);
+        }
+        if (m_callWidget) {
+            m_callWidget->setCameraButtonActive(false);
+        }
+
+        if (m_callWidget && m_coreClient) {
+            if (m_callWidget->isMainScreenVisible() && (!m_coreClient->isViewingRemoteScreen() && !m_coreClient->isViewingRemoteCamera())) {
+                m_callWidget->hideMainScreen();
+            }
+
+            if (m_callWidget->isAdditionalScreenVisible(m_coreClient->getMyNickname()) && (m_coreClient->isViewingRemoteScreen() || m_coreClient->isViewingRemoteCamera())) {
+                m_callWidget->removeAdditionalScreen(m_coreClient->getMyNickname());
+            }
+        }
     }
 }
 

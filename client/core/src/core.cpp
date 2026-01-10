@@ -12,7 +12,6 @@ using namespace std::chrono_literals;
 namespace core
 {
     Client::Client()
-        : m_packetProcessor(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener)
     {
     }
 
@@ -26,6 +25,7 @@ namespace core
         std::shared_ptr<EventListener> eventListener)
     {
         m_eventListener = std::move(eventListener);
+        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener);
 
         bool audioInitialized = m_audioEngine.init([this](const unsigned char* data, int length) {onInputVoice(data, length); });
 
@@ -65,9 +65,10 @@ namespace core
                         auto& context = completionContext.value();
 
                         bool reconnected = context[RESULT].get<bool>();
-                        bool activeCall = context[IS_ACTIVE_CALL].get<bool>();
                         
                         if (reconnected) {
+                            bool activeCall = context[IS_ACTIVE_CALL].get<bool>();
+                            
                             m_stateManager.setConnectionDown(false);
 
                             m_eventListener->onConnectionRestored();
@@ -100,7 +101,6 @@ namespace core
             m_networkController.start();
 
         if (audioInitialized && networkInitialized) {
-            LOG_INFO("Calls client initialized successfully");
             return true;
         }
         else {
@@ -122,6 +122,8 @@ namespace core
 
         if (m_audioEngine.isStream())
             m_audioEngine.stopStream();
+        
+        m_packetProcessor.reset();
     }
 
     void Client::createAndStartTask(
@@ -143,7 +145,9 @@ namespace core
     }
 
     void Client::onReceive(const unsigned char* data, int length, PacketType type) {
-        m_packetProcessor.processPacket(data, length, type);
+        if (m_packetProcessor) {
+            m_packetProcessor->processPacket(data, length, type);
+        }
     }
 
     std::vector<std::string> Client::getCallers() const {
@@ -274,6 +278,7 @@ namespace core
 
                         m_stateManager.setMyNickname(nickname);
                         m_stateManager.setMyToken(token);
+                        m_stateManager.setAuthorized(true);
                         m_eventListener->onAuthorizationResult({});
                     }
                     else {
@@ -572,15 +577,14 @@ namespace core
             [this, userNickname](std::optional<nlohmann::json> completionContext) {
                 m_operationManager.removeOperation(UserOperationType::DECLINE_CALL, userNickname);
 
-                auto& incomingCalls = m_stateManager.getIncomingCalls();
                 m_stateManager.removeIncomingCall(userNickname);
 
-                m_eventListener->onDeclineCallResult({});
+                m_eventListener->onDeclineCallResult({}, userNickname);
             },
             [this, userNickname](std::optional<nlohmann::json> failureContext) {
                 m_operationManager.removeOperation(UserOperationType::DECLINE_CALL, userNickname);
                 LOG_ERROR("Decline incoming call task failed");
-                m_eventListener->onDeclineCallResult(ErrorCode::network_error);
+                m_eventListener->onDeclineCallResult(make_error_code(ErrorCode::network_error), userNickname);
             }
         );
 

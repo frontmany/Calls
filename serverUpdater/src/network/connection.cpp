@@ -35,19 +35,19 @@ Connection::~Connection()
 }
 
 void Connection::sendPacket(const Packet& packet) {
-	bool allowed = m_queue.empty();
-	m_queue.push_back(packet);
-
-	if (allowed)
+	m_queue.push(packet);
+	
+	if (m_queue.size() == 1) {
 		m_packetsSender.send();
+	}
 }
 
 void Connection::sendFile(const std::filesystem::path& path) {
-	bool allowed = m_queue.empty();
-	m_queue.push_back(path);
-
-	if (allowed)
+	m_queue.push(path);
+	
+	if (m_queue.size() == 1) {
 		m_filesSender.sendFile();
+	}
 }
 
 void Connection::close() {

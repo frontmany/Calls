@@ -20,6 +20,7 @@ namespace updater
 				}
 			},
 			[this](bool emptyUpdate) {
+				m_loadingUpdate = false;
 				if (m_eventListener) {
 					m_eventListener->onUpdateLoaded(emptyUpdate);
 				}
@@ -37,6 +38,10 @@ namespace updater
 			},
 			[this]() {
 				m_reconnecting = false;
+				m_loadingUpdate = false;
+				if (m_eventListener) {
+					m_eventListener->onConnected();
+				}
 			})
 	{
 		m_reconnectThread = std::thread([this]() {
@@ -58,13 +63,13 @@ namespace updater
 		const std::string& tempDirectory,
 		const std::string& deletionListFileName,
 		const std::unordered_set<std::string>& ignoredFiles,
-		const std::unordered_set<std::string>& excludedDirectories)
+		const std::unordered_set<std::string>& ignoredDirectories)
 	{
 		m_eventListener = eventListener;
 		m_tempDirectory = tempDirectory;
 		m_deletionListFileName = deletionListFileName;
 		m_ignoredFiles = ignoredFiles;
-		m_excludedDirectories = excludedDirectories;
+		m_ignoredDirectories = ignoredDirectories;
 	}
 
 	void Client::start(const std::string& host, const std::string& port)
@@ -78,6 +83,7 @@ namespace updater
 	void Client::stop()
 	{
 		m_reconnecting = false;
+		m_loadingUpdate = false;
 		m_networkController.disconnect();
 		m_reconnectCondition.notify_one();
 	}
@@ -110,16 +116,24 @@ namespace updater
 		}
 	}
 
-	void Client::checkUpdates(const std::string& currentVersionNumber)
+	bool Client::checkUpdates(const std::string& currentVersionNumber)
 	{
+		if (isConnected()) return false;
+
 		nlohmann::json jsonObject;
 		jsonObject[VERSION] = currentVersionNumber;
 		network::Packet packet(static_cast<uint32_t>(PacketType::UPDATE_CHECK), jsonObject.dump());
 		m_networkController.sendPacket(packet);
+
+		return true;
 	}
 
 	bool Client::startUpdate(OperationSystemType type)
 	{
+		if (isConnected()) return false;
+
+		m_loadingUpdate = true;
+
 		nlohmann::json jsonObject;
 		jsonObject[OPERATION_SYSTEM] = static_cast<int>(type);
 
@@ -147,6 +161,11 @@ namespace updater
 	bool Client::isConnected()
 	{
 		return m_networkController.isConnected();
+	}
+
+	bool Client::isLoadingUpdate()
+	{
+		return m_loadingUpdate;
 	}
 
 	std::string Client::normalizePath(const std::filesystem::path& path) {
@@ -180,7 +199,7 @@ namespace updater
 					}
 
 					bool isExcluded = false;
-					for (const auto& excludedDir : m_excludedDirectories) {
+					for (const auto& excludedDir : m_ignoredDirectories) {
 						if (relativePathStr.find(excludedDir) == 0) {
 							isExcluded = true;
 							break;

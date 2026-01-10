@@ -1,94 +1,101 @@
-#include "networkErrorHandler.h"
+#include "coreNetworkErrorHandler.h"
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/dialogsController.h"
 #include "managers/navigationController.h"
-#include "managers/updateManager.h"
 #include "managers/configManager.h"
+#include "managers/callManager.h"
 #include "media/audioEffectsManager.h"
-#include "updater.h"
-#include "client.h"
+#include "media/screenSharingManager.h"
+#include "media/cameraSharingManager.h"
 
-NetworkErrorHandler::NetworkErrorHandler(std::shared_ptr<callifornia::Client> client, std::shared_ptr<callifornia::updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
+CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
     : QObject(parent)
-    , m_client(client)
-    , m_updater(updater)
+    , m_coreClient(client)
     , m_navigationController(navigationController)
-    , m_updateManager(updateManager)
     , m_configManager(configManager)
     , m_audioManager(audioManager)
 {
 }
 
-void NetworkErrorHandler::setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController)
+void CoreNetworkErrorHandler::setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController)
 {
     m_authorizationWidget = authWidget;
     m_mainMenuWidget = mainMenuWidget;
     m_dialogsController = dialogsController;
 }
 
-void NetworkErrorHandler::onClientNetworkError()
+void CoreNetworkErrorHandler::setManagers(CallManager* callManager, ScreenSharingManager* screenSharingManager, CameraSharingManager* cameraSharingManager)
 {
-    LOG_ERROR("Client network error occurred");
-
-    if (m_audioManager) {
-        m_audioManager->stopIncomingCallRingtone();
-        m_audioManager->stopCallingRingtone();
-    }
-
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->removeCallingPanel();
-        m_mainMenuWidget->clearIncomingCalls();
-    }
-
-    if (m_authorizationWidget && m_navigationController) {
-        m_navigationController->switchToAuthorizationWidget();
-
-        m_authorizationWidget->resetBlur();
-        m_authorizationWidget->setAuthorizationDisabled(true);
-
-        if (!m_updater || !m_updater->isAwaitingServerResponse()) {
-            m_authorizationWidget->showNetworkErrorNotification();
-        }
-    }
+    m_callManager = callManager;
+    m_screenSharingManager = screenSharingManager;
+    m_cameraSharingManager = cameraSharingManager;
 }
 
-void NetworkErrorHandler::onUpdaterNetworkError()
+
+
+void CoreNetworkErrorHandler::onConnectionRestored()
 {
-    LOG_ERROR("Updater network error occurred");
-
-    if (m_authorizationWidget) {
-        m_authorizationWidget->hideUpdateAvailableNotification();
-    }
-
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->hideUpdateAvailableNotification();
-    }
 
     if (m_dialogsController) {
-        m_dialogsController->hideUpdatingDialog();
-        if (!m_client || !m_client->isAuthorized() || (m_updater && m_updater->isAwaitingServerResponse())) {
-            m_dialogsController->showConnectionErrorDialog();
-        }
+        m_dialogsController->hideReconnectingDialog();
     }
-
-    if (m_updater) {
-        m_updater->disconnect();
-    }
-}
-
-void NetworkErrorHandler::onConnectionRestored()
-{
-    LOG_INFO("Connection restored to server");
 
     if (m_authorizationWidget) {
         m_authorizationWidget->resetBlur();
         m_authorizationWidget->setAuthorizationDisabled(false);
         m_authorizationWidget->showConnectionRestoredNotification(1500);
     }
+}
 
-    if ((!m_updater || !m_updater->isConnected()) && m_updateManager) {
-        LOG_INFO("Reconnecting updater");
-        m_updateManager->checkUpdates();
+void CoreNetworkErrorHandler::onConnectionDown()
+{
+    LOG_ERROR("Connection down");
+
+    if (m_coreClient->isAuthorized()) {
+        if (m_coreClient && m_coreClient->isActiveCall()) {
+            if (m_screenSharingManager) {
+                m_screenSharingManager->stopLocalScreenCapture();
+            }
+
+            if (m_cameraSharingManager) {
+                m_cameraSharingManager->stopLocalCameraCapture();
+            }
+        }
+        else {
+            if (m_audioManager) {
+                m_audioManager->stopIncomingCallRingtone();
+                m_audioManager->stopCallingRingtone();
+            }
+
+            if (m_mainMenuWidget) {
+                m_mainMenuWidget->removeCallingPanel();
+                m_mainMenuWidget->clearIncomingCalls();
+            }
+        }
+
+        if (m_dialogsController) {
+            m_dialogsController->showReconnectingDialog();
+        }
+    }
+    else {
+        m_authorizationWidget->resetBlur();
+        m_authorizationWidget->setAuthorizationDisabled(true);
+        m_authorizationWidget->showNetworkErrorNotification();
+    }
+}
+
+void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
+{
+
+    if (m_dialogsController) {
+        m_dialogsController->hideReconnectingDialog();
+    }
+
+    if (m_authorizationWidget && m_navigationController) {
+        m_navigationController->switchToAuthorizationWidget();
+        m_authorizationWidget->resetBlur();
+        m_authorizationWidget->setAuthorizationDisabled(false);
+        m_authorizationWidget->showConnectionRestoredNotification(1500);
     }
 }

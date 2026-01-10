@@ -4,7 +4,7 @@
 #include <variant>
 #include <filesystem>
 
-#include "utilities/safeDeque.h"
+#include "utilities/safeQueue.h"
 #include "packet.h"
 
 #include "asio.hpp"
@@ -17,7 +17,7 @@ class PacketsSender {
 public:
 	PacketsSender(asio::io_context& asioContext,
 		asio::ip::tcp::socket& socket, 
-		utilities::SafeDeque<std::variant<Packet, std::filesystem::path>>& queue,
+		utilities::SafeQueue<std::variant<Packet, std::filesystem::path>>& queue,
 		FilesSender& filesSender,
 		std::function<void()>&& onError
 	);
@@ -30,7 +30,7 @@ private:
 	void resolveSending();
 
 private:
-	utilities::SafeDeque<std::variant<Packet, std::filesystem::path>>& m_queue;
+	utilities::SafeQueue<std::variant<Packet, std::filesystem::path>>& m_queue;
 	FilesSender& m_filesSender;
 
 	asio::ip::tcp::socket& m_socket;

@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <string>
 
-#include "../scaleFactor.h"
+#include "utilities/utilities.h"
 
 // Style definitions
 const QColor StyleCallWidget::m_primaryColor = QColor(21, 119, 232);
@@ -216,6 +216,10 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_notificationTimer = new QTimer(this);
     m_notificationTimer->setSingleShot(true);
     connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
+
+    m_connectionErrorLabelTimer = new QTimer(this);
+    m_connectionErrorLabelTimer->setSingleShot(true);
+    connect(m_connectionErrorLabelTimer, &QTimer::timeout, this, &CallWidget::hideParticipantConnectionStatus);
 }
 
 void CallWidget::setupUI() {
@@ -267,12 +271,29 @@ void CallWidget::setupUI() {
     m_additionalScreensLayout->setSpacing(scale(10));
     m_additionalScreensLayout->setAlignment(Qt::AlignCenter);
 
-    m_friendNicknameLabel = new QLabel("Friend", this);
+    m_participantInfoContainer = new QWidget(this);
+    m_participantInfoContainer->setAttribute(Qt::WA_TranslucentBackground);
+    m_participantInfoLayout = new QHBoxLayout(m_participantInfoContainer);
+    m_participantInfoLayout->setContentsMargins(0, 0, 0, 0);
+    m_participantInfoLayout->setSpacing(scale(10));
+    m_participantInfoLayout->setAlignment(Qt::AlignCenter);
+
+    m_friendNicknameLabel = new QLabel("Friend", m_participantInfoContainer);
     m_friendNicknameLabel->setAlignment(Qt::AlignCenter);
     m_friendNicknameLabel->setStyleSheet(StyleCallWidget::titleStyle());
     m_friendNicknameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     QFont nicknameFont("Outfit", scale(18), QFont::Normal);
     m_friendNicknameLabel->setFont(nicknameFont);
+
+    m_connectionErrorLabel = new QLabel(m_participantInfoContainer);
+    m_connectionErrorLabel->setAlignment(Qt::AlignCenter);
+    m_connectionErrorLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 12px; margin: 0px; padding: 0px;");
+    QFont connectionErrorFont("Outfit", scale(11), QFont::Medium);
+    m_connectionErrorLabel->setFont(connectionErrorFont);
+    m_connectionErrorLabel->hide();
+
+    m_participantInfoLayout->addWidget(m_friendNicknameLabel);
+    m_participantInfoLayout->addWidget(m_connectionErrorLabel);
 
     m_buttonsPanel = new QWidget(this);
     m_buttonsPanel->setStyleSheet(StyleCallWidget::panelStyle());
@@ -485,7 +506,7 @@ void CallWidget::setupUI() {
     m_mainLayout->addWidget(m_timerLabel);
     m_mainLayout->addWidget(m_additionalScreensContainer);
     m_mainLayout->addWidget(m_mainScreen);
-    m_mainLayout->addWidget(m_friendNicknameLabel);
+    m_mainLayout->addWidget(m_participantInfoContainer);
     m_mainLayout->addSpacerItem(m_middleMainLayoutSpacer);
     m_mainLayout->addWidget(m_buttonsPanel);
     m_mainLayout->addWidget(m_slidersContainer, 0, Qt::AlignHCenter);
@@ -742,7 +763,7 @@ void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode s
     {
         m_mainScreen->show();
         m_timerLabel->hide();
-        m_friendNicknameLabel->hide();
+        m_participantInfoContainer->hide();
     }
 }
 
@@ -903,7 +924,7 @@ void CallWidget::hideMainScreen()
     }
 
     m_timerLabel->show();
-    m_friendNicknameLabel->show();
+    m_participantInfoContainer->show();
 }
 
 void CallWidget::updateExitFullscreenButtonPosition() {
@@ -1140,6 +1161,35 @@ void CallWidget::showErrorNotification(const QString& text, int durationMs)
     m_notificationLabel->setText(text);
     m_notificationWidget->show();
     m_notificationTimer->start(durationMs);
+}
+
+void CallWidget::showParticipantConnectionError(const QString& text, int durationMs)
+{
+    if (!m_connectionErrorLabel) return;
+    m_connectionErrorLabel->setText(text);
+    m_connectionErrorLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+    m_connectionErrorLabel->show();
+    if (durationMs > 0) {
+        m_connectionErrorLabelTimer->start(durationMs);
+    }
+}
+
+void CallWidget::showParticipantConnectionRestored(const QString& text, int durationMs)
+{
+    if (!m_connectionErrorLabel) return;
+    m_connectionErrorLabel->setText(text);
+    m_connectionErrorLabel->setStyleSheet("color: #50DC50; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
+    m_connectionErrorLabel->show();
+    if (durationMs > 0) {
+        m_connectionErrorLabelTimer->start(durationMs);
+    }
+}
+
+void CallWidget::hideParticipantConnectionStatus()
+{
+    if (m_connectionErrorLabel) {
+        m_connectionErrorLabel->hide();
+    }
 }
 
 void CallWidget::setCameraButtonActive(bool active)

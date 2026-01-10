@@ -14,7 +14,6 @@
 #include <QGraphicsBlurEffect>
 #include <QSpacerItem>
 
-#include "../state.h"
 #include "incomingCallWidget.h"
 #include "settingsPanelWidget.h"
 

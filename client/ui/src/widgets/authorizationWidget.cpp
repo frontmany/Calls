@@ -401,8 +401,6 @@ void AuthorizationWidget::onAuthorizationClicked() {
         return;
     }
     
-    m_nicknameEdit->setDisabled(true);
-    m_authorizeButton->setDisabled(true);
     clearErrorMessage();
 
     emit authorizationButtonClicked(nickname);
@@ -430,6 +428,10 @@ void AuthorizationWidget::clearErrorMessage() {
 }
 
 void AuthorizationWidget::showNetworkErrorNotification() {
+    if (m_updateAvailableWidget->isVisible()) {
+        return;
+    }
+
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationRedLabelStyle());
 
     m_notificationLabel->setText("Network error occurred, reconnecting...");
@@ -445,6 +447,10 @@ void AuthorizationWidget::hideNetworkErrorNotification() {
 
 void AuthorizationWidget::showUpdatesCheckingNotification()
 {
+    if (m_updateAvailableWidget->isVisible()) {
+        return;
+    }
+
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationLilacLabelStyle());
 
     m_notificationLabel->setText("Checking for updates...");
@@ -454,13 +460,14 @@ void AuthorizationWidget::showUpdatesCheckingNotification()
 
 void AuthorizationWidget::hideUpdatesCheckingNotification()
 {
-    if (m_notificationLabel->text() != "Connection restored") {
-        m_notificationLabel->setText("");
-        m_notificationWidget->hide();
-    }
+    m_notificationLabel->setText("");
+    m_notificationWidget->hide();
 }
 
 void AuthorizationWidget::showUpdateAvailableNotification() {
+    hideNetworkErrorNotification();
+    hideUpdatesCheckingNotification();
+
     m_updateAvailableWidget->show();
 }
 
@@ -469,8 +476,13 @@ void AuthorizationWidget::hideUpdateAvailableNotification() {
 }
 
 void AuthorizationWidget::showConnectionRestoredNotification(int durationMs) {
+    if (m_updateAvailableWidget->isVisible()) {
+        return;
+    }
+
     m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationGreenLabelStyle());
     m_notificationLabel->setStyleSheet(StyleAuthorizationWidget::notificationGreenTextStyle());
+    m_notificationLabel->setText("Connection restored");
 
     m_notificationWidget->show();
     m_notificationTimer->start(durationMs);

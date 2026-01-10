@@ -35,13 +35,14 @@ namespace updater
 			const std::string& tempDirectory,
 			const std::string& deletionListFileName,
 			const std::unordered_set<std::string>& ignoredFiles,
-			const std::unordered_set<std::string>& excludedDirectories);
+			const std::unordered_set<std::string>& ignoredDirectories);
 
 		void start( const std::string& host, const std::string& port);
 		void stop();
-		void checkUpdates(const std::string& currentVersionNumber);
+		bool checkUpdates(const std::string& currentVersionNumber);
 		bool startUpdate(OperationSystemType type);
 		bool isConnected();
+		bool isLoadingUpdate();
 
 	private:
 		std::string normalizePath(const std::filesystem::path& path);
@@ -51,17 +52,19 @@ namespace updater
 		void reconnectLoop();
 
 	private:
-		std::future<void> m_checkUpdatesFuture;
 		network::NetworkController m_networkController;
 		std::shared_ptr<EventListener> m_eventListener;
+
 		std::string m_serverHost;
 		std::string m_serverPort;
 		std::string m_tempDirectory;
 		std::string m_deletionListFileName;
 		std::unordered_set<std::string> m_ignoredFiles;
-		std::unordered_set<std::string> m_excludedDirectories;
+		std::unordered_set<std::string> m_ignoredDirectories;
+
 		std::atomic_bool m_reconnecting = false;
 		std::atomic_bool m_stopReconnectThread = false;
+		std::atomic_bool m_loadingUpdate = false;
 		std::thread m_reconnectThread;
 		std::mutex m_reconnectMutex;
 		std::condition_variable m_reconnectCondition;

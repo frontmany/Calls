@@ -3,39 +3,42 @@
 #include <QObject>
 #include <memory>
 
-#include "client.h"
-#include "updater.h"
+#include "core.h"
 #include "utilities/logger.h"
 
 class AuthorizationWidget;
 class DialogsController;
 class NavigationController;
-class UpdateManager;
 class ConfigManager;
 class MainMenuWidget;
 class AudioEffectsManager;
+class CallManager;
+class ScreenSharingManager;
+class CameraSharingManager;
 
-class NetworkErrorHandler : public QObject {
+class CoreNetworkErrorHandler : public QObject {
     Q_OBJECT
 
 public:
-    explicit NetworkErrorHandler(std::shared_ptr<callifornia::Client> client, std::shared_ptr<callifornia::updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
+    explicit CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
+    void setManagers(CallManager* callManager, ScreenSharingManager* screenSharingManager, CameraSharingManager* cameraSharingManager);
 
 public slots:
-    void onClientNetworkError();
-    void onUpdaterNetworkError();
+    void onConnectionDown();
     void onConnectionRestored();
+    void onConnectionRestoredAuthorizationNeeded();
 
 private:
-    std::shared_ptr<callifornia::Client> m_client = nullptr;
-    std::shared_ptr<callifornia::updater::Client> m_updater = nullptr;
+    std::shared_ptr<core::Client> m_coreClient = nullptr;
     NavigationController* m_navigationController = nullptr;
-    UpdateManager* m_updateManager = nullptr;
     ConfigManager* m_configManager = nullptr;
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
+    CallManager* m_callManager = nullptr;
+    ScreenSharingManager* m_screenSharingManager = nullptr;
+    CameraSharingManager* m_cameraSharingManager = nullptr;
 };

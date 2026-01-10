@@ -5,6 +5,7 @@
 namespace core
 {
     enum class ErrorCode {
+        success = 0,
         network_error,
         taken_nickname,
         unexisting_user,
@@ -34,6 +35,8 @@ namespace core
 
         std::string message(int ev) const override {
             switch (static_cast<ErrorCode>(ev)) {
+            case ErrorCode::success:
+                return "Success";
             case ErrorCode::network_error:
                 return "Network error";
             case ErrorCode::taken_nickname:

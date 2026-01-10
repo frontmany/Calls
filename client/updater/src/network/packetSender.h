@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "packet.h"
+#include "../utilities/safeQueue.h"
 
 #include <asio.hpp>
 
@@ -20,10 +21,12 @@ namespace updater
 			void sendPacket(const Packet& packet);
 
 		private:
-			void writeHeader(const Packet& packet);
-			void writeBody(const Packet& packet);
+			void writeHeader();
+			void writeBody(const Packet* packet);
+			void resolveSending();
 
 		private:
+			utilities::SafeQueue<Packet> m_queue;
 			asio::ip::tcp::socket& m_socket;
 			std::function<void()> m_onError;
 		};

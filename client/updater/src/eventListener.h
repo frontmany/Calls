@@ -10,5 +10,6 @@ namespace updater
 		virtual void onLoadingProgress(double progress) = 0;
 		virtual void onUpdateLoaded(bool emptyUpdate) = 0;
 		virtual void onNetworkError() = 0;
+		virtual void onConnected() = 0;
 	};
 }

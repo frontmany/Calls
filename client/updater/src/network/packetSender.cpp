@@ -13,42 +13,68 @@ namespace updater
 
 		void PacketSender::sendPacket(const Packet& packet)
 		{
-			writeHeader(packet);
+			m_queue.push(packet);
+			
+			if (m_queue.size() == 1) {
+				writeHeader();
+			}
 		}
 
-		void PacketSender::writeHeader(const Packet& packet)
+		void PacketSender::writeHeader()
 		{
+			auto* packetPtr = m_queue.front_ptr();
+			if (!packetPtr) {
+				return;
+			}
+
 			asio::async_write(
 				m_socket,
-				asio::buffer(&packet.header(), Packet::sizeOfHeader()),
-				[this, packet](std::error_code ec, std::size_t length) {
+				asio::buffer(&packetPtr->header(), Packet::sizeOfHeader()),
+				[this, packetPtr](std::error_code ec, std::size_t length) {
 					if (ec) {
 						if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
 							m_onError();
 						}
 					}
 					else {
-						if (packet.body().size() > 0) {
-							writeBody(packet);
+						if (packetPtr->body().size() > 0) {
+							writeBody(packetPtr);
+						}
+						else {
+							m_queue.pop_ref([this](Packet&&) {
+								resolveSending();
+							});
 						}
 					}
 				}
 			);
 		}
 
-		void PacketSender::writeBody(const Packet& packet)
+		void PacketSender::writeBody(const Packet* packet)
 		{
 			asio::async_write(
 				m_socket,
-				asio::buffer(packet.body().data(), packet.body().size()),
+				asio::buffer(packet->body().data(), packet->body().size()),
 				[this](std::error_code ec, std::size_t length) {
 					if (ec) {
 						if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
 							m_onError();
 						}
 					}
+					else {
+						m_queue.pop_ref([this](Packet&&) {
+							resolveSending();
+						});
+					}
 				}
 			);
+		}
+
+		void PacketSender::resolveSending()
+		{
+			if (!m_queue.empty()) {
+				writeHeader();
+			}
 		}
 	}
 }

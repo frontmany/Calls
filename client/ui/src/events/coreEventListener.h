@@ -5,18 +5,22 @@
 #include <vector>
 #include <system_error>
 
-class MainWindow;
+class AuthorizationManager;
+class CallManager;
+class ScreenSharingManager;
+class CameraSharingManager;
+class CoreNetworkErrorHandler;
 
 class CoreEventListener : public core::EventListener {
 public:
-    CoreEventListener(MainWindow* mainWindow);
+    CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, ScreenSharingManager* screenSharingManager, CameraSharingManager* cameraSharingManager, CoreNetworkErrorHandler* networkErrorHandler);
 
     void onAuthorizationResult(std::error_code ec) override;
     void onLogoutCompleted() override;
     void onStartOutgoingCallResult(std::error_code ec) override;
     void onStopOutgoingCallResult(std::error_code ec) override;
     void onAcceptCallResult(std::error_code ec) override;
-    void onDeclineCallResult(std::error_code ec) override;
+    void onDeclineCallResult(std::error_code ec, const std::string& nickname) override;
     void onEndCallResult(std::error_code ec) override;
 
     void onStartScreenSharingResult(std::error_code ec) override;
@@ -46,5 +50,9 @@ public:
     void onCallEndedByRemote(std::error_code ec) override;
 
 private:
-    MainWindow* m_mainWindow;
+    AuthorizationManager* m_authorizationManager;
+    CallManager* m_callManager;
+    ScreenSharingManager* m_screenSharingManager;
+    CameraSharingManager* m_cameraSharingManager;
+    CoreNetworkErrorHandler* m_coreNetworkErrorHandler;
 };

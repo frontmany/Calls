@@ -4,13 +4,15 @@
 #include <filesystem>
 #include <vector>
 
-#include "../utilities/safeDeque.h"
+#include "../utilities/safeQueue.h"
 #include "packet.h"
 
 #include "asio.hpp"
 #include "json.hpp"
 
 #include <unordered_set>
+#include <atomic>
+#include <mutex>
 
 namespace serverUpdater
 {
@@ -33,9 +35,10 @@ private:
     void onDisconnect(ConnectionPtr connection);
 
 private:
-    bool m_running;
-    utilities::SafeDeque<OwnedPacket> m_queue;
+    std::atomic<bool> m_running;
+    utilities::SafeQueue<OwnedPacket> m_queue;
 
+    std::mutex m_connectionsMutex;
     std::unordered_set<ConnectionPtr> m_setConnections;
     std::thread m_contextThread;
 

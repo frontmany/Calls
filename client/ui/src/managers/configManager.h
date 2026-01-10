@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QString>
+#include <unordered_set>
+#include <string>
 
 class ConfigManager
 {
@@ -24,6 +26,11 @@ public:
     const QString& getPort() const;
     const QString& getServerHost() const;
     const QString& getUpdaterHost() const;
+    const QString& getLogDirectoryName() const;
+    const QString& getTemporaryUpdateDirectoryName() const;
+    const QString& getDeletionListFileName() const;
+    const std::unordered_set<std::string>& getIgnoredFilesWhileCollectingForUpdate() const;
+    const std::unordered_set<std::string>& getIgnoredDirectoriesWhileCollectingForUpdate() const;
 
     void setVersion(const QString& version);
     void setUpdaterHost(const QString& host);
@@ -38,6 +45,7 @@ public:
     void setFirstLaunch(bool firstLaunch);
 
 private:
+    bool isFirstLaunchFromConfig();
     bool isCameraActiveFromConfig();
     bool isSpeakerMutedFromConfig();
     bool isMicrophoneMutedFromConfig();
@@ -48,12 +56,17 @@ private:
     QString getServerHostFromConfig();
     QString getUpdaterHostFromConfig();
     QString getApplicationVersionFromConfig();
-    bool isFirstLaunchFromConfig();
+    QString getLogDirectoryNameFromConfig();
+    QString getTemporaryUpdateDirectoryNameFromConfig();
+    QString getDeletionListFileNameFromConfig();
+    std::unordered_set<std::string> getIgnoredFilesWhileCollectingForUpdateFromConfig();
+    std::unordered_set<std::string> getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
 
 private:
-    const QString m_configPath = "config.json";
+    const QString m_configPath;
     bool m_isConfigLoaded = false;
 
+    bool m_firstLaunch;
     bool m_isCameraActive;
     bool m_isSpeakerMuted;
     bool m_isMicrophoneMuted;
@@ -64,5 +77,9 @@ private:
     QString m_serverHost;
     QString m_updaterHost;
     QString m_version;
-    bool m_firstLaunch;
+    QString m_logDirectoryName;
+    QString m_temporaryUpdateDirectoryName;
+    QString m_deletionListFileName;
+    std::unordered_set<std::string> m_ignoredFilesWhileCollectingForUpdate;
+    std::unordered_set<std::string> m_ignoredDirectoriesWhileCollectingForUpdate;
 };

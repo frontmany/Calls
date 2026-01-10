@@ -1,10 +1,12 @@
 #include "configManager.h"
 #include "utilities/logger.h"
+#include "utilities/configKeys.h"
 
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QJsonArray>
 
 ConfigManager::ConfigManager(QString configPath)
     : m_configPath(configPath)
@@ -30,6 +32,11 @@ void ConfigManager::loadConfig() {
         m_port = getPortFromConfig();
         m_serverHost = getServerHostFromConfig();
         m_firstLaunch = isFirstLaunchFromConfig();
+        m_logDirectoryName = getLogDirectoryNameFromConfig();
+        m_temporaryUpdateDirectoryName = getTemporaryUpdateDirectoryNameFromConfig();
+        m_deletionListFileName = getDeletionListFileNameFromConfig();
+        m_ignoredFilesWhileCollectingForUpdate = getIgnoredFilesWhileCollectingForUpdateFromConfig();
+        m_ignoredDirectoriesWhileCollectingForUpdate = getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
 
         m_isConfigLoaded = true;
     }
@@ -45,17 +52,32 @@ void ConfigManager::saveConfig() {
     try {
         QJsonObject configObject;
 
-        configObject["version"] = m_version;
-        configObject["updaterHost"] = m_updaterHost;
-        configObject["serverHost"] = m_serverHost;
-        configObject["port"] = m_port;
-        configObject["multiInstance"] = m_isMultiInstanceAllowed ? "1" : "0";
-        configObject["inputVolume"] = m_inputVolume;
-        configObject["outputVolume"] = m_outputVolume;
-        configObject["microphoneMuted"] = m_isMicrophoneMuted ? "1" : "0";
-        configObject["speakerMuted"] = m_isSpeakerMuted ? "1" : "0";
-        configObject["cameraEnabled"] = m_isCameraActive ? "1" : "0";
-        configObject["firstLaunch"] = m_firstLaunch ? "1" : "0";
+        configObject[ConfigKeys::VERSION] = m_version;
+        configObject[ConfigKeys::UPDATER_HOST] = m_updaterHost;
+        configObject[ConfigKeys::SERVER_HOST] = m_serverHost;
+        configObject[ConfigKeys::PORT] = m_port;
+        configObject[ConfigKeys::MULTI_INSTANCE] = m_isMultiInstanceAllowed ? "1" : "0";
+        configObject[ConfigKeys::INPUT_VOLUME] = m_inputVolume;
+        configObject[ConfigKeys::OUTPUT_VOLUME] = m_outputVolume;
+        configObject[ConfigKeys::MICROPHONE_MUTED] = m_isMicrophoneMuted ? "1" : "0";
+        configObject[ConfigKeys::SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
+        configObject[ConfigKeys::CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
+        configObject[ConfigKeys::FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
+        configObject[ConfigKeys::LOG_DIRECTORY_NAME] = m_logDirectoryName;
+        configObject[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY_NAME] = m_temporaryUpdateDirectoryName;
+        configObject[ConfigKeys::DELETION_LIST_FILE_NAME] = m_deletionListFileName;
+        
+        QJsonArray ignoredFilesArray;
+        for (const std::string& file : m_ignoredFilesWhileCollectingForUpdate) {
+            ignoredFilesArray.append(QString::fromStdString(file));
+        }
+        configObject[ConfigKeys::IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE] = ignoredFilesArray;
+        
+        QJsonArray ignoredDirsArray;
+        for (const std::string& dir : m_ignoredDirectoriesWhileCollectingForUpdate) {
+            ignoredDirsArray.append(QString::fromStdString(dir));
+        }
+        configObject[ConfigKeys::IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE] = ignoredDirsArray;
 
         QJsonDocument configDoc(configObject);
 
@@ -92,7 +114,12 @@ void ConfigManager::setDefaultValues() {
     m_port = "8081";
     m_serverHost = "92.255.165.77";
     m_updaterHost = "92.255.165.77";
-    m_firstLaunch = true; // Default to true for first launch
+    m_firstLaunch = true;
+    m_logDirectoryName = "logs";
+    m_temporaryUpdateDirectoryName = "updateTemp";
+    m_deletionListFileName = "remove.json";
+    m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
+    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs"};
 }
 
 const QString& ConfigManager::getUpdaterHost() const {
@@ -182,7 +209,6 @@ void ConfigManager::setFirstLaunch(bool firstLaunch) {
 bool ConfigManager::isFirstLaunchFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_DEBUG("Config file not found, assuming first launch");
         return true;
     }
 
@@ -193,23 +219,20 @@ bool ConfigManager::isFirstLaunchFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_DEBUG("JSON parse error, assuming first launch");
         return true;
     }
 
     if (!doc.isObject()) {
-        LOG_DEBUG("Config is not an object, assuming first launch");
         return true;
     }
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains("firstLaunch")) {
-        LOG_DEBUG("firstLaunch key not found in config, assuming first launch");
+    if (!jsonObj.contains(ConfigKeys::FIRST_LAUNCH)) {
         return true;
     }
 
-    QJsonValue firstLaunchValue = jsonObj["firstLaunch"];
+    QJsonValue firstLaunchValue = jsonObj[ConfigKeys::FIRST_LAUNCH];
 
     if (firstLaunchValue.isString()) {
         QString value = firstLaunchValue.toString().toLower().trimmed();
@@ -223,7 +246,6 @@ bool ConfigManager::isFirstLaunchFromConfig() {
         return (firstLaunchValue.toInt() == 1);
     }
     else {
-        LOG_DEBUG("firstLaunch has unsupported type, assuming first launch");
         return true;
     }
 }
@@ -293,13 +315,12 @@ QString ConfigManager::getApplicationVersionFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString version = jsonObj["version"].toString();
+    QString version = jsonObj[ConfigKeys::VERSION].toString();
 
     if (version.isEmpty()) {
         LOG_WARN("version not found or empty in config file");
     }
     else {
-        LOG_DEBUG("Retrieved version: {}", version.toStdString());
     }
 
     return version;
@@ -329,13 +350,12 @@ QString ConfigManager::getUpdaterHostFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString host = jsonObj["updaterHost"].toString();
+    QString host = jsonObj[ConfigKeys::UPDATER_HOST].toString();
 
     if (host.isEmpty()) {
         LOG_WARN("updaterHost not found or empty in config file");
     }
     else {
-        LOG_DEBUG("Retrieved updater host: {}", host.toStdString());
     }
 
     return host;
@@ -365,13 +385,12 @@ QString ConfigManager::getServerHostFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString host = jsonObj["serverHost"].toString();
+    QString host = jsonObj[ConfigKeys::SERVER_HOST].toString();
 
     if (host.isEmpty()) {
         LOG_WARN("serverHost not found or empty in config file");
     }
     else {
-        LOG_DEBUG("Retrieved server host: {}", host.toStdString());
     }
 
     return host;
@@ -401,13 +420,12 @@ QString ConfigManager::getPortFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString port = jsonObj["port"].toString();
+    QString port = jsonObj[ConfigKeys::PORT].toString();
 
     if (port.isEmpty()) {
         LOG_WARN("port not found or empty in config file");
     }
     else {
-        LOG_DEBUG("Retrieved port: {}", port.toStdString());
     }
 
     return port;
@@ -438,27 +456,23 @@ bool ConfigManager::isMultiInstanceAllowedFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains("multiInstance")) {
-        LOG_DEBUG("multiInstance key not found in config, defaulting to false");
+    if (!jsonObj.contains(ConfigKeys::MULTI_INSTANCE)) {
         return false;
     }
 
-    QJsonValue multiInstanceValue = jsonObj["multiInstance"];
+    QJsonValue multiInstanceValue = jsonObj[ConfigKeys::MULTI_INSTANCE];
 
     if (multiInstanceValue.isString()) {
         QString value = multiInstanceValue.toString().toLower().trimmed();
         bool result = (value == "1" || value == "true" || value == "yes" || value == "on");
-        LOG_DEBUG("multiInstance string value: '{}' -> {}", value.toStdString(), result);
         return result;
     }
     else if (multiInstanceValue.isBool()) {
         bool result = multiInstanceValue.toBool();
-        LOG_DEBUG("multiInstance bool value: {}", result);
         return result;
     }
     else if (multiInstanceValue.isDouble()) {
         bool result = (multiInstanceValue.toInt() == 1);
-        LOG_DEBUG("multiInstance numeric value: {} -> {}", multiInstanceValue.toInt(), result);
         return result;
     }
     else {
@@ -491,7 +505,7 @@ int ConfigManager::getInputVolumeFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QJsonValue volumeValue = jsonObj["inputVolume"];
+    QJsonValue volumeValue = jsonObj[ConfigKeys::INPUT_VOLUME];
     
     int volume = 100;
     if (volumeValue.isDouble()) {
@@ -540,7 +554,7 @@ int ConfigManager::getOutputVolumeFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QJsonValue volumeValue = jsonObj["outputVolume"];
+    QJsonValue volumeValue = jsonObj[ConfigKeys::OUTPUT_VOLUME];
     
     int volume = 100;
     if (volumeValue.isDouble()) {
@@ -590,27 +604,23 @@ bool ConfigManager::isMicrophoneMutedFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains("microphoneMuted")) {
-        LOG_DEBUG("microphoneMuted key not found in config, defaulting to false");
+    if (!jsonObj.contains(ConfigKeys::MICROPHONE_MUTED)) {
         return false;
     }
 
-    QJsonValue mutedValue = jsonObj["microphoneMuted"];
+    QJsonValue mutedValue = jsonObj[ConfigKeys::MICROPHONE_MUTED];
 
     if (mutedValue.isString()) {
         QString value = mutedValue.toString().toLower().trimmed();
         bool result = (value == "1" || value == "true" || value == "yes" || value == "on");
-        LOG_DEBUG("microphoneMuted string value: '{}' -> {}", value.toStdString(), result);
         return result;
     }
     else if (mutedValue.isBool()) {
         bool result = mutedValue.toBool();
-        LOG_DEBUG("microphoneMuted bool value: {}", result);
         return result;
     }
     else if (mutedValue.isDouble()) {
         bool result = (mutedValue.toInt() == 1);
-        LOG_DEBUG("microphoneMuted numeric value: {} -> {}", mutedValue.toInt(), result);
         return result;
     }
     else {
@@ -644,27 +654,23 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains("speakerMuted")) {
-        LOG_DEBUG("speakerMuted key not found in config, defaulting to false");
+    if (!jsonObj.contains(ConfigKeys::SPEAKER_MUTED)) {
         return false;
     }
 
-    QJsonValue mutedValue = jsonObj["speakerMuted"];
+    QJsonValue mutedValue = jsonObj[ConfigKeys::SPEAKER_MUTED];
 
     if (mutedValue.isString()) {
         QString value = mutedValue.toString().toLower().trimmed();
         bool result = (value == "1" || value == "true" || value == "yes" || value == "on");
-        LOG_DEBUG("speakerMuted string value: '{}' -> {}", value.toStdString(), result);
         return result;
     }
     else if (mutedValue.isBool()) {
         bool result = mutedValue.toBool();
-        LOG_DEBUG("speakerMuted bool value: {}", result);
         return result;
     }
     else if (mutedValue.isDouble()) {
         bool result = (mutedValue.toInt() == 1);
-        LOG_DEBUG("speakerMuted numeric value: {} -> {}", mutedValue.toInt(), result);
         return result;
     }
     else {
@@ -698,31 +704,228 @@ bool ConfigManager::isCameraActiveFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains("cameraEnabled")) {
-        LOG_DEBUG("cameraEnabled key not found in config, defaulting to false");
+    if (!jsonObj.contains(ConfigKeys::CAMERA_ENABLED)) {
         return false;
     }
 
-    QJsonValue enabledValue = jsonObj["cameraEnabled"];
+    QJsonValue enabledValue = jsonObj[ConfigKeys::CAMERA_ENABLED];
 
     if (enabledValue.isString()) {
         QString value = enabledValue.toString().toLower().trimmed();
         bool result = (value == "1" || value == "true" || value == "yes" || value == "on");
-        LOG_DEBUG("cameraEnabled string value: '{}' -> {}", value.toStdString(), result);
         return result;
     }
     else if (enabledValue.isBool()) {
         bool result = enabledValue.toBool();
-        LOG_DEBUG("cameraEnabled bool value: {}", result);
         return result;
     }
     else if (enabledValue.isDouble()) {
         bool result = (enabledValue.toInt() == 1);
-        LOG_DEBUG("cameraEnabled numeric value: {} -> {}", enabledValue.toInt(), result);
         return result;
     }
     else {
         LOG_WARN("cameraEnabled has unsupported type, defaulting to false");
         return false;
     }
+}
+
+const QString& ConfigManager::getLogDirectoryName() const {
+    return m_logDirectoryName;
+}
+
+const QString& ConfigManager::getTemporaryUpdateDirectoryName() const {
+    return m_temporaryUpdateDirectoryName;
+}
+
+const QString& ConfigManager::getDeletionListFileName() const {
+    return m_deletionListFileName;
+}
+
+const std::unordered_set<std::string>& ConfigManager::getIgnoredFilesWhileCollectingForUpdate() const {
+    return m_ignoredFilesWhileCollectingForUpdate;
+}
+
+const std::unordered_set<std::string>& ConfigManager::getIgnoredDirectoriesWhileCollectingForUpdate() const {
+    return m_ignoredDirectoriesWhileCollectingForUpdate;
+}
+
+QString ConfigManager::getLogDirectoryNameFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return "logs";
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
+        return "logs";
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return "logs";
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QString logDirName = jsonObj[ConfigKeys::LOG_DIRECTORY_NAME].toString();
+
+    if (logDirName.isEmpty()) {
+        return "logs";
+    }
+
+    return logDirName;
+}
+
+QString ConfigManager::getTemporaryUpdateDirectoryNameFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return "updateTemp";
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
+        return "updateTemp";
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return "updateTemp";
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QString tempDirName = jsonObj[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY_NAME].toString();
+
+    if (tempDirName.isEmpty()) {
+        return "updateTemp";
+    }
+
+    return tempDirName;
+}
+
+QString ConfigManager::getDeletionListFileNameFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return "remove.json";
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
+        return "remove.json";
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return "remove.json";
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QString fileName = jsonObj[ConfigKeys::DELETION_LIST_FILE_NAME].toString();
+
+    if (fileName.isEmpty()) {
+        return "remove.json";
+    }
+
+    return fileName;
+}
+
+std::unordered_set<std::string> ConfigManager::getIgnoredFilesWhileCollectingForUpdateFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return std::unordered_set<std::string>();
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
+        return std::unordered_set<std::string>();
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return std::unordered_set<std::string>();
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QJsonValue ignoredFilesValue = jsonObj[ConfigKeys::IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE];
+
+    if (!ignoredFilesValue.isArray()) {
+        return std::unordered_set<std::string>();
+    }
+
+    std::unordered_set<std::string> ignoredFiles;
+    QJsonArray array = ignoredFilesValue.toArray();
+    for (const QJsonValue& value : array) {
+        if (value.isString()) {
+            ignoredFiles.insert(value.toString().toStdString());
+        }
+    }
+
+    return ignoredFiles;
+}
+
+std::unordered_set<std::string> ConfigManager::getIgnoredDirectoriesWhileCollectingForUpdateFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
+        return std::unordered_set<std::string>{"logs"};
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
+        return std::unordered_set<std::string>{"logs"};
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN("Config file does not contain a JSON object");
+        return std::unordered_set<std::string>{"logs"};
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QJsonValue ignoredDirsValue = jsonObj[ConfigKeys::IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE];
+
+    if (!ignoredDirsValue.isArray()) {
+        return std::unordered_set<std::string>{"logs"};
+    }
+
+    std::unordered_set<std::string> ignoredDirs;
+    QJsonArray array = ignoredDirsValue.toArray();
+    for (const QJsonValue& value : array) {
+        if (value.isString()) {
+            ignoredDirs.insert(value.toString().toStdString());
+        }
+    }
+
+    return ignoredDirs;
 }

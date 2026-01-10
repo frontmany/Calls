@@ -27,19 +27,27 @@ namespace core
             }
 
             try {
+                const std::string logger_name = "core";
+                
+                auto existing_logger = spdlog::get(logger_name);
+                if (existing_logger) {
+                    logger = existing_logger;
+                    return true;
+                }
+
                 auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
                 console_sink->set_level(spdlog::level::debug);
                 console_sink->set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] %v%$");
 
                 auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                    "logs/calls_client.log",
+                    "logs/core.log",
                     1024 * 1024 * 10,
                     3
                 );
                 file_sink->set_level(spdlog::level::trace);
                 file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread %t] %v");
 
-                logger = std::make_shared<spdlog::logger>("calls_client",
+                logger = std::make_shared<spdlog::logger>(logger_name,
                     spdlog::sinks_init_list{ console_sink, file_sink });
 
                 logger->set_level(spdlog::level::trace);

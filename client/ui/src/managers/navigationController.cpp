@@ -2,11 +2,10 @@
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
-#include "client.h"
 
-NavigationController::NavigationController(std::shared_ptr<callifornia::Client> client, QObject* parent)
+NavigationController::NavigationController(std::shared_ptr<core::Client> client, QObject* parent)
     : QObject(parent)
-    , m_client(client)
+    , m_coreClient(client)
 {
 }
 
@@ -31,11 +30,11 @@ void NavigationController::switchToMainMenuWidget()
     if (!m_stackedLayout || !m_mainMenuWidget || !m_callWidget) return;
 
     m_stackedLayout->setCurrentWidget(m_mainMenuWidget);
-    if (m_client) {
-        m_mainMenuWidget->setInputVolume(m_client->getInputVolume());
-        m_mainMenuWidget->setOutputVolume(m_client->getOutputVolume());
-        m_mainMenuWidget->setMicrophoneMuted(m_client->isMicrophoneMuted());
-        m_mainMenuWidget->setSpeakerMuted(m_client->isSpeakerMuted());
+    if (m_coreClient) {
+        m_mainMenuWidget->setInputVolume(m_coreClient->getInputVolume());
+        m_mainMenuWidget->setOutputVolume(m_coreClient->getOutputVolume());
+        m_mainMenuWidget->setMicrophoneMuted(m_coreClient->isMicrophoneMuted());
+        m_mainMenuWidget->setSpeakerMuted(m_coreClient->isSpeakerMuted());
     }
 
     m_callWidget->hideEnterFullscreenButton();
@@ -46,7 +45,7 @@ void NavigationController::switchToMainMenuWidget()
 
     emit windowTitleChanged("Callifornia");
 
-    std::string nickname = m_client ? m_client->getMyNickname() : "";
+    std::string nickname = m_coreClient ? m_coreClient->getMyNickname() : "";
     if (!nickname.empty()) {
         m_mainMenuWidget->setNickname(QString::fromStdString(nickname));
     }
@@ -68,17 +67,15 @@ void NavigationController::switchToCallWidget(const QString& friendNickname)
     m_callWidget->setScreenShareButtonActive(false);
     // Note: Camera state is preserved and will be set by the camera manager if needed
 
-    if (m_client) {
-        m_callWidget->setInputVolume(m_client->getInputVolume());
-        m_callWidget->setOutputVolume(m_client->getOutputVolume());
-        m_callWidget->setMicrophoneMuted(m_client->isMicrophoneMuted());
-        m_callWidget->setSpeakerMuted(m_client->isSpeakerMuted());
+    if (m_coreClient) {
+        m_callWidget->setInputVolume(m_coreClient->getInputVolume());
+        m_callWidget->setOutputVolume(m_coreClient->getOutputVolume());
+        m_callWidget->setMicrophoneMuted(m_coreClient->isMicrophoneMuted());
+        m_callWidget->setSpeakerMuted(m_coreClient->isSpeakerMuted());
     }
 
     emit windowTitleChanged("Call In Progress - Callifornia");
     m_callWidget->setCallInfo(friendNickname);
-
-    emit callWidgetActivated(friendNickname);
 }
 
 void NavigationController::onCallWidgetEnterFullscreenRequested()

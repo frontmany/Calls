@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QObject>
 #include <memory>
 
 #include "updater.h"
@@ -16,25 +17,26 @@ class UpdateManager : public QObject {
 public:
     explicit UpdateManager(std::shared_ptr<core::Client> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent = nullptr);
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
+    bool shouldRestart();
+    void launchUpdateApplier();
 
 signals:
     void stopAllRingtonesRequested();
 
 public slots:
-    void onUpdaterCheckResult(updater::UpdateStatus status);
-    void onUpdateLoadingFailed();
+    void onUpdateCheckResult(updater::UpdateCheckResult result);
     void onUpdateLoaded(bool emptyUpdate);
     void onLoadingProgress(double progress);
     void onUpdateButtonClicked();
 
 private:
-    void launchUpdateApplier();
-    std::string parseVersionFromConfig();
     updater::OperationSystemType resolveOperationSystemType();
 
 private:
-    std::shared_ptr<core::Client> m_client = nullptr;
-    std::shared_ptr<updater::Client> m_updater = nullptr;
+    bool m_shouldRestart = false;
+
+    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 
     ConfigManager* m_configManager = nullptr; 
     AuthorizationWidget* m_authorizationWidget = nullptr;

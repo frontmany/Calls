@@ -3,7 +3,6 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "packetSender.h"
@@ -46,7 +45,6 @@ namespace server
         asio::ip::udp::socket m_socket;
         asio::ip::udp::endpoint m_serverEndpoint;
         asio::executor_work_guard<asio::io_context::executor_type> m_workGuard;
-        std::thread m_asioThread;
 
         PacketReceiver m_packetReceiver;
         PacketSender m_packetSender;

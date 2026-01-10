@@ -325,7 +325,28 @@ namespace server
             return;
         }
 
-        LOG_ERROR("Packet receiver error: {}", ec.message());
+        if (ec.category() == asio::error::get_system_category()) {
+            int errorCode = ec.value();
+            if (errorCode == 10038 || // WSAENOTSOCK - сокет не является сокетом
+                errorCode == 10057 || // WSAENOTCONN - сокет не подключен
+                errorCode == 10054 || // WSAECONNRESET - соединение сброшено
+                errorCode == 10058 || // WSAESHUTDOWN - сокет был закрыт
+                errorCode == 10053 || // WSAECONNABORTED - соединение прервано
+                errorCode == 10004) { // WSAEINTR - прерванный системный вызов
+                return;
+            }
+        }
+
+        if (ec == asio::error::connection_refused ||
+            ec == asio::error::connection_reset ||
+            ec == asio::error::broken_pipe ||
+            ec == asio::error::network_unreachable ||
+            ec == asio::error::host_unreachable ||
+            ec == asio::error::host_not_found) {
+            return;
+        }
+
+        LOG_ERROR("Packet receiver error: {} (code: {})", ec.message(), ec.value());
         if (m_onErrorCallback) {
             m_onErrorCallback();
         }

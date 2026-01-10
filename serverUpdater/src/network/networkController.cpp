@@ -4,7 +4,7 @@
 
 #include "packetType.h"
 #include "connection.h"
-#include "utilities/safeDeque.h"
+#include "utilities/safeQueue.h"
 #include "utilities/logger.h"
 
 using namespace std::chrono_literals;
@@ -36,6 +36,7 @@ void NetworkController::start() {
 }
 
 void NetworkController::stop() {
+    m_running = false;
     m_context.stop();
 
     if (m_contextThread.joinable())
@@ -61,16 +62,15 @@ void NetworkController::waitForClientConnections() {
 
 void NetworkController::processQueue() {
     while (m_running) {
-        if (!m_queue.empty()) {
-            OwnedPacket packet = m_queue.pop_front();
-            handlePacket(std::move(packet));
+        auto packet = m_queue.pop_for(100ms);
+        if (packet.has_value()) {
+            handlePacket(std::move(*packet));
         }
-
-        std::this_thread::sleep_for(10ms); 
     }
 }
 
 void NetworkController::onDisconnect(ConnectionPtr connection) {
+    std::lock_guard<std::mutex> lock(m_connectionsMutex);
     m_setConnections.erase(connection);
     LOG_INFO("[SERVER] Client disconnected (active connections: {})", m_setConnections.size());
 }
@@ -94,10 +94,13 @@ void NetworkController::createConnection(asio::ip::tcp::socket socket)
     ConnectionPtr connection = std::make_shared<Connection>(
         m_context,
         std::move(socket),
-        [this](OwnedPacket&& packet) {m_queue.push_back(std::move(packet));  },
+        [this](OwnedPacket&& packet) {m_queue.push(std::move(packet));  },
         [this](ConnectionPtr connection) { onDisconnect(connection); }
     );
 
-    m_setConnections.insert(connection);
+    {
+        std::lock_guard<std::mutex> lock(m_connectionsMutex);
+        m_setConnections.insert(connection);
+    }
 }
 }

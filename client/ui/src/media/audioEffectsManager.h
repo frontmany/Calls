@@ -6,13 +6,13 @@
 #include <QString>
 #include <memory>
 
-#include "client.h"
+#include "core.h"
 
 class AudioEffectsManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit AudioEffectsManager(std::shared_ptr<callifornia::Client> client, QObject* parent = nullptr);
+    explicit AudioEffectsManager(std::shared_ptr<core::Client> client, QObject* parent = nullptr);
     ~AudioEffectsManager();
 
     void playIncomingCallRingtone();
@@ -28,7 +28,7 @@ private:
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
 
-    std::shared_ptr<callifornia::Client> m_client = nullptr;
+    std::shared_ptr<core::Client> m_coreClient = nullptr;
     QMediaPlayer* m_ringtonePlayer = nullptr;
     QAudioOutput* m_audioOutput = nullptr;
 };

@@ -1,6 +1,6 @@
 #include "dialogsController.h"
 #include "widgets/overlayWidget.h"
-#include "../scaleFactor.h"
+#include "utilities/utilities.h"
 #include "widgets/screenPreviewWidget.h"
 
 #include <QVBoxLayout>
@@ -21,6 +21,7 @@ DialogsController::DialogsController(QWidget* parent)
     m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
     m_updatingProgressLabel(nullptr), m_updatingLabel(nullptr), m_updatingGifLabel(nullptr),
     m_connectionErrorOverlay(nullptr), m_connectionErrorDialog(nullptr),
+    m_reconnectingOverlay(nullptr), m_reconnectingDialog(nullptr), m_reconnectingLabel(nullptr),
     m_screenShareOverlay(nullptr), m_screenShareDialog(nullptr),
     m_screenShareScreensContainer(nullptr), m_screenShareScreensLayout(nullptr),
     m_screenShareButton(nullptr), m_screenShareStatusLabel(nullptr),
@@ -38,6 +39,7 @@ DialogsController::~DialogsController()
 {
     hideUpdatingDialog();
     hideUpdatingErrorDialog();
+    hideReconnectingDialog();
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
@@ -891,6 +893,108 @@ QWidget* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
 	contentLayout->addLayout(buttonLayout);
 
     connect(closeButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
+
+	return dialog;
+}
+
+void DialogsController::showReconnectingDialog()
+{
+	if (m_reconnectingDialog)
+	{
+		return;
+	}
+
+	m_reconnectingOverlay = new OverlayWidget(m_parent);
+	m_reconnectingOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_reconnectingOverlay->show();
+    m_reconnectingOverlay->raise();
+
+	m_reconnectingDialog = createReconnectingDialog(m_reconnectingOverlay);
+
+    auto centerReconnecting = [this]()
+    {
+        if (!m_reconnectingDialog || !m_reconnectingOverlay)
+            return;
+        m_reconnectingDialog->adjustSize();
+        QSize dialogSize = m_reconnectingDialog->size();
+        QRect overlayRect = m_reconnectingOverlay->rect();
+        int x = overlayRect.center().x() - dialogSize.width() / 2;
+        int y = overlayRect.center().y() - dialogSize.height() / 2;
+        m_reconnectingDialog->move(x, y);
+        m_reconnectingDialog->raise();
+    };
+    centerReconnecting();
+    m_reconnectingDialog->show();
+    QTimer::singleShot(0, this, centerReconnecting);
+    QObject::connect(m_reconnectingOverlay, &OverlayWidget::geometryChanged, this, centerReconnecting);
+}
+
+void DialogsController::hideReconnectingDialog()
+{
+	if (m_reconnectingDialog)
+	{
+        m_reconnectingDialog->disconnect();
+        m_reconnectingDialog->hide();
+        m_reconnectingDialog->deleteLater();
+		m_reconnectingDialog = nullptr;
+	}
+
+	if (m_reconnectingOverlay)
+	{
+		m_reconnectingOverlay->close();
+		m_reconnectingOverlay->deleteLater();
+		m_reconnectingOverlay = nullptr;
+	}
+
+	m_reconnectingLabel = nullptr;
+}
+
+QWidget* DialogsController::createReconnectingDialog(OverlayWidget* overlay)
+{
+	QFont font("Outfit", 14, QFont::Normal);
+
+    QWidget* dialog = new QWidget(overlay);
+    dialog->setMinimumWidth(300);
+    dialog->setMinimumHeight(120);
+    dialog->setAttribute(Qt::WA_TranslucentBackground);
+
+	QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+	shadowEffect->setBlurRadius(30);
+	shadowEffect->setXOffset(0);
+	shadowEffect->setYOffset(0);
+	shadowEffect->setColor(QColor(0, 0, 0, 150));
+
+    QWidget* mainWidget = new QWidget(dialog);
+	mainWidget->setGraphicsEffect(shadowEffect);
+	mainWidget->setObjectName("mainWidget");
+
+	QString mainWidgetStyle =
+		"QWidget#mainWidget {"
+		"   background-color: rgb(255, 255, 255);"
+		"   border-radius: 16px;"
+		"   border: 1px solid rgb(210, 210, 210);"
+		"}";
+	mainWidget->setStyleSheet(mainWidgetStyle);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+	mainLayout->addWidget(mainWidget);
+
+	QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
+	contentLayout->setContentsMargins(32, 32, 32, 32);
+	contentLayout->setSpacing(20);
+	contentLayout->setAlignment(Qt::AlignCenter);
+
+	m_reconnectingLabel = new QLabel("Reconnecting...");
+	m_reconnectingLabel->setAlignment(Qt::AlignCenter);
+	m_reconnectingLabel->setStyleSheet(
+		"color: rgb(100, 100, 100);"
+		"font-size: 16px;"
+		"font-family: 'Outfit';"
+		"font-weight: normal;"
+	);
+	m_reconnectingLabel->setFont(font);
+
+	contentLayout->addWidget(m_reconnectingLabel);
 
 	return dialog;
 }

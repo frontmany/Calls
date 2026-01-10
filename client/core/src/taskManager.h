@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+#include <optional>
 
 using namespace core::utilities;
 
@@ -15,6 +16,8 @@ namespace core
 	template <typename Rep, typename Period>
 	class TaskManager
 	{
+		using TaskType = Task<Rep, Period>;
+
 	public:
 		TaskManager() = default;
 		~TaskManager() = default;
@@ -42,20 +45,34 @@ namespace core
 		}
 
 		void completeTask(const std::string& uid, std::optional<nlohmann::json> completionContext = std::nullopt) {
-			std::lock_guard<std::mutex> lock(m_mutex);
+			std::optional<TaskType> task;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
 
-			if (m_tasks.contains(uid)) {
-				auto& task = m_tasks.at(uid);
-				task.complete(completionContext);
+				if (m_tasks.contains(uid)) {
+					task = std::move(m_tasks.at(uid));
+					m_tasks.erase(uid);
+				}
+			}
+			
+			if (task) {
+				task->complete(completionContext);
 			}
 		}
 
 		void failTask(const std::string& uid, std::optional<nlohmann::json> failureContext = std::nullopt) {
-			std::lock_guard<std::mutex> lock(m_mutex);
+			std::optional<TaskType> task;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
 
-			if (m_tasks.contains(uid)) {
-				auto& task = m_tasks.at(uid);
-				task.fail(failureContext);
+				if (m_tasks.contains(uid)) {
+					task = std::move(m_tasks.at(uid));
+					m_tasks.erase(uid);
+				}
+			}
+			
+			if (task) {
+				task->fail(failureContext);
 			}
 		}
 
@@ -83,6 +100,6 @@ namespace core
 
 	private:
 		mutable std::mutex m_mutex;
-		std::unordered_map<std::string, core::Task<Rep, Period>> m_tasks;
+		std::unordered_map<std::string, TaskType> m_tasks;
 	};
 }

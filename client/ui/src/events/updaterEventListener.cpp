@@ -4,15 +4,17 @@
 #include <QApplication>
 
 #include "managers/updateManager.h"
+#include "managers/updaterNetworkErrorHandler.h"
 
-UpdaterEventListener::UpdaterEventListener(UpdateManager* updateManager) 
+UpdaterEventListener::UpdaterEventListener(UpdateManager* updateManager, UpdaterNetworkErrorHandler* networkErrorHandler) 
 	: m_updateManager(updateManager)
+	, m_networkErrorHandler(networkErrorHandler)
 {
 }
 
-void UpdaterEventListener::onUpdateCheckResult(updater::UpdateStatus status) {
-    QMetaObject::invokeMethod(m_updateManager, "onUpdaterCheckResult",
-        Qt::QueuedConnection, Q_ARG(updater::UpdateStatus, status));
+void UpdaterEventListener::onUpdateCheckResult(updater::UpdateCheckResult updateCheckResult) {
+    QMetaObject::invokeMethod(m_updateManager, "onUpdateCheckResult",
+        Qt::QueuedConnection, Q_ARG(updater::UpdateCheckResult, updateCheckResult));
 }
 
 void UpdaterEventListener::onLoadingProgress(double progress) {
@@ -25,6 +27,14 @@ void UpdaterEventListener::onUpdateLoaded(bool emptyUpdate) {
         Qt::QueuedConnection, Q_ARG(bool, emptyUpdate));
 }
 
-void UpdaterEventListener::onUpdateLoadingFailed() {
-    QMetaObject::invokeMethod(m_updateManager, "onUpdateLoadingFailed", Qt::QueuedConnection);
+void UpdaterEventListener::onNetworkError() {
+    if (m_networkErrorHandler) {
+        QMetaObject::invokeMethod(static_cast<QObject*>(m_networkErrorHandler), "onNetworkError", Qt::QueuedConnection);
+    }
+}
+
+void UpdaterEventListener::onConnected() {
+    if (m_networkErrorHandler) {
+        QMetaObject::invokeMethod(static_cast<QObject*>(m_networkErrorHandler), "onConnected", Qt::QueuedConnection);
+    }
 }

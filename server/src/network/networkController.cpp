@@ -1,6 +1,5 @@
 #include "networkController.h"
 
-#include <thread>
 #include <utility>
 
 #include "utilities/logger.h"
@@ -71,7 +70,6 @@ namespace server {
             }
 
             std::function<void()> errorHandler = [this]() {
-                LOG_ERROR("Unexpected error in PacketReceiver");
             };
 
             auto pingReceivedHandler = [this](uint32_t pingType, const asio::ip::udp::endpoint& endpoint) {
@@ -116,14 +114,14 @@ namespace server {
             return;
         }
 
-        m_asioThread = std::thread([this]() {m_context.run(); });
         m_packetReceiver.start();
         m_pingController->start();
+        m_context.run();
     }
 
     void NetworkController::stop() {
         bool wasRunning = m_running.exchange(false);
-        if (!wasRunning && !m_asioThread.joinable()) {
+        if (!wasRunning) {
             return;
         }
 
@@ -145,10 +143,6 @@ namespace server {
 
         m_workGuard.reset();
         m_context.stop();
-
-        if (m_asioThread.joinable()) {
-            m_asioThread.join();
-        }
 
         if (m_pingController) {
             m_pingController->stop();

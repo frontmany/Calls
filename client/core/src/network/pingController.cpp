@@ -49,7 +49,6 @@ namespace core
     void PingController::setConnectionError() {
         if (!m_connectionError.load()) {
             m_connectionError = true;
-            LOG_INFO("Connection error set in PingController");
         }
     }
 
@@ -99,15 +98,12 @@ namespace core
             }
 
             m_pingResult = false;
-            LOG_INFO("ping success");
         }
         else {
             int failures = m_consecutiveFailures.fetch_add(1) + 1;
-            LOG_WARN("ping check failed (consecutive failures: {})", failures);
 
             if (failures >= MAX_CONSECUTIVE_FAILURES) {
                 if (!m_connectionError.load()) {
-                    LOG_ERROR("Multiple consecutive ping failures, triggering connection down");
                     if (m_onConnectionDown) {
                         m_onConnectionDown();
                     }

@@ -7,7 +7,7 @@
 #include <vector>
 #include <filesystem>
 
-#include "../utilities/safeDeque.h"
+#include "../utilities/safeQueue.h"
 #include "filesSender.h"
 #include "packetsSender.h"
 #include "packetsReceiver.h"
@@ -36,7 +36,7 @@ private:
 	void readHandshake();
 
 private:
-	utilities::SafeDeque<std::variant<Packet, std::filesystem::path>> m_queue;
+	utilities::SafeQueue<std::variant<Packet, std::filesystem::path>> m_queue;
 
 	uint64_t m_handshakeOut;
 	uint64_t m_handshakeIn;

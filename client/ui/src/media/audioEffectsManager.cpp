@@ -1,10 +1,9 @@
 #include "audioEffectsManager.h"
 #include <QSoundEffect>
-#include "client.h"
 
-AudioEffectsManager::AudioEffectsManager(std::shared_ptr<callifornia::Client> client, QObject* parent)
+AudioEffectsManager::AudioEffectsManager(std::shared_ptr<core::Client> client, QObject* parent)
     : QObject(parent)
-    , m_client(client)
+    , m_coreClient(client)
 {
     m_ringtonePlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
@@ -22,7 +21,7 @@ AudioEffectsManager::~AudioEffectsManager()
 void AudioEffectsManager::onPlaybackStateChanged(QMediaPlayer::PlaybackState state)
 {
     if (state == QMediaPlayer::StoppedState) {
-        if (m_client && m_client->getIncomingCallsCount() != 0) {
+        if (m_coreClient && m_coreClient->getIncomingCallsCount() != 0) {
             m_ringtonePlayer->play();
         }
     }

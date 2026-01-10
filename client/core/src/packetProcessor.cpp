@@ -228,13 +228,13 @@ void PacketProcessor::onIncomingCallEnded(const nlohmann::json& jsonObject)
     if (!m_stateManager.isAuthorized() || m_stateManager.isConnectionDown() || !m_stateManager.isIncomingCalls()) return;
 
     auto& incomingCalls = m_stateManager.getIncomingCalls();
-    auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&senderNicknameHash](const auto& pair) {
+    const auto it = std::find_if(incomingCalls.begin(), incomingCalls.end(), [&senderNicknameHash](const auto& pair) {
         return crypto::calculateHash(pair.first) == senderNicknameHash;
     });
 
     if (it == incomingCalls.end()) return;
 
-    const std::string& userNickname = it->second.getNickname();
+    std::string userNickname = it->second.getNickname();
     m_stateManager.removeIncomingCall(userNickname);
     m_eventListener->onIncomingCallExpired({}, userNickname);
 }

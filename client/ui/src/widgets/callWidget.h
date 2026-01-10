@@ -88,6 +88,9 @@ public:
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
     void showErrorNotification(const QString& text, int durationMs);
+    void showParticipantConnectionError(const QString& text, int durationMs);
+    void showParticipantConnectionRestored(const QString& text, int durationMs);
+    void hideParticipantConnectionStatus();
 
 signals:
     void hangupClicked();
@@ -148,7 +151,10 @@ private:
 
     // Call info section
     QLabel* m_timerLabel;
+    QWidget* m_participantInfoContainer;
+    QHBoxLayout* m_participantInfoLayout;
     QLabel* m_friendNicknameLabel;
+    QLabel* m_connectionErrorLabel;
     Screen* m_mainScreen;
 
     // Additional screens container
@@ -223,4 +229,5 @@ private:
     QLabel* m_notificationLabel = nullptr;
     QHBoxLayout* m_notificationLayout = nullptr;
     QTimer* m_notificationTimer = nullptr;
+    QTimer* m_connectionErrorLabelTimer = nullptr;
 };

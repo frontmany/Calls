@@ -5,8 +5,7 @@
 #include <QStackedLayout>
 #include <memory>
 
-#include "client.h"
-#include "../state.h"
+#include "core.h"
 
 class AudioEffectsManager;
 class MainMenuWidget;
@@ -19,7 +18,7 @@ class CallManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit CallManager(std::shared_ptr<callifornia::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent = nullptr);
+    explicit CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent = nullptr);
     
     void setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout);
 
@@ -30,14 +29,19 @@ public slots:
     void onDeclineCallButtonClicked(const QString& friendNickname);
     void onEndCallButtonClicked();
 
-    void onStartCallingResult(callifornia::ErrorCode ec);
-    void onAcceptCallResult(callifornia::ErrorCode ec, const QString& nickname);
+    void onStartCallingResult(std::error_code ec);
+    void onAcceptCallResult(std::error_code ec, const QString& nickname);
     void onMaximumCallingTimeReached();
     void onCallingAccepted();
     void onCallingDeclined();
     void onRemoteUserEndedCall();
     void onIncomingCall(const QString& friendNickname);
     void onIncomingCallExpired(const QString& friendNickname);
+    void onStopOutgoingCallResult(std::error_code ec);
+    void onDeclineCallResult(std::error_code ec, const QString& nickname);
+    void onEndCallResult(std::error_code ec);
+    void onCallParticipantConnectionDown();
+    void onCallParticipantConnectionRestored();
 
 signals:
     void stopScreenCaptureRequested();
@@ -51,7 +55,7 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
 
-    std::shared_ptr<callifornia::Client> m_client = nullptr;
+    std::shared_ptr<core::Client> m_coreClient = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     NavigationController* m_navigationController = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;

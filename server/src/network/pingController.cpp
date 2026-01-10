@@ -121,7 +121,7 @@ namespace server
                                 endpointsToPing.push_back(asio::ip::udp::endpoint(address, port));
                             }
                             catch (const std::exception& e) {
-                                LOG_WARN("Failed to parse endpoint {}: {}", endpointKey, e.what());
+                                continue;
                             }
                         }
                     }
@@ -166,7 +166,6 @@ namespace server
                 endpoint = asio::ip::udp::endpoint(address, port);
             }
             catch (const std::exception& e) {
-                LOG_WARN("Failed to parse endpoint {}: {}", endpointKey, e.what());
                 continue;
             }
 
@@ -179,11 +178,9 @@ namespace server
                 }
 
                 pingState.pingResult = false;
-                LOG_DEBUG("Ping success for endpoint {}", endpointKey);
             }
             else {
                 int failures = pingState.consecutiveFailures.fetch_add(1) + 1;
-                LOG_WARN("Ping check failed for endpoint {} (consecutive failures: {})", endpointKey, failures);
 
                 if (failures >= MAX_CONSECUTIVE_FAILURES) {
                     if (!pingState.connectionError.load()) {

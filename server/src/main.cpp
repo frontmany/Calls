@@ -8,8 +8,6 @@ int main()
 {
     std::filesystem::create_directories("logs");
     
-    LOG_INFO("=== Calls Server Starting ===");
-    LOG_INFO("Server port: 8081");
     
     try {
         server::Server server("8081");

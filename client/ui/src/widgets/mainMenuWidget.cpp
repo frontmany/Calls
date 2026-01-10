@@ -6,7 +6,7 @@
 #include <QShortcut>
 
 #include "buttons.h"
-#include "../scaleFactor.h"
+#include "utilities/utilities.h"
 
 // Style definitions
 const QColor StyleMainMenuWidget::m_primaryColor = QColor(21, 119, 232);

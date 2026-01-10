@@ -5,12 +5,13 @@
 #include "widgets/callWidget.h"
 #include "media/screenCaptureController.h"
 #include "media/cameraCaptureController.h"
-#include "client.h"
 #include "utilities/logger.h"
+#include "errorCode.h"
+#include <system_error>
 
-CallManager::CallManager(std::shared_ptr<callifornia::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent)
+CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent)
     : QObject(parent)
-    , m_client(client)
+    , m_coreClient(client)
     , m_audioManager(audioManager)
     , m_navigationController(navigationController)
     , m_screenCaptureController(screenCaptureController)
@@ -29,20 +30,22 @@ void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
 {
     if (!m_mainMenuWidget) return;
 
-    if (!m_client) return;
-    if (!friendNickname.isEmpty() && friendNickname.toStdString() != m_client->getMyNickname()) {
-        bool requestSent = m_client->startOutgoingCall(friendNickname.toStdString());
-        if (!requestSent) {
-            handleStartCallingErrorNotificationAppearance();
-            return;
-        }
+    if (!m_coreClient) return;
+
+    if (friendNickname.isEmpty()) {
+        m_mainMenuWidget->setErrorMessage("cannot be empty");
+        return;
     }
-    else {
-        if (friendNickname.isEmpty()) {
-            m_mainMenuWidget->setErrorMessage("cannot be empty");
-        }
-        else if (friendNickname.toStdString() == m_client->getMyNickname()) {
-            m_mainMenuWidget->setErrorMessage("cannot call yourself");
+
+    if (friendNickname.toStdString() == m_coreClient->getMyNickname()) {
+        m_mainMenuWidget->setErrorMessage("cannot call yourself");
+        return;
+    }
+
+    std::error_code ec = m_coreClient->startOutgoingCall(friendNickname.toStdString());
+    if (ec) {
+        if (!m_coreClient->isConnectionDown()) {
+            handleStartCallingErrorNotificationAppearance();
         }
     }
 }
@@ -51,142 +54,93 @@ void CallManager::onStopCallingButtonClicked()
 {
     if (!m_mainMenuWidget) return;
 
-    if (!m_client) return;
-    bool requestSent = m_client->stopOutgoingCall();
-    if (!requestSent) {
-        handleStopCallingErrorNotificationAppearance();
-    }
-    else {
-        m_mainMenuWidget->removeCallingPanel();
-        m_mainMenuWidget->setStatusLabelOnline();
-        if (m_audioManager) {
-            m_audioManager->stopCallingRingtone();
-        }
-        if (m_audioManager) {
-            m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+    if (!m_coreClient) return;
+
+    std::error_code ec = m_coreClient->stopOutgoingCall();
+    if (ec) {
+        if (!m_coreClient->isConnectionDown()) {
+            handleStopCallingErrorNotificationAppearance();
         }
     }
 }
 
 void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
 {
-    if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
-        emit stopScreenCaptureRequested();
-    }
+    if (!m_coreClient) return;
 
-    if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
-        emit stopCameraCaptureRequested();
-    }
-
-    if (!m_client) return;
-    bool requestSent = m_client->acceptCall(friendNickname.toStdString());
-    if (!requestSent) {
-        handleAcceptCallErrorNotificationAppearance();
-        return;
+    std::error_code ec = m_coreClient->acceptCall(friendNickname.toStdString());
+    if (ec) {
+        if (!m_coreClient->isConnectionDown()) {
+            handleAcceptCallErrorNotificationAppearance();
+        }
     }
 }
 
 void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
 {
-    if (!m_client) return;
-    bool requestSent = m_client->declineCall(friendNickname.toStdString());
-    if (!requestSent) {
-        handleDeclineCallErrorNotificationAppearance();
-    }
-    else {
-        if (m_client->getIncomingCallsCount() == 0 && m_audioManager) {
-            m_audioManager->stopIncomingCallRingtone();
-        }
+    if (!m_coreClient) return;
 
-        if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
-            m_callWidget->removeIncomingCall(friendNickname);
-        }
-
-        if (m_mainMenuWidget) {
-            m_mainMenuWidget->removeIncomingCall(friendNickname);
-        }
-
-        if (m_audioManager) {
-            m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+    std::error_code ec = m_coreClient->declineCall(friendNickname.toStdString());
+    if (ec) {
+        if (!m_coreClient->isConnectionDown()) {
+            handleDeclineCallErrorNotificationAppearance();
         }
     }
 }
 
 void CallManager::onEndCallButtonClicked()
 {
-    if (!m_client) return;
-    bool requestSent = m_client->endCall();
-    if (!requestSent) {
-        handleEndCallErrorNotificationAppearance();
-        return;
-    }
+    if (!m_coreClient) return;
 
-    emit stopScreenCaptureRequested();
-    emit stopCameraCaptureRequested();
-
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->setStatusLabelOnline();
-    }
-
-    if (m_navigationController) {
-        m_navigationController->switchToMainMenuWidget();
-    }
-
-    if (m_audioManager) {
-        m_audioManager->playSoundEffect(":/resources/endCall.wav");
+    std::error_code ec = m_coreClient->endCall();
+    if (ec) {
+        if (!m_coreClient->isConnectionDown()) {
+            handleEndCallErrorNotificationAppearance();
+        }
     }
 }
 
-void CallManager::onStartCallingResult(callifornia::ErrorCode ec)
+void CallManager::onStartCallingResult(std::error_code ec)
 {
-    if (!m_mainMenuWidget || !m_client) return;
+    if (!m_mainMenuWidget || !m_coreClient) return;
 
-    QString errorMessage;
-
-    // Success case - no error code means success
-    if (ec == callifornia::ErrorCode::network_error || ec == callifornia::ErrorCode::taken_nickname) {
-        // Error cases
-    } else {
-        // Success
-        LOG_INFO("Started calling user: {}", m_client->getNicknameWhomCalling());
-        m_mainMenuWidget->showCallingPanel(QString::fromStdString(m_client->getNicknameWhomCalling()));
+    if (!ec) {
+        m_mainMenuWidget->showCallingPanel(QString::fromStdString(m_coreClient->getNicknameWhomCalling()));
         m_mainMenuWidget->setStatusLabelCalling();
         if (m_audioManager) {
             m_audioManager->playCallingRingtone();
         }
-        return;
     }
-    if (ec == callifornia::ErrorCode::unexisting_user) {
-        errorMessage = "User not found";
-        LOG_WARN("Start calling failed: user not found");
-    }
-    else {
-        errorMessage = "Timeout (please try again)";
-        LOG_ERROR("Start calling failed: timeout or network error");
-    }
+    else if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
+        QString errorMessage;
+        if (ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
+            errorMessage = "User not found";
+            LOG_WARN("Start calling failed: user not found");
+        }
+        else {
+            errorMessage = "Something went wrong please try again";
+            LOG_ERROR("Start calling failed: timeout or network error");
+        }
 
-    m_mainMenuWidget->setErrorMessage(errorMessage);
+        if (!m_coreClient->isConnectionDown()) {
+            m_mainMenuWidget->setErrorMessage(errorMessage);
+        }
+    }
 }
 
-void CallManager::onAcceptCallResult(callifornia::ErrorCode ec, const QString& nickname)
+void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname)
 {
-    if (!m_mainMenuWidget || !m_client) return;
+    if (!m_mainMenuWidget || !m_coreClient) return;
 
-    // Success case - no error code means success
-    if (ec == callifornia::ErrorCode::network_error || ec == callifornia::ErrorCode::taken_nickname) {
-        // Error cases
-        if (m_mainMenuWidget) {
-            m_mainMenuWidget->removeIncomingCall(nickname);
+    if (!ec) {
+        if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
+            emit stopScreenCaptureRequested();
         }
 
-        if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
-            m_callWidget->removeIncomingCall(nickname);
+        if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
+            emit stopCameraCaptureRequested();
         }
 
-        handleAcceptCallErrorNotificationAppearance();
-    } else {
-        // Success
-        LOG_INFO("Call accepted successfully with: {}", nickname.toStdString());
         m_mainMenuWidget->removeCallingPanel();
         m_mainMenuWidget->clearIncomingCalls();
 
@@ -206,6 +160,19 @@ void CallManager::onAcceptCallResult(callifornia::ErrorCode ec, const QString& n
             m_audioManager->stopIncomingCallRingtone();
         }
     }
+    else if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->removeIncomingCall(nickname);
+        }
+
+        if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
+            m_callWidget->removeIncomingCall(nickname);
+        }
+
+        if (!m_coreClient->isConnectionDown()) {
+            handleAcceptCallErrorNotificationAppearance();
+        }
+    }
 }
 
 void CallManager::onMaximumCallingTimeReached()
@@ -221,9 +188,8 @@ void CallManager::onMaximumCallingTimeReached()
 
 void CallManager::onCallingAccepted()
 {
-    if (!m_mainMenuWidget || !m_client) return;
+    if (!m_mainMenuWidget || !m_coreClient) return;
 
-    LOG_INFO("Outgoing call accepted by user: {}", m_client->getNicknameInCallWith());
     m_mainMenuWidget->clearIncomingCalls();
 
     if (m_audioManager) {
@@ -234,7 +200,7 @@ void CallManager::onCallingAccepted()
     m_mainMenuWidget->setStatusLabelBusy();
 
     if (m_navigationController) {
-        m_navigationController->switchToCallWidget(QString::fromStdString(m_client->getNicknameInCallWith()));
+        m_navigationController->switchToCallWidget(QString::fromStdString(m_coreClient->getNicknameInCallWith()));
     }
 
     if (m_audioManager) {
@@ -246,7 +212,6 @@ void CallManager::onCallingDeclined()
 {
     if (!m_mainMenuWidget) return;
 
-    LOG_INFO("Outgoing call was declined");
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setStatusLabelOnline();
 
@@ -269,7 +234,6 @@ void CallManager::onRemoteUserEndedCall()
         emit stopCameraCaptureRequested();
     }
 
-    LOG_INFO("Remote user ended the call");
 
     if (m_callWidget && m_callWidget->isFullScreen()) {
         emit endCallFullscreenExitRequested();
@@ -292,7 +256,6 @@ void CallManager::onIncomingCall(const QString& friendNickname)
 {
     if (!m_mainMenuWidget) return;
 
-    LOG_INFO("Incoming call from: {}", friendNickname.toStdString());
 
     if (m_audioManager) {
         m_audioManager->playIncomingCallRingtone();
@@ -309,14 +272,13 @@ void CallManager::onIncomingCallExpired(const QString& friendNickname)
 {
     if (!m_mainMenuWidget) return;
 
-    LOG_INFO("Incoming call from {} expired", friendNickname.toStdString());
     m_mainMenuWidget->removeIncomingCall(friendNickname);
 
     if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
         m_callWidget->removeIncomingCall(friendNickname);
     }
 
-    if (m_client && m_client->getIncomingCallsCount() == 0 && m_audioManager) {
+    if (m_coreClient && m_coreClient->getIncomingCallsCount() == 0 && m_audioManager) {
         m_audioManager->stopIncomingCallRingtone();
     }
 
@@ -392,5 +354,105 @@ void CallManager::handleEndCallErrorNotificationAppearance()
     }
     else {
         LOG_WARN("Trying to end call from unexpected widget");
+    }
+}
+
+void CallManager::onStopOutgoingCallResult(std::error_code ec)
+{
+    if (ec) {
+        LOG_WARN("Failed to stop outgoing call: {}", ec.message());
+        if (m_coreClient && !m_coreClient->isConnectionDown()) {
+            handleStopCallingErrorNotificationAppearance();
+        }
+    }
+    else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->removeCallingPanel();
+            m_mainMenuWidget->setStatusLabelOnline();
+        }
+        if (m_audioManager) {
+            m_audioManager->stopCallingRingtone();
+            m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+        }
+    }
+}
+
+void CallManager::onDeclineCallResult(std::error_code ec, const QString& nickname)
+{
+    if (ec) {
+        LOG_WARN("Failed to decline call: {}", ec.message());
+        if (m_coreClient && !m_coreClient->isConnectionDown()) {
+            handleDeclineCallErrorNotificationAppearance();
+        }
+    }
+    else {
+        if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
+            m_callWidget->removeIncomingCall(nickname);
+        }
+
+        if (m_coreClient && m_coreClient->getIncomingCallsCount() == 0 && m_audioManager) {
+            m_audioManager->stopIncomingCallRingtone();
+        }
+
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->removeIncomingCall(nickname);
+        }
+
+        if (m_audioManager) {
+            m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+        }
+    }
+}
+
+void CallManager::onEndCallResult(std::error_code ec)
+{
+    if (ec) {
+        LOG_WARN("Failed to end call: {}", ec.message());
+        if (m_coreClient && !m_coreClient->isConnectionDown()) {
+            handleEndCallErrorNotificationAppearance();
+        }
+    }
+    else {
+        emit stopScreenCaptureRequested();
+        emit stopCameraCaptureRequested();
+
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setStatusLabelOnline();
+        }
+
+        if (m_navigationController) {
+            m_navigationController->switchToMainMenuWidget();
+        }
+
+        if (m_audioManager) {
+            m_audioManager->playSoundEffect(":/resources/endCall.wav");
+        }
+    }
+}
+
+void CallManager::onCallParticipantConnectionDown()
+{
+    LOG_WARN("Call participant connection down");
+    
+    if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
+        emit stopScreenCaptureRequested();
+    }
+
+    if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
+        emit stopCameraCaptureRequested();
+    }
+
+    if (m_callWidget && m_coreClient) {
+        QString friendNickname = QString::fromStdString(m_coreClient->getNicknameInCallWith());
+        QString errorText = friendNickname + " experiencing connection problems, reconnecting...";
+        m_callWidget->showParticipantConnectionError(errorText, 0);
+    }
+}
+
+void CallManager::onCallParticipantConnectionRestored()
+{
+    
+    if (m_callWidget) {
+        m_callWidget->showParticipantConnectionRestored("Connection restored", 2500);
     }
 }

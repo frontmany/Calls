@@ -3,12 +3,11 @@
 #include "managers/dialogsController.h"
 #include "widgets/callWidget.h"
 #include "media/cameraCaptureController.h"
-#include "client.h"
 #include <QTimer>
 
-ScreenSharingManager::ScreenSharingManager(std::shared_ptr<callifornia::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent)
+ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent)
     : QObject(parent)
-    , m_client(client)
+    , m_coreClient(client)
     , m_screenCaptureController(screenController)
     , m_dialogsController(dialogsController)
     , m_cameraCaptureController(cameraController)
@@ -29,10 +28,6 @@ void ScreenSharingManager::stopLocalScreenCapture()
         m_dialogsController->hideScreenShareDialog();
     }
     m_screenCaptureController->stopCapture();
-
-    if (m_client) {
-        m_client->stopScreenSharing();
-    }
 }
 
 void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
@@ -47,11 +42,16 @@ void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
         }
     }
     else {
-        stopLocalScreenCapture();
-        m_callWidget->setScreenShareButtonActive(false);
+        if (!m_coreClient) return;
 
-        if (!m_cameraCaptureController || !m_cameraCaptureController->isCapturing()) {
-            m_callWidget->hideMainScreen();
+        std::error_code ec = m_coreClient->stopScreenSharing();
+        if (ec) {
+            if (!m_coreClient->isConnectionDown()) {
+                showTransientStatusMessage("Failed to stop screen sharing", 2000);
+                if (m_callWidget) {
+                    m_callWidget->setScreenShareButtonActive(true);
+                }
+            }
         }
     }
 }
@@ -75,21 +75,24 @@ void ScreenSharingManager::onScreenSelected(int screenIndex)
         return;
     }
 
-    if (!m_client) {
+    if (!m_coreClient) {
         showTransientStatusMessage("Client not available", 3000);
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
     
-    const std::string friendNickname = m_client->getNicknameInCallWith();
+    const std::string friendNickname = m_coreClient->getNicknameInCallWith();
     if (friendNickname.empty()) {
         showTransientStatusMessage("No active call to share screen with", 3000);
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
 
-    if (!m_client->startScreenSharing()) {
-        showTransientStatusMessage("Failed to send screen sharing request", 3000);
+    std::error_code ec = m_coreClient->startScreenSharing();
+    if (ec) {
+        if (!m_coreClient->isConnectionDown()) {
+            showTransientStatusMessage("Failed to send screen sharing request", 3000);
+        }
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
@@ -97,6 +100,10 @@ void ScreenSharingManager::onScreenSelected(int screenIndex)
 
 void ScreenSharingManager::onScreenSharingStarted()
 {
+    if (m_callWidget) {
+        m_callWidget->setScreenShareButtonActive(true);
+    }
+
     if (m_screenCaptureController) {
         m_screenCaptureController->startCapture();
     }
@@ -104,7 +111,6 @@ void ScreenSharingManager::onScreenSharingStarted()
 
 void ScreenSharingManager::onScreenCaptureStarted()
 {
-    LOG_INFO("Screen capture started locally");
     if (m_callWidget) {
         m_callWidget->hideEnterFullscreenButton();
     }
@@ -112,9 +118,6 @@ void ScreenSharingManager::onScreenCaptureStarted()
 
 void ScreenSharingManager::onScreenCaptureStopped()
 {
-    if (m_client) {
-        m_client->stopScreenSharing();
-    }
     if (m_callWidget) {
         m_callWidget->setScreenShareButtonActive(false);
 
@@ -132,17 +135,22 @@ void ScreenSharingManager::onScreenCaptured(const QPixmap& pixmap, const std::ve
 
     if (imageData.empty()) return;
 
-    if (!m_client || !m_client->sendScreen(imageData)) {
+    if (!m_coreClient || !m_coreClient->sendScreen(imageData)) {
         showTransientStatusMessage("Failed to send screen frame", 2000);
     }
 }
 
 void ScreenSharingManager::onStartScreenSharingError()
 {
-    showTransientStatusMessage("Screen sharing rejected by server", 3000);
+    if (m_coreClient && !m_coreClient->isConnectionDown()) {
+        showTransientStatusMessage("Screen sharing rejected by server", 3000);
+    }
     stopLocalScreenCapture();
     if (m_callWidget) {
         m_callWidget->setScreenShareButtonActive(false);
+    }
+    if (m_dialogsController) {
+        m_dialogsController->hideScreenShareDialog();
     }
 }
 
@@ -171,7 +179,7 @@ void ScreenSharingManager::onIncomingScreenSharingStopped()
     // Note: Camera screen management is handled by CameraSharingManager
 
     // Hide fullscreen button only if remote camera is not present
-    if (!m_client || !m_client->isViewingRemoteCamera()) {
+    if (!m_coreClient || !m_coreClient->isViewingRemoteCamera()) {
         m_callWidget->hideEnterFullscreenButton();
     }
 
@@ -184,13 +192,38 @@ void ScreenSharingManager::onIncomingScreenSharingStopped()
 
 void ScreenSharingManager::onIncomingScreen(const std::vector<unsigned char>& data)
 {
-    if (!m_callWidget || data.empty() || !m_client || !m_client->isViewingRemoteScreen()) return;
+    if (!m_callWidget || data.empty() || !m_coreClient || !m_coreClient->isViewingRemoteScreen()) return;
 
     QPixmap frame;
     const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
     if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG")) {
         m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
+    }
+}
+
+void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
+{
+    if (ec) {
+        LOG_WARN("Failed to stop screen sharing: {}", ec.message());
+        if (m_coreClient && !m_coreClient->isConnectionDown()) {
+            showTransientStatusMessage("Failed to stop screen sharing", 2000);
+            if (m_callWidget) {
+                m_callWidget->setScreenShareButtonActive(true);
+            }
+        }
+    }
+    else {
+        stopLocalScreenCapture();
+        if (m_callWidget) {
+            m_callWidget->setScreenShareButtonActive(false);
+        }
+
+        if (!m_cameraCaptureController || !m_cameraCaptureController->isCapturing()) {
+            if (m_callWidget) {
+                m_callWidget->hideMainScreen();
+            }
+        }
     }
 }
 

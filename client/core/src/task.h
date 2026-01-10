@@ -47,7 +47,9 @@ namespace core
 				try {
 					if (m_attemptsCount == m_maxAttempts) {
 						m_timer.stop();
-						m_onFailed(std::nullopt);
+						if (m_onFailed) {
+							m_onFailed(std::nullopt);
+						}
 
 						return;
 					}
@@ -63,12 +65,16 @@ namespace core
 
 		void complete(std::optional<nlohmann::json> completionContext = std::nullopt) {
 			m_timer.stop();
-			m_onFinishedSuccessfully(completionContext);
+			if (m_onFinishedSuccessfully) {
+				m_onFinishedSuccessfully(completionContext);
+			}
 		}
 
 		void fail(std::optional<nlohmann::json> failureContext = std::nullopt) {
 			m_timer.stop();
-			m_onFailed(failureContext);
+			if (m_onFailed) {
+				m_onFailed(failureContext);
+			}
 		}
 
 		void cancel() {

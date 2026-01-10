@@ -10,7 +10,7 @@ namespace serverUpdater
 {
 PacketsSender::PacketsSender(asio::io_context& asioContext,
 	asio::ip::tcp::socket& socket,
-	utilities::SafeDeque<std::variant<Packet, std::filesystem::path>>& queue,
+	utilities::SafeQueue<std::variant<Packet, std::filesystem::path>>& queue,
 	FilesSender& filesSender,
 	std::function<void()>&& onError)
 	: m_socket(socket),
@@ -26,9 +26,12 @@ void PacketsSender::send() {
 }
 
 void PacketsSender::writeHeader() {
-	auto& variant = m_queue.front();
+	auto* variantPtr = m_queue.front_ptr();
+	if (!variantPtr) {
+		return;
+	}
 
-	if (auto packet = std::get_if<Packet>(&variant)) {
+	if (auto packet = std::get_if<Packet>(variantPtr)) {
 		asio::async_write(
 			m_socket,
 			asio::buffer(&packet->header(), Packet::sizeOfHeader()),
@@ -46,8 +49,9 @@ void PacketsSender::writeHeader() {
 					}
 					else
 					{
-						m_queue.pop_front();
-						resolveSending();
+						m_queue.pop_ref([this](std::variant<Packet, std::filesystem::path>&&) {
+							resolveSending();
+						});
 					}
 				}
 			}
@@ -68,8 +72,9 @@ void PacketsSender::writeBody(const Packet* packet) {
 			else 
 			{
 				LOG_TRACE("Packet sent successfully");
-				m_queue.pop_front();
-				resolveSending();
+				m_queue.pop_ref([this](std::variant<Packet, std::filesystem::path>&&) {
+					resolveSending();
+				});
 			}
 		}
 	);
@@ -77,13 +82,14 @@ void PacketsSender::writeBody(const Packet* packet) {
 
 void PacketsSender::resolveSending() {
 	if (!m_queue.empty()) {
-		auto& variant = m_queue.front();
-		if (auto packet = std::get_if<Packet>(&variant)) {
-			writeHeader();
-		}
-		else {
-			m_filesSender.sendFile();
-		}
+		m_queue.front_ref([this](const std::variant<Packet, std::filesystem::path>& variant) {
+			if (auto packet = std::get_if<Packet>(&variant)) {
+				writeHeader();
+			}
+			else {
+				m_filesSender.sendFile();
+			}
+		});
 	}
 }
 }
