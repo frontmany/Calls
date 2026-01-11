@@ -10,6 +10,7 @@
 #include <vector>
 #include <cstdint>
 #include <memory>
+#include <atomic>
 
 #include "keyManager.h"
 #include "errorCode.h"

@@ -14,14 +14,14 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QCursor>
+#include <QFontMetrics>
 #include <algorithm>
 
 DialogsController::DialogsController(QWidget* parent)
     : QObject(parent), m_parent(parent),
     m_updatingOverlay(nullptr), m_updatingDialog(nullptr),
     m_updatingProgressLabel(nullptr), m_updatingLabel(nullptr), m_updatingGifLabel(nullptr),
-    m_connectionErrorOverlay(nullptr), m_connectionErrorDialog(nullptr),
-    m_reconnectingOverlay(nullptr), m_reconnectingDialog(nullptr), m_reconnectingLabel(nullptr),
+    m_waitingStatusOverlay(nullptr), m_waitingStatusDialog(nullptr), m_waitingStatusLabel(nullptr), m_waitingStatusGifLabel(nullptr),
     m_screenShareOverlay(nullptr), m_screenShareDialog(nullptr),
     m_screenShareScreensContainer(nullptr), m_screenShareScreensLayout(nullptr),
     m_screenShareButton(nullptr), m_screenShareStatusLabel(nullptr),
@@ -38,8 +38,7 @@ DialogsController::DialogsController(QWidget* parent)
 DialogsController::~DialogsController()
 {
     hideUpdatingDialog();
-    hideUpdatingErrorDialog();
-    hideReconnectingDialog();
+    hideWaitingStatusDialog();
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
@@ -243,57 +242,6 @@ void DialogsController::hideScreenShareDialog()
     m_screenShareStatusLabel = nullptr;
     m_screenShareScreens.clear();
     m_screenShareSelectedIndex = -1;
-}
-
-void DialogsController::showConnectionErrorDialog()
-{
-	if (m_connectionErrorDialog)
-	{
-		return;
-	}
-
-	m_connectionErrorOverlay = new OverlayWidget(m_parent);
-	m_connectionErrorOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    m_connectionErrorOverlay->show();
-    m_connectionErrorOverlay->raise();
-
-	m_connectionErrorDialog = createConnectionErrorDialog(m_connectionErrorOverlay);
-
-    // Center inside overlay (not across the whole screen). Do it now and once after layout pass.
-    auto centerError = [this]()
-    {
-        if (!m_connectionErrorDialog || !m_connectionErrorOverlay)
-            return;
-        m_connectionErrorDialog->adjustSize();
-        QSize dialogSize = m_connectionErrorDialog->size();
-        QRect overlayRect = m_connectionErrorOverlay->rect();
-        int x = overlayRect.center().x() - dialogSize.width() / 2;
-        int y = overlayRect.center().y() - dialogSize.height() / 2;
-        m_connectionErrorDialog->move(x, y);
-        m_connectionErrorDialog->raise();
-    };
-    centerError();
-    m_connectionErrorDialog->show();
-    QTimer::singleShot(0, this, centerError);
-    QObject::connect(m_connectionErrorOverlay, &OverlayWidget::geometryChanged, this, centerError);
-}
-
-void DialogsController::hideUpdatingErrorDialog()
-{
-	if (m_connectionErrorDialog)
-	{
-        m_connectionErrorDialog->disconnect();
-        m_connectionErrorDialog->hide();
-        m_connectionErrorDialog->deleteLater();
-		m_connectionErrorDialog = nullptr;
-	}
-
-	if (m_connectionErrorOverlay)
-	{
-		m_connectionErrorOverlay->close();
-		m_connectionErrorOverlay->deleteLater();
-		m_connectionErrorOverlay = nullptr;
-	}
 }
 
 void DialogsController::setUpdateLoadingProgress(double progress)
@@ -799,202 +747,145 @@ void DialogsController::swapUpdatingToUpToDate()
 	}
 }
 
-QWidget* DialogsController::createConnectionErrorDialog(OverlayWidget* overlay)
+void DialogsController::showWaitingStatusDialog(const QString& statusText, bool createOverlay)
 {
-	QFont font("Outfit", 14, QFont::Normal);
-
-    QWidget* dialog = new QWidget(overlay);
-    dialog->setMinimumWidth(520);
-    dialog->setMinimumHeight(360);
-    dialog->setAttribute(Qt::WA_TranslucentBackground);
-
-	QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-	shadowEffect->setBlurRadius(30);
-	shadowEffect->setXOffset(0);
-	shadowEffect->setYOffset(0);
-	shadowEffect->setColor(QColor(0, 0, 0, 150));
-
-    QWidget* mainWidget = new QWidget(dialog);
-	mainWidget->setGraphicsEffect(shadowEffect);
-	mainWidget->setObjectName("mainWidget");
-
-	QString mainWidgetStyle =
-		"QWidget#mainWidget {"
-		"   background-color: rgb(255, 240, 240);"
-		"   border-radius: 16px;"
-		"   border: 1px solid rgb(210, 210, 210);"
-		"}";
-	mainWidget->setStyleSheet(mainWidgetStyle);
-
-    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
-	mainLayout->addWidget(mainWidget);
-
-	QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-	contentLayout->setContentsMargins(32, 32, 32, 32);
-	contentLayout->setSpacing(20);
-
-	QLabel* imageLabel = new QLabel();
-	imageLabel->setAlignment(Qt::AlignCenter);
-	imageLabel->setMinimumHeight(140);
-
-	QPixmap errorPixmap(":/resources/error.png");
-	imageLabel->setPixmap(errorPixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-
-	QLabel* errorLabel = new QLabel("Connection Error");
-	errorLabel->setAlignment(Qt::AlignCenter);
-	errorLabel->setStyleSheet(
-		"color: rgb(180, 60, 60);"
-		"font-size: 18px;"
-		"font-family: 'Outfit';"
-		"font-weight: bold;"
-	);
-	errorLabel->setFont(font);
-
-	QLabel* messageLabel = new QLabel("An error occurred. Please restart and try again.");
-	messageLabel->setAlignment(Qt::AlignCenter);
-	messageLabel->setWordWrap(true);
-	messageLabel->setStyleSheet(
-		"color: rgb(100, 100, 100);"
-		"font-size: 14px;"
-		"font-family: 'Outfit';"
-	);
-
-	QHBoxLayout* buttonLayout = new QHBoxLayout();
-	buttonLayout->setAlignment(Qt::AlignCenter);
-
-	QPushButton* closeButton = new QPushButton("Close Calllifornia");
-	closeButton->setFixedWidth(140);
-	closeButton->setMinimumHeight(42);
-	closeButton->setStyleSheet(
-		"QPushButton {"
-		"   background-color: rgba(180, 60, 60, 30);"
-		"   color: rgb(180, 60, 60);"
-		"   border-radius: 8px;"
-		"   padding: 8px 16px;"
-		"   font-family: 'Outfit';"
-		"   font-size: 14px;"
-		"   border: none;"
-		"}"
-		"QPushButton:hover {"
-		"   background-color: rgba(180, 60, 60, 40);"
-		"   color: rgb(160, 50, 50);"
-		"}"
-		"QPushButton:pressed {"
-		"   background-color: rgba(180, 60, 60, 60);"
-		"}"
-	);
-	closeButton->setFont(font);
-
-	buttonLayout->addWidget(closeButton);
-
-	contentLayout->addWidget(imageLabel);
-	contentLayout->addWidget(errorLabel);
-	contentLayout->addWidget(messageLabel);
-	contentLayout->addLayout(buttonLayout);
-
-    connect(closeButton, &QPushButton::clicked, this, &DialogsController::closeRequested);
-
-	return dialog;
-}
-
-void DialogsController::showReconnectingDialog()
-{
-	if (m_reconnectingDialog)
+	if (m_waitingStatusDialog)
 	{
 		return;
 	}
 
-	m_reconnectingOverlay = new OverlayWidget(m_parent);
-	m_reconnectingOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    m_reconnectingOverlay->show();
-    m_reconnectingOverlay->raise();
+	QWidget* parentWidget = m_parent;
+	if (createOverlay)
+	{
+		m_waitingStatusOverlay = new OverlayWidget(m_parent);
+		m_waitingStatusOverlay->setAttribute(Qt::WA_TranslucentBackground);
+		m_waitingStatusOverlay->show();
+		m_waitingStatusOverlay->raise();
+		parentWidget = m_waitingStatusOverlay;
+	}
+	else
+	{
+		m_waitingStatusOverlay = new OverlayWidget(m_parent);
+		m_waitingStatusOverlay->setAttribute(Qt::WA_TranslucentBackground);
+		m_waitingStatusOverlay->setVisible(false);
+	}
 
-	m_reconnectingDialog = createReconnectingDialog(m_reconnectingOverlay);
+	m_waitingStatusDialog = createWaitingStatusDialog(parentWidget, statusText);
 
-    auto centerReconnecting = [this]()
-    {
-        if (!m_reconnectingDialog || !m_reconnectingOverlay)
-            return;
-        m_reconnectingDialog->adjustSize();
-        QSize dialogSize = m_reconnectingDialog->size();
-        QRect overlayRect = m_reconnectingOverlay->rect();
-        int x = overlayRect.center().x() - dialogSize.width() / 2;
-        int y = overlayRect.center().y() - dialogSize.height() / 2;
-        m_reconnectingDialog->move(x, y);
-        m_reconnectingDialog->raise();
-    };
-    centerReconnecting();
-    m_reconnectingDialog->show();
-    QTimer::singleShot(0, this, centerReconnecting);
-    QObject::connect(m_reconnectingOverlay, &OverlayWidget::geometryChanged, this, centerReconnecting);
+	auto positionDialog = [this, createOverlay]()
+	{
+		if (!m_waitingStatusDialog)
+			return;
+
+		QWidget* referenceWidget = createOverlay ? m_waitingStatusOverlay : m_parent;
+		if (!referenceWidget)
+			return;
+
+		m_waitingStatusDialog->adjustSize();
+		QSize dialogSize = m_waitingStatusDialog->size();
+
+		int x = (referenceWidget->width() - dialogSize.width()) / 2;
+		int y = 40;
+
+		m_waitingStatusDialog->move(x, y);
+		m_waitingStatusDialog->raise();
+	};
+
+	positionDialog();
+	m_waitingStatusDialog->show();
+	QTimer::singleShot(0, this, positionDialog);
+	
+	if (m_waitingStatusOverlay)
+	{
+		QObject::connect(m_waitingStatusOverlay, &OverlayWidget::geometryChanged, this, positionDialog);
+	}
 }
 
-void DialogsController::hideReconnectingDialog()
+void DialogsController::hideWaitingStatusDialog()
 {
-	if (m_reconnectingDialog)
+	if (m_waitingStatusDialog)
 	{
-        m_reconnectingDialog->disconnect();
-        m_reconnectingDialog->hide();
-        m_reconnectingDialog->deleteLater();
-		m_reconnectingDialog = nullptr;
+		m_waitingStatusDialog->disconnect();
+		m_waitingStatusDialog->hide();
+		m_waitingStatusDialog->deleteLater();
+		m_waitingStatusDialog = nullptr;
 	}
 
-	if (m_reconnectingOverlay)
+	if (m_waitingStatusOverlay)
 	{
-		m_reconnectingOverlay->close();
-		m_reconnectingOverlay->deleteLater();
-		m_reconnectingOverlay = nullptr;
+		m_waitingStatusOverlay->close();
+		m_waitingStatusOverlay->deleteLater();
+		m_waitingStatusOverlay = nullptr;
 	}
 
-	m_reconnectingLabel = nullptr;
+	m_waitingStatusLabel = nullptr;
+	m_waitingStatusGifLabel = nullptr;
 }
 
-QWidget* DialogsController::createReconnectingDialog(OverlayWidget* overlay)
+QWidget* DialogsController::createWaitingStatusDialog(QWidget* parent, const QString& statusText)
 {
 	QFont font("Outfit", 14, QFont::Normal);
 
-    QWidget* dialog = new QWidget(overlay);
-    dialog->setMinimumWidth(300);
-    dialog->setMinimumHeight(120);
-    dialog->setAttribute(Qt::WA_TranslucentBackground);
+	QWidget* dialog = new QWidget(parent);
+	dialog->setMinimumHeight(50 - scale(2));
+	dialog->setMaximumHeight(60 - scale(2));
+	dialog->setAttribute(Qt::WA_TranslucentBackground);
+	dialog->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
-	QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-	shadowEffect->setBlurRadius(30);
-	shadowEffect->setXOffset(0);
-	shadowEffect->setYOffset(0);
-	shadowEffect->setColor(QColor(0, 0, 0, 150));
-
-    QWidget* mainWidget = new QWidget(dialog);
-	mainWidget->setGraphicsEffect(shadowEffect);
+	QWidget* mainWidget = new QWidget(dialog);
 	mainWidget->setObjectName("mainWidget");
+	mainWidget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
 	QString mainWidgetStyle =
 		"QWidget#mainWidget {"
 		"   background-color: rgb(255, 255, 255);"
-		"   border-radius: 16px;"
-		"   border: 1px solid rgb(210, 210, 210);"
+		"   border-radius: 24px;"
 		"}";
 	mainWidget->setStyleSheet(mainWidgetStyle);
 
-    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+	QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+	mainLayout->setContentsMargins(0, 0, 0, 0);
 	mainLayout->addWidget(mainWidget);
 
-	QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-	contentLayout->setContentsMargins(32, 32, 32, 32);
-	contentLayout->setSpacing(20);
+	int horizontalMargin = 20 - scale(2);
+	int verticalMargin = 10;
+	int contentSpacing = 8 + scale(2);
+
+	QHBoxLayout* contentLayout = new QHBoxLayout(mainWidget);
+	contentLayout->setContentsMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
+	contentLayout->setSpacing(contentSpacing);
 	contentLayout->setAlignment(Qt::AlignCenter);
 
-	m_reconnectingLabel = new QLabel("Reconnecting...");
-	m_reconnectingLabel->setAlignment(Qt::AlignCenter);
-	m_reconnectingLabel->setStyleSheet(
+	m_waitingStatusLabel = new QLabel(statusText);
+	m_waitingStatusLabel->setAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+	m_waitingStatusLabel->setStyleSheet(
 		"color: rgb(100, 100, 100);"
-		"font-size: 16px;"
+		"font-size: 15px;"
 		"font-family: 'Outfit';"
 		"font-weight: normal;"
 	);
-	m_reconnectingLabel->setFont(font);
+	m_waitingStatusLabel->setFont(font);
+	m_waitingStatusLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+	m_waitingStatusLabel->setWordWrap(false);
 
-	contentLayout->addWidget(m_reconnectingLabel);
+	m_waitingStatusGifLabel = new QLabel();
+	m_waitingStatusGifLabel->setAlignment(Qt::AlignCenter);
+	m_waitingStatusGifLabel->setFixedSize(32, 32);
+
+	QMovie* movie = new QMovie(":/resources/waiting.gif");
+	if (movie->isValid())
+	{
+		m_waitingStatusGifLabel->setMovie(movie);
+		movie->start();
+	}
+
+	contentLayout->addWidget(m_waitingStatusLabel, 0, Qt::AlignCenter);
+	contentLayout->addWidget(m_waitingStatusGifLabel, 0, Qt::AlignCenter);
+
+	QFontMetrics fontMetrics(font);
+	int textWidth = fontMetrics.horizontalAdvance(statusText);
+	int minDialogWidth = textWidth + horizontalMargin * 2 + contentSpacing + 32;
+	dialog->setMinimumWidth(minDialogWidth);
 
 	return dialog;
 }

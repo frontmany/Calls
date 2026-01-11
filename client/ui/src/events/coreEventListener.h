@@ -19,7 +19,7 @@ public:
     void onLogoutCompleted() override;
     void onStartOutgoingCallResult(std::error_code ec) override;
     void onStopOutgoingCallResult(std::error_code ec) override;
-    void onAcceptCallResult(std::error_code ec) override;
+    void onAcceptCallResult(std::error_code ec, const std::string& nickname) override;
     void onDeclineCallResult(std::error_code ec, const std::string& nickname) override;
     void onEndCallResult(std::error_code ec) override;
 

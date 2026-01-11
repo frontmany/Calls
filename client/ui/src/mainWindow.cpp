@@ -191,7 +191,7 @@ void MainWindow::initializeAuthorizationManager() {
 }
 
 void MainWindow::initializeCallManager() {
-    m_callManager = new CallManager(m_coreClient, m_audioManager, m_navigationController, m_screenCaptureController, m_CameraCaptureController, this);
+    m_callManager = new CallManager(m_coreClient, m_audioManager, m_navigationController, m_screenCaptureController, m_CameraCaptureController, m_dialogsController, this);
     if (m_mainMenuWidget && m_callWidget && m_stackedLayout) {
         m_callManager->setWidgets(m_mainMenuWidget, m_callWidget, m_stackedLayout);
     }
@@ -205,7 +205,7 @@ void MainWindow::initializeScreenSharingManager() {
 }
 
 void MainWindow::initializeCameraSharingManager() {
-    m_cameraSharingManager = new CameraSharingManager(m_coreClient, m_configManager, m_CameraCaptureController, this);
+    m_cameraSharingManager = new CameraSharingManager(m_coreClient, m_configManager, m_CameraCaptureController, m_dialogsController, this);
     if (m_callWidget && m_mainMenuWidget) {
         m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget, statusBar());
     }

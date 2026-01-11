@@ -390,7 +390,7 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
         }
     }
 
-    if (m_stateManager.isActiveCall()) {
+    if (m_stateManager.isActiveCall() && crypto::calculateHash(m_stateManager.getActiveCall().getNickname()) == userNicknameHash) {
         m_stateManager.setScreenSharing(false);
         m_stateManager.setCameraSharing(false);
         m_stateManager.setViewingRemoteScreen(false);

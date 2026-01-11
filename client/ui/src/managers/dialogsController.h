@@ -25,10 +25,8 @@ public:
     void showScreenShareDialog(const QList<QScreen*>& screens);
     void hideScreenShareDialog();
 	
-	void showConnectionErrorDialog();
-	void hideUpdatingErrorDialog();
-	void showReconnectingDialog();
-	void hideReconnectingDialog();
+	void showWaitingStatusDialog(const QString& statusText, bool createOverlay = true);
+	void hideWaitingStatusDialog();
 
     void showAlreadyRunningDialog();
     void hideAlreadyRunningDialog();
@@ -47,8 +45,7 @@ private slots:
 private:
     QWidget* createAlreadyRunningDialog(OverlayWidget* overlay);
     QWidget* createUpdatingDialog(OverlayWidget* overlay);
-    QWidget* createConnectionErrorDialog(OverlayWidget* overlay);
-    QWidget* createReconnectingDialog(OverlayWidget* overlay);
+    QWidget* createWaitingStatusDialog(QWidget* parent, const QString& statusText);
     QWidget* createScreenShareDialog(OverlayWidget* overlay);
     QWidget* createFirstLaunchDialog(OverlayWidget* overlay, const QString& imagePath = "", const QString& descriptionText = "");
     void refreshScreenSharePreviews();
@@ -64,11 +61,10 @@ private:
 	QLabel* m_updatingLabel;
 	QLabel* m_updatingGifLabel;
 
-    OverlayWidget* m_connectionErrorOverlay;
-    QWidget* m_connectionErrorDialog;
-    OverlayWidget* m_reconnectingOverlay;
-    QWidget* m_reconnectingDialog;
-    QLabel* m_reconnectingLabel;
+    OverlayWidget* m_waitingStatusOverlay;
+    QWidget* m_waitingStatusDialog;
+    QLabel* m_waitingStatusLabel;
+    QLabel* m_waitingStatusGifLabel;
 
     OverlayWidget* m_screenShareOverlay;
     QWidget* m_screenShareDialog;

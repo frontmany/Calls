@@ -1,6 +1,7 @@
 #include "callManager.h"
 #include "media/audioEffectsManager.h"
 #include "managers/navigationController.h"
+#include "managers/dialogsController.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
 #include "media/screenCaptureController.h"
@@ -9,14 +10,19 @@
 #include "errorCode.h"
 #include <system_error>
 
-CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, QObject* parent)
+CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_audioManager(audioManager)
     , m_navigationController(navigationController)
     , m_screenCaptureController(screenCaptureController)
     , m_cameraCaptureController(cameraCaptureController)
+    , m_dialogsController(dialogsController)
+    , m_operationTimer(new QTimer(this))
 {
+    m_operationTimer->setSingleShot(true);
+    m_operationTimer->setInterval(1000);
+    connect(m_operationTimer, &QTimer::timeout, this, &CallManager::onOperationTimerTimeout);
 }
 
 void CallManager::setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout)
@@ -48,6 +54,12 @@ void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
             handleStartCallingErrorNotificationAppearance();
         }
     }
+    else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setCallButtonEnabled(false);
+        }
+        startOperationTimer("Calling begins...");
+    }
 }
 
 void CallManager::onStopCallingButtonClicked()
@@ -62,6 +74,12 @@ void CallManager::onStopCallingButtonClicked()
             handleStopCallingErrorNotificationAppearance();
         }
     }
+    else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setStopCallingButtonEnabled(false);
+        }
+        startOperationTimer("Stopping call...");
+    }
 }
 
 void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
@@ -73,6 +91,15 @@ void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
         if (!m_coreClient->isConnectionDown()) {
             handleAcceptCallErrorNotificationAppearance();
         }
+    }
+    else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setIncomingCallButtonsEnabled(friendNickname, false);
+        }
+        if (m_callWidget) {
+            m_callWidget->setIncomingCallButtonsEnabled(friendNickname, false);
+        }
+        startOperationTimer("Accepting call...");
     }
 }
 
@@ -86,6 +113,15 @@ void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
             handleDeclineCallErrorNotificationAppearance();
         }
     }
+    else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setIncomingCallButtonsEnabled(friendNickname, false);
+        }
+        if (m_callWidget) {
+            m_callWidget->setIncomingCallButtonsEnabled(friendNickname, false);
+        }
+        startOperationTimer("Declining call...");
+    }
 }
 
 void CallManager::onEndCallButtonClicked()
@@ -98,10 +134,17 @@ void CallManager::onEndCallButtonClicked()
             handleEndCallErrorNotificationAppearance();
         }
     }
+    else {
+        if (m_callWidget) {
+            m_callWidget->setHangupButtonEnabled(false);
+        }
+        startOperationTimer("Ending call...");
+    }
 }
 
 void CallManager::onStartCallingResult(std::error_code ec)
 {
+    stopOperationTimer();
     if (!m_mainMenuWidget || !m_coreClient) return;
 
     if (!ec) {
@@ -111,25 +154,31 @@ void CallManager::onStartCallingResult(std::error_code ec)
             m_audioManager->playCallingRingtone();
         }
     }
-    else if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
-        QString errorMessage;
-        if (ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
-            errorMessage = "User not found";
-            LOG_WARN("Start calling failed: user not found");
+    else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setCallButtonEnabled(true);
         }
-        else {
-            errorMessage = "Something went wrong please try again";
-            LOG_ERROR("Start calling failed: timeout or network error");
-        }
+        if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
+            QString errorMessage;
+            if (ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
+                errorMessage = "User not found";
+                LOG_WARN("Start calling failed: user not found");
+            }
+            else {
+                errorMessage = "Something went wrong please try again";
+                LOG_ERROR("Start calling failed: timeout or network error");
+            }
 
-        if (!m_coreClient->isConnectionDown()) {
-            m_mainMenuWidget->setErrorMessage(errorMessage);
+            if (!m_coreClient->isConnectionDown()) {
+                m_mainMenuWidget->setErrorMessage(errorMessage);
+            }
         }
     }
 }
 
 void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname)
 {
+    stopOperationTimer();
     if (!m_mainMenuWidget || !m_coreClient) return;
 
     if (!ec) {
@@ -160,17 +209,25 @@ void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname
             m_audioManager->stopIncomingCallRingtone();
         }
     }
-    else if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
+    else {
         if (m_mainMenuWidget) {
-            m_mainMenuWidget->removeIncomingCall(nickname);
+            m_mainMenuWidget->setIncomingCallButtonsEnabled(nickname, true);
         }
-
-        if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
-            m_callWidget->removeIncomingCall(nickname);
+        if (m_callWidget) {
+            m_callWidget->setIncomingCallButtonsEnabled(nickname, true);
         }
+        if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
+            if (m_mainMenuWidget) {
+                m_mainMenuWidget->removeIncomingCall(nickname);
+            }
 
-        if (!m_coreClient->isConnectionDown()) {
-            handleAcceptCallErrorNotificationAppearance();
+            if (m_stackedLayout && m_callWidget && m_stackedLayout->currentWidget() == m_callWidget) {
+                m_callWidget->removeIncomingCall(nickname);
+            }
+
+            if (!m_coreClient->isConnectionDown()) {
+                handleAcceptCallErrorNotificationAppearance();
+            }
         }
     }
 }
@@ -359,6 +416,10 @@ void CallManager::handleEndCallErrorNotificationAppearance()
 
 void CallManager::onStopOutgoingCallResult(std::error_code ec)
 {
+    stopOperationTimer();
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->setStopCallingButtonEnabled(true);
+    }
     if (ec) {
         LOG_WARN("Failed to stop outgoing call: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
@@ -379,7 +440,14 @@ void CallManager::onStopOutgoingCallResult(std::error_code ec)
 
 void CallManager::onDeclineCallResult(std::error_code ec, const QString& nickname)
 {
+    stopOperationTimer();
     if (ec) {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setIncomingCallButtonsEnabled(nickname, true);
+        }
+        if (m_callWidget) {
+            m_callWidget->setIncomingCallButtonsEnabled(nickname, true);
+        }
         LOG_WARN("Failed to decline call: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
             handleDeclineCallErrorNotificationAppearance();
@@ -406,6 +474,10 @@ void CallManager::onDeclineCallResult(std::error_code ec, const QString& nicknam
 
 void CallManager::onEndCallResult(std::error_code ec)
 {
+    stopOperationTimer();
+    if (m_callWidget) {
+        m_callWidget->setHangupButtonEnabled(true);
+    }
     if (ec) {
         LOG_WARN("Failed to end call: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
@@ -434,6 +506,8 @@ void CallManager::onCallParticipantConnectionDown()
 {
     LOG_WARN("Call participant connection down");
     
+    stopOperationTimer();
+    
     if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
         emit stopScreenCaptureRequested();
     }
@@ -442,10 +516,8 @@ void CallManager::onCallParticipantConnectionDown()
         emit stopCameraCaptureRequested();
     }
 
-    if (m_callWidget && m_coreClient) {
-        QString friendNickname = QString::fromStdString(m_coreClient->getNicknameInCallWith());
-        QString errorText = friendNickname + " experiencing connection problems, reconnecting...";
-        m_callWidget->showParticipantConnectionError(errorText, 0);
+    if (m_callWidget) {
+        m_callWidget->showParticipantConnectionError(0);
     }
 }
 
@@ -454,5 +526,34 @@ void CallManager::onCallParticipantConnectionRestored()
     
     if (m_callWidget) {
         m_callWidget->showParticipantConnectionRestored("Connection restored", 2500);
+    }
+}
+
+void CallManager::startOperationTimer(const QString& dialogText)
+{
+    m_pendingOperationDialogText = dialogText;
+    m_operationTimer->start();
+}
+
+void CallManager::stopOperationTimer()
+{
+    m_operationTimer->stop();
+    m_pendingOperationDialogText.clear();
+    if (m_dialogsController) {
+        m_dialogsController->hideWaitingStatusDialog();
+    }
+}
+
+void CallManager::hideOperationDialog()
+{
+    stopOperationTimer();
+}
+
+void CallManager::onOperationTimerTimeout()
+{
+    if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
+        if (m_dialogsController) {
+            m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
+        }
     }
 }

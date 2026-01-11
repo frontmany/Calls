@@ -20,6 +20,7 @@
 
 class QDialog;
 class QResizeEvent;
+class QShowEvent;
 class Screen;
 
 class IncomingCallWidget;
@@ -47,6 +48,7 @@ struct StyleCallWidget {
     static QString timerStyle();
     static QString controlButtonStyle();
     static QString hangupButtonStyle();
+    static QString disabledHangupButtonStyle();
     static QString panelStyle();
     static QString volumeLabelStyle();
     static QString scrollAreaStyle();
@@ -73,6 +75,7 @@ public:
     void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
     void removeIncomingCall(const QString& callerName);
     void clearIncomingCalls();
+    void setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled);
     void hideMainScreen();
     void hideAdditionalScreens();
     void enterFullscreen();
@@ -85,10 +88,13 @@ public:
     void setScreenShareButtonActive(bool active);
     void restrictCameraButton();
     void setCameraButtonActive(bool active);
+    void setHangupButtonEnabled(bool enabled);
+    void setScreenShareButtonEnabled(bool enabled);
+    void setCameraButtonEnabled(bool enabled);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
     void showErrorNotification(const QString& text, int durationMs);
-    void showParticipantConnectionError(const QString& text, int durationMs);
+    void showParticipantConnectionError(int durationMs);
     void showParticipantConnectionRestored(const QString& text, int durationMs);
     void hideParticipantConnectionStatus();
 
@@ -108,6 +114,7 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -126,6 +133,7 @@ private:
     void updateIncomingCallWidths();
     void restoreIncomingCallsContainer();
     void updateExitFullscreenButtonPosition();
+    void updateParticipantConnectionErrorBannerPosition();
 
     void applyStandardSize();
     void applyDecreasedSize();
@@ -155,6 +163,8 @@ private:
     QHBoxLayout* m_participantInfoLayout;
     QLabel* m_friendNicknameLabel;
     QLabel* m_connectionErrorLabel;
+    QWidget* m_participantConnectionErrorBanner;
+    QLabel* m_participantConnectionErrorBannerLabel;
     Screen* m_mainScreen;
 
     // Additional screens container

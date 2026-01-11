@@ -58,6 +58,7 @@ void AuthorizationManager::onAuthorizationButtonClicked(const QString& friendNic
     }
     else {
         m_authorizationWidget->startBlurAnimation();
+        m_authorizationWidget->setAuthorizationDisabled(true);
     }
 }
 
@@ -69,7 +70,7 @@ void AuthorizationManager::onAuthorizationResult(std::error_code ec) {
         if (ec == core::make_error_code(core::ErrorCode::network_error)) {
             LOG_ERROR("Authorization failed: network error");
 
-            QString errorMessage = "Network error (please try again)";
+            QString errorMessage = "Network error: please try again";
             m_authorizationWidget->setErrorMessage(errorMessage);
         }
         else if (ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
@@ -77,15 +78,18 @@ void AuthorizationManager::onAuthorizationResult(std::error_code ec) {
 
             QString errorMessage = "Taken nickname";
             m_authorizationWidget->setErrorMessage(errorMessage);
+            m_authorizationWidget->setAuthorizationDisabled(false);
         }
         else {
             LOG_WARN("Authorization failed: unknown error");
 
             QString errorMessage = "Unknown error";
             m_authorizationWidget->setErrorMessage(errorMessage);
+            m_authorizationWidget->setAuthorizationDisabled(false);
         }
     }
     else {
+        m_authorizationWidget->setAuthorizationDisabled(false);
 
         m_authorizationWidget->clearErrorMessage();
 

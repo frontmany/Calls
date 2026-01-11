@@ -60,6 +60,7 @@ struct StyleMainMenuWidget {
     static QString incomingCallsHeaderStyle();
     static QString stopCallingButtonStyle();
     static QString stopCallingButtonHoverStyle();
+    static QString disabledStopCallingButtonStyle();
     static QString notificationRedLabelStyle();
     static QString notificationBlueLabelStyle();
 };
@@ -93,6 +94,9 @@ public:
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
     void setCameraActive(bool active);
+    void setCallButtonEnabled(bool enabled);
+    void setStopCallingButtonEnabled(bool enabled);
+    void setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled);
 
 
 signals:

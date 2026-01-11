@@ -1,15 +1,22 @@
 #include "cameraSharingManager.h"
 #include "media/cameraCaptureController.h"
+#include "managers/dialogsController.h"
 #include "widgets/callWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/configManager.h"
+#include <QTimer>
 
-CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, QObject* parent)
+CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, DialogsController* dialogsController, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_configManager(configManager)
     , m_cameraCaptureController(cameraController)
+    , m_dialogsController(dialogsController)
+    , m_operationTimer(new QTimer(this))
 {
+    m_operationTimer->setSingleShot(true);
+    m_operationTimer->setInterval(1000);
+    connect(m_operationTimer, &QTimer::timeout, this, &CameraSharingManager::onOperationTimerTimeout);
 }
 
 void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget, QStatusBar* statusBar)
@@ -84,6 +91,12 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
             }
             m_callWidget->setCameraButtonActive(false);
         }
+        else {
+            if (m_callWidget) {
+                m_callWidget->setCameraButtonEnabled(false);
+            }
+            startOperationTimer("Starting camera sharing...");
+        }
     }
     else {
         std::error_code ec = m_coreClient->stopCameraSharing();
@@ -95,19 +108,27 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
                 }
             }
         }
+        else {
+            if (m_callWidget) {
+                m_callWidget->setCameraButtonEnabled(false);
+            }
+            startOperationTimer("Stopping camera sharing...");
+        }
     }
 }
 
 void CameraSharingManager::onCameraSharingStarted()
 {
+    stopOperationTimer();
+    if (m_callWidget) {
+        m_callWidget->setCameraButtonEnabled(true);
+        m_callWidget->setCameraButtonActive(true);
+    }
     if (m_configManager) {
         m_configManager->setCameraActive(true);
     }
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setCameraActive(true);
-    }
-    if (m_callWidget) {
-        m_callWidget->setCameraButtonActive(true);
     }
 
     if (m_cameraCaptureController) {
@@ -117,6 +138,11 @@ void CameraSharingManager::onCameraSharingStarted()
 
 void CameraSharingManager::onStartCameraSharingError()
 {
+    stopOperationTimer();
+    if (m_callWidget) {
+        m_callWidget->setCameraButtonEnabled(true);
+        m_callWidget->setCameraButtonActive(false);
+    }
     if (m_coreClient && !m_coreClient->isConnectionDown()) {
         showTransientStatusMessage("Camera sharing rejected by server", 3000);
     }
@@ -125,9 +151,6 @@ void CameraSharingManager::onStartCameraSharingError()
     }
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setCameraActive(false);
-    }
-    if (m_callWidget) {
-        m_callWidget->setCameraButtonActive(false);
     }
 }
 
@@ -260,6 +283,10 @@ void CameraSharingManager::onActivateCameraButtonClicked(bool activated)
 
 void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
 {
+    stopOperationTimer();
+    if (m_callWidget) {
+        m_callWidget->setCameraButtonEnabled(true);
+    }
     if (ec) {
         LOG_WARN("Failed to stop camera sharing: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
@@ -270,7 +297,6 @@ void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
         }
     }
     else {
-        
         if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
             m_cameraCaptureController->stopCapture();
         }
@@ -301,5 +327,34 @@ void CameraSharingManager::showTransientStatusMessage(const QString& message, in
 {
     if (m_statusBar) {
         m_statusBar->showMessage(message, durationMs);
+    }
+}
+
+void CameraSharingManager::startOperationTimer(const QString& dialogText)
+{
+    m_pendingOperationDialogText = dialogText;
+    m_operationTimer->start();
+}
+
+void CameraSharingManager::stopOperationTimer()
+{
+    m_operationTimer->stop();
+    m_pendingOperationDialogText.clear();
+    if (m_dialogsController) {
+        m_dialogsController->hideWaitingStatusDialog();
+    }
+}
+
+void CameraSharingManager::hideOperationDialog()
+{
+    stopOperationTimer();
+}
+
+void CameraSharingManager::onOperationTimerTimeout()
+{
+    if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
+        if (m_dialogsController) {
+            m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
+        }
     }
 }

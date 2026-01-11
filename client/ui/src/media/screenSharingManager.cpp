@@ -11,7 +11,11 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
     , m_screenCaptureController(screenController)
     , m_dialogsController(dialogsController)
     , m_cameraCaptureController(cameraController)
+    , m_operationTimer(new QTimer(this))
 {
+    m_operationTimer->setSingleShot(true);
+    m_operationTimer->setInterval(1000);
+    connect(m_operationTimer, &QTimer::timeout, this, &ScreenSharingManager::onOperationTimerTimeout);
 }
 
 void ScreenSharingManager::setWidgets(CallWidget* callWidget, QStatusBar* statusBar)
@@ -52,6 +56,12 @@ void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
                     m_callWidget->setScreenShareButtonActive(true);
                 }
             }
+        }
+        else {
+            if (m_callWidget) {
+                m_callWidget->setScreenShareButtonEnabled(false);
+            }
+            startOperationTimer("Stopping screen sharing...");
         }
     }
 }
@@ -96,11 +106,19 @@ void ScreenSharingManager::onScreenSelected(int screenIndex)
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
+    else {
+        if (m_callWidget) {
+            m_callWidget->setScreenShareButtonEnabled(false);
+        }
+        startOperationTimer("Starting screen sharing...");
+    }
 }
 
 void ScreenSharingManager::onScreenSharingStarted()
 {
+    stopOperationTimer();
     if (m_callWidget) {
+        m_callWidget->setScreenShareButtonEnabled(true);
         m_callWidget->setScreenShareButtonActive(true);
     }
 
@@ -142,13 +160,15 @@ void ScreenSharingManager::onScreenCaptured(const QPixmap& pixmap, const std::ve
 
 void ScreenSharingManager::onStartScreenSharingError()
 {
+    stopOperationTimer();
+    if (m_callWidget) {
+        m_callWidget->setScreenShareButtonEnabled(true);
+        m_callWidget->setScreenShareButtonActive(false);
+    }
     if (m_coreClient && !m_coreClient->isConnectionDown()) {
         showTransientStatusMessage("Screen sharing rejected by server", 3000);
     }
     stopLocalScreenCapture();
-    if (m_callWidget) {
-        m_callWidget->setScreenShareButtonActive(false);
-    }
     if (m_dialogsController) {
         m_dialogsController->hideScreenShareDialog();
     }
@@ -204,6 +224,10 @@ void ScreenSharingManager::onIncomingScreen(const std::vector<unsigned char>& da
 
 void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
 {
+    stopOperationTimer();
+    if (m_callWidget) {
+        m_callWidget->setScreenShareButtonEnabled(true);
+    }
     if (ec) {
         LOG_WARN("Failed to stop screen sharing: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
@@ -231,5 +255,34 @@ void ScreenSharingManager::showTransientStatusMessage(const QString& message, in
 {
     if (m_statusBar) {
         m_statusBar->showMessage(message, durationMs);
+    }
+}
+
+void ScreenSharingManager::startOperationTimer(const QString& dialogText)
+{
+    m_pendingOperationDialogText = dialogText;
+    m_operationTimer->start();
+}
+
+void ScreenSharingManager::stopOperationTimer()
+{
+    m_operationTimer->stop();
+    m_pendingOperationDialogText.clear();
+    if (m_dialogsController) {
+        m_dialogsController->hideWaitingStatusDialog();
+    }
+}
+
+void ScreenSharingManager::hideOperationDialog()
+{
+    stopOperationTimer();
+}
+
+void ScreenSharingManager::onOperationTimerTimeout()
+{
+    if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
+        if (m_dialogsController) {
+            m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
+        }
     }
 }

@@ -35,9 +35,9 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onStopOutgoingCallResult, ec);
     }
 
-    void onAcceptCallResult(std::error_code ec) override
+    void onAcceptCallResult(std::error_code ec, const std::string& nickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onAcceptCallResult, ec);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onAcceptCallResult, ec, nickname);
     }
 
     void onDeclineCallResult(std::error_code ec, const std::string& nickname) override

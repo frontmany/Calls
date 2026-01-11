@@ -44,6 +44,7 @@ namespace core
         void start();
         void stop();
         bool isRunning() const;
+        void setConnectionDown(bool isDown);
 
     private:
         void doReceive();
@@ -68,6 +69,7 @@ namespace core
         std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
         std::function<void()> m_onErrorCallback;
         std::function<void(uint32_t)> m_onPingReceived;
+        std::atomic_bool m_connectionDown{false};
     };
     }
 }

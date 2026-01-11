@@ -31,6 +31,7 @@ public:
     ~IncomingCallWidget();
     const QString& getFriendNickname() const;
     int getRemainingTime() const;
+    void setButtonsEnabled(bool enabled);
 
 signals:
     void callAccepted(const QString& friendNickname);

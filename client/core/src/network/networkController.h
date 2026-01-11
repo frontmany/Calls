@@ -58,6 +58,7 @@ namespace core
         std::function<void(const unsigned char*, int, uint32_t)> m_onReceive;
         std::function<void()> m_onConnectionDown;
         std::function<void()> m_onConnectionRestored;
+        std::atomic_bool m_connectionDownNotified{false};
     };
 
     }

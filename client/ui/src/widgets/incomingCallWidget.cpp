@@ -189,6 +189,16 @@ int IncomingCallWidget::getRemainingTime() const {
     return m_remainingSeconds;
 }
 
+void IncomingCallWidget::setButtonsEnabled(bool enabled)
+{
+    if (m_acceptButton) {
+        m_acceptButton->setEnabled(enabled);
+    }
+    if (m_declineButton) {
+        m_declineButton->setEnabled(enabled);
+    }
+}
+
 void IncomingCallWidget::setupTimer() {
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &IncomingCallWidget::updateTimer);

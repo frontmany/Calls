@@ -104,6 +104,20 @@ QString StyleCallWidget::hangupButtonStyle() {
         .arg(QString::fromStdString(std::to_string(scale(5))));  
 }
 
+QString StyleCallWidget::disabledHangupButtonStyle() {
+    return QString("QPushButton {"
+        "   background-color: rgba(%1, %2, %3, 120);"
+        "   border: none;"
+        "   border-radius: %4px;"
+        "   padding: %5px;"
+        "   margin: %6px;"
+        "   opacity: 0.6;"
+        "}").arg(m_hangupButtonColor.red()).arg(m_hangupButtonColor.green()).arg(m_hangupButtonColor.blue())
+        .arg(QString::fromStdString(std::to_string(scale(25)))) 
+        .arg(QString::fromStdString(std::to_string(scale(15))))
+        .arg(QString::fromStdString(std::to_string(scale(5))));  
+}
+
 QString StyleCallWidget::panelStyle() {
     return QString("QWidget {"
         "   background-color: transparent;"
@@ -220,6 +234,13 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_connectionErrorLabelTimer = new QTimer(this);
     m_connectionErrorLabelTimer->setSingleShot(true);
     connect(m_connectionErrorLabelTimer, &QTimer::timeout, this, &CallWidget::hideParticipantConnectionStatus);
+
+    // For testing: show connection error immediately
+    /*
+    QTimer::singleShot(100, this, [this]() {
+        showParticipantConnectionError(0);
+    });
+    */
 }
 
 void CallWidget::setupUI() {
@@ -294,6 +315,24 @@ void CallWidget::setupUI() {
 
     m_participantInfoLayout->addWidget(m_friendNicknameLabel);
     m_participantInfoLayout->addWidget(m_connectionErrorLabel);
+
+    m_participantConnectionErrorBanner = new QWidget(this);
+    m_participantConnectionErrorBanner->setStyleSheet("background-color: #DC3545;");
+    m_participantConnectionErrorBanner->setFixedHeight(scale(40));
+    m_participantConnectionErrorBanner->hide();
+    m_participantConnectionErrorBanner->setAttribute(Qt::WA_TranslucentBackground, false);
+    m_participantConnectionErrorBanner->raise();
+
+    m_participantConnectionErrorBannerLabel = new QLabel(m_participantConnectionErrorBanner);
+    m_participantConnectionErrorBannerLabel->setAlignment(Qt::AlignCenter);
+    m_participantConnectionErrorBannerLabel->setStyleSheet("color: #FFFFFF; background: transparent; font-size: 14px; font-weight: 600; margin: 0px; padding: 0px;");
+    QFont bannerFont("Outfit", scale(14), QFont::Bold);
+    m_participantConnectionErrorBannerLabel->setFont(bannerFont);
+
+    QHBoxLayout* bannerLayout = new QHBoxLayout(m_participantConnectionErrorBanner);
+    bannerLayout->setContentsMargins(0, 0, 0, 0);
+    bannerLayout->setSpacing(0);
+    bannerLayout->addWidget(m_participantConnectionErrorBannerLabel);
 
     m_buttonsPanel = new QWidget(this);
     m_buttonsPanel->setStyleSheet(StyleCallWidget::panelStyle());
@@ -568,10 +607,17 @@ void CallWidget::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
 }
 
+void CallWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    updateParticipantConnectionErrorBannerPosition();
+}
+
 void CallWidget::resizeEvent(QResizeEvent* event)
 {
     updateIncomingCallWidths();
     updateExitFullscreenButtonPosition();
+    updateParticipantConnectionErrorBannerPosition();
     
     if (m_mainScreen->isVisible())
         updateMainScreenSize();
@@ -830,7 +876,7 @@ void CallWidget::removeAdditionalScreen(const std::string& id)
 void CallWidget::restrictScreenShareButton()
 {
     m_screenShareButton->setDisabled(true);
-    m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
+    m_screenShareButton->setToolTip("Share disabled");
     m_screenShareButton->setIcons(m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted);
 }
 
@@ -938,6 +984,18 @@ void CallWidget::updateExitFullscreenButtonPosition() {
     m_exitFullscreenButton->move(x, y);
 }
 
+void CallWidget::updateParticipantConnectionErrorBannerPosition() {
+    if (!m_participantConnectionErrorBanner) return;
+
+    int bannerHeight = scale(40);
+    int x = 0;
+    int y = 0;
+    int bannerWidth = width();
+
+    m_participantConnectionErrorBanner->setGeometry(x, y, bannerWidth, bannerHeight);
+    m_participantConnectionErrorBanner->raise();
+}
+
 void CallWidget::clearIncomingCalls() {
     for (IncomingCallWidget* callWidget : m_incomingCallWidgets) {
         m_incomingCallsScrollLayout->removeWidget(callWidget);
@@ -990,6 +1048,16 @@ void CallWidget::removeIncomingCall(const QString& callerName) {
 
         updateIncomingCallsVisibility();
         updateIncomingCallWidths();
+    }
+}
+
+void CallWidget::setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled)
+{
+    if (m_incomingCallWidgets.contains(friendNickname)) {
+        IncomingCallWidget* callWidget = m_incomingCallWidgets[friendNickname];
+        if (callWidget) {
+            callWidget->setButtonsEnabled(enabled);
+        }
     }
 }
 
@@ -1163,12 +1231,18 @@ void CallWidget::showErrorNotification(const QString& text, int durationMs)
     m_notificationTimer->start(durationMs);
 }
 
-void CallWidget::showParticipantConnectionError(const QString& text, int durationMs)
+void CallWidget::showParticipantConnectionError(int durationMs)
 {
-    if (!m_connectionErrorLabel) return;
-    m_connectionErrorLabel->setText(text);
-    m_connectionErrorLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-    m_connectionErrorLabel->show();
+    if (!m_participantConnectionErrorBanner || !m_participantConnectionErrorBannerLabel) return;
+    
+    QString errorText = m_friendNickname + " experiencing connection problems";
+    m_participantConnectionErrorBannerLabel->setText(errorText);
+    m_participantConnectionErrorBanner->show();
+    updateParticipantConnectionErrorBannerPosition();
+    
+    restrictScreenShareButton();
+    restrictCameraButton();
+    
     if (durationMs > 0) {
         m_connectionErrorLabelTimer->start(durationMs);
     }
@@ -1180,6 +1254,10 @@ void CallWidget::showParticipantConnectionRestored(const QString& text, int dura
     m_connectionErrorLabel->setText(text);
     m_connectionErrorLabel->setStyleSheet("color: #50DC50; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
     m_connectionErrorLabel->show();
+    
+    setScreenShareButtonActive(false);
+    setCameraButtonActive(false);
+    
     if (durationMs > 0) {
         m_connectionErrorLabelTimer->start(durationMs);
     }
@@ -1187,8 +1265,8 @@ void CallWidget::showParticipantConnectionRestored(const QString& text, int dura
 
 void CallWidget::hideParticipantConnectionStatus()
 {
-    if (m_connectionErrorLabel) {
-        m_connectionErrorLabel->hide();
+    if (m_participantConnectionErrorBanner) {
+        m_participantConnectionErrorBanner->hide();
     }
 }
 
@@ -1209,6 +1287,33 @@ void CallWidget::setCameraButtonActive(bool active)
         m_cameraButton->setIcons(m_cameraIconDisabled, m_cameraIconDisabledHover, m_cameraIconActive, m_cameraIconActiveHover);
         m_cameraButton->setToggled(false);
         m_cameraButton->setToolTip("Enable camera");
+    }
+}
+
+void CallWidget::setHangupButtonEnabled(bool enabled)
+{
+    if (m_hangupButton) {
+        m_hangupButton->setEnabled(enabled);
+        if (enabled) {
+            m_hangupButton->setStyleSheet(StyleCallWidget::hangupButtonStyle());
+        }
+        else {
+            m_hangupButton->setStyleSheet(StyleCallWidget::disabledHangupButtonStyle());
+        }
+    }
+}
+
+void CallWidget::setScreenShareButtonEnabled(bool enabled)
+{
+    if (m_screenShareButton) {
+        m_screenShareButton->setEnabled(enabled);
+    }
+}
+
+void CallWidget::setCameraButtonEnabled(bool enabled)
+{
+    if (m_cameraButton) {
+        m_cameraButton->setEnabled(enabled);
     }
 }
 

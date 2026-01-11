@@ -34,7 +34,7 @@ namespace core
                 onReceive(data, length, static_cast<PacketType>(type));
             },
             [this]() {
-                LOG_ERROR("Connection down - ping failed");
+                LOG_ERROR("Connection down");
                 m_stateManager.setConnectionDown(true);
                 m_operationManager.clearAllOperations();
 
@@ -56,44 +56,50 @@ namespace core
                 m_eventListener->onConnectionDown();
             },
             [this]() {
-                LOG_INFO("Ping restored");
+                LOG_INFO("Connection restored");
 
-                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
+                if (m_stateManager.isAuthorized()) {
+                    auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
 
-                createAndStartTask(uid, packet, PacketType::RECONNECT,
-                    [this](std::optional<nlohmann::json> completionContext) {
-                        auto& context = completionContext.value();
+                    createAndStartTask(uid, packet, PacketType::RECONNECT,
+                        [this](std::optional<nlohmann::json> completionContext) {
+                            auto& context = completionContext.value();
 
-                        bool reconnected = context[RESULT].get<bool>();
-                        
-                        if (reconnected) {
-                            bool activeCall = context[IS_ACTIVE_CALL].get<bool>();
-                            
                             m_stateManager.setConnectionDown(false);
 
-                            m_eventListener->onConnectionRestored();
+                            bool reconnected = context[RESULT].get<bool>();
+                            if (reconnected) {
+                                bool activeCall = context[IS_ACTIVE_CALL].get<bool>();
 
-                            if (!activeCall) {
-                                m_stateManager.setScreenSharing(false);
-                                m_stateManager.setCameraSharing(false);
-                                m_stateManager.setViewingRemoteScreen(false);
-                                m_stateManager.setViewingRemoteCamera(false);
-                                m_stateManager.clearCallState();
-                                m_audioEngine.stopStream();
+                                m_eventListener->onConnectionRestored();
 
-                                m_eventListener->onCallEndedByRemote({});
+                                if (!activeCall) {
+                                    m_stateManager.setScreenSharing(false);
+                                    m_stateManager.setCameraSharing(false);
+                                    m_stateManager.setViewingRemoteScreen(false);
+                                    m_stateManager.setViewingRemoteCamera(false);
+                                    m_stateManager.clearCallState();
+                                    m_audioEngine.stopStream();
+
+                                    m_eventListener->onCallEndedByRemote({});
+                                }
                             }
+                            else {
+                                reset();
+                                m_eventListener->onConnectionRestoredAuthorizationNeeded();
+                            }
+                        },
+                        [this](std::optional<nlohmann::json> failureContext) {
+                            LOG_ERROR("Reconnect task failed");
                         }
-                        else {
-                            reset();
-                            m_eventListener->onConnectionRestoredAuthorizationNeeded();
-                        }
-                    },
-                    [this](std::optional<nlohmann::json> failureContext) {
-                        LOG_ERROR("Reconnect task failed");
-                    }
-                );
-            });
+                    );
+                }
+                else {
+                    m_stateManager.setConnectionDown(false);
+                    m_eventListener->onConnectionRestoredAuthorizationNeeded();
+                }
+            }
+        );
 
         m_keyManager.generateKeys();
 
@@ -122,8 +128,6 @@ namespace core
 
         if (m_audioEngine.isStream())
             m_audioEngine.stopStream();
-        
-        m_packetProcessor.reset();
     }
 
     void Client::createAndStartTask(
@@ -473,19 +477,19 @@ namespace core
                             m_stateManager.removeIncomingCall(userNickname);
 
                             m_audioEngine.startStream();
-                            m_eventListener->onAcceptCallResult({});
+                            m_eventListener->onAcceptCallResult({}, userNickname);
                         },
                         [this, userNickname](std::optional<nlohmann::json> failureContext) {
                             m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
                             LOG_ERROR("Accept call task failed");
-                            m_eventListener->onAcceptCallResult(ErrorCode::network_error);
+                            m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
                         }
                     );
                 },
                 [this, userNickname](std::optional<nlohmann::json> failureContext) {
                     m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
                     LOG_ERROR("Stop outgoing call task failed (as part of accept call operation)");
-                    m_eventListener->onAcceptCallResult(ErrorCode::network_error);
+                    m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
                 }
             );
         }
@@ -515,20 +519,20 @@ namespace core
                             m_stateManager.removeIncomingCall(userNickname);
 
                             m_audioEngine.startStream();
-                            m_eventListener->onAcceptCallResult({});
+                            m_eventListener->onAcceptCallResult({}, userNickname);
                         },
                         [this, userNickname](std::optional<nlohmann::json> failureContext) {
                             m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
                             LOG_ERROR("Accept call task failed");
                             m_eventListener->onEndCallResult({});
-                            m_eventListener->onAcceptCallResult(ErrorCode::network_error);
+                            m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
                         }
                     );
                 },
                 [this, userNickname](std::optional<nlohmann::json> failureContext) {
                     m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
                     LOG_ERROR("End active call task failed (as part of accept new call operation)");
-                    m_eventListener->onAcceptCallResult(ErrorCode::network_error);
+                    m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
                 }
             );
         }
@@ -547,12 +551,12 @@ namespace core
                     m_stateManager.removeIncomingCall(userNickname);
 
                     m_audioEngine.startStream();
-                    m_eventListener->onAcceptCallResult({});
+                    m_eventListener->onAcceptCallResult({}, userNickname);
                 },
                 [this, userNickname](std::optional<nlohmann::json> failureContext) {
                     m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
                     LOG_ERROR("Accept call task failed");
-                    m_eventListener->onAcceptCallResult(ErrorCode::network_error);
+                    m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
                 }
             );
         }
@@ -637,12 +641,12 @@ namespace core
         m_operationManager.addOperation(UserOperationType::START_SCREEN_SHARING);
 
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
-        auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
+        auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_BEGIN,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING);
+                m_stateManager.setScreenSharing(true);
                 m_eventListener->onStartScreenSharingResult({});
             },
             [this](std::optional<nlohmann::json> failureContext) {
@@ -665,12 +669,12 @@ namespace core
         m_operationManager.addOperation(UserOperationType::STOP_SCREEN_SHARING);
 
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
-        auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
+        auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_END,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING);
+                m_stateManager.setScreenSharing(false);
                 m_eventListener->onStopScreenSharingResult({});
             },
             [this](std::optional<nlohmann::json> failureContext) {
@@ -720,8 +724,7 @@ namespace core
         m_operationManager.addOperation(UserOperationType::START_CAMERA_SHARING);
 
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
-        auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
+        auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_BEGIN,
             [this](std::optional<nlohmann::json> completionContext) {

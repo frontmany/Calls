@@ -80,8 +80,11 @@ namespace core {
             }
 
             std::function<void()> errorHandler = [this]() {
-                if (m_onConnectionDown) {
-                    m_onConnectionDown();
+                if (!m_connectionDownNotified.exchange(true)) {
+                    m_packetReceiver.setConnectionDown(true);
+                    if (m_onConnectionDown) {
+                        m_onConnectionDown();
+                    }
                 }
                 if (m_pingController) {
                     m_pingController->setConnectionError();
@@ -95,7 +98,7 @@ namespace core {
                 else {
                     m_pingController->handlePingSuccess();
                 }
-                };
+            };
 
             if (!m_packetReceiver.init(m_socket, m_onReceive, errorHandler, pingReceivedHandler)) {
                 LOG_ERROR("Failed to initialize packet receiver");
@@ -108,7 +111,24 @@ namespace core {
                 sendPing();
             };
 
-            m_pingController = std::make_unique<PingController>(sendPingCallback, m_onConnectionDown, m_onConnectionRestored);
+            std::function<void()> connectionDownWrapper = [this]() {
+                if (!m_connectionDownNotified.exchange(true)) {
+                    m_packetReceiver.setConnectionDown(true);
+                    if (m_onConnectionDown) {
+                        m_onConnectionDown();
+                    }
+                }
+            };
+
+            std::function<void()> connectionRestoredWrapper = [this]() {
+                m_connectionDownNotified = false;
+                m_packetReceiver.setConnectionDown(false);
+                if (m_onConnectionRestored) {
+                    m_onConnectionRestored();
+                }
+            };
+
+            m_pingController = std::make_unique<PingController>(sendPingCallback, connectionDownWrapper, connectionRestoredWrapper);
 
             LOG_INFO("Network controller initialized, server: {}:{}", host, port);
             return true;

@@ -38,7 +38,7 @@ void CoreNetworkErrorHandler::onConnectionRestored()
 {
 
     if (m_dialogsController) {
-        m_dialogsController->hideReconnectingDialog();
+        m_dialogsController->hideWaitingStatusDialog();
     }
 
     if (m_authorizationWidget) {
@@ -50,7 +50,15 @@ void CoreNetworkErrorHandler::onConnectionRestored()
 
 void CoreNetworkErrorHandler::onConnectionDown()
 {
-    LOG_ERROR("Connection down");
+    if (m_callManager) {
+        m_callManager->hideOperationDialog();
+    }
+    if (m_screenSharingManager) {
+        m_screenSharingManager->hideOperationDialog();
+    }
+    if (m_cameraSharingManager) {
+        m_cameraSharingManager->hideOperationDialog();
+    }
 
     if (m_coreClient->isAuthorized()) {
         if (m_coreClient && m_coreClient->isActiveCall()) {
@@ -75,7 +83,7 @@ void CoreNetworkErrorHandler::onConnectionDown()
         }
 
         if (m_dialogsController) {
-            m_dialogsController->showReconnectingDialog();
+            m_dialogsController->showWaitingStatusDialog("Reconnecting...", true);
         }
     }
     else {
@@ -87,9 +95,8 @@ void CoreNetworkErrorHandler::onConnectionDown()
 
 void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
 {
-
     if (m_dialogsController) {
-        m_dialogsController->hideReconnectingDialog();
+        m_dialogsController->hideWaitingStatusDialog();
     }
 
     if (m_authorizationWidget && m_navigationController) {

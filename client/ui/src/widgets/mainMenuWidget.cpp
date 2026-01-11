@@ -302,6 +302,24 @@ QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
         .arg(m_stopCallingButtonHoverColor.blue()).arg(m_stopCallingButtonHoverColor.alpha());
 }
 
+QString StyleMainMenuWidget::disabledStopCallingButtonStyle() {
+    return QString("QPushButton {"
+        "   background-color: rgba(%1, %2, %3, 120);"
+        "   color: rgba(255, 255, 255, 150);"
+        "   border: none;"
+        "   border-radius: %4px;"
+        "   padding: %5px %6px;"
+        "   font-size: %7px;"
+        "   margin: %8px;"
+        "   opacity: 0.6;"
+        "}").arg(m_stopCallingButtonColor.red()).arg(m_stopCallingButtonColor.green()).arg(m_stopCallingButtonColor.blue())
+        .arg(QString::fromStdString(std::to_string(scale(11))))  // border-radius
+        .arg(QString::fromStdString(std::to_string(scale(6))))   // padding vertical
+        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding horizontal
+        .arg(QString::fromStdString(std::to_string(scale(11))))  // font-size
+        .arg(QString::fromStdString(std::to_string(scale(8))));  // margin
+}
+
 QString StyleMainMenuWidget::notificationBlueLabelStyle() {
     return QString("QWidget {"
         "   background-color: rgba(21, 119, 232, 80);"  // ����� ���� � �������������
@@ -861,6 +879,45 @@ void MainMenuWidget::setSpeakerMuted(bool muted) {
 
 void MainMenuWidget::setCameraActive(bool active) {
     m_settingsPanel->setCameraActive(active);
+}
+
+void MainMenuWidget::setCallButtonEnabled(bool enabled)
+{
+    if (m_callButton) {
+        m_callButton->setEnabled(enabled);
+        if (enabled) {
+            m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
+        }
+        else {
+            m_callButton->setStyleSheet(StyleMainMenuWidget::disabledButtonStyle());
+        }
+    }
+}
+
+void MainMenuWidget::setStopCallingButtonEnabled(bool enabled)
+{
+    if (m_stopCallingButton) {
+        m_stopCallingButton->setEnabled(enabled);
+        if (enabled) {
+            m_stopCallingButton->setStyleSheet(
+                StyleMainMenuWidget::stopCallingButtonStyle() +
+                StyleMainMenuWidget::stopCallingButtonHoverStyle()
+            );
+        }
+        else {
+            m_stopCallingButton->setStyleSheet(StyleMainMenuWidget::disabledStopCallingButtonStyle());
+        }
+    }
+}
+
+void MainMenuWidget::setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled)
+{
+    if (m_incomingCallWidgets.contains(friendNickname)) {
+        IncomingCallWidget* callWidget = m_incomingCallWidgets[friendNickname];
+        if (callWidget) {
+            callWidget->setButtonsEnabled(enabled);
+        }
+    }
 }
 
 void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {

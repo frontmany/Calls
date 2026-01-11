@@ -33,13 +33,13 @@ void CoreEventListener::onStartOutgoingCallResult(std::error_code ec)
     }
 }
 
-void CoreEventListener::onAcceptCallResult(std::error_code ec)
+void CoreEventListener::onAcceptCallResult(std::error_code ec, const std::string& nickname)
 {
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onAcceptCallResult",
             Qt::QueuedConnection,
             Q_ARG(std::error_code, ec),
-            Q_ARG(const QString&, QString()));
+            Q_ARG(const QString&, QString::fromStdString(nickname)));
     }
 }
 

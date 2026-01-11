@@ -14,7 +14,7 @@ namespace core
         virtual void onLogoutCompleted() = 0;
         virtual void onStartOutgoingCallResult(std::error_code ec) = 0;
         virtual void onStopOutgoingCallResult(std::error_code ec) = 0;
-        virtual void onAcceptCallResult(std::error_code ec) = 0;
+        virtual void onAcceptCallResult(std::error_code ec, const std::string& nickname) = 0;
         virtual void onDeclineCallResult(std::error_code ec, const std::string& nickname) = 0;
         virtual void onEndCallResult(std::error_code ec) = 0;
         virtual void onStartScreenSharingResult(std::error_code ec) = 0;

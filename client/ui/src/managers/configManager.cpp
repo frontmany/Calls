@@ -294,7 +294,6 @@ void ConfigManager::setServerHost(const QString& host) {
 QString ConfigManager::getApplicationVersionFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return QString();
     }
 
@@ -305,12 +304,10 @@ QString ConfigManager::getApplicationVersionFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return QString();
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return QString();
     }
 
@@ -318,7 +315,6 @@ QString ConfigManager::getApplicationVersionFromConfig() {
     QString version = jsonObj[ConfigKeys::VERSION].toString();
 
     if (version.isEmpty()) {
-        LOG_WARN("version not found or empty in config file");
     }
     else {
     }
@@ -329,7 +325,6 @@ QString ConfigManager::getApplicationVersionFromConfig() {
 QString ConfigManager::getUpdaterHostFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return QString();
     }
 
@@ -340,12 +335,10 @@ QString ConfigManager::getUpdaterHostFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return QString();
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return QString();
     }
 
@@ -353,7 +346,6 @@ QString ConfigManager::getUpdaterHostFromConfig() {
     QString host = jsonObj[ConfigKeys::UPDATER_HOST].toString();
 
     if (host.isEmpty()) {
-        LOG_WARN("updaterHost not found or empty in config file");
     }
     else {
     }
@@ -364,7 +356,6 @@ QString ConfigManager::getUpdaterHostFromConfig() {
 QString ConfigManager::getServerHostFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return QString();
     }
 
@@ -375,12 +366,10 @@ QString ConfigManager::getServerHostFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return QString();
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return QString();
     }
 
@@ -388,7 +377,6 @@ QString ConfigManager::getServerHostFromConfig() {
     QString host = jsonObj[ConfigKeys::SERVER_HOST].toString();
 
     if (host.isEmpty()) {
-        LOG_WARN("serverHost not found or empty in config file");
     }
     else {
     }
@@ -399,7 +387,6 @@ QString ConfigManager::getServerHostFromConfig() {
 QString ConfigManager::getPortFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return QString();
     }
 
@@ -410,12 +397,10 @@ QString ConfigManager::getPortFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return QString();
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return QString();
     }
 
@@ -423,7 +408,6 @@ QString ConfigManager::getPortFromConfig() {
     QString port = jsonObj[ConfigKeys::PORT].toString();
 
     if (port.isEmpty()) {
-        LOG_WARN("port not found or empty in config file");
     }
     else {
     }
@@ -434,7 +418,6 @@ QString ConfigManager::getPortFromConfig() {
 bool ConfigManager::isMultiInstanceAllowedFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return false;
     }
 
@@ -445,12 +428,10 @@ bool ConfigManager::isMultiInstanceAllowedFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error in config file: {}", parseError.errorString().toStdString());
         return false;
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return false;
     }
 
@@ -476,7 +457,6 @@ bool ConfigManager::isMultiInstanceAllowedFromConfig() {
         return result;
     }
     else {
-        LOG_WARN("multiInstance has unsupported type, defaulting to false");
         return false;
     }
 }
@@ -484,7 +464,6 @@ bool ConfigManager::isMultiInstanceAllowedFromConfig() {
 int ConfigManager::getInputVolumeFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return 0;
     }
 
@@ -495,12 +474,10 @@ int ConfigManager::getInputVolumeFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return 0;
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return 0;
     }
 
@@ -515,12 +492,10 @@ int ConfigManager::getInputVolumeFromConfig() {
         bool ok;
         volume = volumeValue.toString().toInt(&ok);
         if (!ok) {
-            LOG_WARN("inputVolume is not a valid number in config file");
             volume = 100;
         }
     }
     else {
-        LOG_WARN("inputVolume not found or invalid type in config file");
         volume = 100;
     }
     
@@ -533,7 +508,6 @@ int ConfigManager::getInputVolumeFromConfig() {
 int ConfigManager::getOutputVolumeFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return 0;
     }
 
@@ -544,12 +518,10 @@ int ConfigManager::getOutputVolumeFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return 0;
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return 0;
     }
 
@@ -564,12 +536,10 @@ int ConfigManager::getOutputVolumeFromConfig() {
         bool ok;
         volume = volumeValue.toString().toInt(&ok);
         if (!ok) {
-            LOG_WARN("outputVolume is not a valid number in config file");
             volume = 100;
         }
     }
     else {
-        LOG_WARN("outputVolume not found or invalid type in config file");
         volume = 100;
     }
     
@@ -582,7 +552,6 @@ int ConfigManager::getOutputVolumeFromConfig() {
 bool ConfigManager::isMicrophoneMutedFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return false;
     }
 
@@ -593,12 +562,10 @@ bool ConfigManager::isMicrophoneMutedFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error in config file: {}", parseError.errorString().toStdString());
         return false;
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return false;
     }
 
@@ -624,7 +591,6 @@ bool ConfigManager::isMicrophoneMutedFromConfig() {
         return result;
     }
     else {
-        LOG_WARN("microphoneMuted has unsupported type, defaulting to false");
         return false;
     }
 }
@@ -632,7 +598,6 @@ bool ConfigManager::isMicrophoneMutedFromConfig() {
 bool ConfigManager::isSpeakerMutedFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return false;
     }
 
@@ -643,12 +608,10 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error in config file: {}", parseError.errorString().toStdString());
         return false;
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return false;
     }
 
@@ -674,7 +637,6 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
         return result;
     }
     else {
-        LOG_WARN("speakerMuted has unsupported type, defaulting to false");
         return false;
     }
 }
@@ -682,7 +644,6 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
 bool ConfigManager::isCameraActiveFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return false;
     }
 
@@ -693,12 +654,10 @@ bool ConfigManager::isCameraActiveFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error in config file: {}", parseError.errorString().toStdString());
         return false;
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return false;
     }
 
@@ -724,7 +683,6 @@ bool ConfigManager::isCameraActiveFromConfig() {
         return result;
     }
     else {
-        LOG_WARN("cameraEnabled has unsupported type, defaulting to false");
         return false;
     }
 }
@@ -752,7 +710,6 @@ const std::unordered_set<std::string>& ConfigManager::getIgnoredDirectoriesWhile
 QString ConfigManager::getLogDirectoryNameFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return "logs";
     }
 
@@ -763,12 +720,10 @@ QString ConfigManager::getLogDirectoryNameFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return "logs";
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return "logs";
     }
 
@@ -785,7 +740,6 @@ QString ConfigManager::getLogDirectoryNameFromConfig() {
 QString ConfigManager::getTemporaryUpdateDirectoryNameFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return "updateTemp";
     }
 
@@ -796,12 +750,10 @@ QString ConfigManager::getTemporaryUpdateDirectoryNameFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return "updateTemp";
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return "updateTemp";
     }
 
@@ -818,7 +770,6 @@ QString ConfigManager::getTemporaryUpdateDirectoryNameFromConfig() {
 QString ConfigManager::getDeletionListFileNameFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return "remove.json";
     }
 
@@ -829,12 +780,10 @@ QString ConfigManager::getDeletionListFileNameFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return "remove.json";
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return "remove.json";
     }
 
@@ -851,7 +800,6 @@ QString ConfigManager::getDeletionListFileNameFromConfig() {
 std::unordered_set<std::string> ConfigManager::getIgnoredFilesWhileCollectingForUpdateFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return std::unordered_set<std::string>();
     }
 
@@ -862,12 +810,10 @@ std::unordered_set<std::string> ConfigManager::getIgnoredFilesWhileCollectingFor
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return std::unordered_set<std::string>();
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return std::unordered_set<std::string>();
     }
 
@@ -892,7 +838,6 @@ std::unordered_set<std::string> ConfigManager::getIgnoredFilesWhileCollectingFor
 std::unordered_set<std::string> ConfigManager::getIgnoredDirectoriesWhileCollectingForUpdateFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        LOG_WARN("Failed to open config file: {}", m_configPath.toStdString());
         return std::unordered_set<std::string>{"logs"};
     }
 
@@ -903,12 +848,10 @@ std::unordered_set<std::string> ConfigManager::getIgnoredDirectoriesWhileCollect
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        LOG_WARN("JSON parse error: {}", parseError.errorString().toStdString());
         return std::unordered_set<std::string>{"logs"};
     }
 
     if (!doc.isObject()) {
-        LOG_WARN("Config file does not contain a JSON object");
         return std::unordered_set<std::string>{"logs"};
     }
 

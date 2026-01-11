@@ -161,7 +161,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, 
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    scaledImage.save(&buffer, "JPG", 90);
+    scaledImage.save(&buffer, "JPG", 60);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }

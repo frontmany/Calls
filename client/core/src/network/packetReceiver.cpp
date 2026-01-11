@@ -306,13 +306,21 @@ namespace core
         }
     }
 
+    void PacketReceiver::setConnectionDown(bool isDown)
+    {
+        m_connectionDown = isDown;
+    }
+
     void PacketReceiver::notifyError(const std::error_code& ec)
     {
         if (ec == asio::error::operation_aborted) {
             return;
         }
 
-        LOG_ERROR("Packet receiver error: {}", ec.message());
+        if (!m_connectionDown.load()) {
+            LOG_ERROR("Packet receiver error: {}", ec.message());
+        }
+
         if (m_onErrorCallback) {
             m_onErrorCallback();
         }
