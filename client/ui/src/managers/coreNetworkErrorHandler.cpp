@@ -52,6 +52,7 @@ void CoreNetworkErrorHandler::onConnectionDown()
 {
     if (m_callManager) {
         m_callManager->hideOperationDialog();
+        m_callManager->hideParticipantConnectionBanner();
     }
     if (m_screenSharingManager) {
         m_screenSharingManager->hideOperationDialog();

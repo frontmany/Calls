@@ -529,6 +529,13 @@ void CallManager::onCallParticipantConnectionRestored()
     }
 }
 
+void CallManager::hideParticipantConnectionBanner()
+{
+    if (m_callWidget) {
+        m_callWidget->hideParticipantConnectionStatus();
+    }
+}
+
 void CallManager::startOperationTimer(const QString& dialogText)
 {
     m_pendingOperationDialogText = dialogText;
@@ -553,6 +560,9 @@ void CallManager::onOperationTimerTimeout()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
+            if (m_callWidget) {
+                m_callWidget->hideParticipantConnectionStatus();
+            }
             m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
         }
     }

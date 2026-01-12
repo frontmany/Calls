@@ -200,14 +200,14 @@ void MainWindow::initializeCallManager() {
 void MainWindow::initializeScreenSharingManager() {
     m_screenSharingManager = new ScreenSharingManager(m_coreClient, m_screenCaptureController, m_dialogsController, m_CameraCaptureController, this);
     if (m_callWidget) {
-        m_screenSharingManager->setWidgets(m_callWidget, statusBar());
+        m_screenSharingManager->setWidgets(m_callWidget);
     }
 }
 
 void MainWindow::initializeCameraSharingManager() {
     m_cameraSharingManager = new CameraSharingManager(m_coreClient, m_configManager, m_CameraCaptureController, m_dialogsController, this);
     if (m_callWidget && m_mainMenuWidget) {
-        m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget, statusBar());
+        m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget);
     }
 }
 
@@ -260,11 +260,24 @@ void MainWindow::connectWidgetsToManagers() {
     // MainMenuWidget connections
     if (m_mainMenuWidget) {
         if (m_audioSettingsManager) {
-            connect(m_mainMenuWidget, &MainMenuWidget::refreshAudioDevicesButtonClicked, m_audioSettingsManager, &AudioSettingsManager::onRefreshAudioDevicesButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
             connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
             connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+        }
+        if (m_dialogsController) {
+            connect(m_mainMenuWidget, &MainMenuWidget::audioDevicePickerRequested, this, [this]() {
+                if (m_dialogsController && m_configManager) {
+                    m_dialogsController->showAudioSettingsDialog(
+                        false,
+                        m_configManager->isMicrophoneMuted(),
+                        m_configManager->isSpeakerMuted(),
+                        m_configManager->getInputVolume(),
+                        m_configManager->getOutputVolume(),
+                        -1,
+                        -1);
+                }
+            });
         }
         if (m_updateManager) {
             connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
@@ -285,6 +298,13 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_navigationController) {
             connect(m_callWidget, &CallWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onCallWidgetEnterFullscreenRequested);
             connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onCallWidgetExitFullscreenRequested);
+        }
+        if (m_dialogsController) {
+            connect(m_callWidget, &CallWidget::audioSettingsRequested, this, [this](bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume) {
+                if (m_dialogsController) {
+                    m_dialogsController->showAudioSettingsDialog(showSliders, micMuted, speakerMuted, inputVolume, outputVolume, -1, -1);
+                }
+            });
         }
         if (m_audioSettingsManager) {
             connect(m_callWidget, &CallWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
@@ -328,6 +348,17 @@ void MainWindow::connectWidgetsToManagers() {
                 m_callWidget->setScreenShareButtonActive(false);
             }
         });
+    }
+
+    // Audio settings dialog connections
+    if (m_dialogsController && m_audioSettingsManager) {
+        connect(m_dialogsController, &DialogsController::refreshAudioDevicesRequested, m_audioSettingsManager, &AudioSettingsManager::onRefreshAudioDevicesButtonClicked);
+        connect(m_dialogsController, &DialogsController::inputDeviceSelected, m_audioSettingsManager, &AudioSettingsManager::onInputDeviceSelected);
+        connect(m_dialogsController, &DialogsController::outputDeviceSelected, m_audioSettingsManager, &AudioSettingsManager::onOutputDeviceSelected);
+        connect(m_dialogsController, &DialogsController::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
+        connect(m_dialogsController, &DialogsController::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
+        connect(m_dialogsController, &DialogsController::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
+        connect(m_dialogsController, &DialogsController::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
     }
 
     // Manager to MainWindow connections

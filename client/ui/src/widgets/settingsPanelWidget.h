@@ -29,7 +29,7 @@ private slots:
     void onCameraButtonClicked(bool enabled);
 
 signals:
-    void refreshAudioDevicesButtonClicked();
+    void audioDevicePickerRequested();
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
@@ -42,15 +42,12 @@ private:
     QSlider* m_speakerSlider;
     QLabel* m_micValueLabel;
     QLabel* m_speakerValueLabel;
-    QPushButton* m_refreshButton;
-    QTimer* m_refreshCooldownTimer = nullptr;
+    QPushButton* m_devicePickerButton;
     ToggleButtonIcon* m_cameraButton = nullptr;
     ToggleButtonIcon* m_micMuteButton = nullptr;
     ToggleButtonIcon* m_speakerMuteButton = nullptr;
     bool m_isMicMuted = false;
     bool m_isSpeakerMuted = false;
-    bool m_refreshEnabled = false;
-
     struct StyleSettingsPanel {
         static const QColor primaryColor;
         static const QColor hoverColor;

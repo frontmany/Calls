@@ -15,6 +15,7 @@
 #include <QPainterPath>
 #include <QCursor>
 #include <QFontMetrics>
+#include "widgets/audioSettingsDialog.h"
 #include <algorithm>
 
 DialogsController::DialogsController(QWidget* parent)
@@ -42,6 +43,7 @@ DialogsController::~DialogsController()
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
+    hideAudioSettingsDialog();
 }
 
 void DialogsController::showUpdatingDialog()
@@ -1001,6 +1003,68 @@ void DialogsController::hideFirstLaunchDialog()
     m_firstLaunchImageLabel = nullptr;
     m_firstLaunchDescriptionLabel = nullptr;
     m_firstLaunchOkButton = nullptr;
+}
+
+void DialogsController::showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice, int currentOutputDevice)
+{
+    if (!m_audioSettingsDialog) {
+        m_audioSettingsDialog = new AudioSettingsDialog(m_parent);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::inputDeviceSelected, this, &DialogsController::inputDeviceSelected);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::outputDeviceSelected, this, &DialogsController::outputDeviceSelected);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::inputVolumeChanged, this, &DialogsController::inputVolumeChanged);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::outputVolumeChanged, this, &DialogsController::outputVolumeChanged);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::muteMicrophoneClicked, this, &DialogsController::muteMicrophoneClicked);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::muteSpeakerClicked, this, &DialogsController::muteSpeakerClicked);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::refreshAudioDevicesRequested, this, &DialogsController::refreshAudioDevicesRequested);
+        connect(m_audioSettingsDialog, &AudioSettingsDialog::closeRequested, this, &DialogsController::hideAudioSettingsDialog);
+    }
+
+    if (m_audioSettingsDialog) {
+        if (!m_audioSettingsOverlay) {
+            m_audioSettingsOverlay = new OverlayWidget(m_parent);
+            m_audioSettingsOverlay->setAttribute(Qt::WA_TranslucentBackground);
+            m_audioSettingsOverlay->show();
+            m_audioSettingsOverlay->raise();
+        }
+
+        // Refresh device list before displaying the dialog
+        emit refreshAudioDevicesRequested();
+
+        m_audioSettingsDialog->setParent(m_audioSettingsOverlay);
+        m_audioSettingsDialog->setSlidersVisible(showSliders);
+        m_audioSettingsDialog->setMicrophoneMuted(micMuted);
+        m_audioSettingsDialog->setSpeakerMuted(speakerMuted);
+        m_audioSettingsDialog->setInputVolume(inputVolume);
+        m_audioSettingsDialog->setOutputVolume(outputVolume);
+        m_audioSettingsDialog->refreshDevices(currentInputDevice, currentOutputDevice);
+        m_audioSettingsDialog->adjustSize();
+
+        QRect overlayRect = m_audioSettingsOverlay->rect();
+        QSize dlgSize = m_audioSettingsDialog->size();
+        int x = overlayRect.center().x() - dlgSize.width() / 2;
+        int y = overlayRect.center().y() - dlgSize.height() / 2;
+        m_audioSettingsDialog->move(x, y);
+
+        m_audioSettingsDialog->show();
+        m_audioSettingsDialog->raise();
+        m_audioSettingsOverlay->raise();
+    }
+}
+
+void DialogsController::hideAudioSettingsDialog()
+{
+    if (m_audioSettingsDialog) {
+        m_audioSettingsDialog->hide();
+    }
+    if (m_audioSettingsOverlay) {
+        m_audioSettingsOverlay->close();
+        m_audioSettingsOverlay->deleteLater();
+        m_audioSettingsOverlay = nullptr;
+    }
+
+    if (m_audioSettingsDialog) {
+        m_audioSettingsDialog->setParent(nullptr);
+    }
 }
 
 QWidget* DialogsController::createAlreadyRunningDialog(OverlayWidget* overlay)

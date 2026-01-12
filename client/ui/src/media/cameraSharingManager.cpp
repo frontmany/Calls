@@ -19,11 +19,10 @@ CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client,
     connect(m_operationTimer, &QTimer::timeout, this, &CameraSharingManager::onOperationTimerTimeout);
 }
 
-void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget, QStatusBar* statusBar)
+void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget)
 {
     m_callWidget = callWidget;
     m_mainMenuWidget = mainMenuWidget;
-    m_statusBar = statusBar;
 }
 
 void CameraSharingManager::stopLocalCameraCapture()
@@ -102,7 +101,6 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
         std::error_code ec = m_coreClient->stopCameraSharing();
         if (ec) {
             if (!m_coreClient->isConnectionDown()) {
-                showTransientStatusMessage("Failed to stop camera sharing", 2000);
                 if (m_callWidget) {
                     m_callWidget->setCameraButtonActive(true);
                 }
@@ -142,9 +140,6 @@ void CameraSharingManager::onStartCameraSharingError()
     if (m_callWidget) {
         m_callWidget->setCameraButtonEnabled(true);
         m_callWidget->setCameraButtonActive(false);
-    }
-    if (m_coreClient && !m_coreClient->isConnectionDown()) {
-        showTransientStatusMessage("Camera sharing rejected by server", 3000);
     }
     if (m_configManager) {
         m_configManager->setCameraActive(false);
@@ -200,7 +195,6 @@ void CameraSharingManager::onCameraCaptured(const QPixmap& pixmap, const std::ve
     if (imageData.empty()) return;
 
     if (!m_coreClient || !m_coreClient->sendCamera(imageData)) {
-        showTransientStatusMessage("Failed to send camera frame", 2000);
     }
 }
 
@@ -265,7 +259,6 @@ void CameraSharingManager::onIncomingCamera(const std::vector<unsigned char>& da
 
 void CameraSharingManager::onCameraErrorOccurred(const QString& errorMessage)
 {
-    showTransientStatusMessage(errorMessage, 3000);
     if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
         m_cameraCaptureController->stopCapture();
     }
@@ -290,7 +283,6 @@ void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
     if (ec) {
         LOG_WARN("Failed to stop camera sharing: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
-            showTransientStatusMessage("Failed to stop camera sharing", 2000);
             if (m_callWidget) {
                 m_callWidget->setCameraButtonActive(true);
             }
@@ -323,12 +315,6 @@ void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
     }
 }
 
-void CameraSharingManager::showTransientStatusMessage(const QString& message, int durationMs)
-{
-    if (m_statusBar) {
-        m_statusBar->showMessage(message, durationMs);
-    }
-}
 
 void CameraSharingManager::startOperationTimer(const QString& dialogText)
 {
@@ -354,6 +340,9 @@ void CameraSharingManager::onOperationTimerTimeout()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
+            if (m_callWidget) {
+                m_callWidget->hideParticipantConnectionStatus();
+            }
             m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
         }
     }

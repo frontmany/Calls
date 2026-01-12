@@ -217,6 +217,14 @@ namespace core
         m_audioEngine.setOutputVolume(volume);
     }
 
+    bool Client::setInputDevice(int deviceIndex) {
+        return m_audioEngine.setInputDevice(deviceIndex);
+    }
+
+    bool Client::setOutputDevice(int deviceIndex) {
+        return m_audioEngine.setOutputDevice(deviceIndex);
+    }
+
     bool Client::isAuthorized() const {
         return m_stateManager.isAuthorized();
     }

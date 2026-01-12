@@ -48,7 +48,7 @@ void ScreenCaptureController::startCapture()
     }
 
     m_isCapturing = true;
-    m_captureTimer->start(33);
+    m_captureTimer->start(66);
 
     emit captureStarted();
 }

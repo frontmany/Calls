@@ -19,6 +19,8 @@ public slots:
     void onOutputVolumeChanged(int newVolume);
     void onMuteMicrophoneButtonClicked(bool mute);
     void onMuteSpeakerButtonClicked(bool mute);
+    void onInputDeviceSelected(int deviceIndex);
+    void onOutputDeviceSelected(int deviceIndex);
 
 private:
     std::shared_ptr<core::Client> m_coreClient = nullptr;

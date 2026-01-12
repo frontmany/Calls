@@ -104,7 +104,7 @@ signals:
     void declineCallButtonClicked(const QString& friendNickname);
     void acceptCallButtonClicked(const QString& friendNickname);
     void stopCallingButtonClicked();
-    void refreshAudioDevicesButtonClicked();
+    void audioDevicePickerRequested();
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);

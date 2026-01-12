@@ -45,6 +45,7 @@ public slots:
     void onEndCallResult(std::error_code ec);
     void onCallParticipantConnectionDown();
     void onCallParticipantConnectionRestored();
+    void hideParticipantConnectionBanner();
 
 signals:
     void stopScreenCaptureRequested();

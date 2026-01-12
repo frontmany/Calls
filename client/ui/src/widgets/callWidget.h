@@ -7,7 +7,6 @@
 #include <QHBoxLayout>
 #include <QTimer>
 #include <QTime>
-#include <QSlider>
 #include <QScrollArea>
 #include <QPixmap>
 #include <QIcon>
@@ -24,7 +23,6 @@ class QShowEvent;
 class Screen;
 
 class IncomingCallWidget;
-
 struct StyleCallWidget {
     static const QColor m_primaryColor;
     static const QColor m_hoverColor;
@@ -97,6 +95,7 @@ public:
     void showParticipantConnectionError(int durationMs);
     void showParticipantConnectionRestored(const QString& text, int durationMs);
     void hideParticipantConnectionStatus();
+    void showAudioSettingsDialog();
 
 signals:
     void hangupClicked();
@@ -104,6 +103,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
+    void audioSettingsRequested(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume);
     void requestEnterFullscreen();
     void requestExitFullscreen();
     void acceptCallButtonClicked(const QString& callerName);
@@ -118,9 +118,9 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
 
 private slots:
-    void onSlidersClicked(bool toggled);
     void updateCallTimer();
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
     void onIncomingCallsDialogClosed();
@@ -133,11 +133,12 @@ private:
     void updateIncomingCallWidths();
     void restoreIncomingCallsContainer();
     void updateExitFullscreenButtonPosition();
+    void updateOverlayButtonsPosition();
     void updateParticipantConnectionErrorBannerPosition();
+    void showOverlayButtonWithTimeout();
 
     void applyStandardSize();
     void applyDecreasedSize();
-    void applyExtraDecreasedSize();
     void applyFullscreenSize();
 
     QSize scaledScreenSize16by9(int baseWidth);
@@ -175,29 +176,14 @@ private:
     // Control panels
     QWidget* m_buttonsPanel;
     QHBoxLayout* m_buttonsLayout;
-    QWidget* m_slidersContainer;
-    QVBoxLayout* m_slidersLayout;
-
-    // Volume sliders
-    QWidget* m_micSliderWidget;
-    QVBoxLayout* m_micSliderLayout;
-    QHBoxLayout* m_micLabelSliderLayout;
-    ToggleButtonIcon* m_micLabel;
-    QSlider* m_micVolumeSlider;
-
-    QWidget* m_speakerSliderWidget;
-    QVBoxLayout* m_speakerSliderLayout;
-    QHBoxLayout* m_speakerLabelSliderLayout;
-    ToggleButtonIcon* m_speakerLabel;
-    QSlider* m_speakerVolumeSlider;
 
     // Buttons
     ButtonIcon* m_enterFullscreenButton;
     ButtonIcon* m_exitFullscreenButton;
+    ButtonIcon* m_settingsButton;
     ToggleButtonIcon* m_microphoneButton;
     ToggleButtonIcon* m_screenShareButton;
     ToggleButtonIcon* m_cameraButton;
-    ToggleButtonIcon* m_slidersButton;
     QPushButton* m_hangupButton;
 
     // Screen share button icons
@@ -223,12 +209,15 @@ private:
     // Timer
     QTimer* m_callTimer;
     QTime* m_callDuration;
-    QTimer* m_exitFullscreenHideTimer;
+    QTimer* m_overlayButtonHideTimer;
     QString m_friendNickname;
 
     // States
-    bool m_slidersVisible = false;
     bool m_screenFullscreenActive = false;
+    bool m_microphoneMuted = false;
+    bool m_speakerMuted = false;
+    int m_inputVolume = 100;
+    int m_outputVolume = 100;
 
     // Incoming calls
     QDialog* m_incomingCallsDialog = nullptr;

@@ -18,10 +18,9 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
     connect(m_operationTimer, &QTimer::timeout, this, &ScreenSharingManager::onOperationTimerTimeout);
 }
 
-void ScreenSharingManager::setWidgets(CallWidget* callWidget, QStatusBar* statusBar)
+void ScreenSharingManager::setWidgets(CallWidget* callWidget)
 {
     m_callWidget = callWidget;
-    m_statusBar = statusBar;
 }
 
 void ScreenSharingManager::stopLocalScreenCapture()
@@ -51,7 +50,6 @@ void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
         std::error_code ec = m_coreClient->stopScreenSharing();
         if (ec) {
             if (!m_coreClient->isConnectionDown()) {
-                showTransientStatusMessage("Failed to stop screen sharing", 2000);
                 if (m_callWidget) {
                     m_callWidget->setScreenShareButtonActive(true);
                 }
@@ -69,7 +67,6 @@ void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
 void ScreenSharingManager::onScreenSelected(int screenIndex)
 {
     if (!m_screenCaptureController || !m_callWidget) {
-        showTransientStatusMessage("Unable to start screen sharing", 2000);
         if (m_callWidget) {
             m_callWidget->setScreenShareButtonActive(false);
         }
@@ -80,29 +77,23 @@ void ScreenSharingManager::onScreenSelected(int screenIndex)
     m_screenCaptureController->setSelectedScreenIndex(screenIndex);
 
     if (m_screenCaptureController->selectedScreenIndex() == -1) {
-        showTransientStatusMessage("Selected screen is no longer available", 3000);
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
 
     if (!m_coreClient) {
-        showTransientStatusMessage("Client not available", 3000);
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
     
     const std::string friendNickname = m_coreClient->getNicknameInCallWith();
     if (friendNickname.empty()) {
-        showTransientStatusMessage("No active call to share screen with", 3000);
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
 
     std::error_code ec = m_coreClient->startScreenSharing();
     if (ec) {
-        if (!m_coreClient->isConnectionDown()) {
-            showTransientStatusMessage("Failed to send screen sharing request", 3000);
-        }
         m_callWidget->setScreenShareButtonActive(false);
         return;
     }
@@ -154,7 +145,6 @@ void ScreenSharingManager::onScreenCaptured(const QPixmap& pixmap, const std::ve
     if (imageData.empty()) return;
 
     if (!m_coreClient || !m_coreClient->sendScreen(imageData)) {
-        showTransientStatusMessage("Failed to send screen frame", 2000);
     }
 }
 
@@ -164,9 +154,6 @@ void ScreenSharingManager::onStartScreenSharingError()
     if (m_callWidget) {
         m_callWidget->setScreenShareButtonEnabled(true);
         m_callWidget->setScreenShareButtonActive(false);
-    }
-    if (m_coreClient && !m_coreClient->isConnectionDown()) {
-        showTransientStatusMessage("Screen sharing rejected by server", 3000);
     }
     stopLocalScreenCapture();
     if (m_dialogsController) {
@@ -231,7 +218,6 @@ void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
     if (ec) {
         LOG_WARN("Failed to stop screen sharing: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
-            showTransientStatusMessage("Failed to stop screen sharing", 2000);
             if (m_callWidget) {
                 m_callWidget->setScreenShareButtonActive(true);
             }
@@ -251,12 +237,6 @@ void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
     }
 }
 
-void ScreenSharingManager::showTransientStatusMessage(const QString& message, int durationMs)
-{
-    if (m_statusBar) {
-        m_statusBar->showMessage(message, durationMs);
-    }
-}
 
 void ScreenSharingManager::startOperationTimer(const QString& dialogText)
 {
@@ -282,6 +262,9 @@ void ScreenSharingManager::onOperationTimerTimeout()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
+            if (m_callWidget) {
+                m_callWidget->hideParticipantConnectionStatus();
+            }
             m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
         }
     }

@@ -581,7 +581,7 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
     connect(m_stopCallingButton, &QPushButton::clicked, this, &MainMenuWidget::onStopCallingButtonClicked);
     connect(m_friendNicknameEdit, &QLineEdit::textChanged, this, &MainMenuWidget::clearErrorMessage);
-    connect(m_settingsPanel, &SettingsPanel::refreshAudioDevicesButtonClicked, [this]() {emit refreshAudioDevicesButtonClicked(); });
+    connect(m_settingsPanel, &SettingsPanel::audioDevicePickerRequested, [this]() {emit audioDevicePickerRequested(); });
     connect(m_settingsPanel, &SettingsPanel::inputVolumeChanged, [this](int newVolume) {emit inputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::outputVolumeChanged, [this](int newVolume) {emit outputVolumeChanged(newVolume); });
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });

@@ -39,6 +39,8 @@ namespace core
         void muteSpeaker(bool isMute);
         void setInputVolume(int volume);
         void setOutputVolume(int volume);
+        bool setInputDevice(int deviceIndex);
+        bool setOutputDevice(int deviceIndex);
 
         bool isScreenSharing() const;
         bool isViewingRemoteScreen() const;

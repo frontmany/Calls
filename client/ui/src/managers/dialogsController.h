@@ -6,6 +6,7 @@ class QGridLayout;
 class QPushButton;
 class QScreen;
 class ScreenPreviewWidget;
+class AudioSettingsDialog;
 
 class DialogsController : public QObject
 {
@@ -33,6 +34,18 @@ public:
 
     void showFirstLaunchDialog(const QString& imagePath = ":/resources/welcome.jpg", const QString& descriptionText = "");
     void hideFirstLaunchDialog();
+
+    void showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice = -1, int currentOutputDevice = -1);
+    void hideAudioSettingsDialog();
+
+signals:
+    void inputDeviceSelected(int deviceIndex);
+    void outputDeviceSelected(int deviceIndex);
+    void inputVolumeChanged(int volume);
+    void outputVolumeChanged(int volume);
+    void muteMicrophoneClicked(bool mute);
+    void muteSpeakerClicked(bool mute);
+    void refreshAudioDevicesRequested();
 
 signals:
 	void closeRequested();
@@ -87,5 +100,8 @@ private:
     QLabel* m_firstLaunchImageLabel;
     QLabel* m_firstLaunchDescriptionLabel;
     QPushButton* m_firstLaunchOkButton;
+
+    OverlayWidget* m_audioSettingsOverlay = nullptr;
+    AudioSettingsDialog* m_audioSettingsDialog = nullptr;
 };
 

@@ -54,3 +54,17 @@ void AudioSettingsManager::onMuteSpeakerButtonClicked(bool mute)
         m_configManager->setSpeakerMuted(mute);
     }
 }
+
+void AudioSettingsManager::onInputDeviceSelected(int deviceIndex)
+{
+    if (m_coreClient) {
+        m_coreClient->setInputDevice(deviceIndex);
+    }
+}
+
+void AudioSettingsManager::onOutputDeviceSelected(int deviceIndex)
+{
+    if (m_coreClient) {
+        m_coreClient->setOutputDevice(deviceIndex);
+    }
+}

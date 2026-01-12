@@ -4,7 +4,6 @@
 #include <QPixmap>
 #include <QTimer>
 #include <vector>
-#include <QStatusBar>
 #include <memory>
 
 #include "core.h"
@@ -23,7 +22,7 @@ class CameraSharingManager : public QObject {
 public:
     explicit CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, DialogsController* dialogsController, QObject* parent = nullptr);
     
-    void setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget, QStatusBar* statusBar);
+    void setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget);
 
     void stopLocalCameraCapture();
     void initializeCameraForCall();
@@ -47,7 +46,6 @@ private slots:
     void onOperationTimerTimeout();
 
 private:
-    void showTransientStatusMessage(const QString& message, int durationMs);
     void startOperationTimer(const QString& dialogText);
     void stopOperationTimer();
 
@@ -57,7 +55,6 @@ private:
     DialogsController* m_dialogsController = nullptr;
     CallWidget* m_callWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
-    QStatusBar* m_statusBar = nullptr;
     QTimer* m_operationTimer = nullptr;
     QString m_pendingOperationDialogText;
     bool m_isCameraInAdditionalScreen = false;

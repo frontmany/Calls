@@ -149,21 +149,17 @@ void SettingsPanel::setupUI() {
     mainLayout->setContentsMargins(scale(15), scale(15), scale(15), scale(15));
     mainLayout->setSpacing(scale(10));
 
-    // Refresh button with icon
+    // Device picker button
     QHBoxLayout* refreshLayout = new QHBoxLayout();
     refreshLayout->setContentsMargins(0, 0, 0, 0);
 
-    m_refreshButton = new QPushButton("Refresh devices", this);
-    m_refreshButton->setFixedHeight(scale(60));
-    m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
+    m_devicePickerButton = new QPushButton("Audio devices", this);
+    m_devicePickerButton->setFixedHeight(scale(60));
+    m_devicePickerButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
     QFont refreshButtonFont("Outfit", scale(13), QFont::Medium);
-    m_refreshButton->setFont(refreshButtonFont);
-    m_refreshButton->setToolTip("Refresh audio devices if changed");
-    m_refreshButton->setCursor(Qt::PointingHandCursor);
-
-    m_refreshCooldownTimer = new QTimer(this);
-    m_refreshCooldownTimer->setSingleShot(true);
-    m_refreshEnabled = true;
+    m_devicePickerButton->setFont(refreshButtonFont);
+    m_devicePickerButton->setToolTip("Select input/output devices");
+    m_devicePickerButton->setCursor(Qt::PointingHandCursor);
 
     // Camera button
     m_cameraButton = new ToggleButtonIcon(this,
@@ -175,7 +171,7 @@ void SettingsPanel::setupUI() {
     m_cameraButton->setSize(scale(32), scale(32));
     m_cameraButton->setCursor(Qt::PointingHandCursor);
 
-    refreshLayout->addWidget(m_refreshButton);
+    refreshLayout->addWidget(m_devicePickerButton);
     refreshLayout->addStretch();
     refreshLayout->addWidget(m_cameraButton);
     refreshLayout->addSpacing(scale(12));
@@ -248,27 +244,8 @@ void SettingsPanel::setupUI() {
     connect(m_micMuteButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onMicMuteClicked);
     connect(m_speakerMuteButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onSpeakerMuteClicked);
     connect(m_cameraButton, &ToggleButtonIcon::toggled, this, &SettingsPanel::onCameraButtonClicked);
-    connect(m_refreshButton, &QPushButton::clicked, this, [this]() {
-        if (m_refreshEnabled) {
-            m_refreshEnabled = false;
-            m_refreshButton->setEnabled(false);
-            m_refreshButton->setText("  Wait...");
-
-            m_refreshButton->setStyleSheet(
-                StyleSettingsPanel::refreshButtonStyle() +
-                "QPushButton { color: #999; }"
-            );
-
-            m_refreshCooldownTimer->start(2000);
-            emit refreshAudioDevicesButtonClicked();
-        }
-    });
-
-    connect(m_refreshCooldownTimer, &QTimer::timeout, this, [this]() {
-        m_refreshEnabled = true;
-        m_refreshButton->setEnabled(true);
-        m_refreshButton->setText("Refresh devices");
-        m_refreshButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
+    connect(m_devicePickerButton, &QPushButton::clicked, this, [this]() {
+        emit audioDevicePickerRequested();
     });
 
     setStyleSheet(StyleSettingsPanel::settingsPanelStyle());

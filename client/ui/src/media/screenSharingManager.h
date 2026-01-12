@@ -4,7 +4,6 @@
 #include <QPixmap>
 #include <QTimer>
 #include <vector>
-#include <QStatusBar>
 #include <memory>
 
 #include "core.h"
@@ -22,7 +21,7 @@ class ScreenSharingManager : public QObject {
 public:
     explicit ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent = nullptr);
     
-    void setWidgets(CallWidget* callWidget, QStatusBar* statusBar);
+    void setWidgets(CallWidget* callWidget);
 
     void stopLocalScreenCapture();
     void hideOperationDialog();
@@ -47,7 +46,6 @@ private slots:
     void onOperationTimerTimeout();
 
 private:
-    void showTransientStatusMessage(const QString& message, int durationMs);
     void startOperationTimer(const QString& dialogText);
     void stopOperationTimer();
 
@@ -55,7 +53,6 @@ private:
     ScreenCaptureController* m_screenCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
     CallWidget* m_callWidget = nullptr;
-    QStatusBar* m_statusBar = nullptr;
     CameraCaptureController* m_cameraCaptureController = nullptr;
     QTimer* m_operationTimer = nullptr;
     QString m_pendingOperationDialogText;
