@@ -2,11 +2,13 @@
 
 #include <QMediaPlayer>
 #include <QAudioOutput>
+#include <QAudioDevice>
 #include <QUrl>
 #include <QString>
 #include <memory>
 
 #include "core.h"
+#include "audio/audioEngine.h"
 
 class AudioEffectsManager : public QObject {
     Q_OBJECT
@@ -19,7 +21,9 @@ public:
     void stopIncomingCallRingtone();
     void playCallingRingtone();
     void stopCallingRingtone();
-    void playSoundEffect(const QString& soundPath);
+    void playCallJoinedEffect();
+    void playCallingEndedEffect();
+    void playEndCallEffect();
 
 private slots:
     void onPlaybackStateChanged(QMediaPlayer::PlaybackState state);
@@ -27,6 +31,8 @@ private slots:
 private:
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
+    void playSoundEffect(const QUrl& soundUrl);
+    QAudioDevice resolveOutputDevice() const;
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
     QMediaPlayer* m_ringtonePlayer = nullptr;

@@ -2,6 +2,7 @@
 
 #include <QHBoxLayout>
 #include <QGridLayout>
+#include <QSizePolicy>
 #include <unordered_set>
 
 namespace {
@@ -88,8 +89,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
         QIcon(":/resources/microphoneHover.png"),
         QIcon(":/resources/mute-enabled-microphone.png"),
         QIcon(":/resources/mute-enabled-microphoneHover.png"),
-        scale(28), scale(28));
-    m_micToggle->setSize(scale(28), scale(28));
+        scale(22), scale(22));
+    m_micToggle->setSize(scale(22), scale(22));
     m_micToggle->setCursor(Qt::PointingHandCursor);
 
     m_speakerToggle = new ToggleButtonIcon(m_container,
@@ -97,8 +98,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
         QIcon(":/resources/speakerHover.png"),
         QIcon(":/resources/speakerMutedActive.png"),
         QIcon(":/resources/speakerMutedActiveHover.png"),
-        scale(26), scale(26));
-    m_speakerToggle->setSize(scale(26), scale(26));
+        scale(20), scale(20));
+    m_speakerToggle->setSize(scale(20), scale(20));
     m_speakerToggle->setCursor(Qt::PointingHandCursor);
 
     m_micSlider = new QSlider(Qt::Horizontal, m_container);
@@ -106,6 +107,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     m_micSlider->setValue(100);
     m_micSlider->setCursor(Qt::PointingHandCursor);
     m_micSlider->setTracking(false);
+    m_micSlider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_micSlider->setMinimumWidth(scale(260));
     m_micSlider->setStyleSheet(sliderStyle());
 
     m_speakerSlider = new QSlider(Qt::Horizontal, m_container);
@@ -113,26 +116,29 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     m_speakerSlider->setValue(100);
     m_speakerSlider->setCursor(Qt::PointingHandCursor);
     m_speakerSlider->setTracking(false);
+    m_speakerSlider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_speakerSlider->setMinimumWidth(scale(260));
     m_speakerSlider->setStyleSheet(sliderStyle());
 
     auto* micLayout = new QHBoxLayout();
-    micLayout->setContentsMargins(0, 0, 0, 0);
+    micLayout->setContentsMargins(scale(5), 0, scale(18), 0);
     micLayout->setSpacing(scale(12));
-    micLayout->addWidget(m_micToggle);
-    micLayout->addWidget(m_micSlider);
+    micLayout->addWidget(m_micToggle, 0, Qt::AlignVCenter);
+    micLayout->addWidget(m_micSlider, 1);
 
     auto* speakerLayout = new QHBoxLayout();
-    speakerLayout->setContentsMargins(0, 0, 0, 0);
+    speakerLayout->setContentsMargins(scale(5), 0, scale(18), 0);
     speakerLayout->setSpacing(scale(12));
-    speakerLayout->addWidget(m_speakerToggle);
-    speakerLayout->addWidget(m_speakerSlider);
+    speakerLayout->addWidget(m_speakerToggle, 0, Qt::AlignVCenter);
+    speakerLayout->addWidget(m_speakerSlider, 1);
 
     m_slidersContainer = new QWidget(m_container);
-    auto* slidersLayout = new QVBoxLayout(m_slidersContainer);
-    slidersLayout->setContentsMargins(0, 0, 0, 0);
-    slidersLayout->setSpacing(scale(12));
-    slidersLayout->addLayout(micLayout);
-    slidersLayout->addLayout(speakerLayout);
+    auto* slidersLayout = new QHBoxLayout(m_slidersContainer);
+    slidersLayout->setContentsMargins(scale(5), scale(16), scale(18), 0);
+    slidersLayout->setSpacing(scale(24));
+    slidersLayout->addLayout(micLayout, 1);
+    slidersLayout->addLayout(speakerLayout, 1);
+    slidersLayout->setAlignment(Qt::AlignHCenter);
 
     auto* containerLayout = new QVBoxLayout(m_container);
     containerLayout->setContentsMargins(scale(20), scale(20), scale(20), scale(20));
@@ -146,8 +152,9 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     containerLayout->addLayout(headerLayout);
     containerLayout->addLayout(devicesLayout);
-    containerLayout->addSpacing(scale(8));
+    containerLayout->addSpacing(scale(22));
     containerLayout->addWidget(m_slidersContainer);
+    containerLayout->addSpacing(scale(8));
 
     auto* outerLayout = new QVBoxLayout(this);
     outerLayout->setContentsMargins(0, 0, 0, 0);
@@ -158,10 +165,12 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     connect(m_inputButtonsGroup, &QButtonGroup::buttonClicked, this, [this](QAbstractButton* btn) {
         if (m_blockDeviceSignals || !btn) return;
         emit inputDeviceSelected(btn->property("deviceIndex").toInt());
+        updateDeviceLogos(m_inputButtonsGroup);
     });
     connect(m_outputButtonsGroup, &QButtonGroup::buttonClicked, this, [this](QAbstractButton* btn) {
         if (m_blockDeviceSignals || !btn) return;
         emit outputDeviceSelected(btn->property("deviceIndex").toInt());
+        updateDeviceLogos(m_outputButtonsGroup);
     });
     connect(m_micToggle, &ToggleButtonIcon::toggled, this, [this](bool toggled) {
         m_micSlider->setEnabled(!toggled);
@@ -193,47 +202,45 @@ QString AudioSettingsDialog::sliderStyle() const
             height: %1px;
             border-radius: %2px;
             margin: 0px 0px;
-            background: rgba(0,0,0,40);
         }
         QSlider::handle:horizontal {
-            background-color: white;
+            background-color: rgb(230, 230, 230);
             width: %3px;
             height: %4px;
             border-radius: %5px;
             margin: -4px 0;
-            border: 1px solid rgba(0,0,0,30);
+            border: none;
         }
         QSlider::add-page:horizontal {
-            background-color: rgba(21, 119, 232, 120);
+            background-color: rgb(77, 77, 77);
             border-radius: %6px;
         }
         QSlider::sub-page:horizontal {
-            background-color: rgba(21, 119, 232, 220);
+            background-color: rgb(21, 119, 232);
             border-radius: %6px;
         }
         QSlider::disabled {
             background-color: transparent;
         }
         QSlider::groove:horizontal:disabled {
-            background-color: rgb(220, 220, 220);
+            background-color: rgb(180, 180, 180);
         }
         QSlider::handle:horizontal:disabled {
             background-color: rgb(230, 230, 230);
-            border: 1px solid rgba(0,0,0,20);
         }
         QSlider::add-page:horizontal:disabled {
-            background-color: rgb(210, 210, 210);
+            background-color: rgb(180, 180, 180);
         }
         QSlider::sub-page:horizontal:disabled {
-            background-color: rgb(200, 200, 200);
+            background-color: rgb(150, 150, 150);
         }
     )")
         .arg(QString::number(scale(8)))
         .arg(QString::number(scale(4)))
-        .arg(QString::number(scale(10)))
-        .arg(QString::number(scale(12)))
-        .arg(QString::number(scale(6)))
-        .arg(QString::number(scale(6)));
+        .arg(QString::number(scale(17)))
+        .arg(QString::number(scale(17)))
+        .arg(QString::number(scale(8)))
+        .arg(QString::number(scale(4)));
 }
 
 QString AudioSettingsDialog::scrollAreaStyle() const
@@ -358,6 +365,25 @@ void AudioSettingsDialog::clearLayout(QLayout* layout)
     }
 }
 
+void AudioSettingsDialog::updateDeviceLogos(QButtonGroup* group)
+{
+    if (!group) return;
+    for (auto* btn : group->buttons()) {
+        auto logoPtr = btn->property("logoLabel").value<quintptr>();
+        QLabel* logo = reinterpret_cast<QLabel*>(logoPtr);
+        QWidget* row = reinterpret_cast<QWidget*>(btn->property("rowWidget").value<quintptr>());
+        bool checked = btn->isChecked();
+        if (logo) {
+            logo->setVisible(checked);
+        }
+        if (row) {
+            row->setStyleSheet(checked
+                ? "background-color: rgba(21,119,232,36); border-radius: 6px;"
+                : "background-color: transparent; border-radius: 6px;");
+        }
+    }
+}
+
 void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::audio::DeviceInfo>& devices, int currentIndex, bool isInput)
 {
     if (!layout || !group) return;
@@ -373,6 +399,11 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
     }
 
     group->setExclusive(true);
+
+    QPixmap logoPixmap(":/resources/logo.png");
+    if (!logoPixmap.isNull()) {
+        logoPixmap = logoPixmap.scaled(scale(18), scale(18), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
 
     std::unordered_set<std::string> seenNames;
     for (const auto& device : devices) {
@@ -390,32 +421,51 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
         btn->setCursor(Qt::PointingHandCursor);
         btn->setStyleSheet(
             "QPushButton {"
-            " background-color: rgba(255,255,255,0);"
+            " background-color: transparent;"
             " border: none;"
-            " border-radius: 6px;"
             " padding: 8px 10px;"
             " color: #101010;"
             " text-align: left;"
             "}"
-            "QPushButton:hover {"
-            " background-color: rgba(21,119,232,18);"
-            "}"
             "QPushButton:checked {"
-            " background-color: rgba(21,119,232,36);"
             " color: #0c2a4f;"
             "}"
         );
         btn->setProperty("deviceIndex", device.deviceIndex);
+        btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+        QLabel* logo = new QLabel();
+        logo->setFixedSize(scale(20), scale(20));
+        logo->setPixmap(logoPixmap);
+        logo->setVisible(false);
+        logo->setAttribute(Qt::WA_TranslucentBackground);
+        logo->setStyleSheet("background-color: transparent;");
+
+        QWidget* row = new QWidget();
+        QHBoxLayout* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(scale(8));
+        rowLayout->addWidget(btn, 1);
+        rowLayout->addWidget(logo, 0, Qt::AlignRight | Qt::AlignVCenter);
+        rowLayout->addSpacing(scale(8));
+
+        btn->setProperty("logoLabel", QVariant::fromValue<quintptr>(reinterpret_cast<quintptr>(logo)));
+        btn->setProperty("rowWidget", QVariant::fromValue<quintptr>(reinterpret_cast<quintptr>(row)));
 
         group->addButton(btn);
-        layout->addWidget(btn);
+        layout->addWidget(row);
 
         if (device.deviceIndex == currentIndex) {
             btn->setChecked(true);
+            logo->setVisible(true);
+            row->setStyleSheet("background-color: rgba(21,119,232,36); border-radius: 6px;");
+        } else {
+            row->setStyleSheet("background-color: transparent; border-radius: 6px;");
         }
     }
 
     layout->addStretch();
     group->blockSignals(false);
     m_blockDeviceSignals = false;
+    updateDeviceLogos(group);
 }

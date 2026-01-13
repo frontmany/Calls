@@ -2,6 +2,7 @@
 
 #include <QSharedMemory>
 #include <QApplication>
+#include <QScreen>
 
 static qreal getDeviceScaleFactor() {
     QScreen* screen = QApplication::primaryScreen();

@@ -16,6 +16,8 @@ ScreenCaptureController::ScreenCaptureController(QObject* parent)
     m_captureTimer(new QTimer(this)),
     m_isCapturing(false),
     m_selectedScreenIndex(-1),
+    m_pendingFrames(0),
+    m_maxQueuedFrames(1),
     m_processingThread(new QThread(this)),
     m_frameProcessor(new FrameProcessor())
 {
@@ -62,6 +64,7 @@ void ScreenCaptureController::stopCapture()
 
     m_isCapturing = false;
     m_captureTimer->stop();
+    m_pendingFrames = 0;
 
     emit captureStopped();
 }
@@ -87,7 +90,13 @@ void ScreenCaptureController::captureScreen()
         QRect screenGeometry = screen->geometry();
         
         m_frameProcessor->drawCursorOnPixmap(screenshot, globalCursorPos, screenGeometry);
-        
+
+        if (m_pendingFrames >= m_maxQueuedFrames)
+        {
+            return;
+        }
+
+        ++m_pendingFrames;
         emit pixmapReadyForProcessing(screenshot);
     }
 }
@@ -97,6 +106,11 @@ void ScreenCaptureController::onFrameProcessed(const QPixmap& pixmap, const std:
     if (!m_isCapturing)
     {
         return;
+    }
+
+    if (m_pendingFrames > 0)
+    {
+        --m_pendingFrames;
     }
 
     emit screenCaptured(pixmap, imageData);

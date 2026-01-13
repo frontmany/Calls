@@ -225,6 +225,14 @@ namespace core
         return m_audioEngine.setOutputDevice(deviceIndex);
     }
 
+    int Client::getCurrentInputDevice() const {
+        return m_audioEngine.getCurrentInputDevice();
+    }
+
+    int Client::getCurrentOutputDevice() const {
+        return m_audioEngine.getCurrentOutputDevice();
+    }
+
     bool Client::isAuthorized() const {
         return m_stateManager.isAuthorized();
     }

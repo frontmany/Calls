@@ -8,6 +8,7 @@
 #include <QScrollArea>
 #include <QButtonGroup>
 #include <QAbstractButton>
+#include <QVariant>
 #include <vector>
 
 #include "widgets/buttons.h"
@@ -46,6 +47,7 @@ private:
     QString scrollAreaStyle() const;
     void buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::audio::DeviceInfo>& devices, int currentIndex, bool isInput);
     void clearLayout(QLayout* layout);
+    void updateDeviceLogos(QButtonGroup* group);
 
     QWidget* m_container = nullptr;
     ButtonIcon* m_closeButton = nullptr;

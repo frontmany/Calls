@@ -18,6 +18,7 @@ class CameraCaptureController;
 class ConfigManager;
 class AudioEffectsManager;
 class AudioSettingsManager;
+class AudioDevicesWatcher;
 class UpdateManager;
 class NavigationController;
 class AuthorizationManager;
@@ -52,6 +53,7 @@ private slots:
 private:
     void initializeCentralStackedWidget();
     void initializeAudioManager();
+    void initializeAudioDevicesWatcher();
     void initializeAudioSettingsManager();
     void initializeUpdateManager();
     void initializeScreenSharingManager();
@@ -88,6 +90,7 @@ private:
     std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 
     AudioEffectsManager* m_audioManager = nullptr;
+    AudioDevicesWatcher* m_audioDevicesWatcher = nullptr;
     AudioSettingsManager* m_audioSettingsManager = nullptr;
     UpdateManager* m_updateManager = nullptr;
     NavigationController* m_navigationController = nullptr;

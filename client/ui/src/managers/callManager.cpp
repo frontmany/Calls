@@ -198,7 +198,7 @@ void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname
         }
 
         if (m_audioManager) {
-            m_audioManager->playSoundEffect(":/resources/callJoined.wav");
+            m_audioManager->playCallJoinedEffect();
         }
 
         if (m_navigationController) {
@@ -261,7 +261,7 @@ void CallManager::onCallingAccepted()
     }
 
     if (m_audioManager) {
-        m_audioManager->playSoundEffect(":/resources/callJoined.wav");
+        m_audioManager->playCallJoinedEffect();
     }
 }
 
@@ -277,7 +277,7 @@ void CallManager::onCallingDeclined()
     }
 
     if (m_audioManager) {
-        m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+        m_audioManager->playCallingEndedEffect();
     }
 }
 
@@ -305,7 +305,7 @@ void CallManager::onRemoteUserEndedCall()
     }
 
     if (m_audioManager) {
-        m_audioManager->playSoundEffect(":/resources/endCall.wav");
+        m_audioManager->playEndCallEffect();
     }
 }
 
@@ -340,7 +340,7 @@ void CallManager::onIncomingCallExpired(const QString& friendNickname)
     }
 
     if (m_audioManager) {
-        m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+        m_audioManager->playCallingEndedEffect();
     }
 }
 
@@ -433,7 +433,7 @@ void CallManager::onStopOutgoingCallResult(std::error_code ec)
         }
         if (m_audioManager) {
             m_audioManager->stopCallingRingtone();
-            m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+            m_audioManager->playCallingEndedEffect();
         }
     }
 }
@@ -467,7 +467,7 @@ void CallManager::onDeclineCallResult(std::error_code ec, const QString& nicknam
         }
 
         if (m_audioManager) {
-            m_audioManager->playSoundEffect(":/resources/callingEnded.wav");
+            m_audioManager->playCallingEndedEffect();
         }
     }
 }
@@ -497,7 +497,7 @@ void CallManager::onEndCallResult(std::error_code ec)
         }
 
         if (m_audioManager) {
-            m_audioManager->playSoundEffect(":/resources/endCall.wav");
+            m_audioManager->playEndCallEffect();
         }
     }
 }

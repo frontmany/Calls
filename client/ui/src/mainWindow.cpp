@@ -23,6 +23,7 @@
 #include "managers/callManager.h"
 #include "media/screenSharingManager.h"
 #include "media/cameraSharingManager.h"
+#include "media/audioDevicesWatcher.h"
 
 #include "events/coreEventListener.h"
 #include "events/updaterEventListener.h"
@@ -48,6 +49,7 @@ void MainWindow::init() {
     initializeCameraCaptureController();
     initializeDialogsController();
     initializeAudioManager();
+    initializeAudioDevicesWatcher();
     initializeAudioSettingsManager();
     initializeNavigationController();
     initializeUpdateManager();
@@ -172,6 +174,10 @@ void MainWindow::initializeAudioManager() {
     m_audioManager = new AudioEffectsManager(m_coreClient, this);
 }
 
+void MainWindow::initializeAudioDevicesWatcher() {
+    m_audioDevicesWatcher = new AudioDevicesWatcher(m_coreClient, this);
+}
+
 void MainWindow::initializeAudioSettingsManager() {
     m_audioSettingsManager = new AudioSettingsManager(m_coreClient, m_configManager, this);
 }
@@ -268,14 +274,21 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_dialogsController) {
             connect(m_mainMenuWidget, &MainMenuWidget::audioDevicePickerRequested, this, [this]() {
                 if (m_dialogsController && m_configManager) {
+                    const bool micMuted = m_configManager->isMicrophoneMuted();
+                    const bool speakerMuted = m_configManager->isSpeakerMuted();
+                    const int inputVolume = m_configManager->getInputVolume();
+                    const int outputVolume = m_configManager->getOutputVolume();
+                    const int currentInputDevice = (m_coreClient) ? m_coreClient->getCurrentInputDevice() : -1;
+                    const int currentOutputDevice = (m_coreClient) ? m_coreClient->getCurrentOutputDevice() : -1;
+
                     m_dialogsController->showAudioSettingsDialog(
                         false,
-                        m_configManager->isMicrophoneMuted(),
-                        m_configManager->isSpeakerMuted(),
-                        m_configManager->getInputVolume(),
-                        m_configManager->getOutputVolume(),
-                        -1,
-                        -1);
+                        micMuted,
+                        speakerMuted,
+                        inputVolume,
+                        outputVolume,
+                        currentInputDevice,
+                        currentOutputDevice);
                 }
             });
         }
@@ -302,7 +315,21 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_dialogsController) {
             connect(m_callWidget, &CallWidget::audioSettingsRequested, this, [this](bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume) {
                 if (m_dialogsController) {
-                    m_dialogsController->showAudioSettingsDialog(showSliders, micMuted, speakerMuted, inputVolume, outputVolume, -1, -1);
+                    const bool micMutedValue = (m_configManager) ? m_configManager->isMicrophoneMuted() : micMuted;
+                    const bool speakerMutedValue = (m_configManager) ? m_configManager->isSpeakerMuted() : speakerMuted;
+                    const int inputVolumeValue = (m_configManager) ? m_configManager->getInputVolume() : inputVolume;
+                    const int outputVolumeValue = (m_configManager) ? m_configManager->getOutputVolume() : outputVolume;
+                    const int currentInputDevice = (m_coreClient) ? m_coreClient->getCurrentInputDevice() : -1;
+                    const int currentOutputDevice = (m_coreClient) ? m_coreClient->getCurrentOutputDevice() : -1;
+
+                    m_dialogsController->showAudioSettingsDialog(
+                        showSliders,
+                        micMutedValue,
+                        speakerMutedValue,
+                        inputVolumeValue,
+                        outputVolumeValue,
+                        currentInputDevice,
+                        currentOutputDevice);
                 }
             });
         }

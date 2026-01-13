@@ -44,6 +44,8 @@ private slots:
 private:
     QTimer* m_captureTimer;
     bool m_isCapturing;
+    int m_pendingFrames = 0;
+    int m_maxQueuedFrames = 1;
     QList<QScreen*> m_availableScreens;
     int m_selectedScreenIndex;
 

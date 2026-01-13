@@ -96,7 +96,7 @@ namespace server
 
         m_currentEndpoint = packet.endpoint;
         m_currentDatagrams = splitPacket(packet);
-        m_currentDatagramIndex = 0;
+        m_currentDatagramIndex = 0; 
 
         if (!m_currentDatagrams.empty()) {
             sendNextDatagram();

@@ -54,6 +54,8 @@ namespace core
         bool isConnectionDown() const;
         int getInputVolume() const;
         int getOutputVolume() const;
+        int getCurrentInputDevice() const;
+        int getCurrentOutputDevice() const;
         int getIncomingCallsCount() const;
         std::vector<std::string> getCallers() const;
         const std::string& getMyNickname() const;

@@ -28,6 +28,8 @@ Server::Server(const std::string& port)
                 auto& user = m_endpointToUser.at(endpoint);
 
                 if (user && !user->isConnectionDown()) {
+                    const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
+                    LOG_INFO("Connection down with user {}", userPrefix);
                     user->setConnectionDown(true);
                     clearPendingActionsForUser(user->getNicknameHash());
 
@@ -124,6 +126,18 @@ Server::Server(const std::string& port)
             }
         },
         [this](const asio::ip::udp::endpoint& endpoint) {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_endpointToUser.contains(endpoint)) {
+                auto& user = m_endpointToUser.at(endpoint);
+                if (user) {
+                    const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
+                    LOG_INFO("Connection restored with user {}", userPrefix);
+                } else {
+                    LOG_INFO("Connection restored with unknown user object");
+                }
+            } else {
+                LOG_INFO("Connection restored from endpoint {}:{}", endpoint.address().to_string(), endpoint.port());
+            }
         }
     );
 

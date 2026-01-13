@@ -1,13 +1,17 @@
 #pragma once
-#include <QLabel>
+#include <QObject>
+#include <QWidget>
+#include <QList>
+#include <QString>
+#include <QScreen>
 
 class OverlayWidget;
-class QGridLayout;
-class QPushButton;
-class QScreen;
-class ScreenPreviewWidget;
 class AudioSettingsDialog;
-
+class UpdatingDialog;
+class WaitingStatusDialog;
+class ScreenShareDialog;
+class AlreadyRunningDialog;
+class FirstLaunchDialog;
 class DialogsController : public QObject
 {
 	Q_OBJECT
@@ -52,54 +56,23 @@ signals:
     void screenSelected(int screenIndex);
     void screenShareDialogCancelled();
 
-private slots:
-    void onScreenShareButtonClicked();
-
-private:
-    QWidget* createAlreadyRunningDialog(OverlayWidget* overlay);
-    QWidget* createUpdatingDialog(OverlayWidget* overlay);
-    QWidget* createWaitingStatusDialog(QWidget* parent, const QString& statusText);
-    QWidget* createScreenShareDialog(OverlayWidget* overlay);
-    QWidget* createFirstLaunchDialog(OverlayWidget* overlay, const QString& imagePath = "", const QString& descriptionText = "");
-    void refreshScreenSharePreviews();
-    void handleScreenPreviewClick(int screenIndex, bool currentlySelected);
-    void updateScreenShareSelectionState();
-
 private:
     QWidget* m_parent;
 
     OverlayWidget* m_updatingOverlay;
-    QWidget* m_updatingDialog;
-	QLabel* m_updatingProgressLabel;
-	QLabel* m_updatingLabel;
-	QLabel* m_updatingGifLabel;
+    UpdatingDialog* m_updatingDialog;
 
     OverlayWidget* m_waitingStatusOverlay;
-    QWidget* m_waitingStatusDialog;
-    QLabel* m_waitingStatusLabel;
-    QLabel* m_waitingStatusGifLabel;
+    WaitingStatusDialog* m_waitingStatusDialog;
 
     OverlayWidget* m_screenShareOverlay;
-    QWidget* m_screenShareDialog;
-    QWidget* m_screenShareScreensContainer;
-    QGridLayout* m_screenShareScreensLayout;
-    QPushButton* m_screenShareButton;
-    QLabel* m_screenShareStatusLabel;
-    QList<ScreenPreviewWidget*> m_screenSharePreviewWidgets;
-    QList<QScreen*> m_screenShareScreens;
-    int m_screenShareSelectedIndex;
+    ScreenShareDialog* m_screenShareDialog;
 
     OverlayWidget* m_alreadyRunningOverlay;
-    QWidget* m_alreadyRunningDialog;
-    QLabel* m_alreadyRunningImageLabel;
-    QLabel* m_alreadyRunningTitleLabel;
-    QLabel* m_alreadyRunningMessageLabel;
+    AlreadyRunningDialog* m_alreadyRunningDialog;
 
     OverlayWidget* m_firstLaunchOverlay;
-    QWidget* m_firstLaunchDialog;
-    QLabel* m_firstLaunchImageLabel;
-    QLabel* m_firstLaunchDescriptionLabel;
-    QPushButton* m_firstLaunchOkButton;
+    FirstLaunchDialog* m_firstLaunchDialog;
 
     OverlayWidget* m_audioSettingsOverlay = nullptr;
     AudioSettingsDialog* m_audioSettingsDialog = nullptr;

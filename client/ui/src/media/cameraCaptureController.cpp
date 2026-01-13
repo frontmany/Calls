@@ -5,6 +5,8 @@ CameraCaptureController::CameraCaptureController(QObject* parent)
     : QObject(parent),
     m_captureTimer(new QTimer(this)),
     m_isCapturing(false),
+    m_pendingFrames(0),
+    m_maxQueuedFrames(1),
     m_camera(nullptr),
     m_captureSession(new QMediaCaptureSession(this)),
     m_videoSink(new QVideoSink(this)),
@@ -85,6 +87,7 @@ void CameraCaptureController::stopCapture()
     }
 
     m_isCapturing = false;
+    m_pendingFrames = 0;
 
     emit captureStopped();
 }
@@ -101,6 +104,12 @@ void CameraCaptureController::handleVideoFrame(const QVideoFrame& frame)
         return;
     }
 
+    if (m_pendingFrames >= m_maxQueuedFrames)
+    {
+        return;
+    }
+
+    ++m_pendingFrames;
     emit frameReadyForProcessing(frame);
 }
 
@@ -109,6 +118,11 @@ void CameraCaptureController::onFrameProcessed(const QPixmap& pixmap, const std:
     if (!m_isCapturing)
     {
         return;
+    }
+
+    if (m_pendingFrames > 0)
+    {
+        --m_pendingFrames;
     }
 
     emit cameraCaptured(pixmap, imageData);

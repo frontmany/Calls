@@ -413,8 +413,8 @@ void CallWidget::setupUI() {
     m_hangupButton->setToolTip("Hang up");
     m_hangupButton->setCursor(Qt::PointingHandCursor);
 
-    m_buttonsLayout->addWidget(cameraContainer);
     m_buttonsLayout->addWidget(m_microphoneButton);
+    m_buttonsLayout->addWidget(cameraContainer);
     m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(m_enterFullscreenButton);
     m_buttonsLayout->addWidget(m_hangupButton);
@@ -428,9 +428,9 @@ void CallWidget::setupUI() {
     m_exitFullscreenButton->setToolTip("Exit fullscreen");
     m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_exitFullscreenButton->hide();
-    m_settingsButton = new ButtonIcon(this, scale(28), scale(28));
+    m_settingsButton = new ButtonIcon(this, scale(24), scale(24));
     m_settingsButton->setIcons(QIcon(":/resources/settings.png"), QIcon(":/resources/settingsHover.png"));
-    m_settingsButton->setSize(scale(38), scale(38));
+    m_settingsButton->setSize(scale(32), scale(32));
     m_settingsButton->setToolTip("Audio settings");
     m_settingsButton->setCursor(Qt::PointingHandCursor);
     m_settingsButton->hide();
@@ -844,16 +844,17 @@ void CallWidget::hideMainScreen()
 }
 
 void CallWidget::updateOverlayButtonsPosition() {
-    int buttonSize = scale(38);
     int margin = scale(10);
-    int x = width() - buttonSize - margin;
+    int exitButtonSize = scale(38);
     int y = margin;
+    int exitX = width() - exitButtonSize - margin;
 
     if (m_exitFullscreenButton) {
-        m_exitFullscreenButton->move(x, y);
+        m_exitFullscreenButton->move(exitX, y);
     }
+
     if (m_settingsButton) {
-        m_settingsButton->move(x, y);
+        m_settingsButton->move(margin, y);
     }
 }
 
