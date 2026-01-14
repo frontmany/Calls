@@ -1,0 +1,55 @@
+site_name: CrashCatch
+site_url: https://keithpotz.github.io/CrashCatch
+repo_url: https://github.com/keithpotz/CrashCatch
+theme:
+  name: material
+  palette:
+    scheme: slate
+  toggle:
+      icon: material/weather-night
+      name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.sections
+    - toc.integrate
+    - content.code.copy
+    - content.action.edit
+  highlightjs: true
+  language: en
+  highlightjs_theme: github
+  
+nav:
+  - Home: index.md
+  - Quick Start: quickstart.md
+  - Linux Support: linux.md
+  - CMake Integration: cmake.md
+  - Examples: examples.md
+  - Screenshots: screenshots.md
+  - License: license.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: true
+      linenums: true
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/keithpotz/CrashCatch
+      name: CrashCatch on GitHub
+      badges:
+        - image: https://img.shields.io/github/stars/keithpotz/CrashCatch?style=social
+          link: https://github.com/keithpotz/CrashCatch/stargazers
+          name: GitHub Stars
+        - image: https://img.shields.io/github/forks/keithpotz/CrashCatch?style=social
+          link: https://github.com/keithpotz/CrashCatch/network/members
+          name: GitHub Forks

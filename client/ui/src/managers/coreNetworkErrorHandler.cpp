@@ -8,6 +8,7 @@
 #include "media/audioEffectsManager.h"
 #include "media/screenSharingManager.h"
 #include "media/cameraSharingManager.h"
+#include <QTimer>
 
 CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
     : QObject(parent)
@@ -38,13 +39,21 @@ void CoreNetworkErrorHandler::onConnectionRestored()
 {
 
     if (m_dialogsController) {
-        m_dialogsController->hideWaitingStatusDialog();
+        m_dialogsController->hideNotificationDialog();
+        m_dialogsController->showNotificationDialog("Connection restored", false, true, false);
+
+        QTimer::singleShot(1500, this, [this]()
+        {
+            if (m_dialogsController)
+            {
+                m_dialogsController->hideNotificationDialog();
+            }
+        });
     }
 
     if (m_authorizationWidget) {
         m_authorizationWidget->resetBlur();
         m_authorizationWidget->setAuthorizationDisabled(false);
-        m_authorizationWidget->showConnectionRestoredNotification(1500);
     }
 }
 
@@ -52,7 +61,6 @@ void CoreNetworkErrorHandler::onConnectionDown()
 {
     if (m_callManager) {
         m_callManager->hideOperationDialog();
-        m_callManager->hideParticipantConnectionBanner();
     }
     if (m_screenSharingManager) {
         m_screenSharingManager->hideOperationDialog();
@@ -84,26 +92,38 @@ void CoreNetworkErrorHandler::onConnectionDown()
         }
 
         if (m_dialogsController) {
-            m_dialogsController->showWaitingStatusDialog("Reconnecting...", true);
+            m_dialogsController->showNotificationDialog("Reconnecting...", true, false, true);
         }
     }
     else {
         m_authorizationWidget->resetBlur();
         m_authorizationWidget->setAuthorizationDisabled(true);
-        m_authorizationWidget->showNetworkErrorNotification();
+
+        if (m_dialogsController)
+        {
+            m_dialogsController->showNotificationDialog("Reconnecting...", true, false, true);
+        }
     }
 }
 
 void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
 {
     if (m_dialogsController) {
-        m_dialogsController->hideWaitingStatusDialog();
+        m_dialogsController->hideNotificationDialog();
+        m_dialogsController->showNotificationDialog("Connection restored", false, true, false);
+
+        QTimer::singleShot(1500, this, [this]()
+        {
+            if (m_dialogsController)
+            {
+                m_dialogsController->hideNotificationDialog();
+            }
+        });
     }
 
     if (m_authorizationWidget && m_navigationController) {
         m_navigationController->switchToAuthorizationWidget();
         m_authorizationWidget->resetBlur();
         m_authorizationWidget->setAuthorizationDisabled(false);
-        m_authorizationWidget->showConnectionRestoredNotification(1500);
     }
 }

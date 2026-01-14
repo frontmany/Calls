@@ -92,9 +92,6 @@ public:
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
     void showErrorNotification(const QString& text, int durationMs);
-    void showParticipantConnectionError(int durationMs);
-    void showParticipantConnectionRestored(const QString& text, int durationMs);
-    void hideParticipantConnectionStatus();
     void showAudioSettingsDialog();
 
 signals:
@@ -210,9 +207,10 @@ private:
     QTimer* m_callTimer;
     QTime* m_callDuration;
     QTimer* m_overlayButtonHideTimer;
-    QString m_friendNickname;
+    QTimer* m_notificationTimer = nullptr;
 
     // States
+    QString m_friendNickname;
     bool m_screenFullscreenActive = false;
     bool m_microphoneMuted = false;
     bool m_speakerMuted = false;
@@ -227,6 +225,4 @@ private:
     QWidget* m_notificationWidget = nullptr;
     QLabel* m_notificationLabel = nullptr;
     QHBoxLayout* m_notificationLayout = nullptr;
-    QTimer* m_notificationTimer = nullptr;
-    QTimer* m_connectionErrorLabelTimer = nullptr;
 };

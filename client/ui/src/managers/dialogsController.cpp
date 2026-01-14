@@ -1,7 +1,7 @@
 #include "dialogsController.h"
 #include "widgets/overlayWidget.h"
 #include "utilities/utilities.h"
-#include "dialogs/waitingStatusDialog.h"
+#include "dialogs/notificationDialog.h"
 #include "dialogs/screenShareDialog.h"
 #include "dialogs/alreadyRunningDialog.h"
 #include "dialogs/firstLaunchDialog.h"
@@ -27,8 +27,8 @@ DialogsController::DialogsController(QWidget* parent)
     , m_parent(parent)
     , m_updatingOverlay(nullptr)
     , m_updatingDialog(nullptr)
-    , m_waitingStatusOverlay(nullptr)
-    , m_waitingStatusDialog(nullptr)
+    , m_notificationOverlay(nullptr)
+    , m_notificationDialog(nullptr)
     , m_screenShareOverlay(nullptr)
     , m_screenShareDialog(nullptr)
     , m_alreadyRunningOverlay(nullptr)
@@ -41,7 +41,7 @@ DialogsController::DialogsController(QWidget* parent)
 DialogsController::~DialogsController()
 {
     hideUpdatingDialog();
-    hideWaitingStatusDialog();
+    hideNotificationDialog();
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
@@ -267,77 +267,73 @@ void DialogsController::swapUpdatingToUpToDate()
     }
 }
 
-void DialogsController::showWaitingStatusDialog(const QString& statusText, bool createOverlay)
+void DialogsController::showNotificationDialog(const QString& statusText, bool createOverlay, bool isGreenStyle, bool isAnimation)
 {
-	if (m_waitingStatusDialog)
-	{
-		return;
-	}
+    hideNotificationDialog();
 
-	QWidget* parentWidget = m_parent;
-	if (createOverlay)
-	{
-		m_waitingStatusOverlay = new OverlayWidget(m_parent);
-		m_waitingStatusOverlay->setAttribute(Qt::WA_TranslucentBackground);
-		m_waitingStatusOverlay->show();
-		m_waitingStatusOverlay->raise();
-		parentWidget = m_waitingStatusOverlay;
-	}
-	else
-	{
-		m_waitingStatusOverlay = new OverlayWidget(m_parent);
-		m_waitingStatusOverlay->setAttribute(Qt::WA_TranslucentBackground);
-		m_waitingStatusOverlay->setVisible(false);
-	}
+    QWidget* parentWidget = m_parent;
+    if (createOverlay)
+    {
+        m_notificationOverlay = new OverlayWidget(m_parent);
+        m_notificationOverlay->setAttribute(Qt::WA_TranslucentBackground);
+        m_notificationOverlay->show();
+        m_notificationOverlay->raise();
+        parentWidget = m_notificationOverlay;
+    }
+    else
+    {
+        m_notificationOverlay = new OverlayWidget(m_parent);
+        m_notificationOverlay->setAttribute(Qt::WA_TranslucentBackground);
+        m_notificationOverlay->setVisible(false);
+    }
 
-	m_waitingStatusDialog = new WaitingStatusDialog(parentWidget, statusText);
+    m_notificationDialog = new NotificationDialog(parentWidget, statusText, isGreenStyle, isAnimation);
 
-	auto positionDialog = [this, createOverlay]()
-	{
-		if (!m_waitingStatusDialog)
-			return;
+    auto positionDialog = [this, createOverlay]()
+    {
+        if (!m_notificationDialog)
+            return;
 
-		QWidget* referenceWidget = createOverlay ? m_waitingStatusOverlay : m_parent;
-		if (!referenceWidget)
-			return;
+        QWidget* referenceWidget = createOverlay ? m_notificationOverlay : m_parent;
+        if (!referenceWidget)
+            return;
 
-		m_waitingStatusDialog->adjustSize();
-		QSize dialogSize = m_waitingStatusDialog->size();
+        m_notificationDialog->adjustSize();
+        QSize dialogSize = m_notificationDialog->size();
 
-		int x = (referenceWidget->width() - dialogSize.width()) / 2;
-		int y = 40;
+        int x = (referenceWidget->width() - dialogSize.width()) / 2;
+        int y = 40;
 
-		m_waitingStatusDialog->move(x, y);
-		m_waitingStatusDialog->raise();
-	};
+        m_notificationDialog->move(x, y);
+        m_notificationDialog->raise();
+    };
 
-	positionDialog();
-	m_waitingStatusDialog->show();
-	QTimer::singleShot(0, this, positionDialog);
-	
-	if (m_waitingStatusOverlay)
-	{
-		QObject::connect(m_waitingStatusOverlay, &OverlayWidget::geometryChanged, this, positionDialog);
-	}
+    positionDialog();
+    m_notificationDialog->show();
+    QTimer::singleShot(0, this, positionDialog);
+
+    if (m_notificationOverlay)
+    {
+        QObject::connect(m_notificationOverlay, &OverlayWidget::geometryChanged, this, positionDialog);
+    }
 }
 
-void DialogsController::hideWaitingStatusDialog()
+void DialogsController::hideNotificationDialog()
 {
-	if (m_waitingStatusDialog)
-	{
-		m_waitingStatusDialog->disconnect();
-		m_waitingStatusDialog->hide();
-		m_waitingStatusDialog->deleteLater();
-		m_waitingStatusDialog = nullptr;
-	}
+    if (m_notificationDialog)
+    {
+        m_notificationDialog->disconnect();
+        m_notificationDialog->hide();
+        m_notificationDialog->deleteLater();
+        m_notificationDialog = nullptr;
+    }
 
-	if (m_waitingStatusOverlay)
-	{
-		m_waitingStatusOverlay->close();
-		m_waitingStatusOverlay->deleteLater();
-		m_waitingStatusOverlay = nullptr;
-	}
-
+    if (m_notificationOverlay)
+    {
+        m_notificationOverlay->close();
+        m_notificationOverlay->deleteLater();
+        m_notificationOverlay = nullptr;
+    }
 }
 
 void DialogsController::showAlreadyRunningDialog()

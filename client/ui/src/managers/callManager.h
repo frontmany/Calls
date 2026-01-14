@@ -45,7 +45,6 @@ public slots:
     void onEndCallResult(std::error_code ec);
     void onCallParticipantConnectionDown();
     void onCallParticipantConnectionRestored();
-    void hideParticipantConnectionBanner();
 
 signals:
     void stopScreenCaptureRequested();
@@ -53,7 +52,7 @@ signals:
     void endCallFullscreenExitRequested();
 
 private slots:
-    void onOperationTimerTimeout();
+    void onTimeToShowWaitingNotification();
 
 private:
     void handleAcceptCallErrorNotificationAppearance();

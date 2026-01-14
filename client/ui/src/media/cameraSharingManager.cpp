@@ -16,7 +16,7 @@ CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client,
 {
     m_operationTimer->setSingleShot(true);
     m_operationTimer->setInterval(1000);
-    connect(m_operationTimer, &QTimer::timeout, this, &CameraSharingManager::onOperationTimerTimeout);
+    connect(m_operationTimer, &QTimer::timeout, this, &CameraSharingManager::onTimeToShowWaitingNotification);
 }
 
 void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget)
@@ -327,7 +327,7 @@ void CameraSharingManager::stopOperationTimer()
     m_operationTimer->stop();
     m_pendingOperationDialogText.clear();
     if (m_dialogsController) {
-        m_dialogsController->hideWaitingStatusDialog();
+        m_dialogsController->hideNotificationDialog();
     }
 }
 
@@ -336,14 +336,12 @@ void CameraSharingManager::hideOperationDialog()
     stopOperationTimer();
 }
 
-void CameraSharingManager::onOperationTimerTimeout()
+void CameraSharingManager::onTimeToShowWaitingNotification()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
-            if (m_callWidget) {
-                m_callWidget->hideParticipantConnectionStatus();
-            }
-            m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
+
+            m_dialogsController->showNotificationDialog(m_pendingOperationDialogText, false, false);
         }
     }
 }

@@ -43,7 +43,7 @@ signals:
     void fullscreenExitRequested();
 
 private slots:
-    void onOperationTimerTimeout();
+    void onTimeToShowWaitingNotification();
 
 private:
     void startOperationTimer(const QString& dialogText);

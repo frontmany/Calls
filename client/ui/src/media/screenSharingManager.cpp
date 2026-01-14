@@ -15,7 +15,7 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
 {
     m_operationTimer->setSingleShot(true);
     m_operationTimer->setInterval(1000);
-    connect(m_operationTimer, &QTimer::timeout, this, &ScreenSharingManager::onOperationTimerTimeout);
+    connect(m_operationTimer, &QTimer::timeout, this, &ScreenSharingManager::onTimeToShowWaitingNotification);
 }
 
 void ScreenSharingManager::setWidgets(CallWidget* callWidget)
@@ -249,7 +249,7 @@ void ScreenSharingManager::stopOperationTimer()
     m_operationTimer->stop();
     m_pendingOperationDialogText.clear();
     if (m_dialogsController) {
-        m_dialogsController->hideWaitingStatusDialog();
+        m_dialogsController->hideNotificationDialog();
     }
 }
 
@@ -258,14 +258,11 @@ void ScreenSharingManager::hideOperationDialog()
     stopOperationTimer();
 }
 
-void ScreenSharingManager::onOperationTimerTimeout()
+void ScreenSharingManager::onTimeToShowWaitingNotification()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
-            if (m_callWidget) {
-                m_callWidget->hideParticipantConnectionStatus();
-            }
-            m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
+            m_dialogsController->showNotificationDialog(m_pendingOperationDialogText, false, false);
         }
     }
 }

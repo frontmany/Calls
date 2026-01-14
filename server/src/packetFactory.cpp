@@ -16,7 +16,8 @@ std::vector<unsigned char> PacketFactory::getConfirmationPacket(const std::strin
     nlohmann::json jsonObject;
 
     jsonObject[UID] = uid;
-    jsonObject[NICKNAME_HASH] = receiverNicknameHash;
+    jsonObject[SENDER_NICKNAME_HASH] = "server";
+    jsonObject[RECEIVER_NICKNAME_HASH] = receiverNicknameHash;
 
     return toBytes(jsonObject.dump());
 }

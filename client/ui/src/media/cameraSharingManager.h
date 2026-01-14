@@ -43,7 +43,7 @@ public slots:
     void onStopCameraSharingResult(std::error_code ec);
 
 private slots:
-    void onOperationTimerTimeout();
+    void onTimeToShowWaitingNotification();
 
 private:
     void startOperationTimer(const QString& dialogText);

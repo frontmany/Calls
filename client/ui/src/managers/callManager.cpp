@@ -22,7 +22,7 @@ CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManag
 {
     m_operationTimer->setSingleShot(true);
     m_operationTimer->setInterval(1000);
-    connect(m_operationTimer, &QTimer::timeout, this, &CallManager::onOperationTimerTimeout);
+    connect(m_operationTimer, &QTimer::timeout, this, &CallManager::onTimeToShowWaitingNotification);
 }
 
 void CallManager::setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout)
@@ -477,6 +477,8 @@ void CallManager::onEndCallResult(std::error_code ec)
     stopOperationTimer();
     if (m_callWidget) {
         m_callWidget->setHangupButtonEnabled(true);
+        m_callWidget->setCameraButtonActive(true);
+        m_callWidget->setCameraButtonActive(true);
     }
     if (ec) {
         LOG_WARN("Failed to end call: {}", ec.message());
@@ -517,22 +519,41 @@ void CallManager::onCallParticipantConnectionDown()
     }
 
     if (m_callWidget) {
-        m_callWidget->showParticipantConnectionError(0);
+        m_callWidget->restrictCameraButton();
+        m_callWidget->restrictScreenShareButton();
+    }
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->showNotificationDialog("Connection with participant lost. Waiting for them...", false, false, true);
     }
 }
 
 void CallManager::onCallParticipantConnectionRestored()
 {
-    
-    if (m_callWidget) {
-        m_callWidget->showParticipantConnectionRestored("Connection restored", 2500);
-    }
-}
+    if (m_dialogsController)
+    {
+        const int restoredDurationMs = 2500;
+        m_dialogsController->hideNotificationDialog();
+        m_dialogsController->showNotificationDialog("Connection restored", false, true, false);
 
-void CallManager::hideParticipantConnectionBanner()
-{
-    if (m_callWidget) {
-        m_callWidget->hideParticipantConnectionStatus();
+        QTimer::singleShot(restoredDurationMs, this, [this]()
+        {
+            if (m_callWidget) {
+
+                // todo
+                /*
+                m_callWidget->restrictCameraButton();
+                m_callWidget->restrictScreenShareButton();
+                */
+                // abort this actions 
+            }
+
+            if (m_dialogsController)
+            {
+                m_dialogsController->hideNotificationDialog();
+            }
+        });
     }
 }
 
@@ -547,7 +568,7 @@ void CallManager::stopOperationTimer()
     m_operationTimer->stop();
     m_pendingOperationDialogText.clear();
     if (m_dialogsController) {
-        m_dialogsController->hideWaitingStatusDialog();
+        m_dialogsController->hideNotificationDialog();
     }
 }
 
@@ -556,14 +577,12 @@ void CallManager::hideOperationDialog()
     stopOperationTimer();
 }
 
-void CallManager::onOperationTimerTimeout()
+void CallManager::onTimeToShowWaitingNotification()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
-            if (m_callWidget) {
-                m_callWidget->hideParticipantConnectionStatus();
-            }
-            m_dialogsController->showWaitingStatusDialog(m_pendingOperationDialogText, false);
+
+            m_dialogsController->showNotificationDialog(m_pendingOperationDialogText, false, false);
         }
     }
 }

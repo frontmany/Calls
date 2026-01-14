@@ -66,6 +66,20 @@ if(FETCH_DEPENDENCIES)
         SOURCE_DIR ${VENDOR_DIR}/spdlog
     )
 
+    FetchContent_Declare(
+        ticTimer
+        GIT_REPOSITORY https://github.com/frontmany/ticTimer.git
+        GIT_TAG main
+        SOURCE_DIR ${VENDOR_DIR}/ticTimer
+    )
+
+    FetchContent_Declare(
+        CrashCatch
+        GIT_REPOSITORY https://github.com/keithpotz/CrashCatch.git
+        GIT_TAG v1.2.0
+        SOURCE_DIR ${VENDOR_DIR}/CrashCatch
+    )
+
     set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "Build shared library" FORCE)
     set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
     set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build programs" FORCE)
@@ -77,7 +91,7 @@ if(FETCH_DEPENDENCIES)
     set(PA_BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
     set(PA_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 
-    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio pybind11 spdlog)
+    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio pybind11 spdlog ticTimer CrashCatch)
 
     message(STATUS "Dependencies fetched successfully")
 endif()

@@ -229,10 +229,6 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_notificationTimer->setSingleShot(true);
     connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
 
-    m_connectionErrorLabelTimer = new QTimer(this);
-    m_connectionErrorLabelTimer->setSingleShot(true);
-    connect(m_connectionErrorLabelTimer, &QTimer::timeout, this, &CallWidget::hideParticipantConnectionStatus);
-
     setupUI();
     setupShadowEffect();
 
@@ -413,8 +409,8 @@ void CallWidget::setupUI() {
     m_hangupButton->setToolTip("Hang up");
     m_hangupButton->setCursor(Qt::PointingHandCursor);
 
-    m_buttonsLayout->addWidget(m_microphoneButton);
     m_buttonsLayout->addWidget(cameraContainer);
+    m_buttonsLayout->addWidget(m_microphoneButton);
     m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(m_enterFullscreenButton);
     m_buttonsLayout->addWidget(m_hangupButton);
@@ -428,9 +424,9 @@ void CallWidget::setupUI() {
     m_exitFullscreenButton->setToolTip("Exit fullscreen");
     m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_exitFullscreenButton->hide();
-    m_settingsButton = new ButtonIcon(this, scale(24), scale(24));
-    m_settingsButton->setIcons(QIcon(":/resources/settings.png"), QIcon(":/resources/settingsHover.png"));
-    m_settingsButton->setSize(scale(32), scale(32));
+    m_settingsButton = new ButtonIcon(this, scale(28), scale(28));
+    m_settingsButton->setIcons(QIcon(":/resources/sliders.png"), QIcon(":/resources/slidersHover.png"));
+    m_settingsButton->setSize(scale(38), scale(38));
     m_settingsButton->setToolTip("Audio settings");
     m_settingsButton->setCursor(Qt::PointingHandCursor);
     m_settingsButton->hide();
@@ -479,6 +475,7 @@ void CallWidget::setupUI() {
     connect(m_settingsButton, &ButtonIcon::clicked, this, &CallWidget::showAudioSettingsDialog);
 
     setMouseTracking(true);
+    showOverlayButtonWithTimeout();
 }
 
 void CallWidget::setupShadowEffect() {
@@ -844,17 +841,16 @@ void CallWidget::hideMainScreen()
 }
 
 void CallWidget::updateOverlayButtonsPosition() {
+    int buttonSize = scale(38);
     int margin = scale(10);
-    int exitButtonSize = scale(38);
+    int x = width() - buttonSize - margin;
     int y = margin;
-    int exitX = width() - exitButtonSize - margin;
 
     if (m_exitFullscreenButton) {
-        m_exitFullscreenButton->move(exitX, y);
+        m_exitFullscreenButton->move(x, y);
     }
-
     if (m_settingsButton) {
-        m_settingsButton->move(margin, y);
+        m_settingsButton->move(x, y);
     }
 }
 
@@ -1129,45 +1125,6 @@ void CallWidget::showErrorNotification(const QString& text, int durationMs)
     m_notificationLabel->setText(text);
     m_notificationWidget->show();
     m_notificationTimer->start(durationMs);
-}
-
-void CallWidget::showParticipantConnectionError(int durationMs)
-{
-    if (!m_participantConnectionErrorBanner || !m_participantConnectionErrorBannerLabel) return;
-    
-    QString errorText = m_friendNickname + " experiencing connection problems";
-    m_participantConnectionErrorBannerLabel->setText(errorText);
-    m_participantConnectionErrorBanner->show();
-    updateParticipantConnectionErrorBannerPosition();
-    
-    restrictScreenShareButton();
-    restrictCameraButton();
-    
-    if (durationMs > 0) {
-        m_connectionErrorLabelTimer->start(durationMs);
-    }
-}
-
-void CallWidget::showParticipantConnectionRestored(const QString& text, int durationMs)
-{
-    if (!m_connectionErrorLabel) return;
-    m_connectionErrorLabel->setText(text);
-    m_connectionErrorLabel->setStyleSheet("color: #50DC50; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-    m_connectionErrorLabel->show();
-    
-    setScreenShareButtonActive(false);
-    setCameraButtonActive(false);
-    
-    if (durationMs > 0) {
-        m_connectionErrorLabelTimer->start(durationMs);
-    }
-}
-
-void CallWidget::hideParticipantConnectionStatus()
-{
-    if (m_participantConnectionErrorBanner) {
-        m_participantConnectionErrorBanner->hide();
-    }
 }
 
 void CallWidget::setCameraButtonActive(bool active)

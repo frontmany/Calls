@@ -8,7 +8,7 @@
 class OverlayWidget;
 class AudioSettingsDialog;
 class UpdatingDialog;
-class WaitingStatusDialog;
+class NotificationDialog;
 class ScreenShareDialog;
 class AlreadyRunningDialog;
 class FirstLaunchDialog;
@@ -30,8 +30,8 @@ public:
     void showScreenShareDialog(const QList<QScreen*>& screens);
     void hideScreenShareDialog();
 	
-	void showWaitingStatusDialog(const QString& statusText, bool createOverlay = true);
-	void hideWaitingStatusDialog();
+    void showNotificationDialog(const QString& statusText, bool createOverlay = true, bool isGreenStyle = false, bool isAnimation = true);
+    void hideNotificationDialog();
 
     void showAlreadyRunningDialog();
     void hideAlreadyRunningDialog();
@@ -62,8 +62,8 @@ private:
     OverlayWidget* m_updatingOverlay;
     UpdatingDialog* m_updatingDialog;
 
-    OverlayWidget* m_waitingStatusOverlay;
-    WaitingStatusDialog* m_waitingStatusDialog;
+    OverlayWidget* m_notificationOverlay;
+    NotificationDialog* m_notificationDialog;
 
     OverlayWidget* m_screenShareOverlay;
     ScreenShareDialog* m_screenShareDialog;
