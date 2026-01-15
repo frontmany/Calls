@@ -25,6 +25,8 @@ void initialieCrashDump() {
 
 int main(int argc, char* argv[])
 {
+    initialieCrashDump();
+
     QApplication app(argc, argv);
 
     MainWindow* mainWindow = new MainWindow();

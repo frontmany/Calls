@@ -13,8 +13,6 @@
 #include <QPropertyAnimation>
 #include <QGraphicsBlurEffect>
 #include <QSpacerItem>
-
-#include "incomingCallWidget.h"
 #include "settingsPanelWidget.h"
 
 struct StyleMainMenuWidget {
@@ -75,9 +73,6 @@ public:
     void setStatusLabelCalling();
     void setStatusLabelBusy();
     void setStatusLabelOffline();
-    void addIncomingCall(const QString& friendNickname, int remainingTime = 32);
-    void removeIncomingCall(const QString& friendNickname);
-    void clearIncomingCalls();
     void showCallingPanel(const QString& friendNickname);
     void showErrorNotification(const QString& text, int durationMs);
     void removeCallingPanel();
@@ -87,8 +82,6 @@ public:
     void showUpdateAvailableNotification();
     void hideUpdateAvailableNotification();
 
-    std::vector<std::pair<std::string, int>> getIncomingCalls() const;
-
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
     void setMicrophoneMuted(bool muted);
@@ -96,13 +89,10 @@ public:
     void setCameraActive(bool active);
     void setCallButtonEnabled(bool enabled);
     void setStopCallingButtonEnabled(bool enabled);
-    void setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled);
 
 
 signals:
     void startCallingButtonClicked(const QString& friendNickname);
-    void declineCallButtonClicked(const QString& friendNickname);
-    void acceptCallButtonClicked(const QString& friendNickname);
     void stopCallingButtonClicked();
     void audioDevicePickerRequested();
     void inputVolumeChanged(int newVolume);
@@ -115,13 +105,9 @@ signals:
 private slots:
     void onCallButtonClicked();
     void onSettingsButtonClicked();
-    void onIncomingCallAccepted(const QString& friendNickname);
-    void onIncomingCallDeclined(const QString& friendNickname);
     void onStopCallingButtonClicked();
 
 private:
-    void showIncomingCallsArea();
-    void hideIncomingCallsArea();
     void setupUI();
     void setupAnimations();
     void paintEvent(QPaintEvent* event) override;
@@ -153,11 +139,6 @@ private:
     QLineEdit* m_friendNicknameEdit;
     QPushButton* m_callButton;
 
-    // Incoming calls section
-    QScrollArea* m_incomingCallsScrollArea;
-    QWidget* m_incomingCallsContainer;
-    QVBoxLayout* m_incomingCallsLayout;
-
     // Settings section
     QPushButton* m_settingsButton;
     SettingsPanel* m_settingsPanel;
@@ -173,11 +154,8 @@ private:
 
     // Animations
     QPropertyAnimation* m_settingsAnimation;
-    QPropertyAnimation* m_incomingCallsAnimation;
     QPropertyAnimation* m_callingAnimation;
 
     QString m_currentNickname;
     QString m_callingFriend;
-
-    QMap<QString, IncomingCallWidget*> m_incomingCallWidgets;
 };

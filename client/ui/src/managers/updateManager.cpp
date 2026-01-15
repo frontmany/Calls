@@ -71,7 +71,6 @@ void UpdateManager::onUpdateButtonClicked()
     
     if (m_mainMenuWidget) {
         m_mainMenuWidget->removeCallingPanel();
-        m_mainMenuWidget->clearIncomingCalls();
     }
 
     if (m_updaterClient) {

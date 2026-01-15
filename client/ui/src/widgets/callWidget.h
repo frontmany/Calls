@@ -7,7 +7,6 @@
 #include <QHBoxLayout>
 #include <QTimer>
 #include <QTime>
-#include <QScrollArea>
 #include <QPixmap>
 #include <QIcon>
 #include <QKeyEvent>
@@ -17,12 +16,10 @@
 #include "buttons.h"
 #include "screen.h"
 
-class QDialog;
 class QResizeEvent;
 class QShowEvent;
 class Screen;
 
-class IncomingCallWidget;
 struct StyleCallWidget {
     static const QColor m_primaryColor;
     static const QColor m_hoverColor;
@@ -65,15 +62,18 @@ public:
     bool isMainScreenVisible() const;
     bool isAdditionalScreenVisible(const std::string& id) const;
     bool isFullScreen() const;
+
     void setCallInfo(const QString& friendNickname);
     void setInputVolume(int newVolume);
     void setOutputVolume(int newVolume);
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
-    void addIncomingCall(const QString& friendNickName, int remainingTime = 32);
-    void removeIncomingCall(const QString& callerName);
-    void clearIncomingCalls();
-    void setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled);
+    void setScreenShareButtonActive(bool active);
+    void setCameraButtonActive(bool active);
+    void setHangupButtonRestricted(bool restricted);
+    void setScreenShareButtonRestricted(bool restricted);
+    void setCameraButtonRestricted(bool restricted);
+
     void hideMainScreen();
     void hideAdditionalScreens();
     void enterFullscreen();
@@ -82,17 +82,9 @@ public:
     void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode);
     void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id);
     void removeAdditionalScreen(const std::string& id);
-    void restrictScreenShareButton();
-    void setScreenShareButtonActive(bool active);
-    void restrictCameraButton();
-    void setCameraButtonActive(bool active);
-    void setHangupButtonEnabled(bool enabled);
-    void setScreenShareButtonEnabled(bool enabled);
-    void setCameraButtonEnabled(bool enabled);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
     void showErrorNotification(const QString& text, int durationMs);
-    void showAudioSettingsDialog();
 
 signals:
     void hangupClicked();
@@ -100,11 +92,9 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
-    void audioSettingsRequested(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume);
+    void audioSettingsRequested(bool micMuted, bool speakerMuted, int inputVolume, int outputVolume);
     void requestEnterFullscreen();
     void requestExitFullscreen();
-    void acceptCallButtonClicked(const QString& callerName);
-    void declineCallButtonClicked(const QString& callerName);
     void screenShareClicked(bool toggled);
     void cameraClicked(bool toggled);
 
@@ -120,15 +110,11 @@ protected:
 private slots:
     void updateCallTimer();
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
-    void onIncomingCallsDialogClosed();
     void onExitFullscreenHideTimerTimeout();
 
 private:
     void setupUI();
     void setupShadowEffect();
-    void updateIncomingCallsVisibility();
-    void updateIncomingCallWidths();
-    void restoreIncomingCallsContainer();
     void updateExitFullscreenButtonPosition();
     void updateOverlayButtonsPosition();
     void updateParticipantConnectionErrorBannerPosition();
@@ -147,13 +133,6 @@ private:
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
-
-    // Incoming calls section
-    QWidget* m_incomingCallsContainer;
-    QVBoxLayout* m_incomingCallsLayout;
-    QScrollArea* m_incomingCallsScrollArea;
-    QWidget* m_incomingCallsScrollWidget;
-    QVBoxLayout* m_incomingCallsScrollLayout;
 
     // Call info section
     QLabel* m_timerLabel;
@@ -216,10 +195,6 @@ private:
     bool m_speakerMuted = false;
     int m_inputVolume = 100;
     int m_outputVolume = 100;
-
-    // Incoming calls
-    QDialog* m_incomingCallsDialog = nullptr;
-    QMap<QString, IncomingCallWidget*> m_incomingCallWidgets;
 
     // Error notification
     QWidget* m_notificationWidget = nullptr;

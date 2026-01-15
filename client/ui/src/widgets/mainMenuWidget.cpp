@@ -504,19 +504,6 @@ void MainMenuWidget::setupUI() {
     QFont callButtonFont("Outfit", scale(14), QFont::Normal);
     m_callButton->setFont(callButtonFont);
 
-    m_incomingCallsContainer = new QWidget();
-    m_incomingCallsLayout = new QVBoxLayout(m_incomingCallsContainer);
-    m_incomingCallsLayout->setAlignment(Qt::AlignTop);
-    m_incomingCallsLayout->addSpacing(scale(5));
-
-    m_incomingCallsScrollArea = new QScrollArea(m_mainContainer);
-    m_incomingCallsScrollArea->setWidget(m_incomingCallsContainer);
-    m_incomingCallsScrollArea->setWidgetResizable(true);
-    m_incomingCallsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_incomingCallsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_incomingCallsScrollArea->hide();
-    m_incomingCallsScrollArea->setStyleSheet(StyleMainMenuWidget::scrollAreaStyle());
-
     // Settings button with icon
     QWidget* buttonWidget = new QWidget();
     QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
@@ -565,7 +552,6 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_errorLabel);
     m_containerLayout->addWidget(m_friendNicknameEdit);
     m_containerLayout->addWidget(m_callButton);
-    m_containerLayout->addWidget(m_incomingCallsScrollArea);
     m_containerLayout->addWidget(m_settingsButton);
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
@@ -607,22 +593,6 @@ void MainMenuWidget::setupAnimations() {
     connect(m_settingsAnimation, &QPropertyAnimation::finished, this, [this]() {
         if (m_settingsAnimation->direction() == QAbstractAnimation::Backward) {
             m_settingsPanel->hide();
-        }
-        });
-
-    // Incoming calls area animation
-    m_incomingCallsAnimation = new QPropertyAnimation(m_incomingCallsScrollArea, "maximumHeight", this);
-    m_incomingCallsAnimation->setDuration(90);
-    m_incomingCallsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
-    m_incomingCallsAnimation->setStartValue(0);
-    m_incomingCallsAnimation->setEndValue(scale(120));
-
-    connect(m_incomingCallsAnimation, &QPropertyAnimation::finished, this, [this]() {
-        if (m_incomingCallsAnimation->direction() == QAbstractAnimation::Backward) {
-            m_incomingCallsScrollArea->hide();
-        }
-        else {
-            m_incomingCallsScrollArea->setMinimumHeight(scale(110));
         }
         });
 
@@ -701,58 +671,6 @@ void MainMenuWidget::setStatusLabelOffline() {
 }
 
 
-std::vector<std::pair<std::string, int>> MainMenuWidget::getIncomingCalls() const {
-    std::vector<std::pair<std::string, int>> incomingCalls;
-
-    for (int i = 0; i < m_incomingCallsLayout->count(); ++i) {
-        QWidget* widget = m_incomingCallsLayout->itemAt(i)->widget();
-
-        if (auto* callWidget = qobject_cast<IncomingCallWidget*>(widget)) {
-            QString nickname = callWidget->getFriendNickname();
-            int remainingTime = callWidget->getRemainingTime();
-
-            incomingCalls.emplace_back(nickname.toStdString(), remainingTime);
-        }
-    }
-
-    return incomingCalls;
-}
-
-void MainMenuWidget::addIncomingCall(const QString& friendNickName, int remainingTime) {
-    if (m_incomingCallWidgets.contains(friendNickName)) return;
-
-    IncomingCallWidget* callWidget = new IncomingCallWidget(this, friendNickName, remainingTime);
-    m_incomingCallsLayout->addWidget(callWidget);
-    m_incomingCallWidgets[friendNickName] = callWidget;
-
-    connect(callWidget, &IncomingCallWidget::callAccepted, this, &MainMenuWidget::onIncomingCallAccepted);
-    connect(callWidget, &IncomingCallWidget::callDeclined, this, &MainMenuWidget::onIncomingCallDeclined);
-
-    showIncomingCallsArea();
-}
-
-void MainMenuWidget::removeIncomingCall(const QString& callerName) {
-    if (m_incomingCallWidgets.contains(callerName)) {
-        IncomingCallWidget* callWidget = m_incomingCallWidgets[callerName];
-        m_incomingCallsLayout->removeWidget(callWidget);
-        callWidget->deleteLater();
-        m_incomingCallWidgets.remove(callerName);
-
-        if (m_incomingCallWidgets.size() == 0) {
-            hideIncomingCallsArea();
-        }
-    }
-}
-
-void MainMenuWidget::clearIncomingCalls() {
-    for (IncomingCallWidget* callWidget : m_incomingCallWidgets) {
-        m_incomingCallsLayout->removeWidget(callWidget);
-        callWidget->deleteLater();
-    }
-    m_incomingCallWidgets.clear();
-    hideIncomingCallsArea();
-}
-
 void MainMenuWidget::showCallingPanel(const QString& friendNickname) {
     m_callingFriend = friendNickname;
     m_callingText->setText("Calling " + friendNickname + "...");
@@ -808,23 +726,6 @@ void MainMenuWidget::showErrorNotification(const QString& text, int durationMs) 
     m_notificationLabel->setText(text);
     m_notificationWidget->show();
     m_notificationTimer->start(durationMs);
-}
-
-void MainMenuWidget::showIncomingCallsArea() {
-    if (m_incomingCallsScrollArea->isHidden()) {
-        m_incomingCallsScrollArea->show();
-    }
-
-    m_incomingCallsAnimation->setDirection(QAbstractAnimation::Forward);
-    m_incomingCallsAnimation->start();
-}
-
-void MainMenuWidget::hideIncomingCallsArea() {
-    if (!m_incomingCallsScrollArea->isHidden()) {
-        m_incomingCallsScrollArea->setMinimumHeight(0);
-        m_incomingCallsAnimation->setDirection(QAbstractAnimation::Backward);
-        m_incomingCallsAnimation->start();
-    }
 }
 
 void MainMenuWidget::onCallButtonClicked() {
@@ -908,22 +809,4 @@ void MainMenuWidget::setStopCallingButtonEnabled(bool enabled)
             m_stopCallingButton->setStyleSheet(StyleMainMenuWidget::disabledStopCallingButtonStyle());
         }
     }
-}
-
-void MainMenuWidget::setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled)
-{
-    if (m_incomingCallWidgets.contains(friendNickname)) {
-        IncomingCallWidget* callWidget = m_incomingCallWidgets[friendNickname];
-        if (callWidget) {
-            callWidget->setButtonsEnabled(enabled);
-        }
-    }
-}
-
-void MainMenuWidget::onIncomingCallAccepted(const QString& friendNickname) {
-    emit acceptCallButtonClicked(friendNickname);
-}
-
-void MainMenuWidget::onIncomingCallDeclined(const QString& friendNickname) {
-    emit declineCallButtonClicked(friendNickname);
 }

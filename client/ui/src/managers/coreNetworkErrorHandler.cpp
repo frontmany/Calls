@@ -87,7 +87,6 @@ void CoreNetworkErrorHandler::onConnectionDown()
 
             if (m_mainMenuWidget) {
                 m_mainMenuWidget->removeCallingPanel();
-                m_mainMenuWidget->clearIncomingCalls();
             }
         }
 

@@ -57,7 +57,7 @@ void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
         }
         else {
             if (m_callWidget) {
-                m_callWidget->setScreenShareButtonEnabled(false);
+                m_callWidget->setScreenShareButtonRestricted(true);
             }
             startOperationTimer("Stopping screen sharing...");
         }
@@ -99,7 +99,7 @@ void ScreenSharingManager::onScreenSelected(int screenIndex)
     }
     else {
         if (m_callWidget) {
-            m_callWidget->setScreenShareButtonEnabled(false);
+            m_callWidget->setScreenShareButtonRestricted(true);
         }
         startOperationTimer("Starting screen sharing...");
     }
@@ -109,7 +109,7 @@ void ScreenSharingManager::onScreenSharingStarted()
 {
     stopOperationTimer();
     if (m_callWidget) {
-        m_callWidget->setScreenShareButtonEnabled(true);
+        m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->setScreenShareButtonActive(true);
     }
 
@@ -152,7 +152,7 @@ void ScreenSharingManager::onStartScreenSharingError()
 {
     stopOperationTimer();
     if (m_callWidget) {
-        m_callWidget->setScreenShareButtonEnabled(true);
+        m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->setScreenShareButtonActive(false);
     }
     stopLocalScreenCapture();
@@ -164,7 +164,7 @@ void ScreenSharingManager::onStartScreenSharingError()
 void ScreenSharingManager::onIncomingScreenSharingStarted()
 {
     if (m_callWidget) {
-        m_callWidget->restrictScreenShareButton();
+        m_callWidget->setScreenShareButtonRestricted(true);
         m_callWidget->showEnterFullscreenButton();
     }
 }
@@ -213,7 +213,7 @@ void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
 {
     stopOperationTimer();
     if (m_callWidget) {
-        m_callWidget->setScreenShareButtonEnabled(true);
+        m_callWidget->setScreenShareButtonRestricted(false);
     }
     if (ec) {
         LOG_WARN("Failed to stop screen sharing: {}", ec.message());

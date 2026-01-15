@@ -92,7 +92,7 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
         }
         else {
             if (m_callWidget) {
-                m_callWidget->setCameraButtonEnabled(false);
+                m_callWidget->setCameraButtonRestricted(true);
             }
             startOperationTimer("Starting camera sharing...");
         }
@@ -108,7 +108,7 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
         }
         else {
             if (m_callWidget) {
-                m_callWidget->setCameraButtonEnabled(false);
+                m_callWidget->setCameraButtonRestricted(true);
             }
             startOperationTimer("Stopping camera sharing...");
         }
@@ -119,7 +119,7 @@ void CameraSharingManager::onCameraSharingStarted()
 {
     stopOperationTimer();
     if (m_callWidget) {
-        m_callWidget->setCameraButtonEnabled(true);
+        m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setCameraButtonActive(true);
     }
     if (m_configManager) {
@@ -138,7 +138,7 @@ void CameraSharingManager::onStartCameraSharingError()
 {
     stopOperationTimer();
     if (m_callWidget) {
-        m_callWidget->setCameraButtonEnabled(true);
+        m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setCameraButtonActive(false);
     }
     if (m_configManager) {
@@ -278,7 +278,7 @@ void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
 {
     stopOperationTimer();
     if (m_callWidget) {
-        m_callWidget->setCameraButtonEnabled(true);
+        m_callWidget->setCameraButtonRestricted(false);
     }
     if (ec) {
         LOG_WARN("Failed to stop camera sharing: {}", ec.message());

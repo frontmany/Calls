@@ -4,6 +4,8 @@
 #include <QList>
 #include <QString>
 #include <QScreen>
+#include <QPair>
+#include <QMap>
 
 class OverlayWidget;
 class AudioSettingsDialog;
@@ -12,6 +14,7 @@ class NotificationDialog;
 class ScreenShareDialog;
 class AlreadyRunningDialog;
 class FirstLaunchDialog;
+class IncomingCallDialog;
 class DialogsController : public QObject
 {
 	Q_OBJECT
@@ -42,6 +45,12 @@ public:
     void showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice = -1, int currentOutputDevice = -1);
     void hideAudioSettingsDialog();
 
+    void showIncomingCallsDialog(const QList<QPair<QString, int>>& calls);
+    void hideIncomingCallsDialog();
+    void setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled);
+    void removeIncomingCallFromDialog(const QString& friendNickname);
+    void clearIncomingCallsDialog();
+
 signals:
     void inputDeviceSelected(int deviceIndex);
     void outputDeviceSelected(int deviceIndex);
@@ -55,6 +64,9 @@ signals:
 	void closeRequested();
     void screenSelected(int screenIndex);
     void screenShareDialogCancelled();
+    void incomingCallAccepted(const QString& friendNickname);
+    void incomingCallDeclined(const QString& friendNickname);
+    void incomingCallsDialogClosed(const QList<QString>& pendingCalls);
 
 private:
     QWidget* m_parent;
@@ -76,5 +88,7 @@ private:
 
     OverlayWidget* m_audioSettingsOverlay = nullptr;
     AudioSettingsDialog* m_audioSettingsDialog = nullptr;
+
+    QMap<QString, IncomingCallDialog*> m_incomingCallDialogs;
 };
 

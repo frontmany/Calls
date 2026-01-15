@@ -54,4 +54,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${ROOT_DIR}/vendor/asio/asio/include
     ${ROOT_DIR}/vendor/json/include
     ${ROOT_DIR}/vendor/spdlog/include
+    ${ROOT_DIR}/vendor/CrashCatch/include
 )

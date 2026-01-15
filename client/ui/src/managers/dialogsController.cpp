@@ -5,7 +5,9 @@
 #include "dialogs/screenShareDialog.h"
 #include "dialogs/alreadyRunningDialog.h"
 #include "dialogs/firstLaunchDialog.h"
+#include "dialogs/incomingCallDialog.h"
 
+#include <QGuiApplication>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QScrollArea>
@@ -18,6 +20,7 @@
 #include <QPainterPath>
 #include <QCursor>
 #include <QFontMetrics>
+#include <QSet>
 #include "dialogs/audioSettingsDialog.h"
 #include "dialogs/updatingDialog.h"
 #include <algorithm>
@@ -46,6 +49,7 @@ DialogsController::~DialogsController()
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
     hideAudioSettingsDialog();
+    hideIncomingCallsDialog();
 }
 
 void DialogsController::showUpdatingDialog()
@@ -512,4 +516,131 @@ void DialogsController::hideAudioSettingsDialog()
     if (m_audioSettingsDialog) {
         m_audioSettingsDialog->setParent(nullptr);
     }
+}
+
+void DialogsController::showIncomingCallsDialog(const QList<QPair<QString, int>>& calls)
+{
+    QSet<QString> desired;
+    for (const auto& call : calls)
+    {
+        desired.insert(call.first);
+
+        if (m_incomingCallDialogs.contains(call.first))
+        {
+            continue;
+        }
+
+        IncomingCallDialog* dialog = new IncomingCallDialog(m_parent, call.first, call.second);
+        m_incomingCallDialogs.insert(call.first, dialog);
+
+        connect(dialog, &IncomingCallDialog::callAccepted, this, &DialogsController::incomingCallAccepted);
+        connect(dialog, &IncomingCallDialog::callDeclined, this, &DialogsController::incomingCallDeclined);
+        connect(dialog, &IncomingCallDialog::dialogClosed, this, &DialogsController::incomingCallsDialogClosed);
+        connect(dialog, &QObject::destroyed, this, [this, call]() { m_incomingCallDialogs.remove(call.first); });
+    }
+
+    const QList<QString> existing = m_incomingCallDialogs.keys();
+    for (const QString& nickname : existing)
+    {
+        if (!desired.contains(nickname))
+        {
+            IncomingCallDialog* dialog = m_incomingCallDialogs.take(nickname);
+            if (dialog)
+            {
+                dialog->hide();
+                dialog->deleteLater();
+            }
+        }
+    }
+
+    if (calls.isEmpty())
+    {
+        return;
+    }
+
+    QWidget* ref = m_parent ? m_parent->window() : nullptr;
+    QScreen* screen = ref && ref->windowHandle() ? ref->windowHandle()->screen() : QGuiApplication::primaryScreen();
+    if (!screen)
+    {
+        return;
+    }
+
+    QRect avail = screen->availableGeometry();
+
+    for (const auto& call : calls)
+    {
+        IncomingCallDialog* dialog = m_incomingCallDialogs.value(call.first, nullptr);
+        if (!dialog)
+        {
+            continue;
+        }
+
+        dialog->adjustSize();
+        dialog->show();
+        dialog->raise();
+
+        int x = avail.x() + (avail.width() - dialog->width()) / 2;
+        int y = avail.y() + (avail.height() - dialog->height()) / 2;
+        dialog->move(x, y);
+    }
+}
+
+void DialogsController::hideIncomingCallsDialog()
+{
+    if (m_incomingCallDialogs.isEmpty())
+    {
+        return;
+    }
+
+    for (IncomingCallDialog* dialog : m_incomingCallDialogs)
+    {
+        if (!dialog)
+        {
+            continue;
+        }
+
+        dialog->hide();
+        dialog->deleteLater();
+    }
+
+    m_incomingCallDialogs.clear();
+}
+
+void DialogsController::setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled)
+{
+    if (IncomingCallDialog* dialog = m_incomingCallDialogs.value(friendNickname, nullptr))
+    {
+        dialog->setButtonsEnabled(enabled);
+    }
+}
+
+void DialogsController::removeIncomingCallFromDialog(const QString& friendNickname)
+{
+    IncomingCallDialog* dialog = m_incomingCallDialogs.take(friendNickname);
+    if (dialog)
+    {
+        dialog->hide();
+        dialog->deleteLater();
+    }
+}
+
+void DialogsController::clearIncomingCallsDialog()
+{
+    if (m_incomingCallDialogs.isEmpty())
+    {
+        return;
+    }
+
+    for (IncomingCallDialog* dialog : m_incomingCallDialogs)
+    {
+        if (!dialog)
+        {
+            continue;
+        }
+
+        dialog->hide();
+        dialog->deleteLater();
+    }
+
+    m_incomingCallDialogs.clear();
 }

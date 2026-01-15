@@ -296,8 +296,6 @@ void MainWindow::connectWidgetsToManagers() {
             connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
         }
         if (m_callManager) {
-            connect(m_mainMenuWidget, &MainMenuWidget::acceptCallButtonClicked, m_callManager, &CallManager::onAcceptCallButtonClicked);
-            connect(m_mainMenuWidget, &MainMenuWidget::declineCallButtonClicked, m_callManager, &CallManager::onDeclineCallButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, m_callManager, &CallManager::onStartCallingButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, m_callManager, &CallManager::onStopCallingButtonClicked);
         }
@@ -313,7 +311,7 @@ void MainWindow::connectWidgetsToManagers() {
             connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onCallWidgetExitFullscreenRequested);
         }
         if (m_dialogsController) {
-            connect(m_callWidget, &CallWidget::audioSettingsRequested, this, [this](bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume) {
+            connect(m_callWidget, &CallWidget::audioSettingsRequested, this, [this](bool micMuted, bool speakerMuted, int inputVolume, int outputVolume) {
                 if (m_dialogsController) {
                     const bool micMutedValue = (m_configManager) ? m_configManager->isMicrophoneMuted() : micMuted;
                     const bool speakerMutedValue = (m_configManager) ? m_configManager->isSpeakerMuted() : speakerMuted;
@@ -323,7 +321,7 @@ void MainWindow::connectWidgetsToManagers() {
                     const int currentOutputDevice = (m_coreClient) ? m_coreClient->getCurrentOutputDevice() : -1;
 
                     m_dialogsController->showAudioSettingsDialog(
-                        showSliders,
+                        true,
                         micMutedValue,
                         speakerMutedValue,
                         inputVolumeValue,
@@ -341,8 +339,6 @@ void MainWindow::connectWidgetsToManagers() {
         }
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::hangupClicked, m_callManager, &CallManager::onEndCallButtonClicked);
-            connect(m_callWidget, &CallWidget::acceptCallButtonClicked, m_callManager, &CallManager::onAcceptCallButtonClicked);
-            connect(m_callWidget, &CallWidget::declineCallButtonClicked, m_callManager, &CallManager::onDeclineCallButtonClicked);
         }
         if (m_screenSharingManager) {
             connect(m_callWidget, &CallWidget::screenShareClicked, m_screenSharingManager, &ScreenSharingManager::onScreenShareButtonClicked);

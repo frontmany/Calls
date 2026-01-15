@@ -1,7 +1,5 @@
 #include "callWidget.h"
-#include "incomingCallWidget.h"
 #include <QGraphicsDropShadowEffect>
-#include <QDialog>
 #include <cmath>
 #include <algorithm>
 #include <string>
@@ -245,30 +243,6 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
 void CallWidget::setupUI() {
     setFocusPolicy(Qt::StrongFocus);
 
-    m_incomingCallsContainer = new QWidget(this);
-    m_incomingCallsContainer->setStyleSheet("background-color: transparent;");
-    m_incomingCallsContainer->hide();
-
-    m_incomingCallsScrollWidget = new QWidget();
-    m_incomingCallsScrollWidget->setStyleSheet("background-color: transparent;");
-
-    m_incomingCallsScrollLayout = new QVBoxLayout(m_incomingCallsScrollWidget);
-    m_incomingCallsScrollLayout->setContentsMargins(scale(2), scale(2), scale(2), scale(2));
-    m_incomingCallsScrollLayout->setSpacing(scale(8));
-    m_incomingCallsScrollLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-
-    m_incomingCallsScrollArea = new QScrollArea(m_incomingCallsContainer);
-    m_incomingCallsScrollArea->setStyleSheet(StyleCallWidget::scrollAreaStyle());
-    m_incomingCallsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_incomingCallsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_incomingCallsScrollArea->setWidgetResizable(true);
-    m_incomingCallsScrollArea->setWidget(m_incomingCallsScrollWidget);
-
-    m_incomingCallsLayout = new QVBoxLayout(m_incomingCallsContainer);
-    m_incomingCallsLayout->setContentsMargins(0, 0, 0, 0);
-    m_incomingCallsLayout->setSpacing(scale(5));
-    m_incomingCallsLayout->addWidget(m_incomingCallsScrollArea);
-
     m_timerLabel = new QLabel("00:00", this);
     m_timerLabel->setAlignment(Qt::AlignCenter);
     m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
@@ -472,7 +446,10 @@ void CallWidget::setupUI() {
     connect(m_screenShareButton, &ToggleButtonIcon::toggled, [this](bool toggled) {emit screenShareClicked(toggled); });
     connect(m_cameraButton, &ToggleButtonIcon::toggled, [this](bool toggled) {emit cameraClicked(toggled); });
     connect(m_hangupButton, &QPushButton::clicked, [this]() {emit hangupClicked(); });
-    connect(m_settingsButton, &ButtonIcon::clicked, this, &CallWidget::showAudioSettingsDialog);
+    connect(m_settingsButton, &ButtonIcon::clicked, [this]()
+    {
+        emit audioSettingsRequested(m_microphoneMuted, m_speakerMuted, m_inputVolume, m_outputVolume);
+    });
 
     setMouseTracking(true);
     showOverlayButtonWithTimeout();
@@ -519,7 +496,6 @@ void CallWidget::showEvent(QShowEvent* event)
 
 void CallWidget::resizeEvent(QResizeEvent* event)
 {
-    updateIncomingCallWidths();
     updateOverlayButtonsPosition();
     updateParticipantConnectionErrorBannerPosition();
     
@@ -647,10 +623,12 @@ void CallWidget::updateMainScreenSize()
     }
     else 
     {
-        if (m_additionalScreens.isEmpty())
+        if (m_additionalScreens.isEmpty()) {
             applyStandardSize();
-        else
+        }
+        else {
             applyDecreasedSize();
+        }
     }
 }
 
@@ -735,29 +713,6 @@ void CallWidget::removeAdditionalScreen(const std::string& id)
         
         if (!m_screenFullscreenActive)
             updateMainScreenSize();
-    }
-}
-
-void CallWidget::restrictScreenShareButton()
-{
-    m_screenShareButton->setDisabled(true);
-    m_screenShareButton->setToolTip("Share disabled");
-    m_screenShareButton->setIcons(m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted);
-}
-
-void CallWidget::setScreenShareButtonActive(bool active)
-{
-    m_screenShareButton->setDisabled(false);
-
-    if (active) {
-        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
-        m_screenShareButton->setToggled(true);
-        m_screenShareButton->setToolTip("Stop screen share");
-    }
-    else {
-        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
-        m_screenShareButton->setToggled(false);
-        m_screenShareButton->setToolTip("Start screen share");
     }
 }
 
@@ -883,197 +838,6 @@ void CallWidget::showOverlayButtonWithTimeout()
     m_overlayButtonHideTimer->start();
 }
 
-void CallWidget::showAudioSettingsDialog()
-{
-    emit audioSettingsRequested(true, m_microphoneMuted, m_speakerMuted, m_inputVolume, m_outputVolume);
-}
-
-void CallWidget::clearIncomingCalls() {
-    for (IncomingCallWidget* callWidget : m_incomingCallWidgets) {
-        m_incomingCallsScrollLayout->removeWidget(callWidget);
-        callWidget->deleteLater();
-    }
-    m_incomingCallWidgets.clear();
-    updateIncomingCallsVisibility();
-}
-
-void CallWidget::onIncomingCallsDialogClosed()
-{
-	if (m_incomingCallsContainer && m_incomingCallsDialog && m_incomingCallsDialog->layout())
-	{
-		m_incomingCallsDialog->layout()->removeWidget(m_incomingCallsContainer);
-	}
-
-	const QList<QString> names = m_incomingCallWidgets.keys();
-	for (const QString& name : names)
-	{
-		emit declineCallButtonClicked(name);
-		removeIncomingCall(name);
-	}
-
-	m_incomingCallsContainer->hide();
-	m_incomingCallsScrollArea->hide();
-}
-
-void CallWidget::addIncomingCall(const QString& friendNickName, int remainingTime) {
-    if (m_incomingCallWidgets.contains(friendNickName)) return;
-
-    IncomingCallWidget* callWidget = new IncomingCallWidget(m_incomingCallsScrollWidget, friendNickName, remainingTime);
-    callWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    m_incomingCallsScrollLayout->addWidget(callWidget, 0, Qt::AlignHCenter);
-    m_incomingCallWidgets[friendNickName] = callWidget;
-    callWidget->show();
-
-    connect(callWidget, &IncomingCallWidget::callAccepted, [this](const QString& callerName) {emit acceptCallButtonClicked(callerName); });
-    connect(callWidget, &IncomingCallWidget::callDeclined, [this](const QString& callerName) {emit declineCallButtonClicked(callerName); });
-
-    updateIncomingCallsVisibility();
-    updateIncomingCallWidths();
-}
-
-void CallWidget::removeIncomingCall(const QString& callerName) {
-    if (m_incomingCallWidgets.contains(callerName)) {
-        IncomingCallWidget* callWidget = m_incomingCallWidgets[callerName];
-        m_incomingCallsScrollLayout->removeWidget(callWidget);
-        callWidget->deleteLater();
-        m_incomingCallWidgets.remove(callerName);
-
-        updateIncomingCallsVisibility();
-        updateIncomingCallWidths();
-    }
-}
-
-void CallWidget::setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled)
-{
-    if (m_incomingCallWidgets.contains(friendNickname)) {
-        IncomingCallWidget* callWidget = m_incomingCallWidgets[friendNickname];
-        if (callWidget) {
-            callWidget->setButtonsEnabled(enabled);
-        }
-    }
-}
-
-void CallWidget::restoreIncomingCallsContainer() {
-    // Container is always in dialog, just hide it
-    if (m_incomingCallsContainer) {
-        m_incomingCallsContainer->hide();
-    }
-    if (m_incomingCallsDialog) {
-        m_incomingCallsDialog->hide();
-    }
-}
-
-void CallWidget::updateIncomingCallsVisibility() {
-    if (!m_incomingCallWidgets.isEmpty()) {
-        int callCount = m_incomingCallWidgets.size();
-        int visibleCount = qMin(callCount, 3);
-        int scrollAreaHeight = visibleCount * scale(90);
-        int containerHeight = scrollAreaHeight + scale(40);
-
-        // Always show incoming calls in a separate dialog window
-        if (!m_incomingCallsDialog)
-        {
-            m_incomingCallsDialog = new QDialog(window(), Qt::Window);
-            m_incomingCallsDialog->setModal(false);
-            m_incomingCallsDialog->setStyleSheet("background-color: white;");
-            m_incomingCallsDialog->setAttribute(Qt::WA_DeleteOnClose, true);
-
-            QVBoxLayout* dlgLayout = new QVBoxLayout(m_incomingCallsDialog);
-            dlgLayout->setContentsMargins(0, 0, 0, 0);
-            dlgLayout->setSpacing(0);
-
-            // Ensure container is not in main layout
-            if (m_mainLayout && m_incomingCallsContainer->parent() == this)
-            {
-                m_mainLayout->removeWidget(m_incomingCallsContainer);
-            }
-            
-            m_incomingCallsContainer->setParent(m_incomingCallsDialog);
-            m_incomingCallsContainer->show();
-            m_incomingCallsScrollArea->show();
-            m_incomingCallsScrollWidget->show();
-            dlgLayout->addWidget(m_incomingCallsContainer);
-
-            m_incomingCallsDialog->setMinimumWidth(scale(520));
-
-            connect(m_incomingCallsDialog, &QDialog::rejected, this, &CallWidget::onIncomingCallsDialogClosed);
-            connect(m_incomingCallsDialog, &QObject::destroyed, this, [this]() { m_incomingCallsDialog = nullptr; });
-        }
-        else
-        {
-            // Ensure container is in dialog, not in main layout
-            if (m_incomingCallsContainer->parent() != m_incomingCallsDialog)
-            {
-                if (m_mainLayout && m_incomingCallsContainer->parent() == this)
-                {
-                    m_mainLayout->removeWidget(m_incomingCallsContainer);
-                }
-                m_incomingCallsContainer->setParent(m_incomingCallsDialog);
-                if (QLayout* layout = m_incomingCallsDialog->layout())
-                {
-                    layout->addWidget(m_incomingCallsContainer);
-                }
-            }
-            
-            m_incomingCallsContainer->show();
-            m_incomingCallsScrollArea->show();
-            m_incomingCallsScrollWidget->show();
-        }
-
-        m_incomingCallsScrollArea->setFixedHeight(scrollAreaHeight);
-        m_incomingCallsContainer->setFixedHeight(containerHeight);
-        m_incomingCallsDialog->adjustSize();
-        m_incomingCallsDialog->show();
-        m_incomingCallsDialog->raise();
-        m_incomingCallsDialog->activateWindow();
-    } else {
-        if (m_incomingCallsDialog) {
-            m_incomingCallsDialog->hide();
-        }
-        if (m_incomingCallsContainer) {
-            m_incomingCallsContainer->hide();
-        }
-        if (m_incomingCallsScrollArea) {
-            m_incomingCallsScrollArea->hide();
-        }
-    }
-
-    updateIncomingCallWidths();
-}
-
-void CallWidget::updateIncomingCallWidths()
-{
-    if (!m_incomingCallsScrollArea) return;
-
-    const int defaultWidth = scale(440);
-    const int horizontalPadding = scale(16);
-    const int viewportWidth = m_incomingCallsScrollArea->viewport()->width();
-
-    int targetWidth = defaultWidth;
-
-    if (viewportWidth > 0)
-    {
-        int availableWidth = viewportWidth - horizontalPadding;
-        if (availableWidth > 0)
-        {
-            targetWidth = std::min(defaultWidth, availableWidth);
-        }
-        else
-        {
-            targetWidth = std::min(defaultWidth, viewportWidth);
-        }
-    }
-
-    for (auto it = m_incomingCallWidgets.begin(); it != m_incomingCallWidgets.end(); ++it)
-    {
-        if (IncomingCallWidget* widget = it.value())
-        {
-            widget->setFixedWidth(targetWidth);
-            widget->updateGeometry();
-        }
-    }
-}
-
 void CallWidget::keyPressEvent(QKeyEvent* event)
 {
     if (event && event->key() == Qt::Key_Escape && m_screenFullscreenActive)
@@ -1108,23 +872,51 @@ void CallWidget::onExitFullscreenHideTimerTimeout()
     }
 }
 
+void CallWidget::setScreenShareButtonRestricted(bool restricted)
+{
+    if (restricted) {
+        m_screenShareButton->setDisabled(true);
+        m_screenShareButton->setToolTip("Share disabled");
+        m_screenShareButton->setIcons(m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted);
+    }
+    else {
+        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
+        m_screenShareButton->setToggled(false);
+        m_screenShareButton->setToolTip("Start screen share");
+    }
+}
 
-void CallWidget::restrictCameraButton()
+void CallWidget::setScreenShareButtonActive(bool active)
+{
+    m_screenShareButton->setDisabled(false);
+
+    if (active) {
+        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
+        m_screenShareButton->setToggled(true);
+        m_screenShareButton->setToolTip("Stop screen share");
+    }
+    else {
+        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
+        m_screenShareButton->setToggled(false);
+        m_screenShareButton->setToolTip("Start screen share");
+    }
+}
+
+void CallWidget::setCameraButtonRestricted(bool restricted)
 {
     if (!m_cameraButton) return;
 
-    m_cameraButton->setDisabled(true);
-    m_cameraButton->setToolTip("Camera disabled: screen is being shared or camera is active");
-    m_cameraButton->setIcons(m_cameraIconRestricted, m_cameraIconRestricted, m_cameraIconRestricted, m_cameraIconRestricted);
-}
-
-void CallWidget::showErrorNotification(const QString& text, int durationMs)
-{
-    if (!m_notificationWidget || !m_notificationLabel) return;
-
-    m_notificationLabel->setText(text);
-    m_notificationWidget->show();
-    m_notificationTimer->start(durationMs);
+    if (restricted) {
+        m_cameraButton->setDisabled(true);
+        m_cameraButton->setToolTip("Camera disabled: screen is being shared or camera is active");
+        m_cameraButton->setIcons(m_cameraIconRestricted, m_cameraIconRestricted, m_cameraIconRestricted, m_cameraIconRestricted);
+    }
+    else {
+        m_cameraButton->setIcons(m_cameraIconDisabled, m_cameraIconDisabledHover, m_cameraIconActive, m_cameraIconActiveHover);
+        m_cameraButton->setToggled(false);
+        m_cameraButton->setToolTip("Enable camera");
+    }
+    
 }
 
 void CallWidget::setCameraButtonActive(bool active)
@@ -1147,31 +939,26 @@ void CallWidget::setCameraButtonActive(bool active)
     }
 }
 
-void CallWidget::setHangupButtonEnabled(bool enabled)
+void CallWidget::setHangupButtonRestricted(bool restricted)
 {
-    if (m_hangupButton) {
-        m_hangupButton->setEnabled(enabled);
-        if (enabled) {
-            m_hangupButton->setStyleSheet(StyleCallWidget::hangupButtonStyle());
-        }
-        else {
-            m_hangupButton->setStyleSheet(StyleCallWidget::disabledHangupButtonStyle());
-        }
+    if (!m_hangupButton) return;
+    m_hangupButton->setEnabled(!restricted);
+    if (restricted) {
+        m_hangupButton->setStyleSheet(StyleCallWidget::disabledHangupButtonStyle());
+    }
+    else {
+        m_hangupButton->setStyleSheet(StyleCallWidget::hangupButtonStyle());
     }
 }
 
-void CallWidget::setScreenShareButtonEnabled(bool enabled)
-{
-    if (m_screenShareButton) {
-        m_screenShareButton->setEnabled(enabled);
-    }
-}
 
-void CallWidget::setCameraButtonEnabled(bool enabled)
+void CallWidget::showErrorNotification(const QString& text, int durationMs)
 {
-    if (m_cameraButton) {
-        m_cameraButton->setEnabled(enabled);
-    }
+    if (!m_notificationWidget || !m_notificationLabel) return;
+
+    m_notificationLabel->setText(text);
+    m_notificationWidget->show();
+    m_notificationTimer->start(durationMs);
 }
 
 void CallWidget::showEnterFullscreenButton() {

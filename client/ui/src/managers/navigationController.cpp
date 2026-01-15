@@ -38,7 +38,6 @@ void NavigationController::switchToMainMenuWidget()
     }
 
     m_callWidget->hideEnterFullscreenButton();
-    m_callWidget->clearIncomingCalls();
     m_callWidget->setScreenShareButtonActive(false);
     m_callWidget->hideMainScreen();
     m_callWidget->hideAdditionalScreens();

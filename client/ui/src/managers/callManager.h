@@ -4,6 +4,8 @@
 #include <QString>
 #include <QStackedLayout>
 #include <QTimer>
+#include <QMap>
+#include <QPair>
 #include <memory>
 
 #include "core.h"
@@ -53,6 +55,7 @@ signals:
 
 private slots:
     void onTimeToShowWaitingNotification();
+    void onIncomingCallsDialogClosed(const QList<QString>& pendingCalls);
 
 private:
     void handleAcceptCallErrorNotificationAppearance();
@@ -62,6 +65,8 @@ private:
     void handleEndCallErrorNotificationAppearance();
     void startOperationTimer(const QString& dialogText);
     void stopOperationTimer();
+    QList<QPair<QString, int>> buildIncomingCallsList() const;
+    void updateIncomingCallsUi();
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
@@ -74,4 +79,12 @@ private:
     QStackedLayout* m_stackedLayout = nullptr;
     QTimer* m_operationTimer = nullptr;
     QString m_pendingOperationDialogText;
+
+    struct IncomingCallData
+    {
+        QString nickname;
+        int remainingTime;
+    };
+
+    QMap<QString, IncomingCallData> m_incomingCalls;
 };

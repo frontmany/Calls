@@ -6,7 +6,7 @@
 #include "utilities/utilities.h"
 
 // Style definitions
-const QColor StyleIncomingCallWidget::m_backgroundColor = QColor(235, 235, 235, 110);
+const QColor StyleIncomingCallWidget::m_backgroundColor = QColor(240, 240, 240);
 const QColor StyleIncomingCallWidget::m_borderColor = QColor(200, 200, 200, 100);
 const QColor StyleIncomingCallWidget::m_nicknameTextColor = QColor(1, 11, 19);
 const QColor StyleIncomingCallWidget::m_callTypeTextColor = QColor(102, 102, 102);
@@ -67,6 +67,8 @@ IncomingCallWidget::IncomingCallWidget(QWidget* parent, const QString& friendNic
     setupUI();
     setupTimer();
     setFixedHeight(scale(80));
+    setMinimumWidth(scale(440));
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 }
 
 IncomingCallWidget::~IncomingCallWidget() {

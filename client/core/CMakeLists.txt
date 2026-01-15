@@ -69,5 +69,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${ROOT_DIR}/vendor/spdlog/include              
     ${ROOT_DIR}/vendor/asio/asio/include
     ${ROOT_DIR}/vendor/ticTimer
+    ${ROOT_DIR}/vendor/CrashCatch/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
