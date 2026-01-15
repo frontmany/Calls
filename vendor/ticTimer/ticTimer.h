@@ -57,11 +57,11 @@ namespace tic {
 
             m_workerThread = std::thread([this]() {
                 run();
-                });
+            });
 
             m_callbackThread = std::thread([this]() {
                 runCallbacks();
-                });
+            });
         }
 
         void stop() {

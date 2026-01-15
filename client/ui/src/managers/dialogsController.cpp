@@ -530,7 +530,7 @@ void DialogsController::showIncomingCallsDialog(const QList<QPair<QString, int>>
             continue;
         }
 
-        IncomingCallDialog* dialog = new IncomingCallDialog(m_parent, call.first, call.second);
+        IncomingCallDialog* dialog = new IncomingCallDialog(nullptr, call.first, call.second);
         m_incomingCallDialogs.insert(call.first, dialog);
 
         connect(dialog, &IncomingCallDialog::callAccepted, this, &DialogsController::incomingCallAccepted);
@@ -580,7 +580,7 @@ void DialogsController::showIncomingCallsDialog(const QList<QPair<QString, int>>
         dialog->raise();
 
         int x = avail.x() + (avail.width() - dialog->width()) / 2;
-        int y = avail.y() + (avail.height() - dialog->height()) / 2;
+        int y = avail.y() + (avail.height() - dialog->height()) / 2 + scale(15);
         dialog->move(x, y);
     }
 }

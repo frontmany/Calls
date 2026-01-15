@@ -6,7 +6,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
+#include <QPainter>
+#include <QPixmap>
 
 IncomingCallDialog::IncomingCallDialog(QWidget* parent, const QString& friendNickname, int remainingTime)
     : QDialog(parent)
@@ -16,9 +17,13 @@ IncomingCallDialog::IncomingCallDialog(QWidget* parent, const QString& friendNic
 {
     setModal(false);
     setAttribute(Qt::WA_DeleteOnClose, false);
-    setWindowFlags(windowFlags() | Qt::FramelessWindowHint | Qt::Window);
-    setAttribute(Qt::WA_TranslucentBackground, true);
-    setStyleSheet("background-color: transparent;");
+    setWindowFlags(windowFlags() | Qt::Window | Qt::WindowStaysOnTopHint);
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setStyleSheet("QDialog { background: transparent; }");
+    setWindowTitle("Incoming call");
+    setWindowIcon(QIcon(":/resources/logo.png"));
+
+    m_backgroundTexture = QPixmap(":/resources/blur.png");
 
     setupUi();
     setupTimer();
@@ -93,6 +98,20 @@ void IncomingCallDialog::mouseReleaseEvent(QMouseEvent* event)
     QDialog::mouseReleaseEvent(event);
 }
 
+void IncomingCallDialog::paintEvent(QPaintEvent* event)
+{
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    if (!m_backgroundTexture.isNull()) {
+        painter.drawPixmap(rect(), m_backgroundTexture);
+    } else {
+        painter.fillRect(rect(), Qt::white);
+    }
+
+    QDialog::paintEvent(event);
+}
+
 void IncomingCallDialog::updateTimer()
 {
     if (m_remainingSeconds <= 0)
@@ -119,82 +138,52 @@ void IncomingCallDialog::updateTimer()
 
 void IncomingCallDialog::setupUi()
 {
-    QWidget* container = new QWidget(this);
-    container->setObjectName("incomingCallCard");
-
-    const QColor& backgroundColor = StyleIncomingCallWidget::m_backgroundColor;
-    const int radius = scale(16);
-    QString cardStyle = QString("#incomingCallCard {"
-        "background-color: rgba(%1, %2, %3, %4);"
-        "border-radius: %5px;"
-        "border: none;"
-        "}")
-        .arg(backgroundColor.red())
-        .arg(backgroundColor.green())
-        .arg(backgroundColor.blue())
-        .arg(backgroundColor.alpha())
-        .arg(radius);
-
-    container->setStyleSheet(cardStyle);
-
-    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(container);
-    shadow->setBlurRadius(scale(24));
-    shadow->setOffset(0, scale(6));
-    shadow->setColor(QColor(0, 0, 0, 50));
-    container->setGraphicsEffect(shadow);
-
-    QVBoxLayout* cardLayout = new QVBoxLayout(container);
-    cardLayout->setContentsMargins(scale(28), scale(24), scale(28), scale(26));
-    cardLayout->setSpacing(scale(12));
+    QVBoxLayout* cardLayout = new QVBoxLayout(this);
+    cardLayout->setContentsMargins(scale(32), scale(28), scale(32), scale(30));
+    cardLayout->setSpacing(scale(14));
     cardLayout->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
 
-    QWidget* topBar = new QWidget(container);
+    QWidget* topBar = new QWidget(this);
     topBar->setContentsMargins(0, 0, 0, 0);
+    topBar->setFixedHeight(scale(30));
 
     QHBoxLayout* topBarLayout = new QHBoxLayout(topBar);
     topBarLayout->setContentsMargins(0, 0, 0, 0);
     topBarLayout->setSpacing(0);
 
-    m_closeButton = new ButtonIcon(topBar, scale(28), scale(28));
-    m_closeButton->setIcons(QIcon(":/resources/close.png"), QIcon(":/resources/closeHover.png"));
-    m_closeButton->setSize(scale(28), scale(28));
-    m_closeButton->setCursor(Qt::PointingHandCursor);
-
-    connect(m_closeButton, &ButtonIcon::clicked, this, &IncomingCallDialog::reject);
-
     topBarLayout->addStretch();
-    topBarLayout->addWidget(m_closeButton);
 
-    const int avatarSize = scale(60);
-    m_avatarLabel = new QLabel(container);
+    const int avatarSize = scale(72);
+    m_avatarLabel = new QLabel(this);
     m_avatarLabel->setFixedSize(avatarSize, avatarSize);
     m_avatarLabel->setAlignment(Qt::AlignCenter);
     QString avatarStyle = QString("QLabel {"
-        "background-color: black;"
+        "background-color: rgb(20, 22, 28);"
+        "border: 1px solid rgba(255, 255, 255, 40);"
         "border-radius: %1px;"
         "color: white;"
         "font-size: %2px;"
         "font-weight: bold;"
         "}").arg(QString::fromStdString(std::to_string(avatarSize / 2)))
-        .arg(QString::fromStdString(std::to_string(scale(18))));
+        .arg(QString::fromStdString(std::to_string(scale(20))));
     m_avatarLabel->setStyleSheet(avatarStyle);
     QString firstLetter = m_friendNickname.isEmpty() ? "G" : m_friendNickname.left(1).toUpper();
     m_avatarLabel->setText(firstLetter);
 
-    m_nicknameLabel = new QLabel(m_friendNickname, container);
+    m_nicknameLabel = new QLabel(m_friendNickname, this);
     m_nicknameLabel->setAlignment(Qt::AlignCenter);
     m_nicknameLabel->setStyleSheet(StyleIncomingCallWidget::nicknameStyle());
     m_nicknameLabel->setWordWrap(true);
-    QFont nicknameFont("Outfit", scale(16), QFont::Bold);
+    QFont nicknameFont("Outfit", scale(20), QFont::Bold);
     m_nicknameLabel->setFont(nicknameFont);
 
-    m_callTypeLabel = new QLabel("incomingcall", container);
+    m_callTypeLabel = new QLabel("Incoming call", this);
     m_callTypeLabel->setAlignment(Qt::AlignCenter);
     m_callTypeLabel->setStyleSheet(StyleIncomingCallWidget::callTypeStyle());
-    QFont callTypeFont("Outfit", scale(13), QFont::Light);
+    QFont callTypeFont("Outfit", scale(14), QFont::Light);
     m_callTypeLabel->setFont(callTypeFont);
 
-    m_timerLabel = new QLabel(container);
+    m_timerLabel = new QLabel(this);
     m_timerLabel->setAlignment(Qt::AlignCenter);
     QString timerStyle = QString("QLabel {"
         "color: %1;"
@@ -202,24 +191,24 @@ void IncomingCallDialog::setupUi()
         "font-weight: bold;"
         "background-color: transparent;"
         "}").arg(StyleIncomingCallWidget::m_timerTextColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(18))));
+        .arg(QString::fromStdString(std::to_string(scale(22))));
     m_timerLabel->setStyleSheet(timerStyle);
     updateTimerLabel();
 
-    QWidget* buttonsWidget = new QWidget(container);
+    QWidget* buttonsWidget = new QWidget(this);
     QHBoxLayout* buttonsLayout = new QHBoxLayout(buttonsWidget);
     buttonsLayout->setContentsMargins(0, 0, 0, 0);
-    buttonsLayout->setSpacing(scale(16));
+    buttonsLayout->setSpacing(scale(18));
     buttonsLayout->setAlignment(Qt::AlignCenter);
 
     QIcon acceptIcon(":/resources/acceptCall.png");
     QIcon acceptIconHover(":/resources/acceptCallHover.png");
-    m_acceptButton = new ButtonIcon(buttonsWidget, acceptIcon, acceptIconHover, scale(38), scale(38));
+    m_acceptButton = new ButtonIcon(buttonsWidget, acceptIcon, acceptIconHover, scale(46), scale(46));
     m_acceptButton->setCursor(Qt::PointingHandCursor);
 
     QIcon declineIcon(":/resources/declineCall.png");
     QIcon declineIconHover(":/resources/declineCallHover.png");
-    m_declineButton = new ButtonIcon(buttonsWidget, declineIcon, declineIconHover, scale(38), scale(38));
+    m_declineButton = new ButtonIcon(buttonsWidget, declineIcon, declineIconHover, scale(46), scale(46));
     m_declineButton->setCursor(Qt::PointingHandCursor);
 
     connect(m_acceptButton, &ButtonIcon::clicked, [this]()
@@ -247,18 +236,12 @@ void IncomingCallDialog::setupUi()
     cardLayout->addWidget(m_avatarLabel, 0, Qt::AlignHCenter);
     cardLayout->addWidget(m_nicknameLabel);
     cardLayout->addWidget(m_callTypeLabel);
-    cardLayout->addSpacing(scale(4));
+    cardLayout->addSpacing(scale(6));
     cardLayout->addWidget(m_timerLabel);
-    cardLayout->addSpacing(scale(10));
+    cardLayout->addSpacing(scale(14));
     cardLayout->addWidget(buttonsWidget);
 
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(scale(8), scale(8), scale(8), scale(8));
-    mainLayout->setSpacing(0);
-    mainLayout->addWidget(container);
-
-    setFixedWidth(scale(290));
-    adjustSize();
+    setMinimumWidth(scale(340));
 }
 
 void IncomingCallDialog::setupTimer()
