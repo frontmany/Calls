@@ -66,13 +66,11 @@ void FrameProcessor::processPixmap(const QPixmap& pixmap)
 
     try
     {
-        QPixmap croppedPixmap = cropToHorizontal(pixmap);
-        
-        if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0)
+        if (pixmap.width() > 0 && pixmap.height() > 0)
         {
             QSize targetSize = QSize(1920, 1080);
-            std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
-            emit frameProcessed(croppedPixmap, imageData);
+            std::vector<unsigned char> imageData = pixmapToBytes(pixmap, targetSize);
+            emit frameProcessed(pixmap, imageData);
         }
     }
     catch (const std::exception& e)

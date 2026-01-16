@@ -60,7 +60,7 @@ public:
     ~CallWidget() = default;
 
     bool isMainScreenVisible() const;
-    bool isAdditionalScreenVisible(const std::string& id) const;
+    bool isAdditionalScreenVisible(const std::string& screenId) const;
     bool isFullScreen() const;
 
     void setCallInfo(const QString& friendNickname);
@@ -80,8 +80,8 @@ public:
     void exitFullscreen();
     void updateMainScreenSize();
     void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode);
-    void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id);
-    void removeAdditionalScreen(const std::string& id);
+    void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& screenId);
+    void removeAdditionalScreen(const std::string& screenId);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
     void showErrorNotification(const QString& text, int durationMs);

@@ -501,6 +501,8 @@ void CallManager::onCallParticipantConnectionDown()
     if (m_callWidget) {
         m_callWidget->setCameraButtonRestricted(true);
         m_callWidget->setScreenShareButtonRestricted(true);
+        m_callWidget->hideMainScreen();
+        m_callWidget->hideAdditionalScreens();
     }
 
     if (m_dialogsController)

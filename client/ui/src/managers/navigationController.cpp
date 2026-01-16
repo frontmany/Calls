@@ -79,6 +79,10 @@ void NavigationController::switchToCallWidget(const QString& friendNickname)
 
 void NavigationController::onCallWidgetEnterFullscreenRequested()
 {
+    if (m_callWidget && !m_callWidget->isFullScreen())
+    {
+        m_callWidget->enterFullscreen();
+    }
     emit windowFullscreenRequested();
 }
 

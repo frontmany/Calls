@@ -92,19 +92,17 @@ void Screen::paintEvent(QPaintEvent* event)
     {
         QPixmap scaledPixmap;
         QRect targetRect;
+        QRect sourceRect;
 
         if (m_scaleMode == ScaleMode::CropToFit)
         {
             scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-            
+
             const int offsetX = (scaledPixmap.width() - widgetRect.width()) / 2;
             const int offsetY = (scaledPixmap.height() - widgetRect.height()) / 2;
-            
-            QRect sourceRect(offsetX, offsetY, widgetRect.width(), widgetRect.height());
+
+            sourceRect = QRect(offsetX, offsetY, widgetRect.width(), widgetRect.height());
             targetRect = widgetRect;
-            
-            painter.drawPixmap(targetRect, scaledPixmap, sourceRect);
-            return;
         }
         else
         {
@@ -114,8 +112,16 @@ void Screen::paintEvent(QPaintEvent* event)
             const int y = widgetRect.y() + (widgetRect.height() - scaledPixmap.height()) / 2;
 
             targetRect = QRect(x, y, scaledPixmap.width(), scaledPixmap.height());
+            sourceRect = QRect(QPoint(0, 0), scaledPixmap.size());
         }
 
-        painter.drawPixmap(targetRect, scaledPixmap);
+        if (m_roundedCornersEnabled)
+        {
+            QPainterPath pixmapClip;
+            pixmapClip.addRoundedRect(targetRect, m_cornerRadius, m_cornerRadius);
+            painter.setClipPath(pixmapClip, Qt::IntersectClip);
+        }
+
+        painter.drawPixmap(targetRect, scaledPixmap, sourceRect);
     }
 }

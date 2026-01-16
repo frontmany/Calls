@@ -383,8 +383,8 @@ void CallWidget::setupUI() {
     m_hangupButton->setToolTip("Hang up");
     m_hangupButton->setCursor(Qt::PointingHandCursor);
 
-    m_buttonsLayout->addWidget(cameraContainer);
     m_buttonsLayout->addWidget(m_microphoneButton);
+    m_buttonsLayout->addWidget(cameraContainer);
     m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(m_enterFullscreenButton);
     m_buttonsLayout->addWidget(m_hangupButton);
@@ -546,8 +546,8 @@ bool CallWidget::isMainScreenVisible() const {
     return !m_mainScreen->isHidden();
 }
 
-bool CallWidget::isAdditionalScreenVisible(const std::string& id) const {
-    return m_additionalScreens.contains(id);
+bool CallWidget::isAdditionalScreenVisible(const std::string& screenId) const {
+    return m_additionalScreens.contains(screenId);
 }
 
 void CallWidget::setInputVolume(int newVolume) {
@@ -656,7 +656,7 @@ void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode s
     }
 }
 
-void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id)
+void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::string& screenId)
 {
     if (frame.isNull()) return;
 
@@ -666,9 +666,9 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
         m_topMainLayoutSpacer->changeSize(0, scale(20), QSizePolicy::Minimum, QSizePolicy::Fixed);
 
     Screen* screen = nullptr;
-    if (m_additionalScreens.contains(id))
+    if (m_additionalScreens.contains(screenId))
     {
-        screen = m_additionalScreens[id];
+        screen = m_additionalScreens[screenId];
     }
     else
     {
@@ -680,7 +680,7 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
         const int scaledHeight = scale(144);
         screen->setFixedSize(scaledWidth, scaledHeight);
 
-        m_additionalScreens[id] = screen;
+        m_additionalScreens[screenId] = screen;
         m_additionalScreensLayout->addWidget(screen);
         
         if (wasEmpty && !m_screenFullscreenActive)
@@ -697,14 +697,14 @@ void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::st
     screen->setPixmap(frame);
 }
 
-void CallWidget::removeAdditionalScreen(const std::string& id)
+void CallWidget::removeAdditionalScreen(const std::string& screenId)
 {
-    if (!m_additionalScreens.contains(id)) return;
+    if (!m_additionalScreens.contains(screenId)) return;
 
-    Screen* screen = m_additionalScreens[id];
+    Screen* screen = m_additionalScreens[screenId];
     m_additionalScreensLayout->removeWidget(screen);
     screen->deleteLater();
-    m_additionalScreens.remove(id);
+    m_additionalScreens.remove(screenId);
 
     if (m_additionalScreens.isEmpty())
     {

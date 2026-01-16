@@ -745,6 +745,7 @@ namespace core
         createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_BEGIN,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING);
+                m_stateManager.setCameraSharing(true);
                 m_eventListener->onStartCameraSharingResult({});
             },
             [this](std::optional<nlohmann::json> failureContext) {
@@ -767,12 +768,12 @@ namespace core
         m_operationManager.addOperation(UserOperationType::STOP_CAMERA_SHARING);
 
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        std::string friendNicknameHash = crypto::calculateHash(friendNickname);
-        auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNicknameHash);
+        auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_END,
             [this](std::optional<nlohmann::json> completionContext) {
                 m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING);
+            m_stateManager.setCameraSharing(false);
                 m_eventListener->onStopCameraSharingResult({});
             },
             [this](std::optional<nlohmann::json> failureContext) {
