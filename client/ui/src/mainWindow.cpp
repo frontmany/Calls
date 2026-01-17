@@ -78,10 +78,11 @@ void MainWindow::showEvent(QShowEvent* event) {
     if (!isFirstInstance() && !m_configManager->isMultiInstanceAllowed()) {
         m_dialogsController->showAlreadyRunningDialog();
     }
-    else {
+    else if (!m_clientsStarted) {
         m_coreClient->start(m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(), 
             std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_screenSharingManager, m_cameraSharingManager, m_coreNetworkErrorHandler));
         m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
+        m_clientsStarted = true;
     }
 }
 

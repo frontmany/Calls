@@ -78,6 +78,7 @@ namespace core
         }
         
         void removeIncomingCall(const std::string& nickname);
+        bool tryRemoveIncomingCall(const std::string& nickname);
 
         void clearIncomingCalls();
 

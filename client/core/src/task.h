@@ -4,6 +4,8 @@
 #include <functional>
 #include <chrono>
 #include <optional>
+#include <atomic>
+#include <memory>
 
 #include "ticTimer.h"
 #include "utilities/logger.h"
@@ -21,12 +23,10 @@ namespace core
 			std::function<void(std::optional<nlohmann::json>)>&& onFinishedSuccessfully,
 			std::function<void(std::optional<nlohmann::json>)>&& onFailed)
 			: m_uid(uid),
-			m_timer(),
 			m_period(period),
-			m_maxAttempts(maxAttempts),
-			m_attempt(attempt),
-			m_onFinishedSuccessfully(onFinishedSuccessfully),
-			m_onFailed(onFailed)
+			m_timer(std::make_shared<tic::RapidTimer>()),
+			m_state(std::make_shared<State>(maxAttempts, std::move(attempt),
+				std::move(onFinishedSuccessfully), std::move(onFailed)))
 		{
 		}
 
@@ -36,49 +36,38 @@ namespace core
 		Task& operator=(Task&&) = default;
 
 		~Task() {
-			m_timer.stop();
+			deactivate();
+			stopTimer();
 		}
 
 		void start() {
-			m_attempt();
-			m_attemptsCount++;
-
-			m_timer.start(m_period, [this]() {
-				try {
-					if (m_attemptsCount == m_maxAttempts) {
-						m_timer.stop();
-						if (m_onFailed) {
-							m_onFailed(std::nullopt);
-						}
-
-						return;
-					}
-
-					m_attempt();
-					m_attemptsCount++;
-				}
-				catch (const std::exception& e) {
-					LOG_ERROR("Exception during task attempt {}", e.what());
-				}
-				});
+			m_state->attempt();
+			m_state->attemptsCount.fetch_add(1);
+			 
+			m_timer->start(m_period, std::bind(&Task::onTimerTick,
+				std::weak_ptr<State>(m_state),
+				std::weak_ptr<tic::RapidTimer>(m_timer)));
 		}
 
 		void complete(std::optional<nlohmann::json> completionContext = std::nullopt) {
-			m_timer.stop();
-			if (m_onFinishedSuccessfully) {
-				m_onFinishedSuccessfully(completionContext);
+			deactivate();
+			stopTimer();
+			if (m_state->onFinishedSuccessfully) {
+				m_state->onFinishedSuccessfully(completionContext);
 			}
 		}
 
 		void fail(std::optional<nlohmann::json> failureContext = std::nullopt) {
-			m_timer.stop();
-			if (m_onFailed) {
-				m_onFailed(failureContext);
+			deactivate();
+			stopTimer();
+			if (m_state->onFailed) {
+				m_state->onFailed(failureContext);
 			}
 		}
 
 		void cancel() {
-			m_timer.stop();
+			deactivate();
+			stopTimer();
 		}
 
 		const std::string& getUID() {
@@ -86,13 +75,78 @@ namespace core
 		}
 
 	private:
+		struct State {
+			explicit State(int maxAttempts,
+				std::function<void()>&& attempt,
+				std::function<void(std::optional<nlohmann::json>)>&& onFinishedSuccessfully,
+				std::function<void(std::optional<nlohmann::json>)>&& onFailed)
+				: maxAttempts(maxAttempts)
+				, attempt(std::move(attempt))
+				, onFinishedSuccessfully(std::move(onFinishedSuccessfully))
+				, onFailed(std::move(onFailed))
+			{
+			}
+
+			std::atomic<bool> active = true;
+			std::atomic<int> attemptsCount = 0;
+			int maxAttempts;
+			std::function<void()> attempt;
+			std::function<void(std::optional<nlohmann::json>)> onFinishedSuccessfully;
+			std::function<void(std::optional<nlohmann::json>)> onFailed;
+		};
+
+		static void onTimerTick(std::weak_ptr<State> stateWeak,
+			std::weak_ptr<tic::RapidTimer> timerWeak) {
+			auto state = stateWeak.lock();
+			if (!state) {
+				return;
+			}
+
+			if (!state->active.load()) {
+				stopTimer(timerWeak);
+				return;
+			}
+
+			try {
+				if (state->attemptsCount.load() == state->maxAttempts) {
+					stopTimer(timerWeak);
+					state->active.store(false);
+					if (state->onFailed) {
+						state->onFailed(std::nullopt);
+					}
+
+					return;
+				}
+
+				state->attempt();
+				state->attemptsCount.fetch_add(1);
+			}
+			catch (const std::exception& e) {
+				LOG_ERROR("Exception during task attempt {}", e.what());
+			}
+		}
+
+		static void stopTimer(const std::weak_ptr<tic::RapidTimer>& timerWeak) {
+			if (auto timer = timerWeak.lock()) {
+				timer->stop();
+			}
+		}
+
+		void stopTimer() {
+			if (m_timer) {
+				m_timer->stop();
+			}
+		}
+
+		void deactivate() {
+			if (m_state) {
+				m_state->active.store(false);
+			}
+		}
+
 		std::string m_uid;
-		int m_attemptsCount = 0;
-		int m_maxAttempts;
 		std::chrono::duration<Rep, Period> m_period;
-		tic::RapidTimer m_timer;
-		std::function<void()> m_attempt;
-		std::function<void(std::optional<nlohmann::json>)> m_onFinishedSuccessfully;
-		std::function<void(std::optional<nlohmann::json>)> m_onFailed;
+		std::shared_ptr<tic::RapidTimer> m_timer;
+		std::shared_ptr<State> m_state;
 	};
 }

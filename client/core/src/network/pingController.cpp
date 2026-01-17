@@ -91,6 +91,7 @@ namespace core
             m_consecutiveFailures = 0;
 
             if (m_connectionError.load()) {
+                LOG_INFO("Ping recovered");
                 if (m_onConnectionRestored) {
                     m_onConnectionRestored();
                 }
@@ -102,8 +103,10 @@ namespace core
         else {
             int failures = m_consecutiveFailures.fetch_add(1) + 1;
 
+            LOG_WARN("Ping missed: {} consecutive failure(s)", failures);
             if (failures >= MAX_CONSECUTIVE_FAILURES) {
                 if (!m_connectionError.load()) {
+                    LOG_WARN("Ping failure threshold reached ({}), marking connection down", MAX_CONSECUTIVE_FAILURES);
                     if (m_onConnectionDown) {
                         m_onConnectionDown();
                     }

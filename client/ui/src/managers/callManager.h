@@ -5,7 +5,7 @@
 #include <QStackedLayout>
 #include <QTimer>
 #include <QMap>
-#include <QPair>
+#include <QSet>
 #include <memory>
 
 #include "core.h"
@@ -47,6 +47,7 @@ public slots:
     void onEndCallResult(std::error_code ec);
     void onCallParticipantConnectionDown();
     void onCallParticipantConnectionRestored();
+    void onLocalConnectionDownInCall();
 
 signals:
     void stopScreenCaptureRequested();
@@ -65,7 +66,6 @@ private:
     void handleEndCallErrorNotificationAppearance();
     void startOperationTimer(const QString& dialogText);
     void stopOperationTimer();
-    QList<QPair<QString, int>> buildIncomingCallsList() const;
     void updateIncomingCallsUi();
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
@@ -87,4 +87,5 @@ private:
     };
 
     QMap<QString, IncomingCallData> m_incomingCalls;
+    QSet<QString> m_visibleIncomingCalls;
 };

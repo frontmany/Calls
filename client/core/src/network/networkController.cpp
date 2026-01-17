@@ -81,6 +81,7 @@ namespace core {
 
             std::function<void()> errorHandler = [this]() {
                 if (!m_connectionDownNotified.exchange(true)) {
+                    LOG_WARN("Connection down detected by packet receiver");
                     m_packetReceiver.setConnectionDown(true);
                     if (m_onConnectionDown) {
                         m_onConnectionDown();
@@ -113,6 +114,7 @@ namespace core {
 
             std::function<void()> connectionDownWrapper = [this]() {
                 if (!m_connectionDownNotified.exchange(true)) {
+                    LOG_WARN("Connection down detected by ping timeout");
                     m_packetReceiver.setConnectionDown(true);
                     if (m_onConnectionDown) {
                         m_onConnectionDown();
@@ -123,6 +125,7 @@ namespace core {
             std::function<void()> connectionRestoredWrapper = [this]() {
                 m_connectionDownNotified = false;
                 m_packetReceiver.setConnectionDown(false);
+                LOG_INFO("Connection restored by ping");
                 if (m_onConnectionRestored) {
                     m_onConnectionRestored();
                 }

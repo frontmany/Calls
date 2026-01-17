@@ -107,7 +107,7 @@ void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
     }
     else {
         if (m_dialogsController) {
-            m_dialogsController->setIncomingCallButtonsEnabled(friendNickname, false);
+            m_dialogsController->setIncomingCallButtonsActive(friendNickname, false);
         }
         startOperationTimer("Accepting call...");
     }
@@ -125,7 +125,7 @@ void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
     }
     else {
         if (m_dialogsController) {
-            m_dialogsController->setIncomingCallButtonsEnabled(friendNickname, false);
+            m_dialogsController->setIncomingCallButtonsActive(friendNickname, false);
         }
         startOperationTimer("Declining call...");
     }
@@ -215,7 +215,7 @@ void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname
     }
     else {
         if (m_dialogsController) {
-            m_dialogsController->setIncomingCallButtonsEnabled(nickname, true);
+            m_dialogsController->setIncomingCallButtonsActive(nickname, true);
         }
         if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
             m_incomingCalls.remove(nickname);
@@ -431,7 +431,7 @@ void CallManager::onDeclineCallResult(std::error_code ec, const QString& nicknam
     stopOperationTimer();
     if (ec) {
         if (m_dialogsController) {
-            m_dialogsController->setIncomingCallButtonsEnabled(nickname, true);
+            m_dialogsController->setIncomingCallButtonsActive(nickname, true);
         }
         LOG_WARN("Failed to decline call: {}", ec.message());
         if (m_coreClient && !m_coreClient->isConnectionDown()) {
@@ -539,6 +539,16 @@ void CallManager::onCallParticipantConnectionRestored()
     }
 }
 
+void CallManager::onLocalConnectionDownInCall()
+{
+    if (!m_callWidget) return;
+
+    m_callWidget->setCameraButtonActive(false);
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->hideMainScreen();
+    m_callWidget->hideAdditionalScreens();
+}
+
 void CallManager::startOperationTimer(const QString& dialogText)
 {
     m_pendingOperationDialogText = dialogText;
@@ -585,29 +595,27 @@ void CallManager::onIncomingCallsDialogClosed(const QList<QString>& pendingCalls
     }
 }
 
-QList<QPair<QString, int>> CallManager::buildIncomingCallsList() const
-{
-    QList<QPair<QString, int>> calls;
-    for (const auto& entry : m_incomingCalls)
-    {
-        calls.append({ entry.nickname, entry.remainingTime });
-    }
-    return calls;
-}
-
 void CallManager::updateIncomingCallsUi()
 {
-    const QList<QPair<QString, int>> calls = buildIncomingCallsList();
-
-    if (m_dialogsController)
+    if (!m_dialogsController)
     {
-        if (calls.isEmpty())
+        return;
+    }
+
+    QSet<QString> current;
+    for (const auto& entry : m_incomingCalls)
+    {
+        current.insert(entry.nickname);
+        m_dialogsController->showIncomingCallsDialog(entry.nickname, entry.remainingTime);
+    }
+
+    for (const QString& nickname : m_visibleIncomingCalls)
+    {
+        if (!current.contains(nickname))
         {
-            m_dialogsController->hideIncomingCallsDialog();
-        }
-        else
-        {
-            m_dialogsController->showIncomingCallsDialog(calls);
+            m_dialogsController->hideIncomingCallsDialog(nickname);
         }
     }
+
+    m_visibleIncomingCalls = current;
 }

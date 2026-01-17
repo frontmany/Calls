@@ -81,12 +81,65 @@ namespace core
         void onInputVoice(const unsigned char* data, int length);
         void reset();
 
+        void onNetworkReceive(const unsigned char* data, int length, uint32_t type);
+        void onConnectionDown();
+        void onConnectionRestored();
+
+        void sendPacket(const std::vector<unsigned char>& packet, PacketType packetType);
+
         void createAndStartTask(
             const std::string& uid,
             const std::vector<unsigned char>& packet,
             PacketType packetType,
             std::function<void(std::optional<nlohmann::json>)> onCompletion,
             std::function<void(std::optional<nlohmann::json>)> onFailure);
+
+        void onReconnectCompleted(std::optional<nlohmann::json> completionContext);
+        void onReconnectFailed(std::optional<nlohmann::json> failureContext);
+
+        void onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
+        void onAuthorizeFailed(std::optional<nlohmann::json> failureContext);
+
+        void onLogoutCompleted(std::optional<nlohmann::json> completionContext);
+        void onLogoutFailed(std::optional<nlohmann::json> failureContext);
+
+        void onRequestUserInfoCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
+        void onRequestUserInfoFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+
+        void onStartOutgoingCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
+        void onStartOutgoingCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+        void onOutgoingCallTimeout();
+
+        void onStopOutgoingCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
+        void onStopOutgoingCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
+
+        void onDeclineIncomingCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
+        void onDeclineIncomingCallFailed(std::optional<nlohmann::json> failureContext);
+
+        void onAcceptCallStopOutgoingCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
+        void onAcceptCallStopOutgoingFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+        void onAcceptCallEndActiveCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
+        void onAcceptCallEndActiveFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+
+        void onAcceptCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
+        void onAcceptCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+        void onAcceptCallFailedAfterEndCall(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+
+        void onDeclineCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
+        void onDeclineCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
+
+        void onEndCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
+        void onEndCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
+
+        void onStartScreenSharingCompleted(std::optional<nlohmann::json> completionContext);
+        void onStartScreenSharingFailed(std::optional<nlohmann::json> failureContext);
+        void onStopScreenSharingCompleted(std::optional<nlohmann::json> completionContext);
+        void onStopScreenSharingFailed(std::optional<nlohmann::json> failureContext);
+
+        void onStartCameraSharingCompleted(std::optional<nlohmann::json> completionContext);
+        void onStartCameraSharingFailed(std::optional<nlohmann::json> failureContext);
+        void onStopCameraSharingCompleted(std::optional<nlohmann::json> completionContext);
+        void onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext);
 
     private:
         TaskManager<long long, std::milli> m_taskManager;

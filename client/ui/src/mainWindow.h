@@ -100,4 +100,5 @@ private:
     CameraSharingManager* m_cameraSharingManager = nullptr;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler = nullptr;
     UpdaterNetworkErrorHandler* m_updaterNetworkErrorHandler = nullptr;
+    bool m_clientsStarted = false;
 };

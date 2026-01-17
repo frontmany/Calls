@@ -78,6 +78,10 @@ void CoreNetworkErrorHandler::onConnectionDown()
             if (m_cameraSharingManager) {
                 m_cameraSharingManager->stopLocalCameraCapture();
             }
+            
+            if (m_callManager) {
+                m_callManager->onLocalConnectionDownInCall();
+            }
         }
         else {
             if (m_audioManager) {

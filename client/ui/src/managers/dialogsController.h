@@ -4,7 +4,6 @@
 #include <QList>
 #include <QString>
 #include <QScreen>
-#include <QPair>
 #include <QMap>
 
 class OverlayWidget;
@@ -45,11 +44,9 @@ public:
     void showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice = -1, int currentOutputDevice = -1);
     void hideAudioSettingsDialog();
 
-    void showIncomingCallsDialog(const QList<QPair<QString, int>>& calls);
-    void hideIncomingCallsDialog();
-    void setIncomingCallButtonsEnabled(const QString& friendNickname, bool enabled);
-    void removeIncomingCallFromDialog(const QString& friendNickname);
-    void clearIncomingCallsDialog();
+    void showIncomingCallsDialog(const QString& friendNickname, int remainingTime);
+    void hideIncomingCallsDialog(const QString& friendNickname);
+    void setIncomingCallButtonsActive(const QString& friendNickname, bool active);
 
 signals:
     void inputDeviceSelected(int deviceIndex);

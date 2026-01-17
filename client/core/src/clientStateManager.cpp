@@ -174,6 +174,16 @@ void ClientStateManager::removeIncomingCall(const std::string& nickname) {
         m_incomingCalls.erase(nickname);
 }
 
+bool ClientStateManager::tryRemoveIncomingCall(const std::string& nickname)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_incomingCalls.contains(nickname))
+        return false;
+
+    m_incomingCalls.erase(nickname);
+    return true;
+}
+
 void ClientStateManager::clearIncomingCalls()
 {
     std::lock_guard<std::mutex> lock(m_mutex);

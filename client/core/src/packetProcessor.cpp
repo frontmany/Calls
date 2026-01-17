@@ -210,8 +210,9 @@ void PacketProcessor::onIncomingCallBegin(const nlohmann::json& jsonObject)
     if (incomingCalls.contains(senderNickname)) return;
 
     m_stateManager.addIncomingCall(senderNickname, senderPublicKey, callKey, 32s, [this, senderNickname]() {
-        m_stateManager.removeIncomingCall(senderNickname);
-        m_eventListener->onIncomingCallExpired({}, senderNickname);
+        if (m_stateManager.tryRemoveIncomingCall(senderNickname)) {
+            m_eventListener->onIncomingCallExpired({}, senderNickname);
+        }
     });
 
     m_eventListener->onIncomingCall(senderNickname);
@@ -235,8 +236,9 @@ void PacketProcessor::onIncomingCallEnded(const nlohmann::json& jsonObject)
     if (it == incomingCalls.end()) return;
 
     std::string userNickname = it->second.getNickname();
-    m_stateManager.removeIncomingCall(userNickname);
-    m_eventListener->onIncomingCallExpired({}, userNickname);
+    if (m_stateManager.tryRemoveIncomingCall(userNickname)) {
+        m_eventListener->onIncomingCallExpired({}, userNickname);
+    }
 }
 
 void PacketProcessor::onCallAccepted(const nlohmann::json& jsonObject)
@@ -384,9 +386,9 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
         if (it != incomingCalls.end()) {
             const auto& [nickname, incomingCall] = *it;
             std::string nicknameCopy = nickname;
-            m_stateManager.removeIncomingCall(nicknameCopy);
-
-            m_eventListener->onIncomingCallExpired(ErrorCode::connection_down_with_user, nicknameCopy);
+            if (m_stateManager.tryRemoveIncomingCall(nicknameCopy)) {
+                m_eventListener->onIncomingCallExpired(ErrorCode::connection_down_with_user, nicknameCopy);
+            }
         }
     }
 
@@ -441,9 +443,9 @@ void PacketProcessor::onUserLogout(const nlohmann::json& jsonObject) {
         if (it != incomingCalls.end()) {
             const auto& [nickname, incomingCall] = *it;
             std::string nicknameCopy = nickname;
-            m_stateManager.removeIncomingCall(nicknameCopy);
-
-            m_eventListener->onIncomingCallExpired(ErrorCode::user_logout, nicknameCopy);
+            if (m_stateManager.tryRemoveIncomingCall(nicknameCopy)) {
+                m_eventListener->onIncomingCallExpired(ErrorCode::user_logout, nicknameCopy);
+            }
         }
     }
 

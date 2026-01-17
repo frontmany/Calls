@@ -399,7 +399,7 @@ void CallWidget::setupUI() {
     m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_exitFullscreenButton->hide();
     m_settingsButton = new ButtonIcon(this, scale(28), scale(28));
-    m_settingsButton->setIcons(QIcon(":/resources/sliders.png"), QIcon(":/resources/slidersHover.png"));
+    m_settingsButton->setIcons(QIcon(":/resources/settings.png"), QIcon(":/resources/settingsHover.png"));
     m_settingsButton->setSize(scale(38), scale(38));
     m_settingsButton->setToolTip("Audio settings");
     m_settingsButton->setCursor(Qt::PointingHandCursor);
