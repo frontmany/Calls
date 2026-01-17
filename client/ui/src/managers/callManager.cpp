@@ -507,7 +507,7 @@ void CallManager::onCallParticipantConnectionDown()
 
     if (m_dialogsController)
     {
-        m_dialogsController->showNotificationDialog("Connection with participant lost. Waiting for them...", false, false, true);
+        m_dialogsController->showPendingOperationDialog("Connection with participant lost. Waiting for them...");
     }
 }
 
@@ -516,8 +516,7 @@ void CallManager::onCallParticipantConnectionRestored()
     if (m_dialogsController)
     {
         const int restoredDurationMs = 2500;
-        m_dialogsController->hideNotificationDialog();
-        m_dialogsController->showNotificationDialog("Connection restored", false, true, false);
+        m_dialogsController->showConnectionRestoredDialog();
 
         QTimer::singleShot(restoredDurationMs, this, [this]()
         {
@@ -533,7 +532,7 @@ void CallManager::onCallParticipantConnectionRestored()
 
             if (m_dialogsController)
             {
-                m_dialogsController->hideNotificationDialog();
+                m_dialogsController->hideConnectionRestoredDialog();
             }
         });
     }
@@ -560,7 +559,7 @@ void CallManager::stopOperationTimer()
     m_operationTimer->stop();
     m_pendingOperationDialogText.clear();
     if (m_dialogsController) {
-        m_dialogsController->hideNotificationDialog();
+        m_dialogsController->hidePendingOperationDialog();
     }
 }
 
@@ -574,7 +573,7 @@ void CallManager::onTimeToShowWaitingNotification()
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
 
-            m_dialogsController->showNotificationDialog(m_pendingOperationDialogText, false, false);
+            m_dialogsController->showPendingOperationDialog(m_pendingOperationDialogText);
         }
     }
 }

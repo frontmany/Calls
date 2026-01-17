@@ -390,6 +390,9 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_navigationController, &NavigationController::windowTitleChanged, this, &MainWindow::onWindowTitleChanged);
         connect(m_navigationController, &NavigationController::windowFullscreenRequested, this, &MainWindow::onWindowFullscreenRequested);
         connect(m_navigationController, &NavigationController::windowMaximizedRequested, this, &MainWindow::onWindowMaximizedRequested);
+        if (m_cameraSharingManager) {
+            connect(m_navigationController, &NavigationController::callWidgetShown, m_cameraSharingManager, &CameraSharingManager::initializeCameraForCall);
+        }
     }
     if (m_updateManager) {
         connect(m_updateManager, &UpdateManager::stopAllRingtonesRequested, this, &MainWindow::onStopAllRingtonesRequested);

@@ -75,6 +75,7 @@ void NavigationController::switchToCallWidget(const QString& friendNickname)
 
     emit windowTitleChanged("Call In Progress - Callifornia");
     m_callWidget->setCallInfo(friendNickname);
+    emit callWidgetShown();
 }
 
 void NavigationController::onCallWidgetEnterFullscreenRequested()

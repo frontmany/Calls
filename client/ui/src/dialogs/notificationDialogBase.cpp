@@ -1,11 +1,9 @@
-#include "dialogs/notificationDialog.h"
+#include "dialogs/notificationDialogBase.h"
 #include "utilities/utilities.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QMovie>
-#include <QScreen>
 
-QString StyleNotificationDialog::mainWidgetStyle(bool isGreenStyle)
+QString NotificationDialogStyle::mainWidgetStyle(bool isGreenStyle)
 {
     if (isGreenStyle)
     {
@@ -23,7 +21,7 @@ QString StyleNotificationDialog::mainWidgetStyle(bool isGreenStyle)
         "}";
 }
 
-QString StyleNotificationDialog::labelStyle(bool isGreenStyle)
+QString NotificationDialogStyle::labelStyle(bool isGreenStyle)
 {
     if (isGreenStyle)
     {
@@ -41,7 +39,10 @@ QString StyleNotificationDialog::labelStyle(bool isGreenStyle)
         "font-weight: normal;";
 }
 
-NotificationDialog::NotificationDialog(QWidget* parent, const QString& statusText, bool isGreenStyle, bool isAnimation)
+NotificationDialogBase::NotificationDialogBase(QWidget* parent,
+    const QString& statusText,
+    bool isGreenStyle,
+    bool isAnimation)
     : QWidget(parent)
     , m_isGreenStyle(isGreenStyle)
     , m_isAnimation(isAnimation)
@@ -107,20 +108,20 @@ NotificationDialog::NotificationDialog(QWidget* parent, const QString& statusTex
     applyStyle();
 }
 
-void NotificationDialog::applyStyle()
+void NotificationDialogBase::applyStyle()
 {
     if (m_mainWidget)
     {
-        m_mainWidget->setStyleSheet(StyleNotificationDialog::mainWidgetStyle(m_isGreenStyle));
+        m_mainWidget->setStyleSheet(NotificationDialogStyle::mainWidgetStyle(m_isGreenStyle));
     }
 
     if (m_statusLabel)
     {
-        m_statusLabel->setStyleSheet(StyleNotificationDialog::labelStyle(m_isGreenStyle));
+        m_statusLabel->setStyleSheet(NotificationDialogStyle::labelStyle(m_isGreenStyle));
     }
 }
 
-void NotificationDialog::setStatusText(const QString& text)
+void NotificationDialogBase::setStatusText(const QString& text)
 {
     if (m_statusLabel)
     {
@@ -128,13 +129,13 @@ void NotificationDialog::setStatusText(const QString& text)
     }
 }
 
-void NotificationDialog::setGreenStyle(bool isGreenStyle)
+void NotificationDialogBase::setGreenStyle(bool isGreenStyle)
 {
     m_isGreenStyle = isGreenStyle;
     applyStyle();
 }
 
-void NotificationDialog::setAnimationEnabled(bool isAnimation)
+void NotificationDialogBase::setAnimationEnabled(bool isAnimation)
 {
     m_isAnimation = isAnimation;
 

@@ -4,17 +4,20 @@
 #include <QLabel>
 #include <QMovie>
 
-struct StyleNotificationDialog
+struct NotificationDialogStyle
 {
     static QString mainWidgetStyle(bool isGreenStyle);
     static QString labelStyle(bool isGreenStyle);
 };
 
-class NotificationDialog : public QWidget
+class NotificationDialogBase : public QWidget
 {
     Q_OBJECT
 public:
-    explicit NotificationDialog(QWidget* parent = nullptr, const QString& statusText = "", bool isGreenStyle = false, bool isAnimation = true);
+    explicit NotificationDialogBase(QWidget* parent,
+        const QString& statusText,
+        bool isGreenStyle,
+        bool isAnimation);
     void setStatusText(const QString& text);
     void setGreenStyle(bool isGreenStyle);
     void setAnimationEnabled(bool isAnimation);

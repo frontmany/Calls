@@ -36,23 +36,17 @@ void CameraSharingManager::stopLocalCameraCapture()
 
 void CameraSharingManager::initializeCameraForCall()
 {
-    if (!m_cameraCaptureController || !m_callWidget || !m_configManager || !m_mainMenuWidget) return;
+    if (!m_cameraCaptureController || !m_callWidget || !m_configManager) return;
 
     bool shouldStartCamera = m_configManager->isCameraActive() && m_cameraCaptureController->isCameraAvailable();
-    m_configManager->setCameraActive(shouldStartCamera);
-    m_mainMenuWidget->setCameraActive(shouldStartCamera);
     m_callWidget->setCameraButtonActive(shouldStartCamera);
 
     if (shouldStartCamera) {
         if (!m_coreClient) {
-            m_configManager->setCameraActive(false);
-            m_mainMenuWidget->setCameraActive(false);
             m_callWidget->setCameraButtonActive(false);
         } else {
             std::error_code ec = m_coreClient->startCameraSharing();
             if (ec) {
-                m_configManager->setCameraActive(false);
-                m_mainMenuWidget->setCameraActive(false);
                 m_callWidget->setCameraButtonActive(false);
             }
         }
@@ -61,7 +55,7 @@ void CameraSharingManager::initializeCameraForCall()
 
 void CameraSharingManager::onCameraButtonClicked(bool toggled)
 {
-    if (!m_callWidget || !m_configManager || !m_mainMenuWidget || !m_coreClient) return;
+    if (!m_callWidget || !m_coreClient) return;
 
     bool active = toggled;
 
@@ -122,12 +116,6 @@ void CameraSharingManager::onCameraSharingStarted()
         m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setCameraButtonActive(true);
     }
-    if (m_configManager) {
-        m_configManager->setCameraActive(true);
-    }
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->setCameraActive(true);
-    }
 
     if (m_cameraCaptureController) {
         m_cameraCaptureController->startCapture();
@@ -140,12 +128,6 @@ void CameraSharingManager::onStartCameraSharingError()
     if (m_callWidget) {
         m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setCameraButtonActive(false);
-    }
-    if (m_configManager) {
-        m_configManager->setCameraActive(false);
-    }
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->setCameraActive(false);
     }
 }
 
@@ -293,12 +275,6 @@ void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
             m_cameraCaptureController->stopCapture();
         }
 
-        if (m_configManager) {
-            m_configManager->setCameraActive(false);
-        }
-        if (m_mainMenuWidget) {
-            m_mainMenuWidget->setCameraActive(false);
-        }
         if (m_callWidget) {
             m_callWidget->setCameraButtonActive(false);
         }
@@ -327,7 +303,7 @@ void CameraSharingManager::stopOperationTimer()
     m_operationTimer->stop();
     m_pendingOperationDialogText.clear();
     if (m_dialogsController) {
-        m_dialogsController->hideNotificationDialog();
+        m_dialogsController->hidePendingOperationDialog();
     }
 }
 
@@ -341,7 +317,7 @@ void CameraSharingManager::onTimeToShowWaitingNotification()
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
 
-            m_dialogsController->showNotificationDialog(m_pendingOperationDialogText, false, false);
+            m_dialogsController->showPendingOperationDialog(m_pendingOperationDialogText);
         }
     }
 }

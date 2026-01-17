@@ -5,11 +5,15 @@
 #include <QString>
 #include <QScreen>
 #include <QMap>
+#include <functional>
 
 class OverlayWidget;
 class AudioSettingsDialog;
 class UpdatingDialog;
-class NotificationDialog;
+class NotificationDialogBase;
+class ConnectionDownDialog;
+class ConnectionRestoredDialog;
+class PendingOperationDialog;
 class ScreenShareDialog;
 class AlreadyRunningDialog;
 class FirstLaunchDialog;
@@ -32,8 +36,14 @@ public:
     void showScreenShareDialog(const QList<QScreen*>& screens);
     void hideScreenShareDialog();
 	
-    void showNotificationDialog(const QString& statusText, bool createOverlay = true, bool isGreenStyle = false, bool isAnimation = true);
-    void hideNotificationDialog();
+    void showConnectionDownDialog();
+    void hideConnectionDownDialog();
+
+    void showConnectionRestoredDialog();
+    void hideConnectionRestoredDialog();
+
+    void showPendingOperationDialog(const QString& statusText);
+    void hidePendingOperationDialog();
 
     void showAlreadyRunningDialog();
     void hideAlreadyRunningDialog();
@@ -66,26 +76,38 @@ signals:
     void incomingCallsDialogClosed(const QList<QString>& pendingCalls);
 
 private:
+    void showNotificationDialogInternal(OverlayWidget*& overlay,
+        NotificationDialogBase*& dialog,
+        bool createOverlay,
+        const std::function<NotificationDialogBase*(QWidget*)>& createDialog,
+        const std::function<void(NotificationDialogBase*)>& updateDialog);
+    void hideNotificationDialogInternal(OverlayWidget*& overlay, NotificationDialogBase*& dialog);
+
+private:
     QWidget* m_parent;
+    QMap<QString, IncomingCallDialog*> m_incomingCallDialogs;
 
-    OverlayWidget* m_updatingOverlay;
-    UpdatingDialog* m_updatingDialog;
+    OverlayWidget* m_updatingOverlay = nullptr;
+    UpdatingDialog* m_updatingDialog = nullptr;
 
-    OverlayWidget* m_notificationOverlay;
-    NotificationDialog* m_notificationDialog;
+    OverlayWidget* m_connectionDownOverlay = nullptr;
+    ConnectionDownDialog* m_connectionDownDialog = nullptr;
 
-    OverlayWidget* m_screenShareOverlay;
-    ScreenShareDialog* m_screenShareDialog;
+    OverlayWidget* m_connectionRestoredOverlay = nullptr;
+    ConnectionRestoredDialog* m_connectionRestoredDialog = nullptr;
 
-    OverlayWidget* m_alreadyRunningOverlay;
-    AlreadyRunningDialog* m_alreadyRunningDialog;
+    OverlayWidget* m_pendingOperationOverlay = nullptr;
+    PendingOperationDialog* m_pendingOperationDialog = nullptr;
 
-    OverlayWidget* m_firstLaunchOverlay;
-    FirstLaunchDialog* m_firstLaunchDialog;
+    OverlayWidget* m_screenShareOverlay = nullptr;
+    ScreenShareDialog* m_screenShareDialog = nullptr;
+
+    OverlayWidget* m_alreadyRunningOverlay = nullptr;
+    AlreadyRunningDialog* m_alreadyRunningDialog = nullptr;
+
+    OverlayWidget* m_firstLaunchOverlay = nullptr;
+    FirstLaunchDialog* m_firstLaunchDialog = nullptr;
 
     OverlayWidget* m_audioSettingsOverlay = nullptr;
     AudioSettingsDialog* m_audioSettingsDialog = nullptr;
-
-    QMap<QString, IncomingCallDialog*> m_incomingCallDialogs;
 };
-

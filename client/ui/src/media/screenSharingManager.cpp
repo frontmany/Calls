@@ -249,7 +249,7 @@ void ScreenSharingManager::stopOperationTimer()
     m_operationTimer->stop();
     m_pendingOperationDialogText.clear();
     if (m_dialogsController) {
-        m_dialogsController->hideNotificationDialog();
+        m_dialogsController->hidePendingOperationDialog();
     }
 }
 
@@ -262,7 +262,7 @@ void ScreenSharingManager::onTimeToShowWaitingNotification()
 {
     if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
         if (m_dialogsController) {
-            m_dialogsController->showNotificationDialog(m_pendingOperationDialogText, false, false);
+            m_dialogsController->showPendingOperationDialog(m_pendingOperationDialogText);
         }
     }
 }

@@ -31,6 +31,7 @@ signals:
     void windowTitleChanged(const QString& title);
     void windowFullscreenRequested();
     void windowMaximizedRequested();
+    void callWidgetShown();
 
 private:
     std::shared_ptr<core::Client> m_coreClient = nullptr;

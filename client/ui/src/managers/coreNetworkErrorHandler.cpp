@@ -39,14 +39,13 @@ void CoreNetworkErrorHandler::onConnectionRestored()
 {
 
     if (m_dialogsController) {
-        m_dialogsController->hideNotificationDialog();
-        m_dialogsController->showNotificationDialog("Connection restored", false, true, false);
+        m_dialogsController->showConnectionRestoredDialog();
 
         QTimer::singleShot(1500, this, [this]()
         {
             if (m_dialogsController)
             {
-                m_dialogsController->hideNotificationDialog();
+                m_dialogsController->hideConnectionRestoredDialog();
             }
         });
     }
@@ -95,7 +94,7 @@ void CoreNetworkErrorHandler::onConnectionDown()
         }
 
         if (m_dialogsController) {
-            m_dialogsController->showNotificationDialog("Reconnecting...", true, false, true);
+            m_dialogsController->showConnectionDownDialog();
         }
     }
     else {
@@ -104,7 +103,7 @@ void CoreNetworkErrorHandler::onConnectionDown()
 
         if (m_dialogsController)
         {
-            m_dialogsController->showNotificationDialog("Reconnecting...", true, false, true);
+            m_dialogsController->showConnectionDownDialog();
         }
     }
 }
@@ -112,14 +111,13 @@ void CoreNetworkErrorHandler::onConnectionDown()
 void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
 {
     if (m_dialogsController) {
-        m_dialogsController->hideNotificationDialog();
-        m_dialogsController->showNotificationDialog("Connection restored", false, true, false);
+        m_dialogsController->showConnectionRestoredDialog();
 
         QTimer::singleShot(1500, this, [this]()
         {
             if (m_dialogsController)
             {
-                m_dialogsController->hideNotificationDialog();
+                m_dialogsController->hideConnectionRestoredDialog();
             }
         });
     }

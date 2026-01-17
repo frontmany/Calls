@@ -1,7 +1,9 @@
 #include "dialogsController.h"
 #include "widgets/overlayWidget.h"
 #include "utilities/utilities.h"
-#include "dialogs/notificationDialog.h"
+#include "dialogs/connectionDownDialog.h"
+#include "dialogs/connectionRestoredDialog.h"
+#include "dialogs/pendingOperationDialog.h"
 #include "dialogs/screenShareDialog.h"
 #include "dialogs/alreadyRunningDialog.h"
 #include "dialogs/firstLaunchDialog.h"
@@ -29,21 +31,29 @@ DialogsController::DialogsController(QWidget* parent)
     , m_parent(parent)
     , m_updatingOverlay(nullptr)
     , m_updatingDialog(nullptr)
-    , m_notificationOverlay(nullptr)
-    , m_notificationDialog(nullptr)
+    , m_connectionDownOverlay(nullptr)
+    , m_connectionDownDialog(nullptr)
+    , m_connectionRestoredOverlay(nullptr)
+    , m_connectionRestoredDialog(nullptr)
+    , m_pendingOperationOverlay(nullptr)
+    , m_pendingOperationDialog(nullptr)
     , m_screenShareOverlay(nullptr)
     , m_screenShareDialog(nullptr)
     , m_alreadyRunningOverlay(nullptr)
     , m_alreadyRunningDialog(nullptr)
     , m_firstLaunchOverlay(nullptr)
     , m_firstLaunchDialog(nullptr)
+    , m_audioSettingsOverlay(nullptr)
+    , m_audioSettingsDialog(nullptr)
 {
 }
 
 DialogsController::~DialogsController()
 {
     hideUpdatingDialog();
-    hideNotificationDialog();
+    hideConnectionDownDialog();
+    hideConnectionRestoredDialog();
+    hidePendingOperationDialog();
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
@@ -282,73 +292,201 @@ void DialogsController::swapUpdatingToUpToDate()
     }
 }
 
-void DialogsController::showNotificationDialog(const QString& statusText, bool createOverlay, bool isGreenStyle, bool isAnimation)
+void DialogsController::showNotificationDialogInternal(OverlayWidget*& overlay,
+    NotificationDialogBase*& dialog,
+    bool createOverlay,
+    const std::function<NotificationDialogBase*(QWidget*)>& createDialog,
+    const std::function<void(NotificationDialogBase*)>& updateDialog)
 {
-    hideNotificationDialog();
-
     QWidget* parentWidget = m_parent;
     if (createOverlay)
     {
-        m_notificationOverlay = new OverlayWidget(m_parent);
-        m_notificationOverlay->setAttribute(Qt::WA_TranslucentBackground);
-        m_notificationOverlay->show();
-        m_notificationOverlay->raise();
-        parentWidget = m_notificationOverlay;
+        if (!overlay)
+        {
+            overlay = new OverlayWidget(m_parent);
+            overlay->setAttribute(Qt::WA_TranslucentBackground);
+        }
+        overlay->show();
+        overlay->raise();
+        parentWidget = overlay;
     }
     else
     {
-        m_notificationOverlay = new OverlayWidget(m_parent);
-        m_notificationOverlay->setAttribute(Qt::WA_TranslucentBackground);
-        m_notificationOverlay->setVisible(false);
+        if (!overlay)
+        {
+            overlay = new OverlayWidget(m_parent);
+            overlay->setAttribute(Qt::WA_TranslucentBackground);
+        }
+        overlay->setVisible(false);
     }
 
-    m_notificationDialog = new NotificationDialog(parentWidget, statusText, isGreenStyle, isAnimation);
-
-    auto positionDialog = [this, createOverlay]()
+    if (!parentWidget && overlay)
     {
-        if (!m_notificationDialog)
+        parentWidget = overlay;
+    }
+
+    if (!dialog && createDialog)
+    {
+        dialog = createDialog(parentWidget);
+    }
+
+    if (dialog)
+    {
+        if (updateDialog)
+        {
+            updateDialog(dialog);
+        }
+        dialog->setParent(parentWidget);
+    }
+
+    OverlayWidget** overlayPtr = &overlay;
+    NotificationDialogBase** dialogPtr = &dialog;
+    auto positionDialog = [this, createOverlay, overlayPtr, dialogPtr]()
+    {
+        if (!dialogPtr || !(*dialogPtr))
             return;
 
-        QWidget* referenceWidget = createOverlay ? m_notificationOverlay : m_parent;
+        QWidget* referenceWidget = createOverlay ? *overlayPtr : m_parent;
+        if (!referenceWidget && overlayPtr && *overlayPtr)
+        {
+            referenceWidget = *overlayPtr;
+        }
         if (!referenceWidget)
             return;
 
-        m_notificationDialog->adjustSize();
-        QSize dialogSize = m_notificationDialog->size();
+        (*dialogPtr)->adjustSize();
+        QSize dialogSize = (*dialogPtr)->size();
 
         int x = (referenceWidget->width() - dialogSize.width()) / 2;
         int y = 40;
 
-        m_notificationDialog->move(x, y);
-        m_notificationDialog->raise();
+        (*dialogPtr)->move(x, y);
+        (*dialogPtr)->raise();
     };
 
     positionDialog();
-    m_notificationDialog->show();
+    dialog->show();
     QTimer::singleShot(0, this, positionDialog);
 
-    if (m_notificationOverlay)
+    if (overlay)
     {
-        QObject::connect(m_notificationOverlay, &OverlayWidget::geometryChanged, this, positionDialog);
+        QObject::connect(overlay, &OverlayWidget::geometryChanged, this, positionDialog, Qt::UniqueConnection);
     }
 }
 
-void DialogsController::hideNotificationDialog()
+void DialogsController::hideNotificationDialogInternal(OverlayWidget*& overlay, NotificationDialogBase*& dialog)
 {
-    if (m_notificationDialog)
+    if (dialog)
     {
-        m_notificationDialog->disconnect();
-        m_notificationDialog->hide();
-        m_notificationDialog->deleteLater();
-        m_notificationDialog = nullptr;
+        dialog->disconnect();
+        dialog->hide();
+        dialog->deleteLater();
+        dialog = nullptr;
     }
 
-    if (m_notificationOverlay)
+    if (overlay)
     {
-        m_notificationOverlay->close();
-        m_notificationOverlay->deleteLater();
-        m_notificationOverlay = nullptr;
+        overlay->close();
+        overlay->deleteLater();
+        overlay = nullptr;
     }
+}
+
+void DialogsController::showConnectionDownDialog()
+{
+    {
+        NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
+        hideNotificationDialogInternal(m_connectionRestoredOverlay, baseDialog);
+        m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
+    }
+    {
+        NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+        hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
+        m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+    }
+
+    NotificationDialogBase* baseDialog = m_connectionDownDialog;
+    auto createDialog = [](QWidget* parent) -> NotificationDialogBase*
+    {
+        return new ConnectionDownDialog(parent);
+    };
+    showNotificationDialogInternal(m_connectionDownOverlay,
+        baseDialog,
+        true,
+        createDialog,
+        nullptr);
+    m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
+}
+
+void DialogsController::hideConnectionDownDialog()
+{
+    NotificationDialogBase* baseDialog = m_connectionDownDialog;
+    hideNotificationDialogInternal(m_connectionDownOverlay, baseDialog);
+    m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
+}
+
+void DialogsController::showConnectionRestoredDialog()
+{
+    {
+        NotificationDialogBase* baseDialog = m_connectionDownDialog;
+        hideNotificationDialogInternal(m_connectionDownOverlay, baseDialog);
+        m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
+    }
+    {
+        NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+        hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
+        m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+    }
+
+    NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
+    auto createDialog = [](QWidget* parent) -> NotificationDialogBase*
+    {
+        return new ConnectionRestoredDialog(parent);
+    };
+    showNotificationDialogInternal(m_connectionRestoredOverlay,
+        baseDialog,
+        false,
+        createDialog,
+        nullptr);
+    m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
+}
+
+void DialogsController::hideConnectionRestoredDialog()
+{
+    NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
+    hideNotificationDialogInternal(m_connectionRestoredOverlay, baseDialog);
+    m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
+}
+
+void DialogsController::showPendingOperationDialog(const QString& statusText)
+{
+    if (m_connectionDownDialog || m_connectionRestoredDialog)
+    {
+        return;
+    }
+
+    NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+    auto createDialog = [statusText](QWidget* parent) -> NotificationDialogBase*
+    {
+        return new PendingOperationDialog(parent, statusText);
+    };
+    auto updateDialog = [statusText](NotificationDialogBase* dialog)
+    {
+        dialog->setStatusText(statusText);
+    };
+    showNotificationDialogInternal(m_pendingOperationOverlay,
+        baseDialog,
+        false,
+        createDialog,
+        updateDialog);
+    m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+}
+
+void DialogsController::hidePendingOperationDialog()
+{
+    NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+    hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
+    m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
 }
 
 void DialogsController::showAlreadyRunningDialog()
