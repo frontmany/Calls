@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QPixmap>
 #include <QTimer>
+#include <QMap>
 #include <vector>
 #include <memory>
 
@@ -43,17 +44,17 @@ signals:
     void fullscreenExitRequested();
 
 private slots:
-    void onTimeToShowWaitingNotification();
-
 private:
-    void startOperationTimer(const QString& dialogText);
-    void stopOperationTimer();
+    void startOperationTimer(core::UserOperationType operationKey, const QString& dialogText);
+    void stopOperationTimer(core::UserOperationType operationKey);
+    void stopAllOperationTimers();
+    void onOperationTimerTimeout(core::UserOperationType operationKey);
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
     CallWidget* m_callWidget = nullptr;
     CameraCaptureController* m_cameraCaptureController = nullptr;
-    QTimer* m_operationTimer = nullptr;
-    QString m_pendingOperationDialogText;
+    QMap<core::UserOperationType, QTimer*> m_operationTimers;
+    QMap<core::UserOperationType, QString> m_pendingOperationTexts;
 };

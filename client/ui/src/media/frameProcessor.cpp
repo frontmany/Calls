@@ -159,7 +159,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, 
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::WriteOnly);
 
-    scaledImage.save(&buffer, "JPG", 60);
+    scaledImage.save(&buffer, "JPG", 72);
 
     return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
 }
@@ -181,9 +181,17 @@ void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos
         return;
     }
 
-    ICONINFO iconInfo;
-    if (!GetIconInfo(cursorInfo.hCursor, &iconInfo))
+    // Создаем копию курсора, чтобы не влиять на оригинальный курсор
+    HCURSOR hCursorCopy = CopyCursor(cursorInfo.hCursor);
+    if (!hCursorCopy)
     {
+        return;
+    }
+
+    ICONINFO iconInfo;
+    if (!GetIconInfo(hCursorCopy, &iconInfo))
+    {
+        DestroyCursor(hCursorCopy);
         return;
     }
 
@@ -252,10 +260,10 @@ void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos
             }
             
             HGDIOBJ oldObj = SelectObject(hdcMem, hbitmapWhite);
-            DrawIconEx(hdcMem, 0, 0, cursorInfo.hCursor, 0, 0, 0, NULL, DI_NORMAL);
+            DrawIconEx(hdcMem, 0, 0, hCursorCopy, 0, 0, 0, NULL, DI_NORMAL);
             GdiFlush();
             SelectObject(hdcMem, hbitmapBlack);
-            DrawIconEx(hdcMem, 0, 0, cursorInfo.hCursor, 0, 0, 0, NULL, DI_NORMAL);
+            DrawIconEx(hdcMem, 0, 0, hCursorCopy, 0, 0, 0, NULL, DI_NORMAL);
             GdiFlush();
             
             uint32_t* cursorBits = reinterpret_cast<uint32_t*>(cursorImage.bits());
@@ -299,6 +307,9 @@ void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos
     }
     
     ReleaseDC(NULL, hdcScreen);
+    
+    // Удаляем копию курсора после использования
+    DestroyCursor(hCursorCopy);
     
     if (iconInfo.hbmMask) DeleteObject(iconInfo.hbmMask);
     if (iconInfo.hbmColor) DeleteObject(iconInfo.hbmColor);

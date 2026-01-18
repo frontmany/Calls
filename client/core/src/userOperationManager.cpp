@@ -10,15 +10,6 @@ namespace core
         return std::find(m_pendingOperations.begin(), m_pendingOperations.end(), operation) != m_pendingOperations.end();
     }
 
-    bool UserOperationManager::isOperationType(UserOperationType type) const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        return std::any_of(m_pendingOperations.begin(), m_pendingOperations.end(),
-            [type](const UserOperation& op) {
-                return op.type == type;
-            });
-    }
-
     void UserOperationManager::addOperation(UserOperationType type, const std::string& nickname)
     {
         std::lock_guard<std::mutex> lock(m_mutex);

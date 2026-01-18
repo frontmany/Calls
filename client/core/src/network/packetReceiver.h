@@ -3,11 +3,13 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "packetType.h"
@@ -25,6 +27,7 @@ namespace core
             std::size_t receivedChunks = 0;
             std::vector<std::vector<unsigned char>> chunks;
             uint32_t type = 0;
+            std::chrono::steady_clock::time_point lastUpdated{};
         };
 
         struct ReceivedPacket {
@@ -47,10 +50,15 @@ namespace core
         void setConnectionDown(bool isDown);
 
     private:
+        using PendingPacketMap = std::unordered_map<uint64_t, PendingPacket>;
+
         void doReceive();
         void processDatagram(std::size_t bytesTransferred);
         void processReceivedPackets();
-        void resetPendingPacket(uint64_t packetId, uint16_t totalChunks, uint32_t packetType);
+        void initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
+            std::chrono::steady_clock::time_point now);
+        void pruneExpiredPackets(PendingPacketMap& packets, std::chrono::steady_clock::time_point now);
+        void evictOldestPacket(PendingPacketMap& packets);
         uint16_t readUint16(const unsigned char* data);
         uint32_t readUint32(const unsigned char* data);
         uint64_t readUint64(const unsigned char* data);
@@ -62,10 +70,12 @@ namespace core
         std::array<unsigned char, 1500> m_buffer{};
         std::atomic<bool> m_running;
         std::mutex m_stateMutex;
-        PendingPacket m_pendingPacket;
+        PendingPacketMap m_pendingPackets;
         core::utilities::SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
         std::thread m_processingThread;
         const std::size_t m_headerSize = 18;
+        const std::size_t m_maxPendingPackets = 8;
+        const std::chrono::milliseconds m_pendingPacketTimeout{3000};
         std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
         std::function<void()> m_onErrorCallback;
         std::function<void(uint32_t)> m_onPingReceived;

@@ -32,7 +32,7 @@ namespace core
 
         {
             std::lock_guard<std::mutex> lock(m_stateMutex);
-            m_pendingPacket = PendingPacket{};
+            m_pendingPackets.clear();
         }
 
         if (!m_socket.has_value() || !m_socket->get().is_open()) {
@@ -81,7 +81,7 @@ namespace core
 
         {
             std::lock_guard<std::mutex> lock(m_stateMutex);
-            m_pendingPacket = PendingPacket{};
+            m_pendingPackets.clear();
         }
 
         m_receivedPacketsQueue.clear();
@@ -187,29 +187,34 @@ namespace core
                 return;
             }
 
-            if (m_pendingPacket.packetId == 0 || m_pendingPacket.packetId != packetId) {
-                if (m_pendingPacket.packetId != 0 && m_pendingPacket.packetId != packetId) {
-                    LOG_WARN("Received new packet {} while previous packet {} is still incomplete, resetting",
-                        packetId, m_pendingPacket.packetId);
+            const auto now = std::chrono::steady_clock::now();
+            pruneExpiredPackets(m_pendingPackets, now);
+
+            auto packetIt = m_pendingPackets.find(packetId);
+            if (packetIt == m_pendingPackets.end()) {
+                if (m_pendingPackets.size() >= m_maxPendingPackets) {
+                    evictOldestPacket(m_pendingPackets);
                 }
-                resetPendingPacket(packetId, totalChunks, packetType);
+                packetIt = m_pendingPackets.emplace(packetId, PendingPacket{}).first;
+                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
             }
-            else if (m_pendingPacket.totalChunks != totalChunks) {
+            else if (packetIt->second.totalChunks != totalChunks) {
                 LOG_WARN("Total chunks mismatch for packet {}: expected {}, got {}",
                     packetId,
-                    m_pendingPacket.totalChunks,
+                    packetIt->second.totalChunks,
                     totalChunks);
-                resetPendingPacket(packetId, totalChunks, packetType);
+                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
             }
-            else if (m_pendingPacket.type != packetType) {
+            else if (packetIt->second.type != packetType) {
                 LOG_WARN("Packet type mismatch for packet {}: expected {}, got {}",
                     packetId,
-                    static_cast<uint32_t>(m_pendingPacket.type),
+                    static_cast<uint32_t>(packetIt->second.type),
                     static_cast<uint32_t>(packetType));
-                resetPendingPacket(packetId, totalChunks, packetType);
+                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
             }
 
-            auto& packet = m_pendingPacket;
+            auto& packet = packetIt->second;
+            packet.lastUpdated = now;
 
             if (chunkIndex >= packet.chunks.size()) {
                 LOG_WARN("Chunk index {} out of range for packet {} ({})", chunkIndex, packetId, packet.chunks.size());
@@ -235,7 +240,7 @@ namespace core
                     assembledData.insert(assembledData.end(), chunk.begin(), chunk.end());
                 }
 
-                m_pendingPacket = PendingPacket{};
+                m_pendingPackets.erase(packetIt);
             }
         }
 
@@ -249,14 +254,46 @@ namespace core
         m_receivedPacketsQueue.push(std::move(receivedPacket));
     }
 
-    void PacketReceiver::resetPendingPacket(uint64_t packetId, uint16_t totalChunks, uint32_t packetType)
+    void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
+        std::chrono::steady_clock::time_point now)
     {
-        m_pendingPacket = PendingPacket{};
-        m_pendingPacket.packetId = packetId;
-        m_pendingPacket.totalChunks = totalChunks;
-        m_pendingPacket.chunks.resize(totalChunks);
-        m_pendingPacket.receivedChunks = 0;
-        m_pendingPacket.type = packetType;
+        packet = PendingPacket{};
+        packet.packetId = packetId;
+        packet.totalChunks = totalChunks;
+        packet.chunks.resize(totalChunks);
+        packet.receivedChunks = 0;
+        packet.type = packetType;
+        packet.lastUpdated = now;
+    }
+
+    void PacketReceiver::pruneExpiredPackets(PendingPacketMap& packets, std::chrono::steady_clock::time_point now)
+    {
+        for (auto it = packets.begin(); it != packets.end(); ) {
+            if (now - it->second.lastUpdated > m_pendingPacketTimeout) {
+                it = packets.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+    }
+
+    void PacketReceiver::evictOldestPacket(PendingPacketMap& packets)
+    {
+        if (packets.empty()) {
+            return;
+        }
+
+        auto oldestIt = packets.begin();
+        for (auto it = packets.begin(); it != packets.end(); ++it) {
+            if (it->second.lastUpdated < oldestIt->second.lastUpdated) {
+                oldestIt = it;
+            }
+        }
+
+        if (oldestIt != packets.end()) {
+            packets.erase(oldestIt);
+        }
     }
 
     uint16_t PacketReceiver::readUint16(const unsigned char* data)

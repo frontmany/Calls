@@ -13,10 +13,9 @@ namespace core
         UserOperationManager() = default;
         ~UserOperationManager() = default;
 
-        bool isOperation(UserOperationType type, const std::string& nickname = "") const;
-        bool isOperationType(UserOperationType type) const;
-        void addOperation(UserOperationType type, const std::string& nickname = "");
-        void removeOperation(UserOperationType type, const std::string& nickname = "");
+        bool isOperation(UserOperationType type, const std::string& nickname) const;
+        void addOperation(UserOperationType type, const std::string& nickname);
+        void removeOperation(UserOperationType type, const std::string& nickname);
         void clearAllOperations();
 
     private:

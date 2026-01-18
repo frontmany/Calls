@@ -21,6 +21,13 @@ class DialogsController;
 class CallManager : public QObject {
     Q_OBJECT
 
+private:
+    struct IncomingCallData
+    {
+        QString nickname;
+        int remainingTime;
+    };
+
 public:
     explicit CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, QObject* parent = nullptr);
     
@@ -55,7 +62,6 @@ signals:
     void endCallFullscreenExitRequested();
 
 private slots:
-    void onTimeToShowWaitingNotification();
     void onIncomingCallsDialogClosed(const QList<QString>& pendingCalls);
 
 private:
@@ -64,8 +70,10 @@ private:
     void handleStartCallingErrorNotificationAppearance();
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
-    void startOperationTimer(const QString& dialogText);
-    void stopOperationTimer();
+    void startOperationTimer(core::UserOperationType operationKey, const QString& dialogText);
+    void stopOperationTimer(core::UserOperationType operationKey);
+    void stopAllOperationTimers();
+    void onOperationTimerTimeout(core::UserOperationType operationKey);
     void updateIncomingCallsUi();
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
@@ -77,14 +85,8 @@ private:
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;
-    QTimer* m_operationTimer = nullptr;
-    QString m_pendingOperationDialogText;
-
-    struct IncomingCallData
-    {
-        QString nickname;
-        int remainingTime;
-    };
+    QMap<core::UserOperationType, QTimer*> m_operationTimers;
+    QMap<core::UserOperationType, QString> m_pendingOperationTexts;
 
     QMap<QString, IncomingCallData> m_incomingCalls;
     QSet<QString> m_visibleIncomingCalls;

@@ -6,6 +6,7 @@
 #include "pendingCall.h"
 
 using namespace std::chrono_literals;
+using namespace std::placeholders;
 using namespace server;
 using namespace server::utilities;
 
@@ -47,14 +48,9 @@ Server::Server(const std::string& port)
                                 auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
                                 
                                 m_taskManager.createTask(uid, 1500ms, 5,
-                                    [this, connectionDownPacket, receiver]() {
-                                        m_networkController.send(connectionDownPacket, static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), receiver->getEndpoint());
-                                    },
-                                    [this](std::optional<nlohmann::json> completionContext) {
-                                    },
-                                    [this](std::optional<nlohmann::json> failureContext) {
-                                        LOG_ERROR("Connection down with user task failed");
-                                    }
+                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, receiver->getEndpoint()),
+                                    std::bind(&Server::onTaskCompleted, this, _1),
+                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
                                 );
                                 
                                 m_taskManager.startTask(uid);
@@ -80,14 +76,9 @@ Server::Server(const std::string& port)
                                 auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
                                 
                                 m_taskManager.createTask(uid, 1500ms, 5,
-                                    [this, connectionDownPacket, initiator]() {
-                                        m_networkController.send(connectionDownPacket, static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), initiator->getEndpoint());
-                                    },
-                                    [this](std::optional<nlohmann::json> completionContext) {
-                                    },
-                                    [this](std::optional<nlohmann::json> failureContext) {
-                                        LOG_ERROR("Connection down with user task failed");
-                                    }
+                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, initiator->getEndpoint()),
+                                    std::bind(&Server::onTaskCompleted, this, _1),
+                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
                                 );
                                 
                                 m_taskManager.startTask(uid);
@@ -106,14 +97,9 @@ Server::Server(const std::string& port)
                             auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
                             
                             m_taskManager.createTask(uid, 1500ms, 5,
-                                [this, connectionDownPacket, callPartner]() {
-                                    m_networkController.send(connectionDownPacket, static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), callPartner->getEndpoint());
-                                },
-                                [this](std::optional<nlohmann::json> completionContext) {
-                                },
-                                [this](std::optional<nlohmann::json> failureContext) {
-                                    LOG_ERROR("Connection down with user task failed");
-                                }
+                                std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, callPartner->getEndpoint()),
+                                std::bind(&Server::onTaskCompleted, this, _1),
+                                std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
                             );
                             
                             m_taskManager.startTask(uid);
@@ -360,12 +346,9 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
                     auto [uid, connectionRestoredWithUserPacket] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
 
                     m_taskManager.createTask(uid, 1500ms, 5,
-                        [this, connectionRestoredWithUserPacket, partner]() { m_networkController.send(connectionRestoredWithUserPacket, static_cast<uint32_t>(PacketType::CONNECTION_RESTORED_WITH_USER), partner->getEndpoint()); },
-                        [this](std::optional<nlohmann::json> completionContext) {
-                        },
-                        [this](std::optional<nlohmann::json> failureContext) {
-                            LOG_ERROR("Connection restored with user task failed");
-                        }
+                        std::bind(&Server::sendPacketTask, this, connectionRestoredWithUserPacket, PacketType::CONNECTION_RESTORED_WITH_USER, partner->getEndpoint()),
+                        std::bind(&Server::onTaskCompleted, this, _1),
+                        std::bind(&Server::onTaskFailed, this, "Connection restored with user task failed", _1)
                     );
 
                     m_taskManager.startTask(uid);
@@ -374,12 +357,9 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
                     auto [uid, connectionDownWithUserPacket] = PacketFactory::getConnectionDownWithUserPacket(partner->getNicknameHash());
 
                     m_taskManager.createTask(uid, 1500ms, 5,
-                        [this, connectionDownWithUserPacket, user]() { m_networkController.send(connectionDownWithUserPacket, static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), user->getEndpoint()); },
-                        [this](std::optional<nlohmann::json> completionContext) {
-                        },
-                        [this](std::optional<nlohmann::json> failureContext) {
-                            LOG_ERROR("Connection restored with user task failed");
-                        }
+                        std::bind(&Server::sendPacketTask, this, connectionDownWithUserPacket, PacketType::CONNECTION_DOWN_WITH_USER, user->getEndpoint()),
+                        std::bind(&Server::onTaskCompleted, this, _1),
+                        std::bind(&Server::onTaskFailed, this, "Connection restored with user task failed", _1)
                     );
 
                     m_taskManager.startTask(uid);
@@ -571,6 +551,37 @@ void Server::handleAcceptCall(const nlohmann::json& jsonObject, const asio::ip::
                                 m_calls.emplace(call);
                                 receiver->setCall(call);
                                 sender->setCall(call);
+
+                                auto declineIncomingPendingCalls = [this](const UserPtr& busyUser) {
+                                    if (!busyUser) {
+                                        return;
+                                    }
+
+                                    auto incomingCalls = busyUser->getIncomingPendingCalls();
+                                    for (const auto& pendingCall : incomingCalls) {
+                                        auto initiator = pendingCall->getInitiator();
+                                        if (!initiator) {
+                                            removeIncomingPendingCall(busyUser, pendingCall);
+                                            continue;
+                                        }
+
+                                        resetOutgoingPendingCall(initiator);
+                                        removeIncomingPendingCall(busyUser, pendingCall);
+
+                                        if (m_nicknameHashToUser.contains(initiator->getNicknameHash()) && !initiator->isConnectionDown()) {
+                                            auto [uid, declinePacket] = PacketFactory::getCallDeclinedPacket(busyUser->getNicknameHash(), initiator->getNicknameHash());
+                                            m_taskManager.createTask(uid, 1500ms, 3,
+                                                std::bind(&Server::sendPacketTask, this, declinePacket, PacketType::CALL_DECLINE, initiator->getEndpoint()),
+                                                std::bind(&Server::onTaskCompleted, this, _1),
+                                                std::bind(&Server::onTaskFailed, this, "Call decline notification task failed", _1)
+                                            );
+                                            m_taskManager.startTask(uid);
+                                        }
+                                    }
+                                };
+
+                                declineIncomingPendingCalls(receiver);
+                                declineIncomingPendingCalls(sender);
 
                                 std::string senderPrefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
                                 std::string receiverPrefix = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
@@ -842,12 +853,9 @@ void Server::processUserLogout(const UserPtr& user) {
             if (!callPartner->isConnectionDown()) {
                 auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
                 m_taskManager.createTask(uid, 1500ms, 5,
-                    [this, packet, callPartner]() {m_networkController.send(packet, static_cast<uint32_t>(PacketType::USER_LOGOUT), callPartner->getEndpoint()); },
-                    [this](std::optional<nlohmann::json> completionContext) {
-                    },
-                    [this](std::optional<nlohmann::json> failureContext) {
-                        LOG_ERROR("User logout task failed");
-                    }
+                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, callPartner->getEndpoint()),
+                    std::bind(&Server::onTaskCompleted, this, _1),
+                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
                 );
 
                 m_taskManager.startTask(uid);
@@ -874,12 +882,9 @@ void Server::processUserLogout(const UserPtr& user) {
             if (!pendingCallPartner->isConnectionDown()) {
                 auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
                 m_taskManager.createTask(uid, 1500ms, 5,
-                    [this, packet, pendingCallPartner]() {m_networkController.send(packet, static_cast<uint32_t>(PacketType::USER_LOGOUT), pendingCallPartner->getEndpoint()); },
-                    [this](std::optional<nlohmann::json> completionContext) {
-                    },
-                    [this](std::optional<nlohmann::json> failureContext) {
-                        LOG_ERROR("User logout task failed");
-                    }
+                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, pendingCallPartner->getEndpoint()),
+                    std::bind(&Server::onTaskCompleted, this, _1),
+                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
                 );
 
                 m_taskManager.startTask(uid);
@@ -903,12 +908,9 @@ void Server::processUserLogout(const UserPtr& user) {
             if (!pendingCallPartner->isConnectionDown()) {
                 auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
                 m_taskManager.createTask(uid, 1500ms, 5,
-                    [this, packet, pendingCallPartner]() {m_networkController.send(packet, static_cast<uint32_t>(PacketType::USER_LOGOUT), pendingCallPartner->getEndpoint()); },
-                    [this](std::optional<nlohmann::json> completionContext) {
-                    },
-                    [this](std::optional<nlohmann::json> failureContext) {
-                        LOG_ERROR("User logout task failed");
-                    }
+                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, pendingCallPartner->getEndpoint()),
+                    std::bind(&Server::onTaskCompleted, this, _1),
+                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
                 );
 
                 m_taskManager.startTask(uid);
@@ -983,5 +985,16 @@ void Server::clearPendingActionsForUser(const std::string& nicknameHash)
         }
         m_nicknameHashToConfirmationKeys.erase(it);
     }
+}
+
+void Server::sendPacketTask(const std::vector<unsigned char>& packet, PacketType type, const asio::ip::udp::endpoint& endpoint) {
+    m_networkController.send(packet, static_cast<uint32_t>(type), endpoint);
+}
+
+void Server::onTaskCompleted(std::optional<nlohmann::json> completionContext) {
+}
+
+void Server::onTaskFailed(const std::string& message, std::optional<nlohmann::json> failureContext) {
+    LOG_ERROR(message);
 }
 } // namespace server

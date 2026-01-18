@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QPixmap>
 #include <QTimer>
+#include <QMap>
 #include <vector>
 #include <memory>
 
@@ -43,11 +44,11 @@ public slots:
     void onStopCameraSharingResult(std::error_code ec);
 
 private slots:
-    void onTimeToShowWaitingNotification();
-
 private:
-    void startOperationTimer(const QString& dialogText);
-    void stopOperationTimer();
+    void startOperationTimer(core::UserOperationType operationKey, const QString& dialogText);
+    void stopOperationTimer(core::UserOperationType operationKey);
+    void stopAllOperationTimers();
+    void onOperationTimerTimeout(core::UserOperationType operationKey);
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
     ConfigManager* m_configManager = nullptr;
@@ -55,8 +56,8 @@ private:
     DialogsController* m_dialogsController = nullptr;
     CallWidget* m_callWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
-    QTimer* m_operationTimer = nullptr;
-    QString m_pendingOperationDialogText;
+    QMap<core::UserOperationType, QTimer*> m_operationTimers;
+    QMap<core::UserOperationType, QString> m_pendingOperationTexts;
     bool m_isCameraInAdditionalScreen = false;
     bool m_isRemoteCameraInAdditionalScreen = false;
 };

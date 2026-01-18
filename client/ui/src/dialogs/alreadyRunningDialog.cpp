@@ -66,8 +66,8 @@ AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
     QFont font("Outfit", scale(14), QFont::Normal);
 
     setAttribute(Qt::WA_TranslucentBackground);
-    setMinimumWidth(scale(400));
-    setMinimumHeight(scale(320));
+    setMinimumWidth(scale(420));
+    setMinimumHeight(scale(340));
 
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
     shadowEffect->setBlurRadius(scale(30));
@@ -89,7 +89,7 @@ AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
     contentLayout->setAlignment(Qt::AlignTop);
 
     QLabel* imageLabel = new QLabel();
-    imageLabel->setFixedSize(scale(96), scale(96));
+    imageLabel->setFixedSize(scale(128), scale(128));
     imageLabel->setAlignment(Qt::AlignCenter);
     imageLabel->setStyleSheet("background-color: transparent;");
     QPixmap pix(":/resources/multipleInstancesError.png");

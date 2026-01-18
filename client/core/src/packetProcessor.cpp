@@ -259,6 +259,10 @@ void PacketProcessor::onCallAccepted(const nlohmann::json& jsonObject)
 
     if (crypto::calculateHash(m_stateManager.getOutgoingCall().getNickname()) != senderNicknameHash) return;
 
+    if (m_stateManager.isIncomingCalls()) {
+        m_stateManager.clearIncomingCalls();
+    }
+
     m_stateManager.clearCallState();
     m_stateManager.setActiveCall(senderNickname, senderPublicKey, callKey);
 

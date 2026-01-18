@@ -56,6 +56,10 @@ namespace server
 		void removePendingAction(const ConfirmationKey& key);
 		void clearPendingActionsForUser(const std::string& nicknameHash);
 
+		void sendPacketTask(const std::vector<unsigned char>& packet, PacketType type, const asio::ip::udp::endpoint& endpoint);
+		void onTaskCompleted(std::optional<nlohmann::json> completionContext);
+		void onTaskFailed(const std::string& message, std::optional<nlohmann::json> failureContext);
+
 	private:
 		mutable std::mutex m_mutex;
 		std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;

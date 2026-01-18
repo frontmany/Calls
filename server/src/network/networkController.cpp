@@ -1,6 +1,7 @@
 #include "networkController.h"
 
 #include <utility>
+#include <functional>
 
 #include "utilities/logger.h"
 #include "packet.h"
@@ -97,7 +98,10 @@ namespace server {
                 sendPing(endpoint);
             };
 
-            m_pingController = std::make_unique<PingController>(sendPingCallback, m_onConnectionDown, m_onConnectionRestored);
+            m_pingController = std::make_unique<PingController>(
+                sendPingCallback,
+                std::bind(&NetworkController::handleConnectionDown, this, std::placeholders::_1),
+                std::bind(&NetworkController::handleConnectionRestored, this, std::placeholders::_1));
 
             LOG_INFO("Network controller initialized, server port: {}", port);
             return true;
@@ -237,16 +241,58 @@ namespace server {
         m_packetSender.send(packet);
     }
 
+    std::string NetworkController::makeEndpointKey(const asio::ip::udp::endpoint& endpoint) const {
+        return endpoint.address().to_string() + ":" + std::to_string(endpoint.port());
+    }
+
+    void NetworkController::handleConnectionDown(const asio::ip::udp::endpoint& endpoint) {
+        if (!m_onConnectionDown) {
+            return;
+        }
+
+        bool shouldNotify = false;
+        {
+            std::lock_guard<std::mutex> lock(m_connectionStateMutex);
+            shouldNotify = m_downEndpoints.insert(makeEndpointKey(endpoint)).second;
+        }
+
+        if (shouldNotify) {
+            m_onConnectionDown(endpoint);
+        }
+    }
+
+    void NetworkController::handleConnectionRestored(const asio::ip::udp::endpoint& endpoint) {
+        if (!m_onConnectionRestored) {
+            return;
+        }
+
+        bool wasDown = false;
+        {
+            std::lock_guard<std::mutex> lock(m_connectionStateMutex);
+            wasDown = m_downEndpoints.erase(makeEndpointKey(endpoint)) > 0;
+        }
+
+        if (wasDown) {
+            m_onConnectionRestored(endpoint);
+        }
+    }
+
     void NetworkController::addEndpointForPing(const asio::ip::udp::endpoint& endpoint) {
         if (m_pingController) {
             m_pingController->addEndpoint(endpoint);
         }
+
+        std::lock_guard<std::mutex> lock(m_connectionStateMutex);
+        m_downEndpoints.erase(makeEndpointKey(endpoint));
     }
 
     void NetworkController::removePingMonitoring(const asio::ip::udp::endpoint& endpoint) {
         if (m_pingController) {
             m_pingController->removeEndpoint(endpoint);
         }
+
+        std::lock_guard<std::mutex> lock(m_connectionStateMutex);
+        m_downEndpoints.erase(makeEndpointKey(endpoint));
     }
     }
 }

@@ -162,7 +162,7 @@ namespace core
     }
 
     void Client::onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::AUTHORIZE);
+        m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
 
         if (completionContext.has_value()) {
             auto& context = completionContext.value();
@@ -183,8 +183,8 @@ namespace core
         }
     }
 
-    void Client::onAuthorizeFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::AUTHORIZE);
+    void Client::onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext) {
+        m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
 
         if (!m_stateManager.isConnectionDown()) {
             LOG_ERROR("Authorization task failed");
@@ -193,13 +193,13 @@ namespace core
     }
 
     void Client::onLogoutCompleted(std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::LOGOUT);
+        m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
         reset();
         m_eventListener->onLogoutCompleted();
     }
 
     void Client::onLogoutFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::LOGOUT);
+        m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
         LOG_ERROR("Logout task failed");
 
         reset();
@@ -377,49 +377,57 @@ namespace core
     }
 
     void Client::onStartScreenSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
         m_stateManager.setScreenSharing(true);
         m_eventListener->onStartScreenSharingResult({});
     }
 
     void Client::onStartScreenSharingFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
         LOG_ERROR("Start screen sharing task failed");
         m_eventListener->onStartScreenSharingResult(ErrorCode::network_error);
     }
 
     void Client::onStopScreenSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
         m_stateManager.setScreenSharing(false);
         m_eventListener->onStopScreenSharingResult({});
     }
 
     void Client::onStopScreenSharingFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
         LOG_ERROR("Stop screen sharing task failed");
         m_eventListener->onStopScreenSharingResult(ErrorCode::network_error);
     }
 
     void Client::onStartCameraSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
         m_stateManager.setCameraSharing(true);
         m_eventListener->onStartCameraSharingResult({});
     }
 
     void Client::onStartCameraSharingFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
         LOG_ERROR("Start camera sharing task failed");
         m_eventListener->onStartCameraSharingResult(ErrorCode::network_error);
     }
 
     void Client::onStopCameraSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
         m_stateManager.setCameraSharing(false);
         m_eventListener->onStopCameraSharingResult({});
     }
 
     void Client::onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING);
+        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
         LOG_ERROR("Stop camera sharing task failed");
         m_eventListener->onStopCameraSharingResult(ErrorCode::network_error);
     }
@@ -544,7 +552,7 @@ namespace core
     std::error_code Client::authorize(const std::string& nickname) {
         if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (m_stateManager.isAuthorized()) return make_error_code(ErrorCode::already_authorized);
-        if (m_operationManager.isOperation(UserOperationType::AUTHORIZE)) return make_error_code(ErrorCode::operation_in_progress);
+        if (m_operationManager.isOperation(UserOperationType::AUTHORIZE, nickname)) return make_error_code(ErrorCode::operation_in_progress);
 
         if (!m_keyManager.isKeys()) {
             if (m_keyManager.isGeneratingKeys()) {
@@ -556,13 +564,13 @@ namespace core
 
         m_keyManager.awaitKeysGeneration();
 
-        m_operationManager.addOperation(UserOperationType::AUTHORIZE);
+        m_operationManager.addOperation(UserOperationType::AUTHORIZE, nickname);
 
         auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey());
 
         createAndStartTask(uid, packet, PacketType::AUTHORIZATION,
             std::bind(&Client::onAuthorizeCompleted, this, nickname, _1),
-            std::bind(&Client::onAuthorizeFailed, this, _1)
+            std::bind(&Client::onAuthorizeFailed, this, nickname, _1)
         );
 
         return {};
@@ -571,9 +579,9 @@ namespace core
     std::error_code Client::logout() {
         if (isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (m_operationManager.isOperation(UserOperationType::LOGOUT)) return make_error_code(ErrorCode::operation_in_progress);
+        if (m_operationManager.isOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname())) return make_error_code(ErrorCode::operation_in_progress);
 
-        m_operationManager.addOperation(UserOperationType::LOGOUT);
+        m_operationManager.addOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
 
         auto [uid, packet] = PacketFactory::getLogoutPacket(m_stateManager.getMyNickname());
 
@@ -589,7 +597,7 @@ namespace core
         if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (m_stateManager.isActiveCall()) return make_error_code(ErrorCode::active_call_exists);
-        if (m_operationManager.isOperationType(UserOperationType::START_OUTGOING_CALL)) return make_error_code(ErrorCode::operation_in_progress);
+        if (m_operationManager.isOperation(UserOperationType::START_OUTGOING_CALL, userNickname)) return make_error_code(ErrorCode::operation_in_progress);
 
         auto& icomingCalls = m_stateManager.getIncomingCalls();
 
@@ -621,9 +629,8 @@ namespace core
         if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager.isOutgoingCall()) return make_error_code(ErrorCode::no_outgoing_call);
-        if (m_operationManager.isOperationType(UserOperationType::STOP_OUTGOING_CALL)) return make_error_code(ErrorCode::operation_in_progress);
-
         const std::string& nickname = m_stateManager.getOutgoingCall().getNickname();
+        if (m_operationManager.isOperation(UserOperationType::STOP_OUTGOING_CALL, nickname)) return make_error_code(ErrorCode::operation_in_progress);
 
         m_operationManager.addOperation(UserOperationType::STOP_OUTGOING_CALL, nickname);
 
@@ -641,7 +648,7 @@ namespace core
         if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager.isIncomingCalls()) return make_error_code(ErrorCode::no_incoming_call);
-        if (m_operationManager.isOperationType(UserOperationType::ACCEPT_CALL)) return make_error_code(ErrorCode::operation_in_progress);
+        if (m_operationManager.isOperation(UserOperationType::ACCEPT_CALL, userNickname)) return make_error_code(ErrorCode::operation_in_progress);
 
         auto& incomingCalls = m_stateManager.getIncomingCalls();
         if (!incomingCalls.contains(userNickname)) return make_error_code(ErrorCode::no_incoming_call);
@@ -714,9 +721,8 @@ namespace core
         if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (m_operationManager.isOperationType(UserOperationType::END_CALL)) return make_error_code(ErrorCode::operation_in_progress);
-
         const std::string& nickname = m_stateManager.getActiveCall().getNickname();
+        if (m_operationManager.isOperation(UserOperationType::END_CALL, nickname)) return make_error_code(ErrorCode::operation_in_progress);
 
         m_operationManager.addOperation(UserOperationType::END_CALL, nickname);
 
@@ -736,11 +742,10 @@ namespace core
         if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
         if (m_stateManager.isScreenSharing()) return make_error_code(ErrorCode::screen_sharing_already_active);
         if (m_stateManager.isViewingRemoteScreen()) return make_error_code(ErrorCode::viewing_remote_screen);
-        if (m_operationManager.isOperationType(UserOperationType::START_SCREEN_SHARING)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::START_SCREEN_SHARING);
-
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        if (m_operationManager.isOperation(UserOperationType::START_SCREEN_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
+
+        m_operationManager.addOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
         auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_BEGIN,
@@ -756,11 +761,10 @@ namespace core
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
         if (!m_stateManager.isScreenSharing()) return make_error_code(ErrorCode::screen_sharing_not_active);
-        if (m_operationManager.isOperationType(UserOperationType::STOP_SCREEN_SHARING)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::STOP_SCREEN_SHARING);
-
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        if (m_operationManager.isOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
+
+        m_operationManager.addOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
         auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_END,
@@ -803,11 +807,10 @@ namespace core
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
         if (m_stateManager.isCameraSharing()) return make_error_code(ErrorCode::camera_sharing_already_active);
-        if (m_operationManager.isOperationType(UserOperationType::START_CAMERA_SHARING)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::START_CAMERA_SHARING);
-
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        if (m_operationManager.isOperation(UserOperationType::START_CAMERA_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
+
+        m_operationManager.addOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
         auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_BEGIN,
@@ -823,11 +826,10 @@ namespace core
         if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
         if (!m_stateManager.isCameraSharing()) return make_error_code(ErrorCode::camera_sharing_not_active);
-        if (m_operationManager.isOperationType(UserOperationType::STOP_CAMERA_SHARING)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::STOP_CAMERA_SHARING);
-
         const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
+        if (m_operationManager.isOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
+
+        m_operationManager.addOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
         auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
         createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_END,

@@ -8,6 +8,7 @@
 
 #include "updater.h"
 #include "core.h"
+#include "utilities/event.h"
 
 class AuthorizationWidget;
 class MainMenuWidget;
@@ -37,9 +38,9 @@ public:
     void init();
 
 protected:
-    void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
+    void customEvent(QEvent* event) override;
 
 private slots:
     void onWindowTitleChanged(const QString& title);
@@ -47,7 +48,7 @@ private slots:
     void onWindowMaximizedRequested();
     void onStopScreenCaptureRequested();
     void onStopCameraCaptureRequested();
-    void onEndCallFullscreenExitRequested();
+    void onEndCallFullscreenExitRequested(); 
     void onStopAllRingtonesRequested();
 
 private:
@@ -100,5 +101,4 @@ private:
     CameraSharingManager* m_cameraSharingManager = nullptr;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler = nullptr;
     UpdaterNetworkErrorHandler* m_updaterNetworkErrorHandler = nullptr;
-    bool m_clientsStarted = false;
 };

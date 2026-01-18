@@ -12,11 +12,7 @@ CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client,
     , m_configManager(configManager)
     , m_cameraCaptureController(cameraController)
     , m_dialogsController(dialogsController)
-    , m_operationTimer(new QTimer(this))
 {
-    m_operationTimer->setSingleShot(true);
-    m_operationTimer->setInterval(1000);
-    connect(m_operationTimer, &QTimer::timeout, this, &CameraSharingManager::onTimeToShowWaitingNotification);
 }
 
 void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget)
@@ -88,7 +84,7 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
             if (m_callWidget) {
                 m_callWidget->setCameraButtonRestricted(true);
             }
-            startOperationTimer("Starting camera sharing...");
+            startOperationTimer(core::UserOperationType::START_CAMERA_SHARING, "Starting camera sharing...");
         }
     }
     else {
@@ -104,14 +100,14 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
             if (m_callWidget) {
                 m_callWidget->setCameraButtonRestricted(true);
             }
-            startOperationTimer("Stopping camera sharing...");
+            startOperationTimer(core::UserOperationType::STOP_CAMERA_SHARING, "Stopping camera sharing...");
         }
     }
 }
 
 void CameraSharingManager::onCameraSharingStarted()
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::START_CAMERA_SHARING);
     if (m_callWidget) {
         m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setCameraButtonActive(true);
@@ -124,7 +120,7 @@ void CameraSharingManager::onCameraSharingStarted()
 
 void CameraSharingManager::onStartCameraSharingError()
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::START_CAMERA_SHARING);
     if (m_callWidget) {
         m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setCameraButtonActive(false);
@@ -258,7 +254,7 @@ void CameraSharingManager::onActivateCameraButtonClicked(bool activated)
 
 void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::STOP_CAMERA_SHARING);
     if (m_callWidget) {
         m_callWidget->setCameraButtonRestricted(false);
     }
@@ -292,32 +288,82 @@ void CameraSharingManager::onStopCameraSharingResult(std::error_code ec)
 }
 
 
-void CameraSharingManager::startOperationTimer(const QString& dialogText)
+void CameraSharingManager::startOperationTimer(core::UserOperationType operationKey, const QString& dialogText)
 {
-    m_pendingOperationDialogText = dialogText;
-    m_operationTimer->start();
+    m_pendingOperationTexts.insert(operationKey, dialogText);
+
+    QTimer* timer = m_operationTimers.value(operationKey, nullptr);
+    if (!timer)
+    {
+        timer = new QTimer(this);
+        timer->setSingleShot(true);
+        timer->setInterval(1000);
+        connect(timer, &QTimer::timeout, this, [this, operationKey]()
+        {
+            onOperationTimerTimeout(operationKey);
+        });
+        m_operationTimers.insert(operationKey, timer);
+    }
+
+    timer->start();
 }
 
-void CameraSharingManager::stopOperationTimer()
+void CameraSharingManager::stopOperationTimer(core::UserOperationType operationKey)
 {
-    m_operationTimer->stop();
-    m_pendingOperationDialogText.clear();
-    if (m_dialogsController) {
-        m_dialogsController->hidePendingOperationDialog();
+    if (QTimer* timer = m_operationTimers.value(operationKey, nullptr))
+    {
+        timer->stop();
+    }
+
+    m_pendingOperationTexts.remove(operationKey);
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->hidePendingOperationDialog(operationKey);
+    }
+}
+
+void CameraSharingManager::stopAllOperationTimers()
+{
+    if (m_dialogsController)
+    {
+        for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
+        {
+            m_dialogsController->hidePendingOperationDialog(it.key());
+        }
+    }
+
+    for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
+    {
+        if (QTimer* timer = it.value())
+        {
+            timer->stop();
+        }
+    }
+
+    m_pendingOperationTexts.clear();
+}
+
+void CameraSharingManager::onOperationTimerTimeout(core::UserOperationType operationKey)
+{
+    if (!m_coreClient || m_coreClient->isConnectionDown())
+    {
+        return;
+    }
+
+    const QString dialogText = m_pendingOperationTexts.value(operationKey);
+    if (dialogText.isEmpty())
+    {
+        return;
+    }
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->showPendingOperationDialog(dialogText, operationKey);
     }
 }
 
 void CameraSharingManager::hideOperationDialog()
 {
-    stopOperationTimer();
-}
-
-void CameraSharingManager::onTimeToShowWaitingNotification()
-{
-    if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
-        if (m_dialogsController) {
-
-            m_dialogsController->showPendingOperationDialog(m_pendingOperationDialogText);
-        }
-    }
+    stopAllOperationTimers();
 }

@@ -24,12 +24,7 @@ CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManag
     , m_screenCaptureController(screenCaptureController)
     , m_cameraCaptureController(cameraCaptureController)
     , m_dialogsController(dialogsController)
-    , m_operationTimer(new QTimer(this))
 {
-    m_operationTimer->setSingleShot(true);
-    m_operationTimer->setInterval(1000);
-    connect(m_operationTimer, &QTimer::timeout, this, &CallManager::onTimeToShowWaitingNotification);
-
     if (m_dialogsController)
     {
         connect(m_dialogsController, &DialogsController::incomingCallAccepted, this, &CallManager::onAcceptCallButtonClicked);
@@ -71,7 +66,7 @@ void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
         if (m_mainMenuWidget) {
             m_mainMenuWidget->setCallButtonEnabled(false);
         }
-        startOperationTimer("Calling begins...");
+        startOperationTimer(core::UserOperationType::START_OUTGOING_CALL, "Calling begins...");
     }
 }
 
@@ -91,7 +86,7 @@ void CallManager::onStopCallingButtonClicked()
         if (m_mainMenuWidget) {
             m_mainMenuWidget->setStopCallingButtonEnabled(false);
         }
-        startOperationTimer("Stopping call...");
+        startOperationTimer(core::UserOperationType::STOP_OUTGOING_CALL, "Stopping call...");
     }
 }
 
@@ -109,7 +104,7 @@ void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
         if (m_dialogsController) {
             m_dialogsController->setIncomingCallButtonsActive(friendNickname, false);
         }
-        startOperationTimer("Accepting call...");
+        startOperationTimer(core::UserOperationType::ACCEPT_CALL, "Accepting call...");
     }
 }
 
@@ -127,7 +122,7 @@ void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
         if (m_dialogsController) {
             m_dialogsController->setIncomingCallButtonsActive(friendNickname, false);
         }
-        startOperationTimer("Declining call...");
+        startOperationTimer(core::UserOperationType::DECLINE_CALL, "Declining call...");
     }
 }
 
@@ -145,13 +140,13 @@ void CallManager::onEndCallButtonClicked()
         if (m_callWidget) {
             m_callWidget->setHangupButtonRestricted(true);
         }
-        startOperationTimer("Ending call...");
+        startOperationTimer(core::UserOperationType::END_CALL, "Ending call...");
     }
 }
 
 void CallManager::onStartCallingResult(std::error_code ec)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::START_OUTGOING_CALL);
     if (!m_mainMenuWidget || !m_coreClient) return;
 
     if (!ec) {
@@ -185,7 +180,7 @@ void CallManager::onStartCallingResult(std::error_code ec)
 
 void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::ACCEPT_CALL);
     if (!m_mainMenuWidget || !m_coreClient) return;
 
     if (!ec) {
@@ -248,6 +243,7 @@ void CallManager::onCallingAccepted()
 
     if (m_audioManager) {
         m_audioManager->stopCallingRingtone();
+        m_audioManager->stopIncomingCallRingtone();
     }
 
     m_mainMenuWidget->removeCallingPanel();
@@ -280,6 +276,8 @@ void CallManager::onCallingDeclined()
 
 void CallManager::onRemoteUserEndedCall()
 {
+    hideOperationDialog();
+
     if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
         emit stopScreenCaptureRequested();
     }
@@ -404,7 +402,7 @@ void CallManager::handleEndCallErrorNotificationAppearance()
 
 void CallManager::onStopOutgoingCallResult(std::error_code ec)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::DECLINE_CALL);
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setStopCallingButtonEnabled(true);
     }
@@ -428,7 +426,7 @@ void CallManager::onStopOutgoingCallResult(std::error_code ec)
 
 void CallManager::onDeclineCallResult(std::error_code ec, const QString& nickname)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::STOP_OUTGOING_CALL);
     if (ec) {
         if (m_dialogsController) {
             m_dialogsController->setIncomingCallButtonsActive(nickname, true);
@@ -454,7 +452,7 @@ void CallManager::onDeclineCallResult(std::error_code ec, const QString& nicknam
 
 void CallManager::onEndCallResult(std::error_code ec)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::END_CALL);
     if (m_callWidget) {
         m_callWidget->setHangupButtonRestricted(false);
         m_callWidget->setCameraButtonActive(true);
@@ -467,6 +465,7 @@ void CallManager::onEndCallResult(std::error_code ec)
         }
     }
     else {
+        hideOperationDialog();
         emit stopScreenCaptureRequested();
         emit stopCameraCaptureRequested();
 
@@ -488,7 +487,7 @@ void CallManager::onCallParticipantConnectionDown()
 {
     LOG_WARN("Call participant connection down");
     
-    stopOperationTimer();
+    stopAllOperationTimers();
     
     if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
         emit stopScreenCaptureRequested();
@@ -507,16 +506,22 @@ void CallManager::onCallParticipantConnectionDown()
 
     if (m_dialogsController)
     {
-        m_dialogsController->showPendingOperationDialog("Connection with participant lost. Waiting for them...");
+        m_dialogsController->showConnectionDownWithUserDialog("Connection with participant lost. Waiting for them...");
     }
 }
 
 void CallManager::onCallParticipantConnectionRestored()
 {
+    if (!m_coreClient || !m_coreClient->isActiveCall())
+    {
+        hideOperationDialog();
+        return;
+    }
+
     if (m_dialogsController)
     {
         const int restoredDurationMs = 2500;
-        m_dialogsController->showConnectionRestoredDialog();
+        m_dialogsController->showConnectionRestoredWithUserDialog("Connection with participant restored");
 
         QTimer::singleShot(restoredDurationMs, this, [this]()
         {
@@ -532,7 +537,7 @@ void CallManager::onCallParticipantConnectionRestored()
 
             if (m_dialogsController)
             {
-                m_dialogsController->hideConnectionRestoredDialog();
+                m_dialogsController->hideConnectionRestoredWithUserDialog();
             }
         });
     }
@@ -548,33 +553,87 @@ void CallManager::onLocalConnectionDownInCall()
     m_callWidget->hideAdditionalScreens();
 }
 
-void CallManager::startOperationTimer(const QString& dialogText)
+void CallManager::startOperationTimer(core::UserOperationType operationKey, const QString& dialogText)
 {
-    m_pendingOperationDialogText = dialogText;
-    m_operationTimer->start();
+    m_pendingOperationTexts.insert(operationKey, dialogText);
+
+    QTimer* timer = m_operationTimers.value(operationKey, nullptr);
+    if (!timer)
+    {
+        timer = new QTimer(this);
+        timer->setSingleShot(true);
+        timer->setInterval(1000);
+        connect(timer, &QTimer::timeout, this, [this, operationKey]()
+        {
+            onOperationTimerTimeout(operationKey);
+        });
+        m_operationTimers.insert(operationKey, timer);
+    }
+
+    timer->start();
 }
 
-void CallManager::stopOperationTimer()
+void CallManager::stopOperationTimer(core::UserOperationType operationKey)
 {
-    m_operationTimer->stop();
-    m_pendingOperationDialogText.clear();
-    if (m_dialogsController) {
-        m_dialogsController->hidePendingOperationDialog();
+    if (QTimer* timer = m_operationTimers.value(operationKey, nullptr))
+    {
+        timer->stop();
+    }
+
+    m_pendingOperationTexts.remove(operationKey);
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->hidePendingOperationDialog(operationKey);
+    }
+}
+
+void CallManager::stopAllOperationTimers()
+{
+    if (m_dialogsController)
+    {
+        for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
+        {
+            m_dialogsController->hidePendingOperationDialog(it.key());
+        }
+    }
+
+    for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
+    {
+        if (QTimer* timer = it.value())
+        {
+            timer->stop();
+        }
+    }
+
+    m_pendingOperationTexts.clear();
+}
+
+void CallManager::onOperationTimerTimeout(core::UserOperationType operationKey)
+{
+    if (!m_coreClient || m_coreClient->isConnectionDown())
+    {
+        return;
+    }
+
+    const QString dialogText = m_pendingOperationTexts.value(operationKey);
+    if (dialogText.isEmpty())
+    {
+        return;
+    }
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->showPendingOperationDialog(dialogText, operationKey);
     }
 }
 
 void CallManager::hideOperationDialog()
 {
-    stopOperationTimer();
-}
-
-void CallManager::onTimeToShowWaitingNotification()
-{
-    if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
-        if (m_dialogsController) {
-
-            m_dialogsController->showPendingOperationDialog(m_pendingOperationDialogText);
-        }
+    stopAllOperationTimers();
+    if (m_dialogsController) {
+        m_dialogsController->hideConnectionDownWithUserDialog();
+        m_dialogsController->hideConnectionRestoredWithUserDialog();
     }
 }
 

@@ -28,6 +28,8 @@
 #include "events/coreEventListener.h"
 #include "events/updaterEventListener.h"
 
+const QEvent::Type StartupEvent::StartupEventType = static_cast<QEvent::Type>(QEvent::User + 1);
+
 void MainWindow::init() {
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
@@ -59,31 +61,40 @@ void MainWindow::init() {
     initializeCameraSharingManager();
     initializeCoreNetworkErrorHandler();
     initializeUpdaterNetworkErrorHandler();
-    
-    // Initialize updater client after both error handlers are ready
-    m_updaterClient->init(std::make_shared<UpdaterEventListener>(m_updateManager, m_updaterNetworkErrorHandler),
-        m_configManager->getTemporaryUpdateDirectoryName().toStdString(),
-        m_configManager->getDeletionListFileName().toStdString(),
-        m_configManager->getIgnoredFilesWhileCollectingForUpdate(),
-        m_configManager->getIgnoredDirectoriesWhileCollectingForUpdate()
-    );
 
     connectWidgetsToManagers();
     applyAudioSettings();
-
     showMaximized();
+
+    QCoreApplication::postEvent(this, new StartupEvent());
 }
 
-void MainWindow::showEvent(QShowEvent* event) {
+void MainWindow::customEvent(QEvent* event) {
     if (!isFirstInstance() && !m_configManager->isMultiInstanceAllowed()) {
         m_dialogsController->showAlreadyRunningDialog();
+
+        return;
     }
-    else if (!m_clientsStarted) {
-        m_coreClient->start(m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(), 
-            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_screenSharingManager, m_cameraSharingManager, m_coreNetworkErrorHandler));
-        m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
-        m_clientsStarted = true;
+
+    if (event->type() == StartupEvent::StartupEventType) {
+        m_updaterClient->init(std::make_shared<UpdaterEventListener>(m_updateManager, m_updaterNetworkErrorHandler),
+            m_configManager->getTemporaryUpdateDirectoryName().toStdString(),
+            m_configManager->getDeletionListFileName().toStdString(),
+            m_configManager->getIgnoredFilesWhileCollectingForUpdate(),
+            m_configManager->getIgnoredDirectoriesWhileCollectingForUpdate()
+        );
+
+        m_coreClient->start(m_configManager->getServerHost().toStdString(),
+            m_configManager->getPort().toStdString(),
+            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_screenSharingManager, m_cameraSharingManager, m_coreNetworkErrorHandler)
+        );
+           
+        m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(),
+            m_configManager->getPort().toStdString()
+        );
     }
+
+    QMainWindow::customEvent(event);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

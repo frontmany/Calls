@@ -98,7 +98,7 @@ namespace core
         void onReconnectFailed(std::optional<nlohmann::json> failureContext);
 
         void onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
-        void onAuthorizeFailed(std::optional<nlohmann::json> failureContext);
+        void onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
 
         void onLogoutCompleted(std::optional<nlohmann::json> completionContext);
         void onLogoutFailed(std::optional<nlohmann::json> failureContext);

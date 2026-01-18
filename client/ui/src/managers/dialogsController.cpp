@@ -3,6 +3,8 @@
 #include "utilities/utilities.h"
 #include "dialogs/connectionDownDialog.h"
 #include "dialogs/connectionRestoredDialog.h"
+#include "dialogs/connectionDownWithUserDialog.h"
+#include "dialogs/connectionRestoredWithUserDialog.h"
 #include "dialogs/pendingOperationDialog.h"
 #include "dialogs/screenShareDialog.h"
 #include "dialogs/alreadyRunningDialog.h"
@@ -22,6 +24,7 @@
 #include <QPainterPath>
 #include <QCursor>
 #include <QFontMetrics>
+#include <QPointer>
 #include "dialogs/audioSettingsDialog.h"
 #include "dialogs/updatingDialog.h"
 #include <algorithm>
@@ -35,6 +38,10 @@ DialogsController::DialogsController(QWidget* parent)
     , m_connectionDownDialog(nullptr)
     , m_connectionRestoredOverlay(nullptr)
     , m_connectionRestoredDialog(nullptr)
+    , m_connectionDownWithUserOverlay(nullptr)
+    , m_connectionDownWithUserDialog(nullptr)
+    , m_connectionRestoredWithUserOverlay(nullptr)
+    , m_connectionRestoredWithUserDialog(nullptr)
     , m_pendingOperationOverlay(nullptr)
     , m_pendingOperationDialog(nullptr)
     , m_screenShareOverlay(nullptr)
@@ -53,6 +60,8 @@ DialogsController::~DialogsController()
     hideUpdatingDialog();
     hideConnectionDownDialog();
     hideConnectionRestoredDialog();
+    hideConnectionDownWithUserDialog();
+    hideConnectionRestoredWithUserDialog();
     hidePendingOperationDialog();
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
@@ -71,6 +80,175 @@ DialogsController::~DialogsController()
     }
 
     m_incomingCallDialogs.clear();
+}
+
+void DialogsController::addManagedNotification(ManagedNotificationType type, bool hasKey, core::UserOperationType key, const QString& statusText)
+{
+    for (int i = 0; i < m_managedNotificationStack.size();)
+    {
+        const ManagedNotificationState& state = m_managedNotificationStack[i];
+        const bool sameType = state.type == type;
+        const bool shouldRemove = sameType
+            && (type != ManagedNotificationType::PendingOperation || !hasKey || (state.hasKey && state.key == key));
+        if (shouldRemove)
+        {
+            m_managedNotificationStack.removeAt(i);
+            if (type != ManagedNotificationType::PendingOperation || hasKey)
+            {
+                break;
+            }
+            continue;
+        }
+        ++i;
+    }
+
+    m_managedNotificationStack.append({ type, hasKey, key, statusText });
+}
+
+void DialogsController::removeManagedNotification(ManagedNotificationType type, bool hasKey, core::UserOperationType key)
+{
+    for (int i = 0; i < m_managedNotificationStack.size();)
+    {
+        const ManagedNotificationState& state = m_managedNotificationStack[i];
+        const bool sameType = state.type == type;
+        const bool shouldRemove = sameType
+            && (type != ManagedNotificationType::PendingOperation || !hasKey || (state.hasKey && state.key == key));
+        if (shouldRemove)
+        {
+            m_managedNotificationStack.removeAt(i);
+            if (type != ManagedNotificationType::PendingOperation || hasKey)
+            {
+                return;
+            }
+            continue;
+        }
+        ++i;
+    }
+}
+
+bool DialogsController::isManagedNotificationActive(ManagedNotificationType type, bool hasKey, core::UserOperationType key) const
+{
+    switch (type)
+    {
+    case ManagedNotificationType::ConnectionDownWithUser:
+        return m_connectionDownWithUserDialog != nullptr;
+    case ManagedNotificationType::PendingOperation:
+        if (!m_pendingOperationDialog)
+        {
+            return false;
+        }
+        if (!hasKey)
+        {
+            return true;
+        }
+        return m_hasActivePendingOperationKey && key == m_activePendingOperationKey;
+    }
+
+    return false;
+}
+
+void DialogsController::showManagedNotification(const ManagedNotificationState& state)
+{
+    switch (state.type)
+    {
+    case ManagedNotificationType::ConnectionDownWithUser:
+    {
+        NotificationDialogBase* baseDialog = m_connectionDownWithUserDialog;
+        auto createDialog = [statusText = state.statusText](QWidget* parent) -> NotificationDialogBase*
+        {
+            return new ConnectionDownWithUserDialog(parent, statusText);
+        };
+        auto updateDialog = [statusText = state.statusText](NotificationDialogBase* dialog)
+        {
+            dialog->setStatusText(statusText);
+        };
+        showNotificationDialogInternal(m_connectionDownWithUserOverlay,
+            baseDialog,
+            true,
+            createDialog,
+            updateDialog);
+        m_connectionDownWithUserDialog = static_cast<ConnectionDownWithUserDialog*>(baseDialog);
+        break;
+    }
+    case ManagedNotificationType::PendingOperation:
+    {
+        NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+        auto createDialog = [statusText = state.statusText](QWidget* parent) -> NotificationDialogBase*
+        {
+            return new PendingOperationDialog(parent, statusText);
+        };
+        auto updateDialog = [statusText = state.statusText](NotificationDialogBase* dialog)
+        {
+            dialog->setStatusText(statusText);
+        };
+        showNotificationDialogInternal(m_pendingOperationOverlay,
+            baseDialog,
+            false,
+            createDialog,
+            updateDialog);
+        m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+        m_hasActivePendingOperationKey = state.hasKey;
+        if (state.hasKey)
+        {
+            m_activePendingOperationKey = state.key;
+        }
+        break;
+    }
+    }
+}
+
+void DialogsController::showLastManagedNotification()
+{
+    if (m_managedNotificationStack.isEmpty())
+    {
+        return;
+    }
+
+    showManagedNotification(m_managedNotificationStack.back());
+}
+
+void DialogsController::hideActiveNotificationDialog()
+{
+    if (m_connectionDownDialog)
+    {
+        NotificationDialogBase* baseDialog = m_connectionDownDialog;
+        hideNotificationDialogInternal(m_connectionDownOverlay, baseDialog);
+        m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
+        return;
+    }
+
+    if (m_connectionRestoredDialog)
+    {
+        NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
+        hideNotificationDialogInternal(m_connectionRestoredOverlay, baseDialog);
+        m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
+        return;
+    }
+
+    if (m_connectionDownWithUserDialog)
+    {
+        NotificationDialogBase* baseDialog = m_connectionDownWithUserDialog;
+        hideNotificationDialogInternal(m_connectionDownWithUserOverlay, baseDialog);
+        m_connectionDownWithUserDialog = static_cast<ConnectionDownWithUserDialog*>(baseDialog);
+        return;
+    }
+
+    if (m_connectionRestoredWithUserDialog)
+    {
+        NotificationDialogBase* baseDialog = m_connectionRestoredWithUserDialog;
+        hideNotificationDialogInternal(m_connectionRestoredWithUserOverlay, baseDialog);
+        m_connectionRestoredWithUserDialog = static_cast<ConnectionRestoredWithUserDialog*>(baseDialog);
+        return;
+    }
+
+    if (m_pendingOperationDialog)
+    {
+        NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+        hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
+        m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+        m_hasActivePendingOperationKey = false;
+        return;
+    }
 }
 
 void DialogsController::showUpdatingDialog()
@@ -339,29 +517,29 @@ void DialogsController::showNotificationDialogInternal(OverlayWidget*& overlay,
         dialog->setParent(parentWidget);
     }
 
-    OverlayWidget** overlayPtr = &overlay;
-    NotificationDialogBase** dialogPtr = &dialog;
-    auto positionDialog = [this, createOverlay, overlayPtr, dialogPtr]()
+    QPointer<OverlayWidget> overlayGuard = overlay;
+    QPointer<NotificationDialogBase> dialogGuard = dialog;
+    auto positionDialog = [this, createOverlay, overlayGuard, dialogGuard]()
     {
-        if (!dialogPtr || !(*dialogPtr))
+        if (!dialogGuard)
             return;
 
-        QWidget* referenceWidget = createOverlay ? *overlayPtr : m_parent;
-        if (!referenceWidget && overlayPtr && *overlayPtr)
+        QWidget* referenceWidget = createOverlay ? overlayGuard.data() : m_parent;
+        if (!referenceWidget && overlayGuard)
         {
-            referenceWidget = *overlayPtr;
+            referenceWidget = overlayGuard.data();
         }
         if (!referenceWidget)
             return;
 
-        (*dialogPtr)->adjustSize();
-        QSize dialogSize = (*dialogPtr)->size();
+        dialogGuard->adjustSize();
+        QSize dialogSize = dialogGuard->size();
 
         int x = (referenceWidget->width() - dialogSize.width()) / 2;
         int y = 40;
 
-        (*dialogPtr)->move(x, y);
-        (*dialogPtr)->raise();
+        dialogGuard->move(x, y);
+        dialogGuard->raise();
     };
 
     positionDialog();
@@ -370,7 +548,8 @@ void DialogsController::showNotificationDialogInternal(OverlayWidget*& overlay,
 
     if (overlay)
     {
-        QObject::connect(overlay, &OverlayWidget::geometryChanged, this, positionDialog, Qt::UniqueConnection);
+        QObject::disconnect(overlay, &OverlayWidget::geometryChanged, this, nullptr);
+        QObject::connect(overlay, &OverlayWidget::geometryChanged, this, positionDialog);
     }
 }
 
@@ -394,49 +573,55 @@ void DialogsController::hideNotificationDialogInternal(OverlayWidget*& overlay, 
 
 void DialogsController::showConnectionDownDialog()
 {
+    m_managedNotificationStack.clear();
+    m_hasActivePendingOperationKey = false;
+
+    if (m_connectionDownDialog)
     {
-        NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
-        hideNotificationDialogInternal(m_connectionRestoredOverlay, baseDialog);
-        m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
+        m_connectionDownDialog->raise();
+        return;
     }
-    {
-        NotificationDialogBase* baseDialog = m_pendingOperationDialog;
-        hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
-        m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
-    }
+
+    hideActiveNotificationDialog();
 
     NotificationDialogBase* baseDialog = m_connectionDownDialog;
     auto createDialog = [](QWidget* parent) -> NotificationDialogBase*
     {
         return new ConnectionDownDialog(parent);
     };
+
     showNotificationDialogInternal(m_connectionDownOverlay,
         baseDialog,
         true,
         createDialog,
-        nullptr);
+        nullptr
+    );
+
     m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
 }
 
 void DialogsController::hideConnectionDownDialog()
 {
+    if (!m_connectionDownDialog)
+    {
+        return;
+    }
+
     NotificationDialogBase* baseDialog = m_connectionDownDialog;
     hideNotificationDialogInternal(m_connectionDownOverlay, baseDialog);
     m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
+    showLastManagedNotification();
 }
 
 void DialogsController::showConnectionRestoredDialog()
 {
+    if (m_connectionRestoredDialog)
     {
-        NotificationDialogBase* baseDialog = m_connectionDownDialog;
-        hideNotificationDialogInternal(m_connectionDownOverlay, baseDialog);
-        m_connectionDownDialog = static_cast<ConnectionDownDialog*>(baseDialog);
+        m_connectionRestoredDialog->raise();
+        return;
     }
-    {
-        NotificationDialogBase* baseDialog = m_pendingOperationDialog;
-        hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
-        m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
-    }
+
+    hideActiveNotificationDialog();
 
     NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
     auto createDialog = [](QWidget* parent) -> NotificationDialogBase*
@@ -453,40 +638,155 @@ void DialogsController::showConnectionRestoredDialog()
 
 void DialogsController::hideConnectionRestoredDialog()
 {
-    NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
-    hideNotificationDialogInternal(m_connectionRestoredOverlay, baseDialog);
-    m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
-}
-
-void DialogsController::showPendingOperationDialog(const QString& statusText)
-{
-    if (m_connectionDownDialog || m_connectionRestoredDialog)
+    if (!m_connectionRestoredDialog)
     {
         return;
     }
 
-    NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+    NotificationDialogBase* baseDialog = m_connectionRestoredDialog;
+    hideNotificationDialogInternal(m_connectionRestoredOverlay, baseDialog);
+    m_connectionRestoredDialog = static_cast<ConnectionRestoredDialog*>(baseDialog);
+    showLastManagedNotification();
+}
+
+void DialogsController::showConnectionDownWithUserDialog(const QString& statusText)
+{
+    addManagedNotification(ManagedNotificationType::ConnectionDownWithUser, false, core::UserOperationType::AUTHORIZE, statusText);
+
+    if (isManagedNotificationActive(ManagedNotificationType::ConnectionDownWithUser, false, core::UserOperationType::AUTHORIZE))
+    {
+        if (m_connectionDownWithUserDialog)
+        {
+            m_connectionDownWithUserDialog->setStatusText(statusText);
+            m_connectionDownWithUserDialog->raise();
+        }
+        return;
+    }
+
+    hideActiveNotificationDialog();
+    ManagedNotificationState state;
+    state.type = ManagedNotificationType::ConnectionDownWithUser;
+    state.hasKey = false;
+    state.statusText = statusText;
+    showManagedNotification(state);
+}
+
+void DialogsController::hideConnectionDownWithUserDialog()
+{
+    removeManagedNotification(ManagedNotificationType::ConnectionDownWithUser, false, core::UserOperationType::AUTHORIZE);
+
+    if (!m_connectionDownWithUserDialog)
+    {
+        return;
+    }
+
+    NotificationDialogBase* baseDialog = m_connectionDownWithUserDialog;
+    hideNotificationDialogInternal(m_connectionDownWithUserOverlay, baseDialog);
+    m_connectionDownWithUserDialog = static_cast<ConnectionDownWithUserDialog*>(baseDialog);
+    showLastManagedNotification();
+}
+
+void DialogsController::showConnectionRestoredWithUserDialog(const QString& statusText)
+{
+    if (m_connectionRestoredWithUserDialog)
+    {
+        m_connectionRestoredWithUserDialog->setStatusText(statusText);
+        m_connectionRestoredWithUserDialog->raise();
+        return;
+    }
+
+    hideActiveNotificationDialog();
+
+    NotificationDialogBase* baseDialog = m_connectionRestoredWithUserDialog;
     auto createDialog = [statusText](QWidget* parent) -> NotificationDialogBase*
     {
-        return new PendingOperationDialog(parent, statusText);
+        return new ConnectionRestoredWithUserDialog(parent, statusText);
     };
     auto updateDialog = [statusText](NotificationDialogBase* dialog)
     {
         dialog->setStatusText(statusText);
     };
-    showNotificationDialogInternal(m_pendingOperationOverlay,
+    showNotificationDialogInternal(m_connectionRestoredWithUserOverlay,
         baseDialog,
         false,
         createDialog,
         updateDialog);
+    m_connectionRestoredWithUserDialog = static_cast<ConnectionRestoredWithUserDialog*>(baseDialog);
+}
+
+void DialogsController::hideConnectionRestoredWithUserDialog()
+{
+    if (!m_connectionRestoredWithUserDialog)
+    {
+        return;
+    }
+
+    NotificationDialogBase* baseDialog = m_connectionRestoredWithUserDialog;
+    hideNotificationDialogInternal(m_connectionRestoredWithUserOverlay, baseDialog);
+    m_connectionRestoredWithUserDialog = static_cast<ConnectionRestoredWithUserDialog*>(baseDialog);
+    showLastManagedNotification();
+}
+
+void DialogsController::showPendingOperationDialog(const QString& statusText, core::UserOperationType key)
+{
+    addManagedNotification(ManagedNotificationType::PendingOperation, true, key, statusText);
+
+    if (isManagedNotificationActive(ManagedNotificationType::PendingOperation, true, key))
+    {
+        if (m_pendingOperationDialog)
+        {
+            m_pendingOperationDialog->setStatusText(statusText);
+            m_pendingOperationDialog->raise();
+            m_activePendingOperationKey = key;
+            m_hasActivePendingOperationKey = true;
+        }
+        return;
+    }
+
+    hideActiveNotificationDialog();
+    ManagedNotificationState state;
+    state.type = ManagedNotificationType::PendingOperation;
+    state.hasKey = true;
+    state.key = key;
+    state.statusText = statusText;
+    showManagedNotification(state);
+}
+
+void DialogsController::hidePendingOperationDialog(core::UserOperationType key)
+{
+    removeManagedNotification(ManagedNotificationType::PendingOperation, true, key);
+
+    if (!m_pendingOperationDialog)
+    {
+        return;
+    }
+
+    if (m_hasActivePendingOperationKey && key != m_activePendingOperationKey)
+    {
+        return;
+    }
+
+    NotificationDialogBase* baseDialog = m_pendingOperationDialog;
+    hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
     m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+    m_hasActivePendingOperationKey = false;
+    showLastManagedNotification();
 }
 
 void DialogsController::hidePendingOperationDialog()
 {
+    removeManagedNotification(ManagedNotificationType::PendingOperation, false, core::UserOperationType::AUTHORIZE);
+
+    if (!m_pendingOperationDialog)
+    {
+        return;
+    }
+
     NotificationDialogBase* baseDialog = m_pendingOperationDialog;
     hideNotificationDialogInternal(m_pendingOperationOverlay, baseDialog);
     m_pendingOperationDialog = static_cast<PendingOperationDialog*>(baseDialog);
+    m_hasActivePendingOperationKey = false;
+    showLastManagedNotification();
 }
 
 void DialogsController::showAlreadyRunningDialog()

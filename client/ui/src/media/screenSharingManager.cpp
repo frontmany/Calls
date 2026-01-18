@@ -11,11 +11,7 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
     , m_screenCaptureController(screenController)
     , m_dialogsController(dialogsController)
     , m_cameraCaptureController(cameraController)
-    , m_operationTimer(new QTimer(this))
 {
-    m_operationTimer->setSingleShot(true);
-    m_operationTimer->setInterval(1000);
-    connect(m_operationTimer, &QTimer::timeout, this, &ScreenSharingManager::onTimeToShowWaitingNotification);
 }
 
 void ScreenSharingManager::setWidgets(CallWidget* callWidget)
@@ -59,7 +55,7 @@ void ScreenSharingManager::onScreenShareButtonClicked(bool toggled)
             if (m_callWidget) {
                 m_callWidget->setScreenShareButtonRestricted(true);
             }
-            startOperationTimer("Stopping screen sharing...");
+            startOperationTimer(core::UserOperationType::STOP_SCREEN_SHARING, "Stopping screen sharing...");
         }
     }
 }
@@ -101,13 +97,13 @@ void ScreenSharingManager::onScreenSelected(int screenIndex)
         if (m_callWidget) {
             m_callWidget->setScreenShareButtonRestricted(true);
         }
-        startOperationTimer("Starting screen sharing...");
+        startOperationTimer(core::UserOperationType::START_SCREEN_SHARING, "Starting screen sharing...");
     }
 }
 
 void ScreenSharingManager::onScreenSharingStarted()
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::START_SCREEN_SHARING);
     if (m_callWidget) {
         m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->setScreenShareButtonActive(true);
@@ -150,7 +146,7 @@ void ScreenSharingManager::onScreenCaptured(const QPixmap& pixmap, const std::ve
 
 void ScreenSharingManager::onStartScreenSharingError()
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::START_SCREEN_SHARING);
     if (m_callWidget) {
         m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->setScreenShareButtonActive(false);
@@ -211,7 +207,7 @@ void ScreenSharingManager::onIncomingScreen(const std::vector<unsigned char>& da
 
 void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
 {
-    stopOperationTimer();
+    stopOperationTimer(core::UserOperationType::STOP_SCREEN_SHARING);
     if (m_callWidget) {
         m_callWidget->setScreenShareButtonRestricted(false);
     }
@@ -238,31 +234,82 @@ void ScreenSharingManager::onStopScreenSharingResult(std::error_code ec)
 }
 
 
-void ScreenSharingManager::startOperationTimer(const QString& dialogText)
+void ScreenSharingManager::startOperationTimer(core::UserOperationType operationKey, const QString& dialogText)
 {
-    m_pendingOperationDialogText = dialogText;
-    m_operationTimer->start();
+    m_pendingOperationTexts.insert(operationKey, dialogText);
+
+    QTimer* timer = m_operationTimers.value(operationKey, nullptr);
+    if (!timer)
+    {
+        timer = new QTimer(this);
+        timer->setSingleShot(true);
+        timer->setInterval(1000);
+        connect(timer, &QTimer::timeout, this, [this, operationKey]()
+        {
+            onOperationTimerTimeout(operationKey);
+        });
+        m_operationTimers.insert(operationKey, timer);
+    }
+
+    timer->start();
 }
 
-void ScreenSharingManager::stopOperationTimer()
+void ScreenSharingManager::stopOperationTimer(core::UserOperationType operationKey)
 {
-    m_operationTimer->stop();
-    m_pendingOperationDialogText.clear();
-    if (m_dialogsController) {
-        m_dialogsController->hidePendingOperationDialog();
+    if (QTimer* timer = m_operationTimers.value(operationKey, nullptr))
+    {
+        timer->stop();
+    }
+
+    m_pendingOperationTexts.remove(operationKey);
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->hidePendingOperationDialog(operationKey);
+    }
+}
+
+void ScreenSharingManager::stopAllOperationTimers()
+{
+    if (m_dialogsController)
+    {
+        for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
+        {
+            m_dialogsController->hidePendingOperationDialog(it.key());
+        }
+    }
+
+    for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
+    {
+        if (QTimer* timer = it.value())
+        {
+            timer->stop();
+        }
+    }
+
+    m_pendingOperationTexts.clear();
+}
+
+void ScreenSharingManager::onOperationTimerTimeout(core::UserOperationType operationKey)
+{
+    if (!m_coreClient || m_coreClient->isConnectionDown())
+    {
+        return;
+    }
+
+    const QString dialogText = m_pendingOperationTexts.value(operationKey);
+    if (dialogText.isEmpty())
+    {
+        return;
+    }
+
+    if (m_dialogsController)
+    {
+        m_dialogsController->showPendingOperationDialog(dialogText, operationKey);
     }
 }
 
 void ScreenSharingManager::hideOperationDialog()
 {
-    stopOperationTimer();
-}
-
-void ScreenSharingManager::onTimeToShowWaitingNotification()
-{
-    if (m_coreClient && !m_coreClient->isConnectionDown() && !m_pendingOperationDialogText.isEmpty()) {
-        if (m_dialogsController) {
-            m_dialogsController->showPendingOperationDialog(m_pendingOperationDialogText);
-        }
-    }
+    stopAllOperationTimers();
 }

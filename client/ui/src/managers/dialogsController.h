@@ -6,6 +6,7 @@
 #include <QScreen>
 #include <QMap>
 #include <functional>
+#include "userOperationType.h"
 
 class OverlayWidget;
 class AudioSettingsDialog;
@@ -13,6 +14,8 @@ class UpdatingDialog;
 class NotificationDialogBase;
 class ConnectionDownDialog;
 class ConnectionRestoredDialog;
+class ConnectionDownWithUserDialog;
+class ConnectionRestoredWithUserDialog;
 class PendingOperationDialog;
 class ScreenShareDialog;
 class AlreadyRunningDialog;
@@ -42,7 +45,14 @@ public:
     void showConnectionRestoredDialog();
     void hideConnectionRestoredDialog();
 
-    void showPendingOperationDialog(const QString& statusText);
+    void showConnectionDownWithUserDialog(const QString& statusText);
+    void hideConnectionDownWithUserDialog();
+
+    void showConnectionRestoredWithUserDialog(const QString& statusText);
+    void hideConnectionRestoredWithUserDialog();
+
+    void showPendingOperationDialog(const QString& statusText, core::UserOperationType key);
+    void hidePendingOperationDialog(core::UserOperationType key);
     void hidePendingOperationDialog();
 
     void showAlreadyRunningDialog();
@@ -84,8 +94,32 @@ private:
     void hideNotificationDialogInternal(OverlayWidget*& overlay, NotificationDialogBase*& dialog);
 
 private:
+    enum class ManagedNotificationType
+    {
+        ConnectionDownWithUser,
+        PendingOperation
+    };
+
+    struct ManagedNotificationState
+    {
+        ManagedNotificationType type;
+        bool hasKey = false;
+        core::UserOperationType key = core::UserOperationType::AUTHORIZE;
+        QString statusText;
+    };
+
+    void addManagedNotification(ManagedNotificationType type, bool hasKey, core::UserOperationType key, const QString& statusText);
+    void removeManagedNotification(ManagedNotificationType type, bool hasKey, core::UserOperationType key);
+    bool isManagedNotificationActive(ManagedNotificationType type, bool hasKey, core::UserOperationType key) const;
+    void showManagedNotification(const ManagedNotificationState& state);
+    void showLastManagedNotification();
+    void hideActiveNotificationDialog();
+
     QWidget* m_parent;
     QMap<QString, IncomingCallDialog*> m_incomingCallDialogs;
+    QList<ManagedNotificationState> m_managedNotificationStack;
+    bool m_hasActivePendingOperationKey = false;
+    core::UserOperationType m_activePendingOperationKey = core::UserOperationType::AUTHORIZE;
 
     OverlayWidget* m_updatingOverlay = nullptr;
     UpdatingDialog* m_updatingDialog = nullptr;
@@ -95,6 +129,12 @@ private:
 
     OverlayWidget* m_connectionRestoredOverlay = nullptr;
     ConnectionRestoredDialog* m_connectionRestoredDialog = nullptr;
+
+    OverlayWidget* m_connectionDownWithUserOverlay = nullptr;
+    ConnectionDownWithUserDialog* m_connectionDownWithUserDialog = nullptr;
+
+    OverlayWidget* m_connectionRestoredWithUserOverlay = nullptr;
+    ConnectionRestoredWithUserDialog* m_connectionRestoredWithUserDialog = nullptr;
 
     OverlayWidget* m_pendingOperationOverlay = nullptr;
     PendingOperationDialog* m_pendingOperationDialog = nullptr;

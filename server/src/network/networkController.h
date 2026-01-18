@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_set>
+#include <mutex>
 
 #include "packetSender.h"
 #include "packetReceiver.h"
@@ -39,6 +41,9 @@ namespace server
         void sendPing(const asio::ip::udp::endpoint& endpoint);
         uint64_t generateId();
         void sendPingResponse(const asio::ip::udp::endpoint& endpoint);
+        std::string makeEndpointKey(const asio::ip::udp::endpoint& endpoint) const;
+        void handleConnectionDown(const asio::ip::udp::endpoint& endpoint);
+        void handleConnectionRestored(const asio::ip::udp::endpoint& endpoint);
 
     private:
         asio::io_context m_context;
@@ -56,6 +61,9 @@ namespace server
         std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> m_onReceive;
         std::function<void(const asio::ip::udp::endpoint&)> m_onConnectionDown;
         std::function<void(const asio::ip::udp::endpoint&)> m_onConnectionRestored;
+
+        mutable std::mutex m_connectionStateMutex;
+        std::unordered_set<std::string> m_downEndpoints;
     };
     }
 }
