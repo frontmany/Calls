@@ -5,10 +5,18 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <memory>
 #include <iostream>
+#include <filesystem>
+#include <string>
 
 
     namespace details
     {
+        inline std::string& get_log_directory() noexcept
+        {
+            static std::string log_directory = "logs";
+            return log_directory;
+        }
+
         inline std::shared_ptr<spdlog::logger>& get_logger_instance() noexcept
         {
             static std::shared_ptr<spdlog::logger> logger = nullptr;
@@ -35,8 +43,13 @@
                 console_sink->set_level(spdlog::level::debug);
                 console_sink->set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] %v%$");
 
+                std::filesystem::path log_path = std::filesystem::path(get_log_directory()) / "ui.log";
+                if (!log_path.parent_path().empty()) {
+                    std::filesystem::create_directories(log_path.parent_path());
+                }
+
                 auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                    "logs/ui.log",
+                    log_path.string(),
                     1024 * 1024 * 10, 
                     3
                 );
@@ -83,6 +96,24 @@
         return details::get_logger_instance() != nullptr;
     }
 
+    inline void shutdown() noexcept
+    {
+        if (auto logger = details::get_logger_instance()) {
+            logger->flush();
+            spdlog::drop(logger->name());
+            details::get_logger_instance().reset();
+        }
+    }
+
+    inline void set_log_directory(const std::string& directory) noexcept
+    {
+        details::get_log_directory() = directory;
+        if (is_initialized()) {
+            shutdown();
+            details::initialize_logger();
+        }
+    }
+
     inline void set_level(spdlog::level::level_enum level) noexcept
     {
         if (auto logger = get()) {
@@ -97,54 +128,57 @@
         }
     }
 
-    inline void shutdown() noexcept
-    {
-        if (auto logger = details::get_logger_instance()) {
-            logger->flush();
-            spdlog::drop(logger->name());
-            details::get_logger_instance().reset();
-        }
-    }
 
-
+#ifndef LOG_TRACE
 #define LOG_TRACE(...) \
     do { \
         if (auto logger = get()) { \
             logger->trace(__VA_ARGS__); \
         } \
     } while(0)
+#endif
 
+#ifndef LOG_DEBUG
 #define LOG_DEBUG(...) \
     do { \
         if (auto logger = get()) { \
             logger->debug(__VA_ARGS__); \
         } \
     } while(0)
+#endif
 
+#ifndef LOG_INFO
 #define LOG_INFO(...) \
     do { \
         if (auto logger = get()) { \
             logger->info(__VA_ARGS__); \
         } \
     } while(0)
+#endif
 
+#ifndef LOG_WARN
 #define LOG_WARN(...) \
     do { \
         if (auto logger = get()) { \
             logger->warn(__VA_ARGS__); \
         } \
     } while(0)
+#endif
 
+#ifndef LOG_ERROR
 #define LOG_ERROR(...) \
     do { \
         if (auto logger = get()) { \
             logger->error(__VA_ARGS__); \
         } \
     } while(0)
+#endif
 
+#ifndef LOG_CRITICAL
 #define LOG_CRITICAL(...) \
     do { \
         if (auto logger = get()) { \
             logger->critical(__VA_ARGS__); \
         } \
     } while(0)
+#endif

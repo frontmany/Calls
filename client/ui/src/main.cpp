@@ -9,24 +9,10 @@
 #include <WinSock2.h>
 #endif
 
-#include "CrashCatch.hpp"
 #include "mainWindow.h"
-
-void initialieCrashDump() {
-    CrashCatch::Config crashConfig;
-    crashConfig.appVersion = "1.2.0";
-    crashConfig.onCrash = [](const CrashCatch::CrashContext& context)
-    {
-        std::cout << "Crash captured. Dump: " << context.dumpFilePath << " Log: " << context.logFilePath << std::endl;
-    };
-
-    CrashCatch::initialize(crashConfig);
-}
 
 int main(int argc, char* argv[])
 {
-    initialieCrashDump();
-
     QApplication app(argc, argv);
 
     MainWindow* mainWindow = new MainWindow();

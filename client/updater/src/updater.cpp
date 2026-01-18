@@ -60,12 +60,14 @@ namespace updater
 	}
 
 	void Client::init(std::shared_ptr<EventListener> eventListener,
+		const std::string& appDirectory,
 		const std::string& tempDirectory,
 		const std::string& deletionListFileName,
 		const std::unordered_set<std::string>& ignoredFiles,
 		const std::unordered_set<std::string>& ignoredDirectories)
 	{
 		m_eventListener = eventListener;
+		m_appDirectory = appDirectory;
 		m_tempDirectory = tempDirectory;
 		m_deletionListFileName = deletionListFileName;
 		m_ignoredFiles = ignoredFiles;
@@ -182,21 +184,39 @@ namespace updater
 		std::vector<std::pair<std::filesystem::path, std::string>> result;
 
 		try {
-			std::filesystem::path currentPath = std::filesystem::current_path();
+			std::filesystem::path basePath = m_appDirectory.empty()
+				? std::filesystem::current_path()
+				: std::filesystem::path(m_appDirectory);
+			basePath = std::filesystem::absolute(basePath);
 
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(currentPath)) {
+			std::filesystem::path tempDirectoryPath;
+			if (!m_tempDirectory.empty()) {
+				tempDirectoryPath = std::filesystem::absolute(std::filesystem::path(m_tempDirectory));
+			}
+
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(basePath)) {
 				if (entry.is_regular_file()) {
-					std::filesystem::path relativePath = std::filesystem::relative(entry.path(), currentPath);
+					if (!tempDirectoryPath.empty()) {
+						std::string tempDirStr = tempDirectoryPath.generic_string();
+						if (!tempDirStr.empty()) {
+							if (tempDirStr.back() != '/') {
+								tempDirStr.push_back('/');
+							}
+							std::string entryPathStr = std::filesystem::absolute(entry.path()).generic_string();
+							if (entryPathStr.rfind(tempDirStr, 0) == 0) {
+								continue;
+							}
+						}
+					}
+
+					std::filesystem::path relativePath = std::filesystem::relative(entry.path(), basePath);
 					std::string filename = entry.path().filename().string();
 
 					if (m_ignoredFiles.find(filename) != m_ignoredFiles.end()) {
 						continue;
 					}
 
-					std::string relativePathStr = relativePath.string();
-					if (relativePathStr.find(m_tempDirectory) == 0) {
-						continue;
-					}
+					std::string relativePathStr = relativePath.generic_string();
 
 					bool isExcluded = false;
 					for (const auto& excludedDir : m_ignoredDirectories) {

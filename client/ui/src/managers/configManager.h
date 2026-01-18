@@ -26,8 +26,10 @@ public:
     const QString& getPort() const;
     const QString& getServerHost() const;
     const QString& getUpdaterHost() const;
-    const QString& getLogDirectoryName() const;
-    const QString& getTemporaryUpdateDirectoryName() const;
+    const QString& getLogDirectory() const;
+    const QString& getCrashDumpDirectory() const;
+    const QString& getAppDirectory() const;
+    const QString& getTemporaryUpdateDirectory() const;
     const QString& getDeletionListFileName() const;
     const std::unordered_set<std::string>& getIgnoredFilesWhileCollectingForUpdate() const;
     const std::unordered_set<std::string>& getIgnoredDirectoriesWhileCollectingForUpdate() const;
@@ -56,8 +58,10 @@ private:
     QString getServerHostFromConfig();
     QString getUpdaterHostFromConfig();
     QString getApplicationVersionFromConfig();
-    QString getLogDirectoryNameFromConfig();
-    QString getTemporaryUpdateDirectoryNameFromConfig();
+    QString getLogDirectoryFromConfig();
+    QString getCrashDumpDirectoryFromConfig();
+    QString getAppDirectoryFromConfig();
+    QString getTemporaryUpdateDirectoryFromConfig();
     QString getDeletionListFileNameFromConfig();
     std::unordered_set<std::string> getIgnoredFilesWhileCollectingForUpdateFromConfig();
     std::unordered_set<std::string> getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
@@ -77,8 +81,10 @@ private:
     QString m_serverHost;
     QString m_updaterHost;
     QString m_version;
-    QString m_logDirectoryName;
-    QString m_temporaryUpdateDirectoryName;
+    QString m_logDirectory;
+    QString m_crashDumpDirectory;
+    QString m_appDirectory;
+    QString m_temporaryUpdateDirectory;
     QString m_deletionListFileName;
     std::unordered_set<std::string> m_ignoredFilesWhileCollectingForUpdate;
     std::unordered_set<std::string> m_ignoredDirectoriesWhileCollectingForUpdate;

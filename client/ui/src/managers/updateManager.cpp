@@ -160,6 +160,8 @@ void UpdateManager::launchUpdateApplier()
     QStringList arguments;
     arguments << QString::number(currentPid) << appPath;
 
-    QString workingDir = QDir::currentPath();
+    QString workingDir = m_configManager
+        ? m_configManager->getAppDirectory()
+        : QDir::currentPath();
     QProcess::startDetached(updateApplierName, arguments, workingDir);
 }

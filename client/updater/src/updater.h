@@ -32,6 +32,7 @@ namespace updater
 		~Client();
 
 		void init(std::shared_ptr<EventListener> eventListener,
+			const std::string& appDirectory,
 			const std::string& tempDirectory,
 			const std::string& deletionListFileName,
 			const std::unordered_set<std::string>& ignoredFiles,
@@ -57,6 +58,7 @@ namespace updater
 
 		std::string m_serverHost;
 		std::string m_serverPort;
+		std::string m_appDirectory;
 		std::string m_tempDirectory;
 		std::string m_deletionListFileName;
 		std::unordered_set<std::string> m_ignoredFiles;

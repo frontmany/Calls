@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QTimer>
 #include <QCloseEvent>
+#include <QDir>
 
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
@@ -11,6 +12,8 @@
 #include "media/cameraCaptureController.h"
 #include "managers/configManager.h"
 #include "utilities/logger.h"
+#include "utilities/diagnostics.h"
+#include "utilities/updaterDiagnostics.h"
 #include "utilities/utilities.h"
 
 #include "media/audioEffectsManager.h"
@@ -35,6 +38,26 @@ void MainWindow::init() {
 
     m_configManager = new ConfigManager("config.json");
     m_configManager->loadConfig();
+
+    const QString appDirectory = m_configManager->getAppDirectory();
+    const QString logDirectoryPath = m_configManager->getLogDirectory();
+    const QString crashDumpDirectoryPath = m_configManager->getCrashDumpDirectory();
+    const QString appVersion = m_configManager->getVersion();
+
+    ui::utilities::initializeDiagnostics(appDirectory.toStdString(),
+        logDirectoryPath.toStdString(),
+        crashDumpDirectoryPath.toStdString(),
+        appVersion.toStdString());
+
+    updater::utilities::initializeDiagnostics(appDirectory.toStdString(),
+        logDirectoryPath.toStdString(),
+        crashDumpDirectoryPath.toStdString(),
+        appVersion.toStdString());
+
+    core::initializeDiagnostics(appDirectory.toStdString(),
+        logDirectoryPath.toStdString(),
+        crashDumpDirectoryPath.toStdString(),
+        appVersion.toStdString());
 
     m_coreClient = std::make_shared<core::Client>();
 
@@ -78,7 +101,8 @@ void MainWindow::customEvent(QEvent* event) {
 
     if (event->type() == StartupEvent::StartupEventType) {
         m_updaterClient->init(std::make_shared<UpdaterEventListener>(m_updateManager, m_updaterNetworkErrorHandler),
-            m_configManager->getTemporaryUpdateDirectoryName().toStdString(),
+            m_configManager->getAppDirectory().toStdString(),
+            m_configManager->getTemporaryUpdateDirectory().toStdString(),
             m_configManager->getDeletionListFileName().toStdString(),
             m_configManager->getIgnoredFilesWhileCollectingForUpdate(),
             m_configManager->getIgnoredDirectoriesWhileCollectingForUpdate()

@@ -26,6 +26,11 @@
 
 namespace core
 {
+    void initializeDiagnostics(const std::string& appDirectory,
+        const std::string& logDirectory,
+        const std::string& crashDumpDirectory,
+        const std::string& appVersion);
+
     class Client {
     public:
         Client();

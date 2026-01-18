@@ -1,14 +1,35 @@
+#include "crashCatchInitializer.h"
 #include "CrashCatch.hpp"
 
-namespace
+#include <filesystem>
+
+namespace core::utilities
 {
-    bool initializeCrashCatch()
+    bool initializeCrashCatch(const std::string& dumpFilePath, const std::string& appVersion)
     {
-        CrashCatch::Config config;
-        config.dumpFileName = "callifornia_core";
+        static bool initialized = false;
+        if (initialized) {
+            return true;
+        }
 
-        return CrashCatch::initialize(config);
+        try {
+            std::filesystem::path dumpPath = dumpFilePath.empty()
+                ? std::filesystem::path("callifornia_core")
+                : std::filesystem::path(dumpFilePath);
+
+            if (!dumpPath.parent_path().empty()) {
+                std::filesystem::create_directories(dumpPath.parent_path());
+            }
+
+            CrashCatch::Config config;
+            config.appVersion = appVersion;
+            config.dumpFileName = dumpPath.string();
+
+            initialized = CrashCatch::initialize(config);
+            return initialized;
+        }
+        catch (...) {
+            return false;
+        }
     }
-
-    const bool crashCatchInitialized = initializeCrashCatch();
 }

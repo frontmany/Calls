@@ -5,6 +5,9 @@
 #include "json.hpp"
 
 #include "utilities/logger.h"
+#include "utilities/crashCatchInitializer.h"
+
+#include <filesystem>
 
 using namespace core::utilities;
 using namespace std::chrono_literals;
@@ -12,6 +15,36 @@ using namespace std::placeholders;
 
 namespace core
 {
+    void initializeDiagnostics(const std::string& appDirectory,
+        const std::string& logDirectory,
+        const std::string& crashDumpDirectory,
+        const std::string& appVersion)
+    {
+        std::filesystem::path basePath = appDirectory.empty()
+            ? std::filesystem::current_path()
+            : std::filesystem::path(appDirectory);
+
+        basePath = std::filesystem::absolute(basePath);
+
+        std::filesystem::path logDir = logDirectory.empty()
+            ? basePath / "logs"
+            : std::filesystem::path(logDirectory);
+        if (logDir.is_relative()) {
+            logDir = basePath / logDir;
+        }
+
+        core::utilities::log::set_log_directory(logDir.string());
+        std::filesystem::path crashDir = crashDumpDirectory.empty()
+            ? basePath / "crashDumps"
+            : std::filesystem::path(crashDumpDirectory);
+        if (crashDir.is_relative()) {
+            crashDir = basePath / crashDir;
+        }
+
+        core::utilities::initializeCrashCatch((crashDir / "callifornia_core").string(),
+            appVersion);
+    }
+
     Client::Client()
     {
     }

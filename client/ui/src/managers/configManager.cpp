@@ -7,6 +7,8 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QJsonArray>
+#include <QCoreApplication>
+#include <QDir>
 
 ConfigManager::ConfigManager(QString configPath)
     : m_configPath(configPath)
@@ -32,8 +34,10 @@ void ConfigManager::loadConfig() {
         m_port = getPortFromConfig();
         m_serverHost = getServerHostFromConfig();
         m_firstLaunch = isFirstLaunchFromConfig();
-        m_logDirectoryName = getLogDirectoryNameFromConfig();
-        m_temporaryUpdateDirectoryName = getTemporaryUpdateDirectoryNameFromConfig();
+        m_appDirectory = getAppDirectoryFromConfig();
+        m_logDirectory = getLogDirectoryFromConfig();
+        m_crashDumpDirectory = getCrashDumpDirectoryFromConfig();
+        m_temporaryUpdateDirectory = getTemporaryUpdateDirectoryFromConfig();
         m_deletionListFileName = getDeletionListFileNameFromConfig();
         m_ignoredFilesWhileCollectingForUpdate = getIgnoredFilesWhileCollectingForUpdateFromConfig();
         m_ignoredDirectoriesWhileCollectingForUpdate = getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
@@ -63,8 +67,10 @@ void ConfigManager::saveConfig() {
         configObject[ConfigKeys::SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
         configObject[ConfigKeys::CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
         configObject[ConfigKeys::FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
-        configObject[ConfigKeys::LOG_DIRECTORY_NAME] = m_logDirectoryName;
-        configObject[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY_NAME] = m_temporaryUpdateDirectoryName;
+        configObject[ConfigKeys::LOG_DIRECTORY] = m_logDirectory;
+        configObject[ConfigKeys::CRASH_DUMP_DIRECTORY] = m_crashDumpDirectory;
+        configObject[ConfigKeys::APP_DIRECTORY] = m_appDirectory;
+        configObject[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY] = m_temporaryUpdateDirectory;
         configObject[ConfigKeys::DELETION_LIST_FILE_NAME] = m_deletionListFileName;
         
         QJsonArray ignoredFilesArray;
@@ -115,11 +121,13 @@ void ConfigManager::setDefaultValues() {
     m_serverHost = "92.255.165.77";
     m_updaterHost = "92.255.165.77";
     m_firstLaunch = true;
-    m_logDirectoryName = "logs";
-    m_temporaryUpdateDirectoryName = "updateTemp";
+    m_appDirectory = QCoreApplication::applicationDirPath();
+    m_logDirectory = QDir(m_appDirectory).filePath("logs");
+    m_crashDumpDirectory = QDir(m_appDirectory).filePath("crashDumps");
+    m_temporaryUpdateDirectory = QDir(m_appDirectory).filePath("updateTemp");
     m_deletionListFileName = "remove.json";
     m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
-    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs"};
+    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs", "crash_dumps"};
 }
 
 const QString& ConfigManager::getUpdaterHost() const {
@@ -687,12 +695,20 @@ bool ConfigManager::isCameraActiveFromConfig() {
     }
 }
 
-const QString& ConfigManager::getLogDirectoryName() const {
-    return m_logDirectoryName;
+const QString& ConfigManager::getLogDirectory() const {
+    return m_logDirectory;
 }
 
-const QString& ConfigManager::getTemporaryUpdateDirectoryName() const {
-    return m_temporaryUpdateDirectoryName;
+const QString& ConfigManager::getCrashDumpDirectory() const {
+    return m_crashDumpDirectory;
+}
+
+const QString& ConfigManager::getAppDirectory() const {
+    return m_appDirectory;
+}
+
+const QString& ConfigManager::getTemporaryUpdateDirectory() const {
+    return m_temporaryUpdateDirectory;
 }
 
 const QString& ConfigManager::getDeletionListFileName() const {
@@ -707,10 +723,10 @@ const std::unordered_set<std::string>& ConfigManager::getIgnoredDirectoriesWhile
     return m_ignoredDirectoriesWhileCollectingForUpdate;
 }
 
-QString ConfigManager::getLogDirectoryNameFromConfig() {
+QString ConfigManager::getLogDirectoryFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return "logs";
+        return QDir(m_appDirectory).filePath("logs");
     }
 
     QByteArray jsonData = file.readAll();
@@ -720,27 +736,27 @@ QString ConfigManager::getLogDirectoryNameFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return "logs";
+        return QDir(m_appDirectory).filePath("logs");
     }
 
     if (!doc.isObject()) {
-        return "logs";
+        return QDir(m_appDirectory).filePath("logs");
     }
 
     QJsonObject jsonObj = doc.object();
-    QString logDirName = jsonObj[ConfigKeys::LOG_DIRECTORY_NAME].toString();
-
-    if (logDirName.isEmpty()) {
-        return "logs";
+    QString logDirPath = jsonObj[ConfigKeys::LOG_DIRECTORY].toString();
+    if (!logDirPath.isEmpty()) {
+        QDir appDir(m_appDirectory);
+        return appDir.isAbsolutePath(logDirPath) ? logDirPath : appDir.filePath(logDirPath);
     }
 
-    return logDirName;
+    return QDir(m_appDirectory).filePath("logs");
 }
 
-QString ConfigManager::getTemporaryUpdateDirectoryNameFromConfig() {
+QString ConfigManager::getCrashDumpDirectoryFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return "updateTemp";
+        return QDir(m_appDirectory).filePath("crashDumps");
     }
 
     QByteArray jsonData = file.readAll();
@@ -750,21 +766,81 @@ QString ConfigManager::getTemporaryUpdateDirectoryNameFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return "updateTemp";
+        return QDir(m_appDirectory).filePath("crashDumps");
     }
 
     if (!doc.isObject()) {
-        return "updateTemp";
+        return QDir(m_appDirectory).filePath("crashDumps");
     }
 
     QJsonObject jsonObj = doc.object();
-    QString tempDirName = jsonObj[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY_NAME].toString();
-
-    if (tempDirName.isEmpty()) {
-        return "updateTemp";
+    QString crashDirPath = jsonObj[ConfigKeys::CRASH_DUMP_DIRECTORY].toString();
+    if (!crashDirPath.isEmpty()) {
+        QDir appDir(m_appDirectory);
+        return appDir.isAbsolutePath(crashDirPath) ? crashDirPath : appDir.filePath(crashDirPath);
     }
 
-    return tempDirName;
+    return QDir(m_appDirectory).filePath("crashDumps");
+}
+
+QString ConfigManager::getAppDirectoryFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QCoreApplication::applicationDirPath();
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        return QCoreApplication::applicationDirPath();
+    }
+
+    if (!doc.isObject()) {
+        return QCoreApplication::applicationDirPath();
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QString appDir = jsonObj[ConfigKeys::APP_DIRECTORY].toString();
+
+    if (appDir.isEmpty()) {
+        return QCoreApplication::applicationDirPath();
+    }
+
+    return appDir;
+}
+
+QString ConfigManager::getTemporaryUpdateDirectoryFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QDir(m_appDirectory).filePath("updateTemp");
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        return QDir(m_appDirectory).filePath("updateTemp");
+    }
+
+    if (!doc.isObject()) {
+        return QDir(m_appDirectory).filePath("updateTemp");
+    }
+
+    QJsonObject jsonObj = doc.object();
+    QString tempDirPath = jsonObj[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY].toString();
+    if (!tempDirPath.isEmpty()) {
+        QDir appDir(m_appDirectory);
+        return appDir.isAbsolutePath(tempDirPath) ? tempDirPath : appDir.filePath(tempDirPath);
+    }
+
+    return QDir(m_appDirectory).filePath("updateTemp");
 }
 
 QString ConfigManager::getDeletionListFileNameFromConfig() {
