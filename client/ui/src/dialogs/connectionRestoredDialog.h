@@ -4,7 +4,6 @@
 
 class ConnectionRestoredDialog : public NotificationDialogBase
 {
-    Q_OBJECT
 public:
     explicit ConnectionRestoredDialog(QWidget* parent = nullptr);
 };

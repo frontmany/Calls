@@ -37,7 +37,7 @@ namespace ui::utilities
 
         CrashCatch::Config crashConfig;
         crashConfig.appVersion = appVersion;
-        crashConfig.dumpFileName = (dumpDir / "callifornia_ui").string();
+        crashConfig.dumpFileName = (dumpDir / "calliforniaUI").string();
         crashConfig.onCrash = [](const CrashCatch::CrashContext& context)
         {
             std::cout << "Crash captured. Dump: " << context.dumpFilePath

@@ -22,4 +22,5 @@ namespace ConfigKeys
     const QString DELETION_LIST_FILE_NAME = "deletionListFileNameName";
     const QString IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE = "ignoredFilesWhileCollectingForUpdate";
     const QString IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE = "ignoredDirectoriesWhileCollectingForUpdate";
+    const QString OPERATION_SYSTEM_TYPE = "operationSystemType";
 }

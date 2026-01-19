@@ -231,13 +231,6 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     setupShadowEffect();
 
     showOverlayButtonWithTimeout();
-
-    // For testing: show connection error immediately
-    /*
-    QTimer::singleShot(100, this, [this]() {
-        showParticipantConnectionError(0);
-    });
-    */
 }
 
 void CallWidget::setupUI() {

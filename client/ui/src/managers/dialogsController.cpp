@@ -5,6 +5,7 @@
 #include "dialogs/connectionRestoredDialog.h"
 #include "dialogs/connectionDownWithUserDialog.h"
 #include "dialogs/connectionRestoredWithUserDialog.h"
+#include "dialogs/updateErrorDialog.h"
 #include "dialogs/pendingOperationDialog.h"
 #include "dialogs/screenShareDialog.h"
 #include "dialogs/alreadyRunningDialog.h"
@@ -42,6 +43,8 @@ DialogsController::DialogsController(QWidget* parent)
     , m_connectionDownWithUserDialog(nullptr)
     , m_connectionRestoredWithUserOverlay(nullptr)
     , m_connectionRestoredWithUserDialog(nullptr)
+    , m_updateErrorOverlay(nullptr)
+    , m_updateErrorDialog(nullptr)
     , m_pendingOperationOverlay(nullptr)
     , m_pendingOperationDialog(nullptr)
     , m_screenShareOverlay(nullptr)
@@ -62,6 +65,7 @@ DialogsController::~DialogsController()
     hideConnectionRestoredDialog();
     hideConnectionDownWithUserDialog();
     hideConnectionRestoredWithUserDialog();
+    hideUpdateErrorDialog();
     hidePendingOperationDialog();
     hideScreenShareDialog();
     hideAlreadyRunningDialog();
@@ -238,6 +242,14 @@ void DialogsController::hideActiveNotificationDialog()
         NotificationDialogBase* baseDialog = m_connectionRestoredWithUserDialog;
         hideNotificationDialogInternal(m_connectionRestoredWithUserOverlay, baseDialog);
         m_connectionRestoredWithUserDialog = static_cast<ConnectionRestoredWithUserDialog*>(baseDialog);
+        return;
+    }
+
+    if (m_updateErrorDialog)
+    {
+        NotificationDialogBase* baseDialog = m_updateErrorDialog;
+        hideNotificationDialogInternal(m_updateErrorOverlay, baseDialog);
+        m_updateErrorDialog = static_cast<UpdateErrorDialog*>(baseDialog);
         return;
     }
 
@@ -451,22 +463,6 @@ void DialogsController::setUpdateDialogStatus(const QString& statusText, bool hi
     if (m_updatingDialog)
     {
         m_updatingDialog->setStatus(statusText, hideProgress);
-    }
-}
-
-void DialogsController::swapUpdatingToRestarting()
-{
-    if (m_updatingDialog)
-    {
-        m_updatingDialog->swapToRestarting();
-    }
-}
-
-void DialogsController::swapUpdatingToUpToDate()
-{
-    if (m_updatingDialog)
-    {
-        m_updatingDialog->swapToUpToDate();
     }
 }
 
@@ -724,6 +720,42 @@ void DialogsController::hideConnectionRestoredWithUserDialog()
     NotificationDialogBase* baseDialog = m_connectionRestoredWithUserDialog;
     hideNotificationDialogInternal(m_connectionRestoredWithUserOverlay, baseDialog);
     m_connectionRestoredWithUserDialog = static_cast<ConnectionRestoredWithUserDialog*>(baseDialog);
+    showLastManagedNotification();
+}
+
+void DialogsController::showUpdateErrorDialog()
+{
+    if (m_updateErrorDialog)
+    {
+        m_updateErrorDialog->raise();
+        return;
+    }
+
+    hideActiveNotificationDialog();
+
+    NotificationDialogBase* baseDialog = m_updateErrorDialog;
+    auto createDialog = [](QWidget* parent) -> NotificationDialogBase*
+    {
+        return new UpdateErrorDialog(parent);
+    };
+    showNotificationDialogInternal(m_updateErrorOverlay,
+        baseDialog,
+        false,
+        createDialog,
+        nullptr);
+    m_updateErrorDialog = static_cast<UpdateErrorDialog*>(baseDialog);
+}
+
+void DialogsController::hideUpdateErrorDialog()
+{
+    if (!m_updateErrorDialog)
+    {
+        return;
+    }
+
+    NotificationDialogBase* baseDialog = m_updateErrorDialog;
+    hideNotificationDialogInternal(m_updateErrorOverlay, baseDialog);
+    m_updateErrorDialog = static_cast<UpdateErrorDialog*>(baseDialog);
     showLastManagedNotification();
 }
 

@@ -3,6 +3,7 @@
 #include <QString>
 #include <unordered_set>
 #include <string>
+#include "updater.h"
 
 class ConfigManager
 {
@@ -26,13 +27,14 @@ public:
     const QString& getPort() const;
     const QString& getServerHost() const;
     const QString& getUpdaterHost() const;
-    const QString& getLogDirectory() const;
-    const QString& getCrashDumpDirectory() const;
-    const QString& getAppDirectory() const;
-    const QString& getTemporaryUpdateDirectory() const;
+    const QString& getLogDirectoryPath() const;
+    const QString& getCrashDumpDirectoryPath() const;
+    const QString& getAppDirectoryPath() const;
+    const QString& getTemporaryUpdateDirectoryPath() const;
     const QString& getDeletionListFileName() const;
     const std::unordered_set<std::string>& getIgnoredFilesWhileCollectingForUpdate() const;
     const std::unordered_set<std::string>& getIgnoredDirectoriesWhileCollectingForUpdate() const;
+    updater::OperationSystemType getOperationSystemType() const;
 
     void setVersion(const QString& version);
     void setUpdaterHost(const QString& host);
@@ -45,6 +47,7 @@ public:
     void setServerHost(const QString& host);
     void setCameraActive(bool active);
     void setFirstLaunch(bool firstLaunch);
+    void setOperationSystemType(updater::OperationSystemType operationSystemType);
 
 private:
     bool isFirstLaunchFromConfig();
@@ -65,6 +68,7 @@ private:
     QString getDeletionListFileNameFromConfig();
     std::unordered_set<std::string> getIgnoredFilesWhileCollectingForUpdateFromConfig();
     std::unordered_set<std::string> getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
+    updater::OperationSystemType getOperationSystemTypeFromConfig();
 
 private:
     const QString m_configPath;
@@ -88,4 +92,5 @@ private:
     QString m_deletionListFileName;
     std::unordered_set<std::string> m_ignoredFilesWhileCollectingForUpdate;
     std::unordered_set<std::string> m_ignoredDirectoriesWhileCollectingForUpdate;
+    updater::OperationSystemType m_operationSystemType;
 };

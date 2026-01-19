@@ -3,7 +3,8 @@
 #include "managers/dialogsController.h"
 #include "widgets/callWidget.h"
 #include "media/cameraCaptureController.h"
-#include <QTimer>
+#include <QApplication>
+#include <QResizeEvent>
 
 ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent)
     : QObject(parent)
@@ -187,9 +188,16 @@ void ScreenSharingManager::onIncomingScreenSharingStopped()
     }
 
     if (wasFullscreen) {
-        QTimer::singleShot(0, m_callWidget, [this]() {
-            m_callWidget->updateMainScreenSize();
-        });
+        // Schedule updateMainScreenSize to be called in the next event loop iteration
+        // This ensures the widget has finished processing the exitFullscreen changes
+        // We use QApplication::postEvent to post a custom event that will trigger
+        // the resize event, which in turn calls updateMainScreenSize()
+        QSize currentSize = m_callWidget->size();
+        
+        // Post a resize event with the same size to trigger resizeEvent handler
+        // The oldSize is slightly different to ensure the event is processed
+        QResizeEvent* resizeEvent = new QResizeEvent(currentSize, QSize(currentSize.width() - 1, currentSize.height() - 1));
+        QApplication::postEvent(m_callWidget, resizeEvent);
     }
 }
 

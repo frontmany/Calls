@@ -17,6 +17,7 @@ class ConnectionRestoredDialog;
 class ConnectionDownWithUserDialog;
 class ConnectionRestoredWithUserDialog;
 class PendingOperationDialog;
+class UpdateErrorDialog;
 class ScreenShareDialog;
 class AlreadyRunningDialog;
 class FirstLaunchDialog;
@@ -33,8 +34,9 @@ public:
     void hideUpdatingDialog();
     void setUpdateLoadingProgress(double progress);
     void setUpdateDialogStatus(const QString& statusText, bool hideProgress = true);
-    void swapUpdatingToRestarting();
-    void swapUpdatingToUpToDate();
+
+    void showUpdateErrorDialog();
+    void hideUpdateErrorDialog();
 
     void showScreenShareDialog(const QList<QScreen*>& screens);
     void hideScreenShareDialog();
@@ -135,6 +137,9 @@ private:
 
     OverlayWidget* m_connectionRestoredWithUserOverlay = nullptr;
     ConnectionRestoredWithUserDialog* m_connectionRestoredWithUserDialog = nullptr;
+
+    OverlayWidget* m_updateErrorOverlay = nullptr;
+    UpdateErrorDialog* m_updateErrorDialog = nullptr;
 
     OverlayWidget* m_pendingOperationOverlay = nullptr;
     PendingOperationDialog* m_pendingOperationDialog = nullptr;

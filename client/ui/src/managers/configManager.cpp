@@ -1,6 +1,7 @@
 #include "configManager.h"
 #include "utilities/logger.h"
 #include "utilities/configKeys.h"
+#include "utilities/utilities.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -9,6 +10,7 @@
 #include <QJsonArray>
 #include <QCoreApplication>
 #include <QDir>
+#include <QDebug>
 
 ConfigManager::ConfigManager(QString configPath)
     : m_configPath(configPath)
@@ -41,6 +43,7 @@ void ConfigManager::loadConfig() {
         m_deletionListFileName = getDeletionListFileNameFromConfig();
         m_ignoredFilesWhileCollectingForUpdate = getIgnoredFilesWhileCollectingForUpdateFromConfig();
         m_ignoredDirectoriesWhileCollectingForUpdate = getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
+        m_operationSystemType = getOperationSystemTypeFromConfig();
 
         m_isConfigLoaded = true;
     }
@@ -72,6 +75,7 @@ void ConfigManager::saveConfig() {
         configObject[ConfigKeys::APP_DIRECTORY] = m_appDirectory;
         configObject[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY] = m_temporaryUpdateDirectory;
         configObject[ConfigKeys::DELETION_LIST_FILE_NAME] = m_deletionListFileName;
+        configObject[ConfigKeys::OPERATION_SYSTEM_TYPE] = static_cast<int>(m_operationSystemType);
         
         QJsonArray ignoredFilesArray;
         for (const std::string& file : m_ignoredFilesWhileCollectingForUpdate) {
@@ -121,13 +125,39 @@ void ConfigManager::setDefaultValues() {
     m_serverHost = "92.255.165.77";
     m_updaterHost = "92.255.165.77";
     m_firstLaunch = true;
-    m_appDirectory = QCoreApplication::applicationDirPath();
-    m_logDirectory = QDir(m_appDirectory).filePath("logs");
-    m_crashDumpDirectory = QDir(m_appDirectory).filePath("crashDumps");
-    m_temporaryUpdateDirectory = QDir(m_appDirectory).filePath("updateTemp");
+    
+    updater::OperationSystemType operationSystemType = resolveOperationSystemType();
+    QString defaultAppDirectory = "C:/prj/Callifornia/out/build/x64-Debug/client/ui";
+    
+    if (operationSystemType == updater::OperationSystemType::WINDOWS) {
+        m_appDirectory = "C:/Callifornia";
+        m_logDirectory = "C:/Callifornia/logs";
+        m_crashDumpDirectory = "C:/Callifornia/crashes";
+        m_temporaryUpdateDirectory = "C:/Callifornia/update";
+    }
+    else if (operationSystemType == updater::OperationSystemType::LINUX) {
+        m_appDirectory = "/opt/Callifornia";
+        m_logDirectory = "/opt/Callifornia/logs";
+        m_crashDumpDirectory = "/opt/Callifornia/crashes";
+        m_temporaryUpdateDirectory = "/opt/Callifornia/update";
+    }
+    else if (operationSystemType == updater::OperationSystemType::MAC) {
+        m_appDirectory = "/Applications/Callifornia";
+        m_logDirectory = "/Applications/Callifornia/logs";
+        m_crashDumpDirectory = "/Applications/Callifornia/crashes";
+        m_temporaryUpdateDirectory = "/Applications/Callifornia/update";
+    }
+    else {
+        m_appDirectory = defaultAppDirectory;
+        m_logDirectory = QDir(defaultAppDirectory).filePath("logs");
+        m_crashDumpDirectory = QDir(defaultAppDirectory).filePath("crashes");
+        m_temporaryUpdateDirectory = QDir(defaultAppDirectory).filePath("update");
+    }
+    
     m_deletionListFileName = "remove.json";
     m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
     m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs", "crash_dumps"};
+    m_operationSystemType = operationSystemType;
 }
 
 const QString& ConfigManager::getUpdaterHost() const {
@@ -695,19 +725,19 @@ bool ConfigManager::isCameraActiveFromConfig() {
     }
 }
 
-const QString& ConfigManager::getLogDirectory() const {
+const QString& ConfigManager::getLogDirectoryPath() const {
     return m_logDirectory;
 }
 
-const QString& ConfigManager::getCrashDumpDirectory() const {
+const QString& ConfigManager::getCrashDumpDirectoryPath() const {
     return m_crashDumpDirectory;
 }
 
-const QString& ConfigManager::getAppDirectory() const {
+const QString& ConfigManager::getAppDirectoryPath() const {
     return m_appDirectory;
 }
 
-const QString& ConfigManager::getTemporaryUpdateDirectory() const {
+const QString& ConfigManager::getTemporaryUpdateDirectoryPath() const {
     return m_temporaryUpdateDirectory;
 }
 
@@ -726,7 +756,7 @@ const std::unordered_set<std::string>& ConfigManager::getIgnoredDirectoriesWhile
 QString ConfigManager::getLogDirectoryFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QDir(m_appDirectory).filePath("logs");
+        return m_logDirectory;
     }
 
     QByteArray jsonData = file.readAll();
@@ -736,27 +766,27 @@ QString ConfigManager::getLogDirectoryFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QDir(m_appDirectory).filePath("logs");
+        return m_logDirectory;
     }
 
     if (!doc.isObject()) {
-        return QDir(m_appDirectory).filePath("logs");
+        return m_logDirectory;
     }
 
     QJsonObject jsonObj = doc.object();
     QString logDirPath = jsonObj[ConfigKeys::LOG_DIRECTORY].toString();
+    
     if (!logDirPath.isEmpty()) {
-        QDir appDir(m_appDirectory);
-        return appDir.isAbsolutePath(logDirPath) ? logDirPath : appDir.filePath(logDirPath);
+        return logDirPath;
     }
 
-    return QDir(m_appDirectory).filePath("logs");
+    return m_logDirectory;
 }
 
 QString ConfigManager::getCrashDumpDirectoryFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QDir(m_appDirectory).filePath("crashDumps");
+        return m_crashDumpDirectory;
     }
 
     QByteArray jsonData = file.readAll();
@@ -766,27 +796,29 @@ QString ConfigManager::getCrashDumpDirectoryFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QDir(m_appDirectory).filePath("crashDumps");
+        return m_crashDumpDirectory;
     }
 
     if (!doc.isObject()) {
-        return QDir(m_appDirectory).filePath("crashDumps");
+        return m_crashDumpDirectory;
     }
 
     QJsonObject jsonObj = doc.object();
     QString crashDirPath = jsonObj[ConfigKeys::CRASH_DUMP_DIRECTORY].toString();
+    
     if (!crashDirPath.isEmpty()) {
-        QDir appDir(m_appDirectory);
-        return appDir.isAbsolutePath(crashDirPath) ? crashDirPath : appDir.filePath(crashDirPath);
+        return crashDirPath;
     }
 
-    return QDir(m_appDirectory).filePath("crashDumps");
+    return m_crashDumpDirectory;
 }
 
 QString ConfigManager::getAppDirectoryFromConfig() {
+    QString applicationDirPath = QCoreApplication::applicationDirPath();
+    
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QCoreApplication::applicationDirPath();
+        return applicationDirPath;
     }
 
     QByteArray jsonData = file.readAll();
@@ -796,27 +828,36 @@ QString ConfigManager::getAppDirectoryFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QCoreApplication::applicationDirPath();
+        return applicationDirPath;
     }
 
     if (!doc.isObject()) {
-        return QCoreApplication::applicationDirPath();
+        return applicationDirPath;
     }
 
     QJsonObject jsonObj = doc.object();
     QString appDir = jsonObj[ConfigKeys::APP_DIRECTORY].toString();
 
-    if (appDir.isEmpty()) {
-        return QCoreApplication::applicationDirPath();
+    if (!appDir.isEmpty()) {
+        QDir configDir(appDir);
+        QDir actualDir(applicationDirPath);
+        QString normalizedConfigPath = QDir::cleanPath(configDir.absolutePath());
+        QString normalizedAppPath = QDir::cleanPath(actualDir.absolutePath());
+        
+        if (normalizedConfigPath.compare(normalizedAppPath, Qt::CaseInsensitive) == 0) {
+            return appDir;
+        } else {
+            return applicationDirPath;
+        }
     }
 
-    return appDir;
+    return applicationDirPath;
 }
 
 QString ConfigManager::getTemporaryUpdateDirectoryFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QDir(m_appDirectory).filePath("updateTemp");
+        return m_temporaryUpdateDirectory;
     }
 
     QByteArray jsonData = file.readAll();
@@ -826,21 +867,21 @@ QString ConfigManager::getTemporaryUpdateDirectoryFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QDir(m_appDirectory).filePath("updateTemp");
+        return m_temporaryUpdateDirectory;
     }
 
     if (!doc.isObject()) {
-        return QDir(m_appDirectory).filePath("updateTemp");
+        return m_temporaryUpdateDirectory;
     }
 
     QJsonObject jsonObj = doc.object();
     QString tempDirPath = jsonObj[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY].toString();
+    
     if (!tempDirPath.isEmpty()) {
-        QDir appDir(m_appDirectory);
-        return appDir.isAbsolutePath(tempDirPath) ? tempDirPath : appDir.filePath(tempDirPath);
+        return tempDirPath;
     }
 
-    return QDir(m_appDirectory).filePath("updateTemp");
+    return m_temporaryUpdateDirectory;
 }
 
 QString ConfigManager::getDeletionListFileNameFromConfig() {
@@ -947,4 +988,65 @@ std::unordered_set<std::string> ConfigManager::getIgnoredDirectoriesWhileCollect
     }
 
     return ignoredDirs;
+}
+
+updater::OperationSystemType ConfigManager::getOperationSystemType() const {
+    return m_operationSystemType;
+}
+
+void ConfigManager::setOperationSystemType(updater::OperationSystemType operationSystemType) {
+    if (m_operationSystemType != operationSystemType) {
+        m_operationSystemType = operationSystemType;
+        saveConfig();
+    }
+}
+
+updater::OperationSystemType ConfigManager::getOperationSystemTypeFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return resolveOperationSystemType();
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        return resolveOperationSystemType();
+    }
+
+    if (!doc.isObject()) {
+        return resolveOperationSystemType();
+    }
+
+    QJsonObject jsonObj = doc.object();
+
+    if (!jsonObj.contains(ConfigKeys::OPERATION_SYSTEM_TYPE)) {
+        return resolveOperationSystemType();
+    }
+
+    QJsonValue operationSystemTypeValue = jsonObj[ConfigKeys::OPERATION_SYSTEM_TYPE];
+    
+    if (operationSystemTypeValue.isDouble()) {
+        int operationSystemTypeInt = operationSystemTypeValue.toInt();
+        if (operationSystemTypeInt >= 0 && operationSystemTypeInt <= 2) {
+            return static_cast<updater::OperationSystemType>(operationSystemTypeInt);
+        }
+    }
+    else if (operationSystemTypeValue.isString()) {
+        QString operationSystemTypeStr = operationSystemTypeValue.toString().toUpper().trimmed();
+        if (operationSystemTypeStr == "WINDOWS") {
+            return updater::OperationSystemType::WINDOWS;
+        }
+        else if (operationSystemTypeStr == "LINUX") {
+            return updater::OperationSystemType::LINUX;
+        }
+        else if (operationSystemTypeStr == "MAC") {
+            return updater::OperationSystemType::MAC;
+        }
+    }
+
+    return resolveOperationSystemType();
 }

@@ -70,9 +70,12 @@ private:
     void initializeAuthorizationWidget();
     void initializeMainMenuWidget();
     void initializeCallWidget();
+    void initializeDiagnostics();
+    void replaceUpdateApplier();
     void loadFonts();
     void applyAudioSettings();
     void connectWidgetsToManagers();
+    QString getConfigFilePath() const;
 
 private:
     QWidget* m_centralWidget = nullptr;

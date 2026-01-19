@@ -41,7 +41,7 @@ namespace core
             crashDir = basePath / crashDir;
         }
 
-        core::utilities::initializeCrashCatch((crashDir / "callifornia_core").string(),
+        core::utilities::initializeCrashCatch((crashDir / "calliforniaCore").string(),
             appVersion);
     }
 

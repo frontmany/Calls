@@ -39,6 +39,24 @@ QString NotificationDialogStyle::labelStyle(bool isGreenStyle)
         "font-weight: normal;";
 }
 
+QString NotificationDialogStyle::mainWidgetRedStyle()
+{
+    return
+        "QWidget#mainWidget {"
+        "   background-color: rgb(255, 235, 235);"
+        "   border-radius: 18px;"
+        "}";
+}
+
+QString NotificationDialogStyle::labelRedStyle()
+{
+    return
+        "color: rgb(220, 0, 0);"
+        "font-size: 15px;"
+        "font-family: 'Outfit';"
+        "font-weight: 600;";
+}
+
 NotificationDialogBase::NotificationDialogBase(QWidget* parent,
     const QString& statusText,
     bool isGreenStyle,
@@ -112,12 +130,26 @@ void NotificationDialogBase::applyStyle()
 {
     if (m_mainWidget)
     {
-        m_mainWidget->setStyleSheet(NotificationDialogStyle::mainWidgetStyle(m_isGreenStyle));
+        if (m_isRedStyle)
+        {
+            m_mainWidget->setStyleSheet(NotificationDialogStyle::mainWidgetRedStyle());
+        }
+        else
+        {
+            m_mainWidget->setStyleSheet(NotificationDialogStyle::mainWidgetStyle(m_isGreenStyle));
+        }
     }
 
     if (m_statusLabel)
     {
-        m_statusLabel->setStyleSheet(NotificationDialogStyle::labelStyle(m_isGreenStyle));
+        if (m_isRedStyle)
+        {
+            m_statusLabel->setStyleSheet(NotificationDialogStyle::labelRedStyle());
+        }
+        else
+        {
+            m_statusLabel->setStyleSheet(NotificationDialogStyle::labelStyle(m_isGreenStyle));
+        }
     }
 }
 
@@ -132,6 +164,20 @@ void NotificationDialogBase::setStatusText(const QString& text)
 void NotificationDialogBase::setGreenStyle(bool isGreenStyle)
 {
     m_isGreenStyle = isGreenStyle;
+    if (isGreenStyle)
+    {
+        m_isRedStyle = false;
+    }
+    applyStyle();
+}
+
+void NotificationDialogBase::setRedStyle(bool isRedStyle)
+{
+    m_isRedStyle = isRedStyle;
+    if (isRedStyle)
+    {
+        m_isGreenStyle = false;
+    }
     applyStyle();
 }
 

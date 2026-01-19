@@ -3,7 +3,7 @@
 
 #include <filesystem>
 
-namespace core::utilities
+namespace updateApplier::utilities
 {
     bool initializeCrashCatch(const std::string& dumpFilePath, const std::string& appVersion)
     {
@@ -14,7 +14,7 @@ namespace core::utilities
 
         try {
             std::filesystem::path dumpPath = dumpFilePath.empty()
-                ? std::filesystem::path("calliforniaCore")
+                ? std::filesystem::path("calliforniaUpdateApplier")
                 : std::filesystem::path(dumpFilePath);
 
             if (!dumpPath.parent_path().empty()) {

@@ -3,6 +3,9 @@
 #include <QSharedMemory>
 #include <QApplication>
 #include <QScreen>
+#include "updater.h"
+#include <QDebug>
+#include "constant.h"
 
 static qreal getDeviceScaleFactor() {
     QScreen* screen = QApplication::primaryScreen();
@@ -34,7 +37,7 @@ static int extraScale(int size, int count) {
 }
 
 inline static bool isFirstInstance() {
-    static QSharedMemory sharedMemory("callifornia");
+    static QSharedMemory sharedMemory(SHARED_MEMORY_NAME);
 
     if (sharedMemory.attach()) {
         return false;
@@ -45,4 +48,25 @@ inline static bool isFirstInstance() {
     }
 
     return true;
+}
+
+inline updater::OperationSystemType resolveOperationSystemType() {
+#if defined(Q_OS_WINDOWS)
+    return updater::OperationSystemType::WINDOWS;
+#elif defined(Q_OS_LINUX)
+    return updater::OperationSystemType::LINUX;
+#elif defined(Q_OS_MACOS)
+    return updater::OperationSystemType::MAC;
+#else
+#if defined(_WIN32)
+    return updater::OperationSystemType::WINDOWS;
+#elif defined(__linux__)
+    return updater::OperationSystemType::LINUX;
+#elif defined(__APPLE__)
+    return updater::OperationSystemType::MAC;
+#else
+    qWarning() << "Unknown operating system";
+    return updater::OperationSystemType::WINDOWS;
+#endif
+#endif
 }

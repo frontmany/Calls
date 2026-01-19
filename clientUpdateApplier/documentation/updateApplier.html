@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>UpdateApplier Logic and Behavior</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #1f2a37;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --border: #e5e7eb;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 32px;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.6 "Segoe UI", Tahoma, Arial, sans-serif;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-size: 26px;
+            margin: 0 0 6px 0;
+        }
+        .subtitle {
+            color: var(--muted);
+            margin: 0;
+        }
+        .section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        h2 {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+        }
+        h3 {
+            font-size: 16px;
+            margin: 14px 0 6px 0;
+        }
+        ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+        }
+        li {
+            margin: 4px 0;
+        }
+        .rule {
+            border-left: 3px solid var(--accent);
+            padding-left: 10px;
+            margin: 6px 0;
+        }
+        .note {
+            color: var(--muted);
+        }
+        .tag {
+            display: inline-block;
+            font-size: 12px;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 999px;
+            padding: 1px 8px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        code {
+            font-family: Consolas, "Courier New", monospace;
+            background: #f3f4f6;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .sequence {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .sequence ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .sequence li {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>UpdateApplier Logic and Behavior</h1>
+            <p class="subtitle">Application update process, config merging, and file management.</p>
+        </header>
+
+        <section class="section">
+            <h2>Overview</h2>
+            <p>
+                <code>UpdateApplier</code> is a standalone executable that handles the application update process.
+                It is launched by the main application when an update is available. The applier safely terminates
+                the running application, merges configuration files, copies new files, and restarts the application.
+            </p>
+            <p class="note">
+                UpdateApplier is cross-platform and works on Windows, Linux, and macOS.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Command Line Arguments</h2>
+            <p>The application requires exactly 5 arguments:</p>
+            <ul>
+                <li><code>&lt;pid&gt;</code> - Process ID of the main application to terminate</li>
+                <li><code>&lt;applicationPath&gt;</code> - Full path to the main application executable</li>
+                <li><code>&lt;temporaryUpdateDirectoryPath&gt;</code> - Path to directory containing update files</li>
+                <li><code>&lt;deletionListFileName&gt;</code> - Name of JSON file listing files to delete (e.g., "remove.json")</li>
+                <li><code>&lt;configFileName&gt;</code> - Name of the configuration file (e.g., "config.json")</li>
+            </ul>
+            <div class="rule">
+                All arguments are validated before processing. Invalid arguments cause immediate exit with error code 1.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Execution Sequence</h2>
+            <div class="sequence">
+                <ol>
+                    <li>Initialize logger and crash handler</li>
+                    <li>Validate command line arguments</li>
+                    <li>Terminate the main application process</li>
+                    <li>Delete files listed in deletion JSON</li>
+                    <li>Merge configuration files (if they differ)</li>
+                    <li>Copy all files from temporary directory to application directory</li>
+                    <li>Remove temporary update directory</li>
+                    <li>Launch the updated application</li>
+                </ol>
+            </div>
+            <div class="rule">
+                If any critical step fails, the process exits with error code 1. Non-critical failures are logged but don't stop execution.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Process Termination <span class="tag">cross-platform</span></h2>
+            <h3>Windows</h3>
+            <ul>
+                <li>Uses <code>OpenProcess</code> and <code>TerminateProcess</code> WinAPI functions</li>
+                <li>Gracefully handles cases where process doesn't exist</li>
+                <li>Logs error codes for debugging</li>
+            </ul>
+
+            <h3>Linux / macOS</h3>
+            <ul>
+                <li>Sends <code>SIGTERM</code> signal for graceful shutdown</li>
+                <li>Waits 1 second for process to terminate</li>
+                <li>If process still exists, sends <code>SIGKILL</code> for forced termination</li>
+                <li>Handles <code>ESRCH</code> error (process not found) gracefully</li>
+            </ul>
+
+            <div class="rule">
+                Failure to kill the process is logged as a warning but doesn't stop the update process.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>File Deletion</h2>
+            <p>
+                Reads a JSON file (typically <code>remove.json</code>) from the temporary directory.
+                The file must contain a <code>filePaths</code> array with absolute paths to files that should be deleted.
+            </p>
+            <h3>Behavior</h3>
+            <ul>
+                <li>If the deletion list file doesn't exist, the step is skipped (not an error)</li>
+                <li>Each file path in the array is checked for existence before deletion</li>
+                <li>Non-existent files are logged but don't cause errors</li>
+                <li>Deletion failures are logged but don't stop the update process</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Configuration Merging</h2>
+            <h3>Config Comparison</h3>
+            <p>
+                Before merging, the old and new configuration files are compared using deep object comparison.
+                The comparison checks:
+            </p>
+            <ul>
+                <li>Number of top-level keys</li>
+                <li>Types of all values</li>
+                <li>Nested objects recursively</li>
+                <li>Array contents (size and elements)</li>
+            </ul>
+
+            <h3>Merge Rules File</h3>
+            <p>
+                If configs differ, a merge is performed using <code>configMergeRules.json</code> located in the temporary directory.
+                The rules file is a JSON array of rule objects, each containing:
+            </p>
+            <ul>
+                <li><code>keys</code> - Array of strings representing keys to search for in the old config</li>
+                <li><code>newkey</code> - String representing the key name in the new config where the value should be inserted</li>
+            </ul>
+
+            <h3>Merge Process</h3>
+            <ul>
+                <li>For each rule, searches the old config for any key in the <code>keys</code> array</li>
+                <li>If found, the value is inserted into the new config under <code>newkey</code></li>
+                <li>Only the first matching key's value is used (search stops on first match)</li>
+                <li>If no matching key is found, the rule is skipped</li>
+                <li>Invalid rules are logged and skipped</li>
+            </ul>
+
+            <div class="rule">
+                After merging, the old config file is completely replaced with the merged new config.
+                The merge rules file and temporary config are then deleted.
+            </div>
+
+            <h3>No Merge Rules File</h3>
+            <p class="note">
+                If <code>configMergeRules.json</code> doesn't exist, the new config replaces the old config
+                without any value preservation. This allows for clean config updates when no migration is needed.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>File Copying</h2>
+            <p>
+                All files and subdirectories from the temporary update directory are recursively copied
+                to the application directory.
+            </p>
+            <h3>Behavior</h3>
+            <ul>
+                <li>Creates destination directories if they don't exist</li>
+                <li>Replaces existing files with the same name</li>
+                <li>Preserves executable permissions on copied files</li>
+                <li>Logs each file copy operation</li>
+                <li>Continues copying even if individual files fail</li>
+            </ul>
+
+            <div class="rule">
+                Copy failures are logged as errors but don't stop the update process. The function returns
+                <code>false</code> if any file failed to copy, but execution continues.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Cleanup and Launch</h2>
+            <h3>Temporary Directory Removal</h3>
+            <ul>
+                <li>The entire temporary update directory is removed recursively after file copying</li>
+                <li>Failure to remove is logged but doesn't prevent application launch</li>
+            </ul>
+
+            <h3>Application Launch</h3>
+            <ul>
+                <li>Verifies the application executable exists before launching</li>
+                <li>Uses <code>QProcess::startDetached</code> to launch in a separate process</li>
+                <li>Sets the working directory to the application's directory</li>
+                <li>Launch failure is a critical error and causes exit with code 1</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Logging and Diagnostics</h2>
+            <h3>Logger Initialization</h3>
+            <ul>
+                <li>Logger is initialized at the start of <code>main()</code></li>
+                <li>Logs are written to both console and file (<code>logs/update_applier.log</code>)</li>
+                <li>Uses spdlog with rotating file sink (10MB per file, 3 files max)</li>
+            </ul>
+
+            <h3>Crash Handler</h3>
+            <ul>
+                <li>CrashCatch is initialized with dump path in application data directory</li>
+                <li>Crash dumps are saved as <code>callifornia_update_applier</code> in the crashes folder</li>
+                <li>Helps diagnose update failures</li>
+            </ul>
+
+            <h3>Log Levels</h3>
+            <ul>
+                <li><code>LOG_INFO</code> - Major operations and status</li>
+                <li><code>LOG_DEBUG</code> - Detailed operation information</li>
+                <li><code>LOG_WARN</code> - Non-critical issues that don't stop execution</li>
+                <li><code>LOG_ERROR</code> - Operation failures</li>
+                <li><code>LOG_CRITICAL</code> - Critical errors that cause process exit</li>
+            </ul>
+
+            <div class="rule">
+                All log messages are flushed before process exit to ensure they are written to disk.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Error Handling</h2>
+            <h3>Validation Errors</h3>
+            <ul>
+                <li>Invalid argument count or format causes immediate exit</li>
+                <li>Missing or invalid paths are detected during validation</li>
+                <li>All validation errors are logged as critical</li>
+            </ul>
+
+            <h3>Operation Errors</h3>
+            <ul>
+                <li>Non-critical operations (file deletion, cleanup) log warnings on failure</li>
+                <li>Critical operations (config merge, file copy, app launch) log errors</li>
+                <li>Config merge or save failures cause process exit with code 1</li>
+                <li>Application launch failure causes process exit with code 1</li>
+            </ul>
+
+            <h3>Exception Handling</h3>
+            <ul>
+                <li>All exceptions are caught in <code>main()</code></li>
+                <li>Standard exceptions log the exception message</li>
+                <li>Unknown exceptions are logged generically</li>
+                <li>All exceptions cause exit with code 1</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Platform Support</h2>
+            <h3>Windows</h3>
+            <ul>
+                <li>Uses WinAPI for process termination</li>
+                <li>Requires <code>_WIN32_WINNT=0x0601</code> define</li>
+                <li>Links against Qt6::Core and spdlog (Debug/Release variants)</li>
+            </ul>
+
+            <h3>Linux / macOS</h3>
+            <ul>
+                <li>Uses POSIX signals for process termination</li>
+                <li>Links against Qt6::Core and static spdlog library</li>
+                <li>Handles platform-specific error codes</li>
+            </ul>
+
+            <div class="rule">
+                All platform-specific code is conditionally compiled using <code>Q_OS_WIN</code>,
+                <code>Q_OS_LINUX</code>, and <code>Q_OS_MAC</code> macros.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Return Codes</h2>
+            <ul>
+                <li><code>0</code> - Update completed successfully</li>
+                <li><code>1</code> - Error occurred during update (validation, merge, copy, or launch failure)</li>
+            </ul>
+            <p class="note">
+                The return code can be used by calling processes to determine if the update was successful.
+            </p>
+        </section>
+    </div>
+</body>
+</html>

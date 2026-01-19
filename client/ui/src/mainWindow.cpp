@@ -3,6 +3,8 @@
 #include <QTimer>
 #include <QCloseEvent>
 #include <QDir>
+#include <QCoreApplication>
+#include <QFile>
 
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
@@ -15,6 +17,7 @@
 #include "utilities/diagnostics.h"
 #include "utilities/updaterDiagnostics.h"
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
 
 #include "media/audioEffectsManager.h"
 #include "media/audioSettingsManager.h"
@@ -36,28 +39,11 @@ const QEvent::Type StartupEvent::StartupEventType = static_cast<QEvent::Type>(QE
 void MainWindow::init() {
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
-    m_configManager = new ConfigManager("config.json");
+    m_configManager = new ConfigManager(getConfigFilePath());
     m_configManager->loadConfig();
 
-    const QString appDirectory = m_configManager->getAppDirectory();
-    const QString logDirectoryPath = m_configManager->getLogDirectory();
-    const QString crashDumpDirectoryPath = m_configManager->getCrashDumpDirectory();
-    const QString appVersion = m_configManager->getVersion();
-
-    ui::utilities::initializeDiagnostics(appDirectory.toStdString(),
-        logDirectoryPath.toStdString(),
-        crashDumpDirectoryPath.toStdString(),
-        appVersion.toStdString());
-
-    updater::utilities::initializeDiagnostics(appDirectory.toStdString(),
-        logDirectoryPath.toStdString(),
-        crashDumpDirectoryPath.toStdString(),
-        appVersion.toStdString());
-
-    core::initializeDiagnostics(appDirectory.toStdString(),
-        logDirectoryPath.toStdString(),
-        crashDumpDirectoryPath.toStdString(),
-        appVersion.toStdString());
+    replaceUpdateApplier();
+    initializeDiagnostics();
 
     m_coreClient = std::make_shared<core::Client>();
 
@@ -101,8 +87,8 @@ void MainWindow::customEvent(QEvent* event) {
 
     if (event->type() == StartupEvent::StartupEventType) {
         m_updaterClient->init(std::make_shared<UpdaterEventListener>(m_updateManager, m_updaterNetworkErrorHandler),
-            m_configManager->getAppDirectory().toStdString(),
-            m_configManager->getTemporaryUpdateDirectory().toStdString(),
+            m_configManager->getAppDirectoryPath().toStdString(),
+            m_configManager->getTemporaryUpdateDirectoryPath().toStdString(),
             m_configManager->getDeletionListFileName().toStdString(),
             m_configManager->getIgnoredFilesWhileCollectingForUpdate(),
             m_configManager->getIgnoredDirectoriesWhileCollectingForUpdate()
@@ -457,6 +443,83 @@ void MainWindow::initializeCallWidget() {
     m_stackedLayout->addWidget(m_callWidget);
 }
 
+void MainWindow::replaceUpdateApplier() {
+    QString appDirectory = m_configManager->getAppDirectoryPath();
+    QDir appDir(appDirectory);
+    
+    if (!appDir.exists()) {
+        LOG_WARN("Application directory does not exist: {}", appDirectory.toStdString());
+        return;
+    }
+    
+    updater::OperationSystemType osType = m_configManager->getOperationSystemType();
+    
+    QString oldUpdateApplierName;
+    QString newUpdateApplierName;
+    
+    if (osType == updater::OperationSystemType::WINDOWS) {
+        oldUpdateApplierName = UPDATE_APPLIER_EXECUTABLE_NAME_WINDOWS;
+        newUpdateApplierName = UPDATE_APPLIER_EXECUTABLE_NAME_WINDOWS_NEW;
+    } else {
+        oldUpdateApplierName = UPDATE_APPLIER_EXECUTABLE_NAME_LINUX_AND_MAC;
+        newUpdateApplierName = UPDATE_APPLIER_EXECUTABLE_NAME_LINUX_AND_MAC_NEW;
+    }
+    
+    QString newUpdateApplierPath = appDir.filePath(newUpdateApplierName);
+    QString oldUpdateApplierPath = appDir.filePath(oldUpdateApplierName);
+    
+    if (!QFile::exists(newUpdateApplierPath)) {
+        LOG_INFO("New updateApplier not found: {}, skipping replacement", newUpdateApplierPath.toStdString());
+        return;
+    }
+    
+    if (QFile::exists(oldUpdateApplierPath)) {
+        if (!QFile::remove(oldUpdateApplierPath)) {
+            LOG_ERROR("Failed to remove old updateApplier: {}", oldUpdateApplierPath.toStdString());
+            return;
+        }
+        LOG_INFO("Removed old updateApplier");
+    }
+    
+    QFile newUpdateApplierFile(newUpdateApplierPath);
+    if (!newUpdateApplierFile.rename(oldUpdateApplierPath)) {
+        LOG_ERROR("Failed to rename new updateApplier: {} -> {}", 
+            newUpdateApplierPath.toStdString(), oldUpdateApplierPath.toStdString());
+        return;
+    }
+    
+    QFile::setPermissions(oldUpdateApplierPath,
+        QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+        QFile::ReadUser | QFile::WriteUser | QFile::ExeUser |
+        QFile::ReadGroup | QFile::ExeGroup |
+        QFile::ReadOther | QFile::ExeOther);
+    
+    LOG_INFO("Successfully replaced updateApplier: {} -> {}", 
+        newUpdateApplierPath.toStdString(), oldUpdateApplierPath.toStdString());
+}
+
+void MainWindow::initializeDiagnostics() {
+    const QString appDirectory = m_configManager->getAppDirectoryPath();
+    const QString logDirectoryPath = m_configManager->getLogDirectoryPath();
+    const QString crashDumpDirectoryPath = m_configManager->getCrashDumpDirectoryPath();
+    const QString appVersion = m_configManager->getVersion();
+
+    ui::utilities::initializeDiagnostics(appDirectory.toStdString(),
+        logDirectoryPath.toStdString(),
+        crashDumpDirectoryPath.toStdString(),
+        appVersion.toStdString());
+
+    updater::utilities::initializeDiagnostics(appDirectory.toStdString(),
+        logDirectoryPath.toStdString(),
+        crashDumpDirectoryPath.toStdString(),
+        appVersion.toStdString());
+
+    core::initializeDiagnostics(appDirectory.toStdString(),
+        logDirectoryPath.toStdString(),
+        crashDumpDirectoryPath.toStdString(),
+        appVersion.toStdString());
+}
+
 void MainWindow::onWindowTitleChanged(const QString& title)
 {
     setWindowTitle(title);
@@ -502,5 +565,23 @@ void MainWindow::onStopAllRingtonesRequested()
     if (m_audioManager) {
         m_audioManager->stopCallingRingtone();
         m_audioManager->stopIncomingCallRingtone();
+    }
+}
+
+QString MainWindow::getConfigFilePath() const
+{
+    updater::OperationSystemType operationSystemType = resolveOperationSystemType();
+    
+    if (operationSystemType == updater::OperationSystemType::WINDOWS) {
+        return "C:/prj/Callifornia/out/build/x64-Debug/client/ui/config.json";
+    }
+    else if (operationSystemType == updater::OperationSystemType::LINUX) {
+        return "/opt/Callifornia/config.json";
+    }
+    else if (operationSystemType == updater::OperationSystemType::MAC) {
+        return "/Applications/Callifornia/config.json";
+    }
+    else {
+        return "";
     }
 }

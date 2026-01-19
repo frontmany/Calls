@@ -8,6 +8,8 @@ struct NotificationDialogStyle
 {
     static QString mainWidgetStyle(bool isGreenStyle);
     static QString labelStyle(bool isGreenStyle);
+    static QString mainWidgetRedStyle();
+    static QString labelRedStyle();
 };
 
 class NotificationDialogBase : public QWidget
@@ -20,6 +22,7 @@ public:
         bool isAnimation);
     void setStatusText(const QString& text);
     void setGreenStyle(bool isGreenStyle);
+    void setRedStyle(bool isRedStyle);
     void setAnimationEnabled(bool isAnimation);
 
 private:
@@ -30,5 +33,6 @@ private:
     QLabel* m_gifLabel = nullptr;
     QMovie* m_movie = nullptr;
     bool m_isGreenStyle = false;
+    bool m_isRedStyle = false;
     bool m_isAnimation = true;
 };

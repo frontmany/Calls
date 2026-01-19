@@ -43,18 +43,7 @@ void UpdaterNetworkErrorHandler::onNetworkError()
 
     if (m_dialogsController) {
         m_dialogsController->hideUpdatingDialog();
-    }
-
-    QString errorMessage = "Update failed";
-    if (m_coreClient && m_coreClient->isAuthorized()) {
-        if (m_mainMenuWidget) {
-            m_mainMenuWidget->setErrorMessage(errorMessage);
-        }
-    }
-    else {
-        if (m_authorizationWidget) {
-            m_authorizationWidget->setErrorMessage(errorMessage);
-        }
+        m_dialogsController->showUpdateErrorDialog();
     }
 }
 
