@@ -41,9 +41,8 @@ namespace updater
 							writeBody(packetPtr);
 						}
 						else {
-							m_queue.pop_ref([this](Packet&&) {
-								resolveSending();
-							});
+							m_queue.try_pop();
+							resolveSending();
 						}
 					}
 				}
@@ -62,9 +61,8 @@ namespace updater
 						}
 					}
 					else {
-						m_queue.pop_ref([this](Packet&&) {
-							resolveSending();
-						});
+						m_queue.try_pop();
+						resolveSending();
 					}
 				}
 			);

@@ -85,16 +85,13 @@ namespace core
             return;
         }
 
-        Packet packet{};
-        bool hasPacket = m_packetQueue.pop_ref([&packet](Packet&& p) {
-            packet = std::move(p);
-            });
-
-        if (!hasPacket) {
+        auto packetOpt = m_packetQueue.try_pop();
+        if (!packetOpt.has_value()) {
             m_isSending = false;
             return;
         }
 
+        Packet packet = std::move(*packetOpt);
         m_currentDatagrams = splitPacket(packet);
         m_currentDatagramIndex = 0;
 

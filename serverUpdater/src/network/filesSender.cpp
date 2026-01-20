@@ -25,11 +25,12 @@ void FilesSender::sendFileChunk() {
 	if (!m_fileStream.is_open()) {
 		if (!m_queue.empty()) {
 			std::optional<std::filesystem::path> pathCopy;
-			m_queue.front_ref([&pathCopy](const std::variant<Packet, std::filesystem::path>& variant) {
-				if (auto path = std::get_if<std::filesystem::path>(&variant)) {
+			auto* variantPtr = m_queue.front_ptr();
+			if (variantPtr) {
+				if (auto path = std::get_if<std::filesystem::path>(variantPtr)) {
 					pathCopy = *path;
 				}
-			});
+			}
 			if (!pathCopy.has_value() || !openFile(*pathCopy)) {
 				return;
 			}
@@ -61,19 +62,19 @@ void FilesSender::sendFileChunk() {
 	else {
 		LOG_DEBUG("File transfer completed");
 		m_fileStream.close();
-		m_queue.pop_ref([this](std::variant<Packet, std::filesystem::path>&&) {
-			if (!m_queue.empty()) {
-				m_queue.front_ref([this](const std::variant<Packet, std::filesystem::path>& variant) {
-					if (auto path = std::get_if<std::filesystem::path>(&variant)) {
-						m_buffer.fill(0);
-						sendFileChunk();
-					}
-					else {
-						m_packetsSender.send();
-					}
-				});
+		m_queue.try_pop();
+		if (!m_queue.empty()) {
+			auto* variantPtr = m_queue.front_ptr();
+			if (variantPtr) {
+				if (auto path = std::get_if<std::filesystem::path>(variantPtr)) {
+					m_buffer.fill(0);
+					sendFileChunk();
+				}
+				else {
+					m_packetsSender.send();
+				}
 			}
-		});
+		}
 	}
 }
 

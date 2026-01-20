@@ -33,15 +33,15 @@ bool UpdateManager::shouldRestart() {
 }
 
 
-void UpdateManager::onUpdateCheckResult(updater::UpdateCheckResult result)
+void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
 {
     m_authorizationWidget->hideUpdatesCheckingNotification();
 
-    if (result == updater::UpdateCheckResult::possible_update) {
+    if (result == updater::CheckResult::POSSIBLE_UPDATE) {
         m_authorizationWidget->showUpdateAvailableNotification();
         m_mainMenuWidget->showUpdateAvailableNotification();
     }
-    else if (result == updater::UpdateCheckResult::required_update) {
+    else if (result == updater::CheckResult::REQUIRED_UPDATE) {
         if (m_updaterClient) {
             m_updaterClient->startUpdate(resolveOperationSystemType());
         }
@@ -49,10 +49,10 @@ void UpdateManager::onUpdateCheckResult(updater::UpdateCheckResult result)
             m_dialogsController->showUpdatingDialog();
         }
     }
-    else if (result == updater::UpdateCheckResult::update_not_needed) {
+    else if (result == updater::CheckResult::UPDATE_NOT_NEEDED) {
     }
     else {
-        LOG_ERROR("error: unknown UpdateCheckResult type");
+        LOG_ERROR("error: unknown CheckResult type");
     }
 }
 
@@ -113,31 +113,33 @@ void UpdateManager::launchUpdateApplier()
 {
     qint64 currentPid = QCoreApplication::applicationPid();
    
-    QString applicationDirectoryPath = m_configManager->getAppDirectoryPath();
+    if (m_configManager) {
+        QString applicationDirectoryPath = m_configManager->getAppDirectoryPath();
 
-    QString applicationPath;
-    if (m_configManager->getOperationSystemType() == updater::OperationSystemType::WINDOWS) {
-        applicationPath = QDir(applicationDirectoryPath).filePath(APPLICATION_EXECUTABLE_NAME_WINDOWS);
+        QString applicationPath;
+        if (m_configManager->getOperationSystemType() == updater::OperationSystemType::WINDOWS) {
+            applicationPath = QDir(applicationDirectoryPath).filePath(APPLICATION_EXECUTABLE_NAME_WINDOWS);
+        }
+        else {
+            applicationPath = QDir(applicationDirectoryPath).filePath(APPLICATION_EXECUTABLE_NAME_LINUX_AND_MAC);
+        }
+
+        QString updateApplierPath;
+
+        if (m_configManager && m_configManager->getOperationSystemType() == updater::OperationSystemType::WINDOWS) {
+            updateApplierPath = QDir(applicationDirectoryPath).filePath(UPDATE_APPLIER_EXECUTABLE_NAME_WINDOWS);
+        }
+        else {
+            updateApplierPath = QDir(applicationDirectoryPath).filePath(UPDATE_APPLIER_EXECUTABLE_NAME_LINUX_AND_MAC);
+        }
+
+        QString temporaryUpdateDirectoryPath = m_configManager->getTemporaryUpdateDirectoryPath();
+        QString configFileName = QFileInfo(m_configManager->getConfigPath()).fileName();
+        QString deletionListFileName = m_configManager->getDeletionListFileName();
+
+        QStringList arguments;
+        arguments << QString::number(currentPid) << applicationPath << temporaryUpdateDirectoryPath << deletionListFileName << configFileName;
+
+        QProcess::startDetached(updateApplierPath, arguments, applicationDirectoryPath);
     }
-    else {
-        applicationPath = QDir(applicationDirectoryPath).filePath(APPLICATION_EXECUTABLE_NAME_LINUX_AND_MAC);
-    }
-
-    QString updateApplierPath;
-
-    if (m_configManager && m_configManager->getOperationSystemType() == updater::OperationSystemType::WINDOWS) {
-        updateApplierPath = QDir(applicationDirectoryPath).filePath(UPDATE_APPLIER_EXECUTABLE_NAME_WINDOWS);
-    }
-    else {
-        updateApplierPath = QDir(applicationDirectoryPath).filePath(UPDATE_APPLIER_EXECUTABLE_NAME_LINUX_AND_MAC);
-    } 
-
-    QString temporaryUpdateDirectoryPath = m_configManager->getTemporaryUpdateDirectoryPath();
-    QString configFileName = QFileInfo(m_configManager->getConfigPath()).fileName();
-    QString deletionListFileName = m_configManager->getDeletionListFileName();
-
-    QStringList arguments;
-    arguments << QString::number(currentPid) << applicationPath << temporaryUpdateDirectoryPath << deletionListFileName << configFileName;
-
-    QProcess::startDetached(updateApplierPath, arguments, applicationDirectoryPath);
 }

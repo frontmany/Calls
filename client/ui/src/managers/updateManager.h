@@ -24,7 +24,7 @@ signals:
     void stopAllRingtonesRequested();
 
 public slots:
-    void onUpdateCheckResult(updater::UpdateCheckResult result);
+    void onUpdateCheckResult(updater::CheckResult result);
     void onUpdateLoaded(bool emptyUpdate);
     void onLoadingProgress(double progress);
     void onUpdateButtonClicked();

@@ -24,7 +24,6 @@ void PacketsReceiver::readHeader() {
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
 				if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
-					LOG_ERROR("Packet header read error: {}", ec.message());
 					m_onDisconnect();
 				}
 			}

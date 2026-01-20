@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ServerUpdater Architecture and Infrastructure</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #1f2a37;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --border: #e5e7eb;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 32px;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.6 "Segoe UI", Tahoma, Arial, sans-serif;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-size: 26px;
+            margin: 0 0 6px 0;
+        }
+        .subtitle {
+            color: var(--muted);
+            margin: 0;
+        }
+        .section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        h2 {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+        }
+        h3 {
+            font-size: 16px;
+            margin: 14px 0 6px 0;
+        }
+        ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+        }
+        li {
+            margin: 4px 0;
+        }
+        .rule {
+            border-left: 3px solid var(--accent);
+            padding-left: 10px;
+            margin: 6px 0;
+        }
+        .note {
+            color: var(--muted);
+        }
+        .tag {
+            display: inline-block;
+            font-size: 12px;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 999px;
+            padding: 1px 8px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        code {
+            font-family: Consolas, "Courier New", monospace;
+            background: #f3f4f6;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .sequence {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .sequence ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .sequence li {
+            margin: 4px 0;
+        }
+        pre {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 13px;
+        }
+        .tree {
+            font-family: Consolas, "Courier New", monospace;
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            white-space: pre;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ServerUpdater Architecture and Infrastructure</h1>
+            <p class="subtitle">Update server for client applications: network protocol, version management, and file distribution.</p>
+        </header>
+
+        <section class="section">
+            <h2>Overview</h2>
+            <p>
+                <code>ServerUpdater</code> is a TCP server that manages application updates for client applications.
+                It listens for client connections, checks version compatibility, and distributes update files
+                based on the client's operating system and current version.
+            </p>
+            <p class="note">
+                ServerUpdater is cross-platform and works on Windows, Linux, and macOS. It uses ASIO for
+                asynchronous network I/O and supports multiple concurrent client connections.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Core Components</h2>
+            <h3>ServerUpdater (Main Class)</h3>
+            <ul>
+                <li>Manages the update server lifecycle (start/stop)</li>
+                <li>Handles version directory scanning and latest version detection</li>
+                <li>Processes client update check requests</li>
+                <li>Coordinates file distribution when updates are accepted</li>
+                <li>Default port: <code>8081</code></li>
+                <li>Versions directory: <code>versions/</code> (relative to working directory)</li>
+            </ul>
+
+            <h3>NetworkController</h3>
+            <ul>
+                <li>Manages TCP server socket and client connections</li>
+                <li>Uses ASIO for asynchronous I/O operations</li>
+                <li>Routes incoming packets to appropriate handlers</li>
+                <li>Maintains thread-safe connection pool</li>
+                <li>Processes packet queue in separate thread</li>
+            </ul>
+
+            <h3>Connection</h3>
+            <ul>
+                <li>Represents a single client TCP connection</li>
+                <li>Handles packet sending and receiving</li>
+                <li>Manages file transfer operations</li>
+                <li>Performs handshake on connection establishment</li>
+                <li>Uses separate senders for packets and files</li>
+            </ul>
+
+            <h3>Version</h3>
+            <ul>
+                <li>Parses and compares version strings (e.g., "1.2.3")</li>
+                <li>Supports comparison operators (<code>&lt;</code>, <code>&gt;</code>, <code>==</code>)</li>
+                <li>Handles invalid or lost versions gracefully</li>
+                <li>Uses string-based comparison for version ordering</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Network Protocol</h2>
+            <h3>Packet Types</h3>
+            <ul>
+                <li><code>UPDATE_CHECK</code> <span class="tag">incoming</span> - Client requests update availability check</li>
+                <li><code>UPDATE_ACCEPT</code> <span class="tag">incoming</span> - Client accepts update and requests file list</li>
+                <li><code>UPDATE_METADATA</code> <span class="tag">outgoing</span> - Server sends update metadata (files to download/delete)</li>
+                <li><code>UPDATE_RESULT</code> <span class="tag">outgoing</span> - Server sends operation result</li>
+            </ul>
+
+            <h3>Packet Format</h3>
+            <ul>
+                <li><strong>Header:</strong> <code>type</code> (int) + <code>size</code> (int64_t)</li>
+                <li><strong>Body:</strong> JSON data for metadata packets, binary for file transfers</li>
+                <li>Each connection starts with a handshake (64-bit numbers)</li>
+            </ul>
+
+            <h3>Update Check Flow</h3>
+            <div class="sequence">
+                <ol>
+                    <li>Client sends <code>UPDATE_CHECK</code> with current version</li>
+                    <li>Server scans <code>versions/</code> directory for all version folders</li>
+                    <li>Server reads <code>version.json</code> from each folder</li>
+                    <li>Server compares client version with available versions</li>
+                    <li>Server determines update type (major/minor/none)</li>
+                    <li>Server responds with <code>CheckResult</code>:
+                        <ul>
+                            <li><code>UPDATE_NOT_NEEDED</code> - Client is up to date</li>
+                            <li><code>REQUIRED_UPDATE</code> - Major update available or invalid version</li>
+                            <li><code>POSSIBLE_UPDATE</code> - Minor update available</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <h3>Update Acceptance Flow</h3>
+            <div class="sequence">
+                <ol>
+                    <li>Client sends <code>UPDATE_ACCEPT</code> with:
+                        <ul>
+                            <li>Operating system type (Windows/Linux/Mac)</li>
+                            <li>Array of current files with relative paths and hashes</li>
+                        </ul>
+                    </li>
+                    <li>Server finds latest version directory</li>
+                    <li>Server selects OS-specific folder (<code>Windows/</code>, <code>Linux/</code>, or <code>Mac/</code>)</li>
+                    <li>Server scans all files in OS folder and calculates hashes</li>
+                    <li>Server compares client files with server files:
+                        <ul>
+                            <li>Files to send: new files or files with different hashes</li>
+                            <li>Files to delete: files present on client but not on server</li>
+                        </ul>
+                    </li>
+                    <li>Server sends <code>UPDATE_METADATA</code> packet with:
+                        <ul>
+                            <li><code>filesToDownload</code> - Array with relative path, size, and hash</li>
+                            <li><code>filesToDelete</code> - Array of relative paths</li>
+                            <li><code>version</code> - Target version string</li>
+                        </ul>
+                    </li>
+                    <li>Server sends all files sequentially using file transfer protocol</li>
+                </ol>
+            </div>
+
+            <div class="rule">
+                File transfer uses chunked sending (8192 bytes per chunk) to handle large files efficiently.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>File System Structure</h2>
+            <p>
+                The server requires a specific directory structure for version management. All versions must be
+                organized in the <code>versions/</code> directory with OS-specific subdirectories.
+            </p>
+
+            <h3>Required Directory Structure</h3>
+            <div class="tree">versions/
+├── 1.0.0/
+│   ├── version.json          # Required metadata file
+│   ├── Windows/
+│   │   ├── app.exe
+│   │   ├── config.ini
+│   │   └── ...
+│   ├── Linux/
+│   │   ├── app
+│   │   ├── config.ini
+│   │   └── ...
+│   └── Mac/
+│       ├── app.app
+│       ├── config.ini
+│       └── ...
+├── 1.1.0/
+│   ├── version.json
+│   ├── Windows/
+│   ├── Linux/
+│   └── Mac/
+└── 2.0.0/
+    ├── version.json
+    ├── Windows/
+    ├── Linux/
+    └── Mac/</div>
+
+            <h3>version.json Format</h3>
+            <p>Each version directory must contain a <code>version.json</code> file with the following structure:</p>
+            <pre>{
+  "version": "1.2.3",
+  "updateType": "major"
+}</pre>
+            <ul>
+                <li><code>version</code> - Version string (e.g., "1.2.3", "2.0.0")</li>
+                <li><code>updateType</code> - Either <code>"major"</code> or <code>"minor"</code>
+                    <ul>
+                        <li><code>"major"</code> - Forces <code>REQUIRED_UPDATE</code> response</li>
+                        <li><code>"minor"</code> - Results in <code>POSSIBLE_UPDATE</code> response</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="rule">
+                Version comparison uses string-based lexicographic ordering. Ensure version strings follow
+                semantic versioning (e.g., "2.0.0" > "1.9.9") for correct ordering.
+            </div>
+
+            <h3>OS-Specific Folders</h3>
+            <ul>
+                <li><code>Windows/</code> - Files for Windows clients (<code>OperationSystemType::WINDOWS</code>)</li>
+                <li><code>Linux/</code> - Files for Linux clients (<code>OperationSystemType::LINUX</code>)</li>
+                <li><code>Mac/</code> - Files for macOS clients (<code>OperationSystemType::MAC</code>)</li>
+            </ul>
+            <p class="note">
+                All files within OS folders are sent with their relative paths preserved. The server recursively
+                scans all subdirectories and files.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Version Management</h2>
+            <h3>Finding Latest Version</h3>
+            <p>
+                The <code>findLatestVersion()</code> method scans the versions directory and identifies the
+                highest version by:
+            </p>
+            <ul>
+                <li>Iterating through all subdirectories in <code>versions/</code></li>
+                <li>Reading <code>version.json</code> from each directory</li>
+                <li>Comparing version strings lexicographically</li>
+                <li>Returning the directory path and version string of the latest version</li>
+            </ul>
+
+            <h3>Version Comparison Logic</h3>
+            <ul>
+                <li>Versions are parsed into numeric parts (e.g., "1.2.3" → [1, 2, 3])</li>
+                <li>Comparison is done part-by-part from left to right</li>
+                <li>Missing parts are treated as 0 (e.g., "1.2" == "1.2.0")</li>
+                <li>Invalid versions are treated as less than any valid version</li>
+                <li><code>VERSION_LOST</code> is treated as the lowest possible version</li>
+            </ul>
+
+            <h3>Update Type Detection</h3>
+            <p>When checking for updates, the server determines the response type:</p>
+            <ul>
+                <li>If any available version has <code>"updateType": "major"</code> and is newer → <code>REQUIRED_UPDATE</code></li>
+                <li>If only minor updates are available → <code>POSSIBLE_UPDATE</code></li>
+                <li>If client version matches or exceeds latest → <code>UPDATE_NOT_NEEDED</code></li>
+                <li>If client version is invalid/lost → <code>REQUIRED_UPDATE</code></li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>File Comparison and Distribution</h2>
+            <h3>File Hash Calculation</h3>
+            <ul>
+                <li>Server calculates hash for each file in the OS-specific folder</li>
+                <li>Uses <code>utilities::calculateFileHash()</code> function</li>
+                <li>Hash is used to detect file changes without full content comparison</li>
+            </ul>
+
+            <h3>Delta Update Algorithm</h3>
+            <p>When client accepts update, server performs three-way comparison:</p>
+            <ol>
+                <li><strong>Build file map:</strong> Scan all files in server's OS folder, calculate hashes</li>
+                <li><strong>Compare with client:</strong>
+                    <ul>
+                        <li>Files in client but not in server → Add to deletion list</li>
+                        <li>Files in both with different hashes → Add to download list</li>
+                        <li>Files in both with same hash → Skip (no change)</li>
+                    </ul>
+                </li>
+                <li><strong>Find new files:</strong> Files in server but not in client → Add to download list</li>
+            </ol>
+
+            <div class="rule">
+                This delta approach minimizes bandwidth by only sending changed or new files. Files that
+                haven't changed are skipped entirely.
+            </div>
+
+            <h3>File Transfer</h3>
+            <ul>
+                <li>Files are sent sequentially after metadata packet</li>
+                <li>Each file is sent in chunks of 8192 bytes</li>
+                <li>File transfer uses asynchronous I/O to avoid blocking</li>
+                <li>Relative paths are preserved from OS folder root</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Dependencies and Infrastructure</h2>
+            <h3>External Libraries</h3>
+            <ul>
+                <li><strong>ASIO</strong> (Asio Standalone)
+                    <ul>
+                        <li>Path: <code>vendor/asio/asio/include</code></li>
+                        <li>Used for: Asynchronous TCP networking</li>
+                        <li>Define: <code>ASIO_STANDALONE</code> (Windows)</li>
+                    </ul>
+                </li>
+                <li><strong>nlohmann/json</strong>
+                    <ul>
+                        <li>Path: <code>vendor/json/include</code></li>
+                        <li>Used for: JSON parsing and generation</li>
+                    </ul>
+                </li>
+                <li><strong>spdlog</strong>
+                    <ul>
+                        <li>Windows: <code>vendor/spdlog/build/Debug/spdlogd.lib</code> or <code>Release/spdlog.lib</code></li>
+                        <li>Linux/Mac: <code>vendor/spdlog/libspdlog.a</code></li>
+                        <li>Used for: Logging to console and files</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>System Requirements</h3>
+            <ul>
+                <li><strong>C++ Standard:</strong> C++20</li>
+                <li><strong>CMake:</strong> Version 3.16 or higher</li>
+                <li><strong>Filesystem:</strong> C++17 <code>&lt;filesystem&gt;</code> support</li>
+                <li><strong>Windows:</strong> <code>_WIN32_WINNT=0x0601</code> (Windows 7+)</li>
+                <li><strong>Threading:</strong> Standard library thread support</li>
+            </ul>
+
+            <h3>Runtime Requirements</h3>
+            <ul>
+                <li><strong>Network:</strong> Open port (default 8081) for incoming connections</li>
+                <li><strong>File System:</strong> Read access to <code>versions/</code> directory</li>
+                <li><strong>Disk Space:</strong> Sufficient space for log files in <code>logs/</code></li>
+                <li><strong>Memory:</strong> Support for multiple concurrent client connections</li>
+            </ul>
+
+            <h3>Directory Structure</h3>
+            <ul>
+                <li><code>versions/</code> - Must exist with proper version subdirectories</li>
+                <li><code>logs/</code> - Created automatically for log files</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Threading Model</h2>
+            <h3>Thread Architecture</h3>
+            <ul>
+                <li><strong>Main Thread:</strong> Server initialization and lifecycle management</li>
+                <li><strong>ASIO Context Thread:</strong> Handles all network I/O operations</li>
+                <li><strong>Queue Processing Thread:</strong> Processes incoming packets from queue</li>
+                <li><strong>Per-Connection Threads:</strong> Each connection manages its own async operations</li>
+            </ul>
+
+            <h3>Thread Safety</h3>
+            <ul>
+                <li><code>SafeQueue</code> provides thread-safe packet queuing</li>
+                <li>Connection pool protected by mutex (<code>m_connectionsMutex</code>)</li>
+                <li>ASIO operations are thread-safe when using <code>io_context</code></li>
+                <li>File operations are performed in async handlers (single-threaded per connection)</li>
+            </ul>
+
+            <div class="rule">
+                All network operations are asynchronous and non-blocking. The server can handle multiple
+                concurrent clients without blocking operations.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Component Hierarchy</h2>
+            <div class="tree">ServerUpdater
+├── NetworkController
+│   ├── ASIO (asio::io_context, asio::ip::tcp::acceptor)
+│   ├── Connection Pool (std::unordered_set&lt;ConnectionPtr&gt;)
+│   └── Packet Queue (SafeQueue&lt;OwnedPacket&gt;)
+│       └── Connection (multiple instances)
+│           ├── PacketsSender
+│           ├── PacketsReceiver
+│           └── FilesSender
+├── Version Management
+│   ├── Version (parsing and comparison)
+│   └── findLatestVersion()
+├── Utilities
+│   ├── Logger (spdlog)
+│   ├── SafeQueue (thread-safe queue)
+│   └── calculateFileHash()
+└── JSON (nlohmann/json)</div>
+        </section>
+
+        <section class="section">
+            <h2>Logging and Diagnostics</h2>
+            <h3>Logger Configuration</h3>
+            <ul>
+                <li>Logger initialized at server startup</li>
+                <li>Logs written to <code>logs/</code> directory</li>
+                <li>Uses spdlog with file and console sinks</li>
+            </ul>
+
+            <h3>Log Levels</h3>
+            <ul>
+                <li><code>LOG_INFO</code> - Server status, connections, update operations</li>
+                <li><code>LOG_DEBUG</code> - Detailed version scanning, file operations, packet handling</li>
+                <li><code>LOG_WARN</code> - Non-critical issues (missing files, invalid versions)</li>
+                <li><code>LOG_ERROR</code> - Critical failures (connection errors, missing directories)</li>
+            </ul>
+
+            <h3>Key Log Events</h3>
+            <ul>
+                <li>Server start/stop on port</li>
+                <li>Client connections and disconnections</li>
+                <li>Version check requests and results</li>
+                <li>Update acceptance and file distribution</li>
+                <li>Version directory scanning results</li>
+                <li>File comparison and transfer progress</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Error Handling</h2>
+            <h3>Connection Errors</h3>
+            <ul>
+                <li>Connection failures are logged and connection is removed from pool</li>
+                <li>Socket errors during file transfer are handled gracefully</li>
+                <li>Failed connections don't affect other active connections</li>
+            </ul>
+
+            <h3>File System Errors</h3>
+            <ul>
+                <li>Missing <code>versions/</code> directory is logged as error</li>
+                <li>Missing <code>version.json</code> files are skipped with warning</li>
+                <li>Invalid JSON in <code>version.json</code> is logged and version is ignored</li>
+                <li>Missing OS-specific folders cause update acceptance to fail</li>
+            </ul>
+
+            <h3>Protocol Errors</h3>
+            <ul>
+                <li>Invalid packet types are logged as warnings</li>
+                <li>Missing required JSON fields cause operation to abort</li>
+                <li>Malformed JSON is caught and logged</li>
+                <li>Unknown OS types are rejected</li>
+            </ul>
+
+            <div class="rule">
+                Most errors are logged but don't crash the server. Critical errors (like missing versions
+                directory) prevent operations but allow the server to continue running.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Usage Example</h2>
+            <h3>Server Initialization</h3>
+            <pre>#include "serverUpdater.h"
+
+int main() {
+    std::filesystem::create_directories("logs");
+    
+    // Create server on port 8081 with versions directory
+    serverUpdater::ServerUpdater server(8081, "versions");
+    
+    // Start server (blocks until stop is called)
+    server.start();
+    
+    return 0;
+}</pre>
+
+            <h3>Expected Directory Setup</h3>
+            <p>Before starting the server, ensure the following structure exists:</p>
+            <div class="tree">project_root/
+├── serverUpdater.exe
+├── logs/              # Created automatically
+└── versions/
+    ├── 1.0.0/
+    │   ├── version.json
+    │   ├── Windows/
+    │   ├── Linux/
+    │   └── Mac/
+    └── 1.1.0/
+        ├── version.json
+        ├── Windows/
+        ├── Linux/
+        └── Mac/</div>
+        </section>
+
+        <section class="section">
+            <h2>Platform Support</h2>
+            <h3>Windows</h3>
+            <ul>
+                <li>Uses WinAPI socket implementation via ASIO</li>
+                <li>Requires <code>_WIN32_WINNT=0x0601</code> define</li>
+                <li>Links against spdlog Debug/Release variants</li>
+                <li>File paths use Windows separators</li>
+            </ul>
+
+            <h3>Linux / macOS</h3>
+            <ul>
+                <li>Uses POSIX sockets via ASIO</li>
+                <li>Links against static spdlog library</li>
+                <li>File paths use Unix separators</li>
+                <li>Supports standard POSIX file operations</li>
+            </ul>
+
+            <div class="rule">
+                All platform-specific code is abstracted by ASIO and standard library. The server code
+                itself is platform-agnostic.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Performance Considerations</h2>
+            <h3>Concurrent Connections</h3>
+            <ul>
+                <li>Server supports multiple simultaneous client connections</li>
+                <li>Each connection operates independently with async I/O</li>
+                <li>Connection pool size is limited only by system resources</li>
+            </ul>
+
+            <h3>File Operations</h3>
+            <ul>
+                <li>File hashing is performed on-demand during update acceptance</li>
+                <li>Large files are transferred in chunks to avoid memory issues</li>
+                <li>Version directory scanning happens per-request (could be optimized with caching)</li>
+            </ul>
+
+            <h3>Memory Usage</h3>
+            <ul>
+                <li>Packet buffers are allocated per-connection</li>
+                <li>File transfer uses fixed-size chunk buffers (8KB)</li>
+                <li>Version metadata is parsed into memory per-request</li>
+            </ul>
+
+            <div class="rule">
+                For high-traffic scenarios, consider implementing version caching to avoid repeated
+                directory scans. Current implementation scans on every update check.
+            </div>
+        </section>
+    </div>
+</body>
+</html>

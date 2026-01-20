@@ -15,7 +15,6 @@ int main()
     std::filesystem::create_directories("logs");
     
     LOG_INFO("=== Server Updater Starting ===");
-    LOG_INFO("Version directory: {}", serverUpdater::versionsDirectory.string());
     
     try {
         serverUpdater::ServerUpdater server(8081, serverUpdater::versionsDirectory);

@@ -1,4 +1,5 @@
 #include "updater.h"
+#include "checkResult.h"
 
 #include <thread>
 #include <chrono>
@@ -9,7 +10,7 @@ namespace updater
 {
 	Client::Client()
 		: m_networkController(
-			[this](UpdateCheckResult status) {
+			[this](CheckResult status) {
 				if (m_eventListener) {
 					m_eventListener->onUpdateCheckResult(status);
 				}
@@ -92,22 +93,17 @@ namespace updater
 
 	void Client::reconnectLoop()
 	{
-		constexpr auto reconnectInterval = std::chrono::seconds(5);
+		constexpr auto reconnectInterval = std::chrono::seconds(2);
 		std::unique_lock<std::mutex> lock(m_reconnectMutex);
 
 		while (!m_stopReconnectThread) {
-			if (m_reconnecting && !m_serverHost.empty() && !m_serverPort.empty()) {
+			if (m_reconnecting) {
 				lock.unlock();
 
-				if (!m_networkController.isConnected()) {
-					m_networkController.connect(m_serverHost, m_serverPort);
-					std::this_thread::sleep_for(std::chrono::milliseconds(500));
-				}
-				else {
-					m_reconnecting = false;
-				}
+				m_networkController.connect(m_serverHost, m_serverPort);
 
 				lock.lock();
+				
 				if (m_reconnecting && !m_stopReconnectThread) {
 					m_reconnectCondition.wait_for(lock, reconnectInterval);
 				}
@@ -120,7 +116,7 @@ namespace updater
 
 	bool Client::checkUpdates(const std::string& currentVersionNumber)
 	{
-		if (isConnected()) return false;
+		if (!isConnected()) return false;
 
 		nlohmann::json jsonObject;
 		jsonObject[VERSION] = currentVersionNumber;
@@ -132,7 +128,7 @@ namespace updater
 
 	bool Client::startUpdate(OperationSystemType type)
 	{
-		if (isConnected()) return false;
+		if (!isConnected()) return false;
 
 		m_loadingUpdate = true;
 

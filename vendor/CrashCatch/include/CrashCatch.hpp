@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /*
 CrashCatch - A simple cross-platform crash handler

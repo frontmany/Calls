@@ -11,6 +11,6 @@ namespace updater
 
 		// only receive
 		UPDATE_METADATA,
-		UPDATE_CHECK_RESULT
+		UPDATE_RESULT
 	};
 }

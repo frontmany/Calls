@@ -168,7 +168,7 @@ void DialogsController::showManagedNotification(const ManagedNotificationState& 
         };
         showNotificationDialogInternal(m_connectionDownWithUserOverlay,
             baseDialog,
-            true,
+            false,
             createDialog,
             updateDialog);
         m_connectionDownWithUserDialog = static_cast<ConnectionDownWithUserDialog*>(baseDialog);

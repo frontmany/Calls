@@ -5,12 +5,9 @@
 #include "managers/navigationController.h"
 #include "managers/updateManager.h"
 #include "managers/configManager.h"
-#include "core.h"
-#include "updater.h"
 
-UpdaterNetworkErrorHandler::UpdaterNetworkErrorHandler(std::shared_ptr<core::Client> coreClient, std::shared_ptr<updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent)
+UpdaterNetworkErrorHandler::UpdaterNetworkErrorHandler(std::shared_ptr<updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent)
     : QObject(parent)
-    , m_coreClient(coreClient)
     , m_updaterClient(updater)
     , m_navigationController(navigationController)
     , m_updateManager(updateManager)
@@ -49,6 +46,7 @@ void UpdaterNetworkErrorHandler::onNetworkError()
 
 void UpdaterNetworkErrorHandler::onConnected()
 {
+    LOG_INFO("Updater connected");
 
     if (m_updaterClient && m_configManager) {
         m_updaterClient->checkUpdates(m_configManager->getVersion().toStdString());

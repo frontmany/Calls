@@ -107,33 +107,6 @@ namespace updater
             return m_queue.back();
         }
 
-        bool front_ref(const std::function<void(const T&)>& func) const {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return false;
-            }
-            func(m_queue.front());
-            return true;
-        }
-
-        bool back_ref(const std::function<void(const T&)>& func) const {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return false;
-            }
-            func(m_queue.back());
-            return true;
-        }
-
-        bool pop_ref(const std::function<void(T&&)>& func) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return false;
-            }
-            func(std::move(m_queue.front()));
-            m_queue.pop();
-            return true;
-        }
 
         std::optional<T> front() const {
             std::lock_guard<std::mutex> lock(m_mutex);

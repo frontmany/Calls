@@ -13,4 +13,5 @@ static constexpr const char* IS_ACCEPTED = "isAccepted";
 static constexpr const char* FILES_TO_DOWNLOAD = "filesToDownload";
 static constexpr const char* FILES_TO_DELETE = "filesToDelete";
 static constexpr const char* UPDATE_TYPE = "updateType";
+static constexpr const char* UPDATE_CHECK_RESULT = "updateCheckResult";
 }

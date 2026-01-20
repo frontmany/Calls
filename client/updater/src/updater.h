@@ -14,7 +14,7 @@
 
 #include "utilities/utilities.h"
 #include "eventListener.h"
-#include "updateCheckResult.h"
+#include "checkResult.h"
 #include "operationSystemType.h"
 #include "network/networkController.h"
 #include "jsonType.h"

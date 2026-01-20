@@ -42,11 +42,9 @@ namespace serverUpdater
 
 	void ServerUpdater::start()
 	{
-		LOG_DEBUG("Checking versions directory structure...");
 		if (std::filesystem::exists(m_versionsDirectory)) {
 			for (const auto& entry : std::filesystem::directory_iterator(m_versionsDirectory)) {
 				if (entry.is_directory()) {
-					LOG_DEBUG("Found version directory: {}", entry.path().string());
 				}
 			}
 		}
@@ -153,7 +151,8 @@ namespace serverUpdater
 		Version version(jsonObject[VERSION].get<std::string>());
 		LOG_INFO("Checking for updates, client version: {}", version.getAsString());
 
-		Packet packetResponse;
+		CheckResult checkResult;
+		nlohmann::json responseJson;
 
 		if (version != VERSION_LOST) {
 			bool hasMajorUpdate = false;
@@ -185,22 +184,28 @@ namespace serverUpdater
 			}
 
 			if (latestVersion == version) {
-				packetResponse.setType(static_cast<int>(CheckResult::UPDATE_NOT_NEEDED));
+				checkResult = CheckResult::UPDATE_NOT_NEEDED;
 				LOG_INFO("Client is up to date (version: {})", version.getAsString());
 			}
 			else if (hasMajorUpdate) {
-				packetResponse.setType(static_cast<int>(CheckResult::REQUIRED_UPDATE));
+				checkResult = CheckResult::REQUIRED_UPDATE;
 				LOG_INFO("Major update available for client (current: {}, latest: {})", version.getAsString(), latestVersion.getAsString());
 			}
 			else {
-				packetResponse.setType(static_cast<int>(CheckResult::POSSIBLE_UPDATE));
+				checkResult = CheckResult::POSSIBLE_UPDATE;
 				LOG_INFO("Minor update available for client (current: {}, latest: {})", version.getAsString(), latestVersion.getAsString());
 			}
 		}
 		else {
-			packetResponse.setType(static_cast<int>(CheckResult::REQUIRED_UPDATE));
+			checkResult = CheckResult::REQUIRED_UPDATE;
 			LOG_WARN("Client has invalid version, requiring update");
 		}
+
+		responseJson[UPDATE_CHECK_RESULT] = static_cast<int>(checkResult);
+
+		Packet packetResponse;
+		packetResponse.setType(static_cast<int>(PacketType::UPDATE_RESULT));
+		packetResponse.setData(responseJson.dump());
 
 		connection->sendPacket(packetResponse);
 	}

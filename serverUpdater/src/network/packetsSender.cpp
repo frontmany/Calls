@@ -49,9 +49,8 @@ void PacketsSender::writeHeader() {
 					}
 					else
 					{
-						m_queue.pop_ref([this](std::variant<Packet, std::filesystem::path>&&) {
-							resolveSending();
-						});
+						m_queue.try_pop();
+						resolveSending();
 					}
 				}
 			}
@@ -72,9 +71,8 @@ void PacketsSender::writeBody(const Packet* packet) {
 			else 
 			{
 				LOG_TRACE("Packet sent successfully");
-				m_queue.pop_ref([this](std::variant<Packet, std::filesystem::path>&&) {
-					resolveSending();
-				});
+				m_queue.try_pop();
+				resolveSending();
 			}
 		}
 	);
@@ -82,14 +80,15 @@ void PacketsSender::writeBody(const Packet* packet) {
 
 void PacketsSender::resolveSending() {
 	if (!m_queue.empty()) {
-		m_queue.front_ref([this](const std::variant<Packet, std::filesystem::path>& variant) {
-			if (auto packet = std::get_if<Packet>(&variant)) {
+		auto* variantPtr = m_queue.front_ptr();
+		if (variantPtr) {
+			if (auto packet = std::get_if<Packet>(variantPtr)) {
 				writeHeader();
 			}
 			else {
 				m_filesSender.sendFile();
 			}
-		});
+		}
 	}
 }
 }

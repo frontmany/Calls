@@ -47,7 +47,7 @@ namespace updater
 					}
 
 					if (ec) {
-						if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
+						if (ec != asio::error::operation_aborted) {
 							m_onError();
 						}
 					}
@@ -58,6 +58,7 @@ namespace updater
 						}
 						else {
 							m_onPacketReceived(std::move(m_temporaryPacket));
+
 							if (!m_isPaused) {
 								readHeader();
 							}
@@ -68,10 +69,6 @@ namespace updater
 
 		void PacketReceiver::readBody()
 		{
-			if (m_isPaused) {
-				return;
-			}
-
 			asio::async_read(m_socket, asio::buffer(m_temporaryPacket.body_mut().data(), m_temporaryPacket.body().size()),
 				[this](std::error_code ec, std::size_t length) {
 					if (m_isPaused) {
@@ -85,6 +82,7 @@ namespace updater
 					}
 					else {
 						m_onPacketReceived(std::move(m_temporaryPacket));
+
 						if (!m_isPaused) {
 							readHeader();
 						}

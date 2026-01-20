@@ -250,7 +250,7 @@ void MainWindow::initializeCoreNetworkErrorHandler() {
 }
 
 void MainWindow::initializeUpdaterNetworkErrorHandler() {
-    m_updaterNetworkErrorHandler = new UpdaterNetworkErrorHandler(m_coreClient, m_updaterClient, m_navigationController, m_updateManager, m_configManager, this);
+    m_updaterNetworkErrorHandler = new UpdaterNetworkErrorHandler(m_updaterClient, m_navigationController, m_updateManager, m_configManager, this);
     if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
         m_updaterNetworkErrorHandler->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
     }

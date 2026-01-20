@@ -17,13 +17,25 @@ namespace updateApplier::utilities
                 ? std::filesystem::path("calliforniaUpdateApplier")
                 : std::filesystem::path(dumpFilePath);
 
-            if (!dumpPath.parent_path().empty()) {
-                std::filesystem::create_directories(dumpPath.parent_path());
+            std::filesystem::path dumpDir = dumpPath.parent_path();
+            std::string dumpFileName = dumpPath.filename().string();
+
+            if (dumpDir.empty()) {
+                dumpDir = std::filesystem::current_path();
+            }
+            else {
+                std::filesystem::create_directories(dumpDir);
+            }
+
+            std::string dumpFolderStr = dumpDir.string();
+            if (!dumpFolderStr.empty() && dumpFolderStr.back() != '/' && dumpFolderStr.back() != '\\') {
+                dumpFolderStr += "/";
             }
 
             CrashCatch::Config config;
             config.appVersion = appVersion;
-            config.dumpFileName = dumpPath.string();
+            config.dumpFolder = dumpFolderStr;
+            config.dumpFileName = dumpFileName.empty() ? "calliforniaUpdateApplier" : dumpFileName;
 
             initialized = CrashCatch::initialize(config);
             return initialized;

@@ -35,9 +35,15 @@ namespace ui::utilities
 
         std::filesystem::create_directories(dumpDir);
 
+        std::string dumpFolderStr = dumpDir.string();
+        if (!dumpFolderStr.empty() && dumpFolderStr.back() != '/' && dumpFolderStr.back() != '\\') {
+            dumpFolderStr += "/";
+        }
+
         CrashCatch::Config crashConfig;
         crashConfig.appVersion = appVersion;
-        crashConfig.dumpFileName = (dumpDir / "calliforniaUI").string();
+        crashConfig.dumpFolder = dumpFolderStr;
+        crashConfig.dumpFileName = "calliforniaUI";
         crashConfig.onCrash = [](const CrashCatch::CrashContext& context)
         {
             std::cout << "Crash captured. Dump: " << context.dumpFilePath

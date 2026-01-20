@@ -1,7 +1,7 @@
 #include "network/networkController.h"
 #include "../utilities/utilities.h"
 #include "../packetType.h"
-#include "../updateCheckResult.h"
+#include "../checkResult.h"
 #include "json.hpp"
 #include "../jsonType.h"
 
@@ -12,7 +12,7 @@ namespace updater
 	namespace network
 	{
 		NetworkController::NetworkController(
-			std::function<void(UpdateCheckResult)>&& onUpdateCheckResult,
+			std::function<void(CheckResult)>&& onUpdateCheckResult,
 			std::function<void(double)>&& onUpdateLoadingProgress,
 			std::function<void(bool)>&& onUpdateLoaded,
 			std::function<void()>&& onNetworkError,
@@ -102,7 +102,7 @@ namespace updater
 					
 					auto type = static_cast<PacketType>(p.type());
 
-					if (type == PacketType::UPDATE_CHECK_RESULT) {
+					if (type == PacketType::UPDATE_RESULT) {
 						handleCheckResultPacket(std::move(p));
 					}
 					else if (type == PacketType::UPDATE_METADATA) {
@@ -118,7 +118,7 @@ namespace updater
 		void NetworkController::handleCheckResultPacket(Packet&& packet)
 		{
 			nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
-			UpdateCheckResult result = static_cast<UpdateCheckResult>(jsonObject[UPDATE_CHECK_RESULT].get<uint32_t>());
+			CheckResult result = static_cast<CheckResult>(jsonObject[UPDATE_CHECK_RESULT].get<int>());
 			m_onCheckResult(result);
 		}
 
@@ -202,7 +202,9 @@ namespace updater
 		void NetworkController::initializeAfterHandshake()
 		{
 			m_packetSender = std::make_unique<PacketSender>(m_socket,
-				[this]() { m_onNetworkError(); });
+				[this]() { 
+					m_onNetworkError(); 
+				});
 
 			m_fileReceiver = std::make_unique<FileReceiver>(m_socket,
 				[this](double fileProgress) {
@@ -211,14 +213,20 @@ namespace updater
 						m_onLoadingProgress(totalProgress);
 					}
 				},
-				[this]() { m_onNetworkError(); },
-				[this]() { handleFileDownloaded(); });
+				[this]() { 
+					m_onNetworkError(); 
+				},
+				[this]() {
+					handleFileDownloaded(); 
+				});
 
 			m_packetReceiver = std::make_unique<PacketReceiver>(m_socket,
 				[this](Packet&& packet) {
 					m_packetQueue.push(std::move(packet));
 				},
-				[this]() { m_onNetworkError(); });
+				[this]() {
+					m_onNetworkError();
+				});
 
 			if (!m_packetQueueThread.joinable()) {
 				m_packetQueueThread = std::thread([this]() { processPacketQueue(); });
@@ -226,10 +234,7 @@ namespace updater
 
 			m_packetReceiver->startReceiving();
 
-			if (m_onConnected) {
-				m_onConnected();
-			}
+			m_onConnected();
 		}
-
 	}
 }
