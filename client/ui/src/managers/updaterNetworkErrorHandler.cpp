@@ -38,11 +38,11 @@ void UpdaterNetworkErrorHandler::onNetworkError()
     }
 
     if (m_authorizationWidget) {
-        m_authorizationWidget->hideUpdateAvailableNotification();
+        m_authorizationWidget->hideUpdateAvailableButton();
     }
 
     if (m_mainMenuWidget) {
-        m_mainMenuWidget->hideUpdateAvailableNotification();
+        m_mainMenuWidget->hideUpdateAvailableButton();
     }
 
     if (m_dialogsController) {

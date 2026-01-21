@@ -80,9 +80,15 @@
                 and generic red error messages.
             </p>
             <p class="note">
-                Notifications are UI-only widgets derived from <code>BaseNotification</code>.
-                They do not contain user interaction logic (buttons/flows) and are managed as overlays.
+                The controller uses a single <code>OverlayWidget</code> and a single <code>Notification</code>
+                instance as members. When switching between notifications, the controller updates the content
+                and visibility of these widgets rather than creating new ones.
             </p>
+            <div class="rule">
+                All notification state is stored in a <code>NotificationState</code> structure containing:
+                <code>type</code>, <code>text</code>, <code>isWaitingAnimation</code>, <code>isOverlay</code>,
+                <code>key</code> (optional), and <code>notificationStyleType</code>.
+            </div>
         </section>
 
         <section class="section">
@@ -98,35 +104,96 @@
 
         <section class="section">
             <h2>Notification Types</h2>
-            <h3>Non-stacked (simple show/hide)</h3>
+            <p>
+                The <code>NotificationType</code> enum includes all notification types:
+            </p>
             <ul>
-                <li><code>ConnectionDownNotification</code></li>
-                <li><code>ConnectionRestoredNotification</code></li>
-                <li><code>ConnectionRestoredWithUserNotification</code></li>
-                <li><code>UpdateErrorNotification</code></li>
-                <li><code>ErrorNotification</code> (generic red message)</li>
+                <li><code>ConnectionDown</code> - Timer-managed, not stacked</li>
+                <li><code>ConnectionRestored</code> - Timer-managed, not stacked</li>
+                <li><code>ConnectionDownWithUser</code> - Stack-managed</li>
+                <li><code>ConnectionRestoredWithUser</code> - Timer-managed, not stacked</li>
+                <li><code>PendingOperation</code> - Stack-managed, keyed</li>
+                <li><code>UpdateError</code> - Timer-managed, not stacked</li>
+                <li><code>Error</code> - Timer-managed, not stacked (generic red message)</li>
             </ul>
 
-            <h3>Stack-managed</h3>
+            <h3>Timer-managed notifications</h3>
+            <p>
+                These notifications are controlled by timers and do not enter the stack:
+            </p>
             <ul>
-                <li><code>PendingOperationNotification</code> <span class="tag">keyed</span></li>
-                <li><code>ConnectionDownWithUserNotification</code></li>
+                <li><code>ConnectionDown</code></li>
+                <li><code>ConnectionRestored</code></li>
+                <li><code>ConnectionRestoredWithUser</code></li>
+                <li><code>UpdateError</code></li>
+                <li><code>Error</code></li>
             </ul>
             <p class="note">
-                The stack allows multiple pending states to be queued, and the most recent one is displayed
-                when no higher-priority notification is currently visible.
+                When a timer-managed notification auto-hides, it automatically shows the last notification
+                from the stack (if any) by calling <code>showLastNotification()</code>.
+            </p>
+
+            <h3>Stack-managed notifications</h3>
+            <ul>
+                <li><code>ConnectionDownWithUser</code></li>
+                <li><code>PendingOperation</code> <span class="tag">keyed by UserOperationType</span></li>
+            </ul>
+            <p class="note">
+                Stack-managed notifications are added to the stack when shown. When showing a new notification,
+                if the currently displayed notification is stack-managed, it is pushed back to the stack first.
+                When hiding a stack-managed notification, if it's currently visible, it's hidden and the last
+                notification from the stack is shown; if it's in the stack but not visible, it's simply removed.
             </p>
         </section>
 
         <section class="section">
             <h2>Execution Sequence</h2>
+            
+            <h3>Showing a Notification</h3>
             <div class="sequence">
                 <ol>
                     <li>Caller requests a notification via a <code>show*</code> method.</li>
-                    <li>Controller optionally hides currently active managed notification (stack case) to avoid overlaps.</li>
-                    <li>Controller creates or updates a <code>BaseNotification</code>-derived widget inside an <code>OverlayWidget</code>.</li>
+                    <li>If a notification is currently showing:
+                        <ul>
+                            <li>If it's stack-managed (ConnectionDownWithUser or PendingOperation), it's pushed to the stack.</li>
+                            <li>The current notification is hidden.</li>
+                        </ul>
+                    </li>
+                    <li>If the new notification is stack-managed, it's added to the stack.</li>
+                    <li>Controller updates the single <code>Notification</code> widget with new content:
+                        <ul>
+                            <li>Creates it if it doesn't exist.</li>
+                            <li>Recreates it if the parent widget changed (overlay vs parent).</li>
+                            <li>Updates content otherwise (text, style, animation).</li>
+                        </ul>
+                    </li>
+                    <li>Controller shows/hides the single <code>OverlayWidget</code> based on <code>isOverlay</code>.</li>
                     <li>If <code>autoHideMs &gt; 0</code>, schedules auto-hide using a single-shot timer.</li>
-                    <li>On hide, controller restores the last stacked notification (if any).</li>
+                    <li>On auto-hide, the notification is hidden and <code>showLastNotification()</code> is called.</li>
+                </ol>
+            </div>
+
+            <h3>Hiding a Stack-managed Notification</h3>
+            <div class="sequence">
+                <ol>
+                    <li>Caller requests hiding via <code>hideConnectionDownWithUser()</code> or <code>hidePendingOperation(key)</code>.</li>
+                    <li>The notification is removed from the stack.</li>
+                    <li>If the notification is currently visible:
+                        <ul>
+                            <li>It's hidden.</li>
+                            <li><code>showLastNotification()</code> is called to show the next one from the stack.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+            <h3>Showing Last Notification from Stack</h3>
+            <div class="sequence">
+                <ol>
+                    <li>Retrieves the last <code>NotificationState</code> from the stack.</li>
+                    <li>Updates the single <code>Notification</code> widget content (text, style, animation).</li>
+                    <li>Shows/hides the <code>OverlayWidget</code> based on the state's <code>isOverlay</code> flag.</li>
+                    <li>Positions and shows the notification.</li>
                 </ol>
             </div>
         </section>
@@ -134,25 +201,61 @@
         <section class="section">
             <h2>Auto-hide Behavior</h2>
             <p>
-                Many notifications are transient and auto-hide. The controller accepts an <code>autoHideMs</code>
+                Timer-managed notifications are transient and auto-hide. The controller accepts an <code>autoHideMs</code>
                 parameter in the relevant <code>show*</code> methods to schedule hiding.
             </p>
             <div class="rule">
-                Auto-hide must not reuse deleted widgets. The controller should treat auto-hidden notifications as disposable
-                and recreate them when shown again.
+                When a timer-managed notification auto-hides:
+                <ul>
+                    <li>The notification widget is hidden (not deleted).</li>
+                    <li>The overlay is hidden if it was showing.</li>
+                    <li><code>showLastNotification()</code> is automatically called to restore the last stack-managed notification if any.</li>
+                </ul>
             </div>
+            <p class="note">
+                Timer-managed notifications never enter the stack. Only <code>ConnectionDownWithUser</code> and
+                <code>PendingOperation</code> are added to the stack.
+            </p>
         </section>
 
         <section class="section">
-            <h2>Managed Notification Stack</h2>
+            <h2>Notification State and Stack</h2>
             <p>
-                The controller keeps a list of <code>ManagedNotificationState</code> entries, used as a stack.
-                Only the last entry is shown when it is time to restore a previously queued managed notification.
+                The controller uses a <code>NotificationState</code> structure to represent notification state:
             </p>
-            <h3>Keyed pending operations</h3>
             <ul>
-                <li><code>PendingOperation</code> entries may include a <code>core::UserOperationType</code> key.</li>
-                <li>When removing, matching by key ensures the correct pending notification is dismissed.</li>
+                <li><code>type</code> - The notification type (from <code>NotificationType</code> enum)</li>
+                <li><code>text</code> - The notification text message</li>
+                <li><code>isWaitingAnimation</code> - Whether to show the waiting animation</li>
+                <li><code>isOverlay</code> - Whether the overlay widget should be shown</li>
+                <li><code>key</code> - Optional <code>core::UserOperationType</code> key (for keyed notifications)</li>
+                <li><code>notificationStyleType</code> - The visual style (BASE, GREEN, RED)</li>
+            </ul>
+
+            <h3>Stack Management</h3>
+            <p>
+                The controller maintains a stack (<code>QList&lt;NotificationState&gt;</code>) for stack-managed notifications:
+            </p>
+            <ul>
+                <li><code>ConnectionDownWithUser</code> - Always added to stack when shown</li>
+                <li><code>PendingOperation</code> - Added to stack when shown, keyed by <code>UserOperationType</code></li>
+            </ul>
+
+            <div class="rule">
+                Stack behavior:
+                <ul>
+                    <li>When showing a new notification, if the current one is stack-managed, it's pushed to the stack first.</li>
+                    <li>When hiding a stack-managed notification, if it's currently visible, it's hidden and the last one from the stack is shown.</li>
+                    <li>If hiding is called while another notification is showing and the target notification is in the stack, it's simply removed from the stack.</li>
+                    <li>When adding to stack, if an entry with the same type and key exists, it's replaced (not duplicated).</li>
+                </ul>
+            </div>
+
+            <h3>Keyed Pending Operations</h3>
+            <ul>
+                <li><code>PendingOperation</code> entries include a <code>core::UserOperationType</code> key.</li>
+                <li>When removing, matching by both type and key ensures the correct pending notification is dismissed.</li>
+                <li>Multiple pending operations with different keys can coexist in the stack.</li>
             </ul>
         </section>
 
@@ -164,8 +267,46 @@
             </p>
             <ul>
                 <li>API: <code>showErrorNotification(message, autoHideMs)</code></li>
-                <li>Style: <code>BaseNotificationStyleType::RED</code></li>
-                <li>Animation: disabled</li>
+                <li>Type: <code>NotificationType::Error</code></li>
+                <li>Style: <code>NotificationStyleType::RED</code></li>
+                <li>Animation: disabled (<code>isWaitingAnimation = false</code>)</li>
+                <li>Overlay: not used (<code>isOverlay = false</code>)</li>
+                <li>Stack: not added (timer-managed)</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Implementation Details</h2>
+            <h3>Single Widget Architecture</h3>
+            <p>
+                The controller uses a single-instance approach:
+            </p>
+            <ul>
+                <li><code>m_overlay</code> - Single <code>OverlayWidget</code> instance, created once and reused</li>
+                <li><code>m_notification</code> - Single <code>Notification</code> instance, created once and content updated as needed</li>
+                <li><code>m_currentState</code> - Current notification state being displayed</li>
+                <li><code>m_notificationStack</code> - Stack of pending notification states</li>
+                <li><code>m_autoHideTimer</code> - Single timer for auto-hide functionality</li>
+            </ul>
+
+            <h3>Widget Reuse Strategy</h3>
+            <div class="rule">
+                The <code>Notification</code> widget is reused across all notifications:
+                <ul>
+                    <li>If it doesn't exist, it's created with the appropriate parent (overlay or main window).</li>
+                    <li>If the parent changed (overlay vs main window), it's recreated with the new parent.</li>
+                    <li>Otherwise, only the content is updated: text, style, and animation state.</li>
+                </ul>
+                This approach minimizes widget creation/destruction overhead and ensures smooth transitions.
+            </div>
+
+            <h3>Overlay Management</h3>
+            <p>
+                The <code>OverlayWidget</code> is shown only when <code>isOverlay = true</code>:
+            </p>
+            <ul>
+                <li><code>ConnectionDown</code> - Uses overlay (blocks interaction)</li>
+                <li>All other notifications - No overlay (non-blocking)</li>
             </ul>
         </section>
     </div>

@@ -36,8 +36,8 @@ bool UpdateManager::shouldRestart() {
 void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
 {
     if (result == updater::CheckResult::POSSIBLE_UPDATE) {
-        m_authorizationWidget->showUpdateAvailableNotification();
-        m_mainMenuWidget->showUpdateAvailableNotification();
+        m_authorizationWidget->showUpdateAvailableButton();
+        m_mainMenuWidget->showUpdateAvailableButton();
     }
     else if (result == updater::CheckResult::REQUIRED_UPDATE) {
         if (m_updaterClient) {

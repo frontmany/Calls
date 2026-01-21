@@ -59,8 +59,8 @@ public:
     void stopBlurAnimation();
     void waitForBlurAnimation();
     void resetBlur();
-    void showUpdateAvailableNotification();
-    void hideUpdateAvailableNotification();
+    void showUpdateAvailableButton();
+    void hideUpdateAvailableButton();
 
 private slots:
     void onAuthorizationClicked();
@@ -90,6 +90,7 @@ private:
     QLabel* m_notificationLabel;
 
     QPushButton* m_updateAvailableButton;
+    QLabel* m_updateAvailableConfettiLabel;
     QWidget* m_updateAvailableWidget;
     QHBoxLayout* m_updateAvailableLayout;
 

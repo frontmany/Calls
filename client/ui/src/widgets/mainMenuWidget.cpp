@@ -338,7 +338,7 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     // ������ ��� ����������� �� ����������
     m_updateNotificationTimer = new QTimer(this);
     m_updateNotificationTimer->setSingleShot(true);
-    connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableNotification);
+    connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableButton);
 }
 
 void MainMenuWidget::setupUI() {
@@ -357,11 +357,47 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->setSpacing(scale(20));
     m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
 
-    m_updateNotificationButton = new QPushButton(this);
-    m_updateNotificationButton->setMinimumSize(scale(295), scale(32));
+    m_updateNotificationContainer = new QWidget(this);
+    m_updateNotificationContainer->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_updateNotificationContainer->hide();
+    
+    m_updateNotificationLayout = new QHBoxLayout(m_updateNotificationContainer);
+    m_updateNotificationLayout->setContentsMargins(0, 0, 0, 0);
+    m_updateNotificationLayout->setSpacing(0);
+    m_updateNotificationLayout->setAlignment(Qt::AlignCenter);
+
+    // Create button with custom layout inside
+    QWidget* updateButtonWidget = new QWidget();
+    updateButtonWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    QHBoxLayout* updateButtonLayout = new QHBoxLayout(updateButtonWidget);
+    updateButtonLayout->setContentsMargins(scale(15), 0, scale(18), 0);
+    updateButtonLayout->setSpacing(scale(8));
+    updateButtonLayout->setAlignment(Qt::AlignVCenter);
+
+    QLabel* buttonTextLabel = new QLabel("New version available! Click to update", updateButtonWidget);
+    QFont updateFont("Outfit", scale(13), QFont::Medium);
+    buttonTextLabel->setFont(updateFont);
+    buttonTextLabel->setStyleSheet("color: #1577E8; background: transparent;");
+    buttonTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    buttonTextLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+    buttonTextLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+
+    m_updateNotificationConfettiLabel = new QLabel(updateButtonWidget);
+    m_updateNotificationConfettiLabel->setPixmap(QPixmap(":/resources/confetti.png"));
+    m_updateNotificationConfettiLabel->setScaledContents(true);
+    m_updateNotificationConfettiLabel->setFixedSize(scale(24), scale(24));
+    m_updateNotificationConfettiLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_updateNotificationConfettiLabel->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+    m_updateNotificationConfettiLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    updateButtonLayout->addWidget(buttonTextLabel, 0, Qt::AlignVCenter);
+    updateButtonLayout->addWidget(m_updateNotificationConfettiLabel, 0, Qt::AlignVCenter);
+
+    m_updateNotificationButton = new QPushButton(m_updateNotificationContainer);
+    m_updateNotificationButton->setMinimumSize(scale(360), scale(38));
     m_updateNotificationButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_updateNotificationButton->hide();
     m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
+    m_updateNotificationButton->setLayout(updateButtonLayout);
 
     m_updateNotificationButton->setStyleSheet(
         "QPushButton {"
@@ -369,7 +405,7 @@ void MainMenuWidget::setupUI() {
         "   color: #1577E8;"
         "   border: none;"
         "   border-radius: 12px;"
-        "   padding: 8px 18px 8px 15px;"
+        "   padding: 0px;"
         "   margin: 0px;"
         "}"
         "QPushButton:hover {"
@@ -382,10 +418,7 @@ void MainMenuWidget::setupUI() {
         "}"
     );
 
-    QFont updateFont("Outfit", scale(13), QFont::Medium);
-    m_updateNotificationButton->setFont(updateFont);
-    m_updateNotificationButton->setText("New version available! Click to update");
-    m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
+    m_updateNotificationLayout->addWidget(m_updateNotificationButton);
 
 
     // Title
@@ -535,7 +568,7 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
-    m_mainLayout->addWidget(m_updateNotificationButton, 0, Qt::AlignCenter);
+    m_mainLayout->addWidget(m_updateNotificationContainer, 0, Qt::AlignCenter);
     m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
@@ -550,7 +583,7 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::cameraButtonClicked, [this](bool activated) {emit activateCameraClicked(activated); });
-    connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableNotification(); });
+    connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableButton(); });
 
     QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
     QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
@@ -691,12 +724,12 @@ void MainMenuWidget::updateCallingState(bool calling) {
     }
 }
 
-void MainMenuWidget::showUpdateAvailableNotification() {
-    m_updateNotificationButton->show();
+void MainMenuWidget::showUpdateAvailableButton() {
+    m_updateNotificationContainer->show();
 }
 
-void MainMenuWidget::hideUpdateAvailableNotification() {
-    m_updateNotificationButton->hide();
+void MainMenuWidget::hideUpdateAvailableButton() {
+    m_updateNotificationContainer->hide();
 }
 
 void MainMenuWidget::onCallButtonClicked() {

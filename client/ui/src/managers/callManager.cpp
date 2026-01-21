@@ -596,7 +596,6 @@ void CallManager::hideOperationDialog()
     stopAllOperationTimers();
     if (m_notificationController) {
         m_notificationController->hideConnectionDownWithUser();
-        m_notificationController->hideConnectionRestoredWithUser();
     }
 }
 

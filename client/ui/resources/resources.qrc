@@ -51,5 +51,6 @@
 	 <file>settings.png</file>
 	 <file>settingsHover.png</file>
 	 <file>logo.png</file>
+	 <file>confetti.png</file>
     </qresource>
 </RCC>

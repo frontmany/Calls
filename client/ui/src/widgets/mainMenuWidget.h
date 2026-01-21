@@ -78,8 +78,8 @@ public:
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
-    void showUpdateAvailableNotification();
-    void hideUpdateAvailableNotification();
+    void showUpdateAvailableButton();
+    void hideUpdateAvailableButton();
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
@@ -144,6 +144,9 @@ private:
 
 
     QPushButton* m_updateNotificationButton;
+    QLabel* m_updateNotificationConfettiLabel;
+    QWidget* m_updateNotificationContainer;
+    QHBoxLayout* m_updateNotificationLayout;
     QTimer* m_updateNotificationTimer;
 
     // Animations

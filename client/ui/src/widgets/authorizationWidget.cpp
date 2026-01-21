@@ -158,7 +158,7 @@ QString StyleAuthorizationWidget::updateAvailableButtonStyle() {
         "   color: #1577E8;"
         "   border: none;"
         "   border-radius: %1px;"
-        "   padding: %2px %3px %2px %4px;"
+        "   padding: 0px;"
         "   margin: 0px;"
         "}"
         "QPushButton:hover {"
@@ -168,10 +168,7 @@ QString StyleAuthorizationWidget::updateAvailableButtonStyle() {
         "QPushButton:pressed {"
         "   background-color: rgba(21, 119, 232, 150);"
         "   color: #0A5FC8;"
-        "}").arg(QString::number(scale(12)))
-        .arg(QString::number(scale(8)))
-        .arg(QString::number(scale(18)))
-        .arg(QString::number(scale(15)));
+        "}").arg(QString::number(scale(12)));
 }
 
 QString StyleAuthorizationWidget::notificationRedTextStyle() {
@@ -238,12 +235,37 @@ void AuthorizationWidget::setupUI() {
     m_updateAvailableLayout->setAlignment(Qt::AlignCenter);
     m_updateAvailableLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
 
-    m_updateAvailableButton = new QPushButton(m_updateAvailableWidget);
-    m_updateAvailableButton->setMinimumSize(scale(295), scale(32));
-    m_updateAvailableButton->setCursor(Qt::PointingHandCursor);
+    // Create button with custom layout inside
+    QWidget* buttonWidget = new QWidget();
+    buttonWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
+    buttonLayout->setContentsMargins(scale(15), 0, scale(18), 0);
+    buttonLayout->setSpacing(scale(8));
+    buttonLayout->setAlignment(Qt::AlignVCenter);
+
+    QLabel* buttonTextLabel = new QLabel("Update available! Click to download", buttonWidget);
     QFont updateFont("Outfit", scale(12), QFont::Medium);
-    m_updateAvailableButton->setFont(updateFont);
-    m_updateAvailableButton->setText("Update available! Click to download");
+    buttonTextLabel->setFont(updateFont);
+    buttonTextLabel->setStyleSheet("color: #1577E8; background: transparent;");
+    buttonTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    buttonTextLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+    buttonTextLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+
+    m_updateAvailableConfettiLabel = new QLabel(buttonWidget);
+    m_updateAvailableConfettiLabel->setPixmap(QPixmap(":/resources/confetti.png"));
+    m_updateAvailableConfettiLabel->setScaledContents(true);
+    m_updateAvailableConfettiLabel->setFixedSize(scale(24), scale(24));
+    m_updateAvailableConfettiLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_updateAvailableConfettiLabel->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+    m_updateAvailableConfettiLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    buttonLayout->addWidget(buttonTextLabel, 0, Qt::AlignVCenter);
+    buttonLayout->addWidget(m_updateAvailableConfettiLabel, 0, Qt::AlignVCenter);
+
+    m_updateAvailableButton = new QPushButton(m_updateAvailableWidget);
+    m_updateAvailableButton->setMinimumSize(scale(328), scale(38));
+    m_updateAvailableButton->setCursor(Qt::PointingHandCursor);
+    m_updateAvailableButton->setLayout(buttonLayout);
     m_updateAvailableButton->setStyleSheet(StyleAuthorizationWidget::updateAvailableButtonStyle());
 
     m_updateAvailableLayout->addWidget(m_updateAvailableButton);
@@ -419,10 +441,10 @@ void AuthorizationWidget::clearErrorMessage() {
     m_errorLabel->hide();
 }
 
-void AuthorizationWidget::showUpdateAvailableNotification() {
+void AuthorizationWidget::showUpdateAvailableButton() {
     m_updateAvailableWidget->show();
 }
 
-void AuthorizationWidget::hideUpdateAvailableNotification() {
+void AuthorizationWidget::hideUpdateAvailableButton() {
     m_updateAvailableWidget->hide();
 }
