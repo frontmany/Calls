@@ -86,10 +86,18 @@ void UpdateManager::onUpdateLoaded(bool emptyUpdate)
     if (!emptyUpdate) {
         m_shouldRestart = true;
 
-        m_coreClient->logout();
         m_updaterClient->stop();
 
         m_dialogsController->setUpdateDialogStatus("Restarting...");
+
+        if (m_coreClient->isAuthorized()) {
+            m_coreClient->logout();
+        }
+        else {
+            QTimer::singleShot(600, [this]() {
+                launchUpdateApplier();
+            });
+        }
     }
     else {
         m_dialogsController->setUpdateDialogStatus("Already up to date");
@@ -138,6 +146,11 @@ void UpdateManager::launchUpdateApplier()
         QStringList arguments;
         arguments << QString::number(currentPid) << applicationPath << temporaryUpdateDirectoryPath << deletionListFileName << configFileName;
 
-        QProcess::startDetached(updateApplierPath, arguments, applicationDirectoryPath);
+        bool started = QProcess::startDetached(updateApplierPath, arguments, applicationDirectoryPath);
+        if (started) {
+            LOG_INFO("Successfully launched update applier: {}", updateApplierPath.toStdString());
+        } else {
+            LOG_ERROR("Failed to launch update applier: {}", updateApplierPath.toStdString());
+        }
     }
 }

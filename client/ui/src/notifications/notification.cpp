@@ -1,4 +1,4 @@
-#include "notifications/baseNotification.h"
+#include "notifications/notification.h"
 #include "utilities/utilities.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>

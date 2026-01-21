@@ -133,137 +133,238 @@ bool copyFiles(const QDir& source, const QDir& destination) {
 }
 
 bool deleteFilesListedInJson(const QString& removeJsonPath) {
-    LOG_INFO("Processing deletion list from: {}", removeJsonPath.toStdString());
-
-    QFile file(removeJsonPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        LOG_ERROR("Failed to open deletion list file: {}", removeJsonPath.toStdString());
-        return false;
-    }
-
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (doc.isNull() || !doc.isObject()) {
-        LOG_ERROR("Invalid JSON format in deletion list file: {}", removeJsonPath.toStdString());
-        return false;
-    }
-
-    QJsonObject jsonObject = doc.object();
-    if (!jsonObject.contains(JSON_KEY_FILE_PATHS) || !jsonObject[JSON_KEY_FILE_PATHS].isArray()) {
-        LOG_WARN("Deletion list file does not contain '{}' array: {}", JSON_KEY_FILE_PATHS, removeJsonPath.toStdString());
-        return false;
-    }
-
-    QJsonArray filesArray = jsonObject[JSON_KEY_FILE_PATHS].toArray();
-    bool allSuccess = true;
-    for (const auto& fileValue : filesArray) {
-        QString filePath = fileValue.toString();
-        QFile fileToRemove(filePath);
-        if (fileToRemove.exists()) {
-            if (fileToRemove.remove()) {
-                LOG_DEBUG("Deleted file: {}", filePath.toStdString());
-            } else {
-                LOG_ERROR("Failed to delete file: {}", filePath.toStdString());
-                allSuccess = false;
-            }
-        } else {
-            LOG_DEBUG("File does not exist (skipping): {}", filePath.toStdString());
+    try {
+        std::string pathStr = removeJsonPath.toStdString();
+        LOG_INFO("Processing deletion list from: {}", pathStr);
+        
+        QFile file(removeJsonPath);
+        if (!file.open(QIODevice::ReadOnly)) {
+            LOG_ERROR("Failed to open deletion list file: {}", pathStr);
+            return false;
         }
-    }
+        
+        QByteArray jsonData = file.readAll();
+        file.close();
 
-    return allSuccess;
-}
+        if (jsonData.isEmpty()) {
+            LOG_WARN("Deletion list file is empty: {}", pathStr);
+            return true; // Empty file is not an error, just nothing to delete
+        }
 
-bool objectsDiffer(const QJsonObject& obj1, const QJsonObject& obj2) {
-    QSet<QString> keys1 = QSet<QString>(obj1.keys().begin(), obj1.keys().end());
-    QSet<QString> keys2 = QSet<QString>(obj2.keys().begin(), obj2.keys().end());
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+        
+        if (doc.isNull()) {
+            LOG_ERROR("Invalid JSON format in deletion list file: {} (parse error: {})", 
+                pathStr, parseError.errorString().toStdString());
+            return false;
+        }
 
-    if (keys1 != keys2) {
-        return true;
-    }
+        QJsonArray filesArray;
+        
+        // Check if it's a direct array
+        if (doc.isArray()) {
+            filesArray = doc.array();
+        }
+        // Check if it's an object with a key
+        else if (doc.isObject()) {
+            QJsonObject jsonObject = doc.object();
+            
+            // Try "filePaths" key first (old format)
+            if (jsonObject.contains(JSON_KEY_FILE_PATHS) && jsonObject[JSON_KEY_FILE_PATHS].isArray()) {
+                filesArray = jsonObject[JSON_KEY_FILE_PATHS].toArray();
+            }
+            // Try "files" key (alternative format)
+            else if (jsonObject.contains("files") && jsonObject["files"].isArray()) {
+                filesArray = jsonObject["files"].toArray();
+            }
+            else {
+                LOG_WARN("Deletion list file does not contain expected array (tried '{}' or 'files' keys): {}", JSON_KEY_FILE_PATHS, pathStr);
+                return false;
+            }
+        }
+        else {
+            LOG_ERROR("Invalid JSON format in deletion list file (not array or object): {}", pathStr);
+            return false;
+        }
 
-    for (const QString& key : keys1) {
-        const QJsonValue& val1 = obj1.value(key);
-        const QJsonValue& val2 = obj2.value(key);
-
-        if (val1.type() != val2.type()) {
+        if (filesArray.isEmpty()) {
             return true;
         }
 
-        if (val1.isObject() && val2.isObject()) {
-            if (objectsDiffer(val1.toObject(), val2.toObject())) {
-                return true;
+        bool allSuccess = true;
+        for (const auto& fileValue : filesArray) {
+            if (!fileValue.isString()) {
+                LOG_WARN("Skipping non-string value in deletion list");
+                continue;
+            }
+            
+            QString filePath = fileValue.toString();
+            if (filePath.isEmpty()) {
+                LOG_WARN("Skipping empty file path in deletion list");
+                continue;
+            }
+
+            std::string filePathStr = filePath.toStdString();
+            QFile fileToRemove(filePath);
+            if (fileToRemove.exists()) {
+                if (fileToRemove.remove()) {
+                    LOG_DEBUG("Deleted file: {}", filePathStr);
+                } else {
+                    LOG_ERROR("Failed to delete file: {}", filePathStr);
+                    allSuccess = false;
+                }
             }
         }
-        else if (val1.isArray() && val2.isArray()) {
-            QJsonArray arr1 = val1.toArray();
-            QJsonArray arr2 = val2.toArray();
 
-            if (arr1.size() != arr2.size()) {
+        LOG_INFO("Finished processing deletion list, {} files processed", filesArray.size());
+        return allSuccess;
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Exception in deleteFilesListedInJson: {}", e.what());
+        return false;
+    }
+    catch (...) {
+        LOG_ERROR("Unknown exception in deleteFilesListedInJson");
+        return false;
+    }
+}
+
+bool objectsDiffer(const QJsonObject& obj1, const QJsonObject& obj2, int depth = 0) {
+    try {
+        // Limit recursion depth to prevent stack overflow
+        if (depth > 100) {
+            LOG_WARN("objectsDiffer recursion depth limit reached ({}), assuming objects differ", depth);
+            return true;
+        }
+        
+        QSet<QString> keys1;
+        QSet<QString> keys2;
+        
+        try {
+            QStringList keysList1 = obj1.keys();
+            QStringList keysList2 = obj2.keys();
+            
+            for (const QString& key : keysList1) {
+                keys1.insert(key);
+            }
+            
+            for (const QString& key : keysList2) {
+                keys2.insert(key);
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Exception while creating QSet from keys: {}", e.what());
+            return true;
+        }
+        catch (...) {
+            LOG_ERROR("Unknown exception while creating QSet from keys");
+            return true;
+        }
+
+        if (keys1 != keys2) {
+            return true;
+        }
+
+        for (const QString& key : keys1) {
+            const QJsonValue& val1 = obj1.value(key);
+            const QJsonValue& val2 = obj2.value(key);
+
+            if (val1.type() != val2.type()) {
                 return true;
             }
 
-            for (int i = 0; i < arr1.size(); ++i) {
-                if (arr1[i].isObject() && arr2[i].isObject()) {
-                    if (objectsDiffer(arr1[i].toObject(), arr2[i].toObject())) {
-                        return true;
-                    }
-                }
-                else if (arr1[i].isArray() && arr2[i].isArray()) {
-                    QJsonObject tempObj1, tempObj2;
-                    tempObj1["array"] = arr1[i];
-                    tempObj2["array"] = arr2[i];
-
-                    if (objectsDiffer(tempObj1, tempObj2)) {
-                        return true;
-                    }
-                }
-                else if (arr1[i] != arr2[i]) {
+            if (val1.isObject() && val2.isObject()) {
+                if (objectsDiffer(val1.toObject(), val2.toObject(), depth + 1)) {
                     return true;
                 }
             }
-        }
-        else if (val1 != val2) {
-            return true;
-        }
-    }
+            else if (val1.isArray() && val2.isArray()) {
+                QJsonArray arr1 = val1.toArray();
+                QJsonArray arr2 = val2.toArray();
 
-    return false;
+                if (arr1.size() != arr2.size()) {
+                    return true;
+                }
+
+                for (int i = 0; i < arr1.size(); ++i) {
+                    if (arr1[i].isObject() && arr2[i].isObject()) {
+                        if (objectsDiffer(arr1[i].toObject(), arr2[i].toObject(), depth + 1)) {
+                            return true;
+                        }
+                    }
+                    else if (arr1[i].isArray() && arr2[i].isArray()) {
+                        QJsonObject tempObj1, tempObj2;
+                        tempObj1["array"] = arr1[i];
+                        tempObj2["array"] = arr2[i];
+
+                        if (objectsDiffer(tempObj1, tempObj2, depth + 1)) {
+                            return true;
+                        }
+                    }
+                    else if (arr1[i] != arr2[i]) {
+                        return true;
+                    }
+                }
+            }
+            else if (val1 != val2) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Exception in objectsDiffer: {}", e.what());
+        return true; // Return true on error to be safe
+    }
+    catch (...) {
+        LOG_ERROR("Unknown exception in objectsDiffer");
+        return true; // Return true on error to be safe
+    }
 }
 
 bool configsDiffer(const QString& appConfigPath, const QString& newConfigPath) {
-    QFile appConfigFile(appConfigPath);
-    QFile newConfigFile(newConfigPath);
+    try {
+        QFile appConfigFile(appConfigPath);
+        QFile newConfigFile(newConfigPath);
 
-    if (!appConfigFile.open(QIODevice::ReadOnly) || !newConfigFile.open(QIODevice::ReadOnly)) {
-        LOG_WARN("Failed to open config files for comparison");
-        return true;
+        if (!appConfigFile.open(QIODevice::ReadOnly) || !newConfigFile.open(QIODevice::ReadOnly)) {
+            LOG_WARN("Failed to open config files for comparison");
+            return true;
+        }
+
+        QByteArray appConfigData = appConfigFile.readAll();
+        QByteArray newConfigData = newConfigFile.readAll();
+
+        appConfigFile.close();
+        newConfigFile.close();
+
+        QJsonDocument appDoc = QJsonDocument::fromJson(appConfigData);
+        QJsonDocument newDoc = QJsonDocument::fromJson(newConfigData);
+
+        if (appDoc.isNull() || !appDoc.isObject() || newDoc.isNull() || !newDoc.isObject()) {
+            LOG_WARN("Invalid JSON in config files");
+            return true;
+        }
+
+        QJsonObject appConfig = appDoc.object();
+        QJsonObject newConfig = newDoc.object();
+
+        if (appConfig.keys().size() != newConfig.keys().size()) {
+            return true;
+        }
+        
+        return objectsDiffer(appConfig, newConfig);
     }
-
-    QByteArray appConfigData = appConfigFile.readAll();
-    QByteArray newConfigData = newConfigFile.readAll();
-
-    appConfigFile.close();
-    newConfigFile.close();
-
-    QJsonDocument appDoc = QJsonDocument::fromJson(appConfigData);
-    QJsonDocument newDoc = QJsonDocument::fromJson(newConfigData);
-
-    if (appDoc.isNull() || !appDoc.isObject() || newDoc.isNull() || !newDoc.isObject()) {
-        LOG_WARN("Invalid JSON in config files");
-        return true;
+    catch (const std::exception& e) {
+        LOG_ERROR("Exception in configsDiffer: {}", e.what());
+        return true; // Return true on error to be safe
     }
-
-    QJsonObject appConfig = appDoc.object();
-    QJsonObject newConfig = newDoc.object();
-
-    if (appConfig.keys().size() != newConfig.keys().size()) {
-        return true;
+    catch (...) {
+        LOG_ERROR("Unknown exception in configsDiffer");
+        return true; // Return true on error to be safe
     }
-
-    return objectsDiffer(appConfig, newConfig);
 }
 
 QJsonObject mergeConfigs(const QString& applicationConfigFilePath, const QString& loadedConfigFilePath) {
@@ -366,7 +467,7 @@ QJsonObject mergeConfigs(const QString& applicationConfigFilePath, const QString
                     mergedCount++;
                     LOG_DEBUG("Merged value from key '{}' to new key '{}'", foundKey.toStdString(), newKey.toStdString());
                 } else {
-                    LOG_DEBUG("No value found for any of the keys in rule for '{}'", newKey.toStdString());
+                    LOG_WARN("No value found for any of the keys in rule for '{}'. Using default value from new config (if any).", newKey.toStdString());
                 }
             }
             LOG_INFO("Successfully merged {} values from old config", mergedCount);
@@ -430,6 +531,28 @@ bool removeConfigFromTemporaryDirectory(const QString& loadedConfigFilePath) {
         }
     }
     return true;
+}
+
+bool removeDeletionListFromTemporaryDirectory(const QString& deletionListFilePath) {
+    try {
+        if (QFile::exists(deletionListFilePath)) {
+            if (QFile::remove(deletionListFilePath)) {
+                return true;
+            } else {
+                LOG_ERROR("Failed to remove deletion list file from temporary directory: {}", deletionListFilePath.toStdString());
+                return false;
+            }
+        }
+        return true;
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Exception in removeDeletionListFromTemporaryDirectory: {}", e.what());
+        return false;
+    }
+    catch (...) {
+        LOG_ERROR("Unknown exception in removeDeletionListFromTemporaryDirectory");
+        return false;
+    }
 }
 
 bool launchApplication(const QString& appPath) {
@@ -547,13 +670,18 @@ int main(int argc, char* argv[]) {
             LOG_WARN("Failed to kill process {}, continuing anyway", pid);
         }
 
+        // Wait a bit for files to be released after process termination
+        QThread::msleep(100);
+
         // Delete files listed in JSON
         if (QFile::exists(removeJsonPath)) {
             if (!deleteFilesListedInJson(removeJsonPath)) {
                 LOG_WARN("Some files from deletion list could not be deleted");
             }
-        } else {
-            LOG_DEBUG("Deletion list file does not exist: {}", removeJsonPath.toStdString());
+            
+            if (!removeDeletionListFromTemporaryDirectory(removeJsonPath)) {
+                LOG_WARN("Failed to remove deletion list file from temporary directory");
+            }
         }
 
         // Merge configs if they differ

@@ -35,6 +35,7 @@ void UpdaterNetworkErrorHandler::onNetworkError()
 
     if (m_authorizationWidget) {
         m_authorizationWidget->hideUpdateAvailableButton();
+
     }
 
     if (m_mainMenuWidget) {
@@ -51,7 +52,7 @@ void UpdaterNetworkErrorHandler::onNetworkError()
             m_notificationController->showUpdateError(1500);
         }
     }
-}
+} 
 
 void UpdaterNetworkErrorHandler::onConnected()
 {
