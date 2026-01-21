@@ -2,6 +2,7 @@
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/dialogsController.h"
+#include "managers/notificationController.h"
 #include "managers/navigationController.h"
 #include "managers/configManager.h"
 #include "managers/callManager.h"
@@ -33,21 +34,17 @@ void CoreNetworkErrorHandler::setManagers(CallManager* callManager, ScreenSharin
     m_cameraSharingManager = cameraSharingManager;
 }
 
+void CoreNetworkErrorHandler::setNotificationController(NotificationController* notificationController)
+{
+    m_notificationController = notificationController;
+}
+
 
 
 void CoreNetworkErrorHandler::onConnectionRestored()
 {
-
-    if (m_dialogsController) {
-        m_dialogsController->showConnectionRestoredDialog();
-
-        QTimer::singleShot(1500, this, [this]()
-        {
-            if (m_dialogsController)
-            {
-                m_dialogsController->hideConnectionRestoredDialog();
-            }
-        });
+    if (m_notificationController) {
+        m_notificationController->showConnectionRestored(1500);
     }
 
     if (m_authorizationWidget) {
@@ -93,33 +90,25 @@ void CoreNetworkErrorHandler::onConnectionDown()
             }
         }
 
-        if (m_dialogsController) {
-            m_dialogsController->showConnectionDownDialog();
+        if (m_notificationController) {
+            m_notificationController->showConnectionDown();
         }
     }
     else {
         m_authorizationWidget->resetBlur();
         m_authorizationWidget->setAuthorizationDisabled(true);
 
-        if (m_dialogsController)
+        if (m_notificationController)
         {
-            m_dialogsController->showConnectionDownDialog();
+            m_notificationController->showConnectionDown();
         }
     }
 }
 
 void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
 {
-    if (m_dialogsController) {
-        m_dialogsController->showConnectionRestoredDialog();
-
-        QTimer::singleShot(1500, this, [this]()
-        {
-            if (m_dialogsController)
-            {
-                m_dialogsController->hideConnectionRestoredDialog();
-            }
-        });
+    if (m_notificationController) {
+        m_notificationController->showConnectionRestored(1500);
     }
 
     if (m_authorizationWidget && m_navigationController) {

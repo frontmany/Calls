@@ -74,7 +74,6 @@ public:
     void setStatusLabelBusy();
     void setStatusLabelOffline();
     void showCallingPanel(const QString& friendNickname);
-    void showErrorNotification(const QString& text, int durationMs);
     void removeCallingPanel();
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
@@ -143,11 +142,6 @@ private:
     QPushButton* m_settingsButton;
     SettingsPanel* m_settingsPanel;
 
-
-    QWidget* m_notificationWidget;
-    QHBoxLayout* m_notificationLayout;
-    QLabel* m_notificationLabel;
-    QTimer* m_notificationTimer;
 
     QPushButton* m_updateNotificationButton;
     QTimer* m_updateNotificationTimer;

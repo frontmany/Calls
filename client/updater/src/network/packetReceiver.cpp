@@ -1,5 +1,4 @@
 #include "network/packetReceiver.h"
-#include <atomic>
 
 namespace updater
 {
@@ -7,45 +6,24 @@ namespace updater
 	{
 		PacketReceiver::PacketReceiver(asio::ip::tcp::socket& socket,
 			std::function<void(Packet&&)>&& onPacketReceived,
-			std::function<void()>&& onError)
+			std::function<void()>&& onError,
+			std::function<bool(uint32_t packetType)>&& shouldContinueReceive)
 			: m_socket(socket),
 			m_onPacketReceived(std::move(onPacketReceived)),
-			m_onError(std::move(onError))
+			m_onError(std::move(onError)),
+			m_shouldContinueReceive(std::move(shouldContinueReceive))
 		{
 		}
 
 		void PacketReceiver::startReceiving()
 		{
-			m_isReceiving = true;
-			m_isPaused = false;
 			readHeader();
-		}
-
-		void PacketReceiver::pause()
-		{
-			m_isPaused = true;
-		}
-
-		void PacketReceiver::resume()
-		{
-			if (m_isPaused && m_isReceiving) {
-				m_isPaused = false;
-				readHeader();
-			}
 		}
 
 		void PacketReceiver::readHeader()
 		{
-			if (m_isPaused) {
-				return;
-			}
-
 			asio::async_read(m_socket, asio::buffer(&m_temporaryPacket.header_mut(), Packet::sizeOfHeader()),
 				[this](std::error_code ec, std::size_t length) {
-					if (m_isPaused) {
-						return;
-					}
-
 					if (ec) {
 						if (ec != asio::error::operation_aborted) {
 							m_onError();
@@ -57,9 +35,11 @@ namespace updater
 							readBody();
 						}
 						else {
+							uint32_t packetType = m_temporaryPacket.type();
 							m_onPacketReceived(std::move(m_temporaryPacket));
-
-							if (!m_isPaused) {
+							bool shouldContinueReceive = m_shouldContinueReceive(packetType);
+							
+							if (shouldContinueReceive) {
 								readHeader();
 							}
 						}
@@ -71,19 +51,17 @@ namespace updater
 		{
 			asio::async_read(m_socket, asio::buffer(m_temporaryPacket.body_mut().data(), m_temporaryPacket.body().size()),
 				[this](std::error_code ec, std::size_t length) {
-					if (m_isPaused) {
-						return;
-					}
-
 					if (ec) {
 						if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
 							m_onError();
 						}
 					}
 					else {
+						uint32_t packetType = m_temporaryPacket.type();
 						m_onPacketReceived(std::move(m_temporaryPacket));
-
-						if (!m_isPaused) {
+						bool shouldContinueReceive = m_shouldContinueReceive(packetType);
+						
+						if (shouldContinueReceive) {
 							readHeader();
 						}
 					}

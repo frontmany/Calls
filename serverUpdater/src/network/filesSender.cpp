@@ -40,6 +40,7 @@ void FilesSender::sendFileChunk() {
 		}
 	}
 	
+	m_buffer.fill(0);
 	m_fileStream.read(m_buffer.data(), c_chunkSize);
 	std::streamsize bytesRead = m_fileStream.gcount();
 
@@ -47,7 +48,7 @@ void FilesSender::sendFileChunk() {
 		asio::async_write(
 			m_socket,
 			asio::buffer(m_buffer.data(), c_chunkSize),
-			[this](std::error_code ec, std::size_t) {
+			[this](std::error_code ec, std::size_t bytesSent) {
 				if (ec) 
 				{
 					LOG_ERROR("Error sending file chunk: {}", ec.message());

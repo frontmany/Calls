@@ -1,6 +1,7 @@
 #include "screenSharingManager.h"
 #include "media/screenCaptureController.h"
 #include "managers/dialogsController.h"
+#include "managers/notificationController.h"
 #include "widgets/callWidget.h"
 #include "media/cameraCaptureController.h"
 #include <QApplication>
@@ -18,6 +19,11 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
 void ScreenSharingManager::setWidgets(CallWidget* callWidget)
 {
     m_callWidget = callWidget;
+}
+
+void ScreenSharingManager::setNotificationController(NotificationController* notificationController)
+{
+    m_notificationController = notificationController;
 }
 
 void ScreenSharingManager::stopLocalScreenCapture()
@@ -271,19 +277,19 @@ void ScreenSharingManager::stopOperationTimer(core::UserOperationType operationK
 
     m_pendingOperationTexts.remove(operationKey);
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->hidePendingOperationDialog(operationKey);
+        m_notificationController->hidePendingOperation(operationKey);
     }
 }
 
 void ScreenSharingManager::stopAllOperationTimers()
 {
-    if (m_dialogsController)
+    if (m_notificationController)
     {
         for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
         {
-            m_dialogsController->hidePendingOperationDialog(it.key());
+            m_notificationController->hidePendingOperation(it.key());
         }
     }
 
@@ -311,9 +317,9 @@ void ScreenSharingManager::onOperationTimerTimeout(core::UserOperationType opera
         return;
     }
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->showPendingOperationDialog(dialogText, operationKey);
+        m_notificationController->showPendingOperation(dialogText, operationKey);
     }
 }
 

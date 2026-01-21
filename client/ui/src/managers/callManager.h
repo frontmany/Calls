@@ -17,6 +17,7 @@ class NavigationController;
 class ScreenCaptureController;
 class CameraCaptureController;
 class DialogsController;
+class NotificationController;
 
 class CallManager : public QObject {
     Q_OBJECT
@@ -32,6 +33,7 @@ public:
     explicit CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, QObject* parent = nullptr);
     
     void setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout);
+    void setNotificationController(NotificationController* notificationController);
     void hideOperationDialog();
 
 public slots:
@@ -82,6 +84,7 @@ private:
     ScreenCaptureController* m_screenCaptureController = nullptr;
     CameraCaptureController* m_cameraCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
+    NotificationController* m_notificationController = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;

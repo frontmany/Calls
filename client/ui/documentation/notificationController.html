@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>NotificationController Logic and Behavior</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #1f2a37;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --border: #e5e7eb;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 32px;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.6 "Segoe UI", Tahoma, Arial, sans-serif;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { margin-bottom: 24px; }
+        h1 { font-size: 26px; margin: 0 0 6px 0; }
+        .subtitle { color: var(--muted); margin: 0; }
+        .section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        h2 { font-size: 18px; margin: 0 0 10px 0; }
+        h3 { font-size: 16px; margin: 14px 0 6px 0; }
+        ul { margin: 8px 0 0 18px; padding: 0; }
+        li { margin: 4px 0; }
+        .rule { border-left: 3px solid var(--accent); padding-left: 10px; margin: 6px 0; }
+        .note { color: var(--muted); }
+        .tag {
+            display: inline-block;
+            font-size: 12px;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 999px;
+            padding: 1px 8px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        code {
+            font-family: Consolas, "Courier New", monospace;
+            background: #f3f4f6;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .sequence {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .sequence ol { margin: 0; padding-left: 20px; }
+        .sequence li { margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NotificationController Logic and Behavior</h1>
+            <p class="subtitle">Centralized notification rendering, stacking, and auto-hide behavior.</p>
+        </header>
+
+        <section class="section">
+            <h2>Overview</h2>
+            <p>
+                <code>NotificationController</code> is responsible for displaying lightweight UI notifications
+                (not dialogs) such as connection state banners, pending operation status, updater errors,
+                and generic red error messages.
+            </p>
+            <p class="note">
+                Notifications are UI-only widgets derived from <code>BaseNotification</code>.
+                They do not contain user interaction logic (buttons/flows) and are managed as overlays.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Ownership and Wiring</h2>
+            <ul>
+                <li><code>MainWindow</code> owns a single <code>NotificationController</code> instance.</li>
+                <li>Managers that need notifications receive it via a setter (similar to how they receive <code>DialogsController</code>).</li>
+            </ul>
+            <div class="rule">
+                The controller should be created once and reused; it coordinates all notification overlays in the UI.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Notification Types</h2>
+            <h3>Non-stacked (simple show/hide)</h3>
+            <ul>
+                <li><code>ConnectionDownNotification</code></li>
+                <li><code>ConnectionRestoredNotification</code></li>
+                <li><code>ConnectionRestoredWithUserNotification</code></li>
+                <li><code>UpdateErrorNotification</code></li>
+                <li><code>ErrorNotification</code> (generic red message)</li>
+            </ul>
+
+            <h3>Stack-managed</h3>
+            <ul>
+                <li><code>PendingOperationNotification</code> <span class="tag">keyed</span></li>
+                <li><code>ConnectionDownWithUserNotification</code></li>
+            </ul>
+            <p class="note">
+                The stack allows multiple pending states to be queued, and the most recent one is displayed
+                when no higher-priority notification is currently visible.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Execution Sequence</h2>
+            <div class="sequence">
+                <ol>
+                    <li>Caller requests a notification via a <code>show*</code> method.</li>
+                    <li>Controller optionally hides currently active managed notification (stack case) to avoid overlaps.</li>
+                    <li>Controller creates or updates a <code>BaseNotification</code>-derived widget inside an <code>OverlayWidget</code>.</li>
+                    <li>If <code>autoHideMs &gt; 0</code>, schedules auto-hide using a single-shot timer.</li>
+                    <li>On hide, controller restores the last stacked notification (if any).</li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Auto-hide Behavior</h2>
+            <p>
+                Many notifications are transient and auto-hide. The controller accepts an <code>autoHideMs</code>
+                parameter in the relevant <code>show*</code> methods to schedule hiding.
+            </p>
+            <div class="rule">
+                Auto-hide must not reuse deleted widgets. The controller should treat auto-hidden notifications as disposable
+                and recreate them when shown again.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Managed Notification Stack</h2>
+            <p>
+                The controller keeps a list of <code>ManagedNotificationState</code> entries, used as a stack.
+                Only the last entry is shown when it is time to restore a previously queued managed notification.
+            </p>
+            <h3>Keyed pending operations</h3>
+            <ul>
+                <li><code>PendingOperation</code> entries may include a <code>core::UserOperationType</code> key.</li>
+                <li>When removing, matching by key ensures the correct pending notification is dismissed.</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>Generic Error Notification</h2>
+            <p>
+                <code>ErrorNotification</code> provides a generic red notification with a custom <code>message</code>.
+                It uses the same red style as <code>UpdateErrorNotification</code>.
+            </p>
+            <ul>
+                <li>API: <code>showErrorNotification(message, autoHideMs)</code></li>
+                <li>Style: <code>BaseNotificationStyleType::RED</code></li>
+                <li>Animation: disabled</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>

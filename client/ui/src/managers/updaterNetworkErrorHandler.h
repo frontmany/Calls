@@ -7,6 +7,7 @@
 
 class AuthorizationWidget;
 class DialogsController;
+class NotificationController;
 class NavigationController;
 class UpdateManager;
 class ConfigManager;
@@ -19,6 +20,7 @@ public:
     explicit UpdaterNetworkErrorHandler(std::shared_ptr<updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
+    void setNotificationController(NotificationController* notificationController);
 
 public slots:
     void onNetworkError();
@@ -32,4 +34,5 @@ private:
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
+    NotificationController* m_notificationController = nullptr;
 };

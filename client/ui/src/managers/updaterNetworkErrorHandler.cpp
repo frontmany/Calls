@@ -2,9 +2,11 @@
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/dialogsController.h"
+#include "managers/notificationController.h"
 #include "managers/navigationController.h"
 #include "managers/updateManager.h"
 #include "managers/configManager.h"
+#include <QTimer>
 
 UpdaterNetworkErrorHandler::UpdaterNetworkErrorHandler(std::shared_ptr<updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent)
     : QObject(parent)
@@ -22,11 +24,16 @@ void UpdaterNetworkErrorHandler::setWidgets(AuthorizationWidget* authWidget, Mai
     m_dialogsController = dialogsController;
 }
 
+void UpdaterNetworkErrorHandler::setNotificationController(NotificationController* notificationController)
+{
+    m_notificationController = notificationController;
+}
+
 void UpdaterNetworkErrorHandler::onNetworkError()
 {
     LOG_ERROR("Updater network error occurred");
 
-    if (!m_updaterClient || !m_updaterClient->isLoadingUpdate()) {
+    if (!m_updaterClient->isLoadingUpdate()) {
         return; // Do nothing if not loading an update
     }
 
@@ -40,7 +47,9 @@ void UpdaterNetworkErrorHandler::onNetworkError()
 
     if (m_dialogsController) {
         m_dialogsController->hideUpdatingDialog();
-        m_dialogsController->showUpdateErrorDialog();
+        if (m_notificationController) {
+            m_notificationController->showUpdateError(1500);
+        }
     }
 }
 

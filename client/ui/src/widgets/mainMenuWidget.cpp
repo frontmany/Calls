@@ -334,9 +334,6 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
 
-    m_notificationTimer = new QTimer(this);
-    m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
 
     // ������ ��� ����������� �� ����������
     m_updateNotificationTimer = new QTimer(this);
@@ -359,24 +356,6 @@ void MainMenuWidget::setupUI() {
     m_containerLayout = new QVBoxLayout(m_mainContainer);
     m_containerLayout->setSpacing(scale(20));
     m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-
-    // Create network error widget
-    m_notificationWidget = new QWidget(this);
-    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_notificationWidget->hide();
-    m_notificationWidget->setStyleSheet(StyleMainMenuWidget::notificationRedLabelStyle());
-
-
-    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
-    m_notificationLayout->setAlignment(Qt::AlignCenter);
-    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
-
-    m_notificationLabel = new QLabel(m_notificationWidget);
-    QFont errorFont("Outfit", scale(12), QFont::Medium);
-    m_notificationLabel->setFont(errorFont);
-    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-
-    m_notificationLayout->addWidget(m_notificationLabel);
 
     m_updateNotificationButton = new QPushButton(this);
     m_updateNotificationButton->setMinimumSize(scale(295), scale(32));
@@ -558,8 +537,6 @@ void MainMenuWidget::setupUI() {
 
     m_mainLayout->addWidget(m_updateNotificationButton, 0, Qt::AlignCenter);
     m_mainLayout->addSpacing(scale(20));
-    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignCenter);
-    m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
@@ -720,12 +697,6 @@ void MainMenuWidget::showUpdateAvailableNotification() {
 
 void MainMenuWidget::hideUpdateAvailableNotification() {
     m_updateNotificationButton->hide();
-}
-
-void MainMenuWidget::showErrorNotification(const QString& text, int durationMs) {
-    m_notificationLabel->setText(text);
-    m_notificationWidget->show();
-    m_notificationTimer->start(durationMs);
 }
 
 void MainMenuWidget::onCallButtonClicked() {

@@ -15,6 +15,7 @@ class ScreenCaptureController;
 class DialogsController;
 class CallWidget;
 class CameraCaptureController;
+class NotificationController;
 
 class ScreenSharingManager : public QObject {
     Q_OBJECT
@@ -23,6 +24,7 @@ public:
     explicit ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent = nullptr);
     
     void setWidgets(CallWidget* callWidget);
+    void setNotificationController(NotificationController* notificationController);
 
     void stopLocalScreenCapture();
     void hideOperationDialog();
@@ -53,6 +55,7 @@ private:
     std::shared_ptr<core::Client> m_coreClient = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
+    NotificationController* m_notificationController = nullptr;
     CallWidget* m_callWidget = nullptr;
     CameraCaptureController* m_cameraCaptureController = nullptr;
     QMap<core::UserOperationType, QTimer*> m_operationTimers;

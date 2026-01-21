@@ -208,14 +208,6 @@ AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent)
 {
     setupUI();
     setupAnimations();
-
-    m_notificationTimer = new QTimer(this);
-    m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
-
-    m_updatesNotificationTimer = new QTimer(this);
-    m_updatesNotificationTimer->setSingleShot(true);
-    connect(m_updatesNotificationTimer, &QTimer::timeout, this, &AuthorizationWidget::hideUpdatesCheckingNotification);
 }
 
 void AuthorizationWidget::setupUI() {
@@ -427,63 +419,10 @@ void AuthorizationWidget::clearErrorMessage() {
     m_errorLabel->hide();
 }
 
-void AuthorizationWidget::showNetworkErrorNotification() {
-    if (m_updateAvailableWidget->isVisible()) {
-        return;
-    }
-
-    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationRedLabelStyle());
-
-    m_notificationLabel->setText("Network error occurred, reconnecting...");
-    m_notificationLabel->setStyleSheet(StyleAuthorizationWidget::notificationRedTextStyle());
-
-    m_notificationWidget->show();
-}
-
-void AuthorizationWidget::hideNetworkErrorNotification() {
-    m_notificationLabel->setText("");
-    m_notificationWidget->hide();
-}
-
-void AuthorizationWidget::showUpdatesCheckingNotification()
-{
-    if (m_updateAvailableWidget->isVisible()) {
-        return;
-    }
-
-    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationLilacLabelStyle());
-
-    m_notificationLabel->setText("Checking for updates...");
-    m_notificationLabel->setStyleSheet(StyleAuthorizationWidget::notificationLilacTextStyle());
-    m_notificationWidget->show();
-}
-
-void AuthorizationWidget::hideUpdatesCheckingNotification()
-{
-    m_notificationLabel->setText("");
-    m_notificationWidget->hide();
-}
-
 void AuthorizationWidget::showUpdateAvailableNotification() {
-    hideNetworkErrorNotification();
-    hideUpdatesCheckingNotification();
-
     m_updateAvailableWidget->show();
 }
 
 void AuthorizationWidget::hideUpdateAvailableNotification() {
     m_updateAvailableWidget->hide();
-}
-
-void AuthorizationWidget::showConnectionRestoredNotification(int durationMs) {
-    if (m_updateAvailableWidget->isVisible()) {
-        return;
-    }
-
-    m_notificationWidget->setStyleSheet(StyleAuthorizationWidget::notificationGreenLabelStyle());
-    m_notificationLabel->setStyleSheet(StyleAuthorizationWidget::notificationGreenTextStyle());
-    m_notificationLabel->setText("Connection restored");
-
-    m_notificationWidget->show();
-    m_notificationTimer->start(durationMs);
 }

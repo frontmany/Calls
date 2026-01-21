@@ -223,9 +223,6 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
     m_overlayButtonHideTimer->setInterval(3000);
     connect(m_overlayButtonHideTimer, &QTimer::timeout, this, &CallWidget::onExitFullscreenHideTimerTimeout);
 
-    m_notificationTimer = new QTimer(this);
-    m_notificationTimer->setSingleShot(true);
-    connect(m_notificationTimer, &QTimer::timeout, [this]() { m_notificationWidget->hide(); });
 
     setupUI();
     setupShadowEffect();
@@ -398,21 +395,6 @@ void CallWidget::setupUI() {
     m_settingsButton->setCursor(Qt::PointingHandCursor);
     m_settingsButton->hide();
 
-    m_notificationWidget = new QWidget(this);
-    m_notificationWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_notificationWidget->hide();
-    m_notificationWidget->setStyleSheet(StyleCallWidget::notificationRedLabelStyle());
-
-    m_notificationLayout = new QHBoxLayout(m_notificationWidget);
-    m_notificationLayout->setAlignment(Qt::AlignCenter);
-    m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
-
-    m_notificationLabel = new QLabel(m_notificationWidget);
-    QFont errorFont("Outfit", scale(12), QFont::Medium);
-    m_notificationLabel->setFont(errorFont);
-    m_notificationLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 14px; margin: 0px; padding: 0px;");
-    m_notificationLayout->addWidget(m_notificationLabel);
-
     m_topMainLayoutSpacer = new QSpacerItem(0, scale(0), QSizePolicy::Minimum, QSizePolicy::Fixed);
     m_middleMainLayoutSpacer = new QSpacerItem(0, scale(15), QSizePolicy::Minimum, QSizePolicy::Fixed);
 
@@ -422,7 +404,6 @@ void CallWidget::setupUI() {
     m_mainLayout->setAlignment(Qt::AlignCenter);
 
     m_mainLayout->addSpacerItem(m_topMainLayoutSpacer);
-    m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_timerLabel);
     m_mainLayout->addWidget(m_additionalScreensContainer);
     m_mainLayout->addWidget(m_mainScreen);
@@ -944,15 +925,6 @@ void CallWidget::setHangupButtonRestricted(bool restricted)
     }
 }
 
-
-void CallWidget::showErrorNotification(const QString& text, int durationMs)
-{
-    if (!m_notificationWidget || !m_notificationLabel) return;
-
-    m_notificationLabel->setText(text);
-    m_notificationWidget->show();
-    m_notificationTimer->start(durationMs);
-}
 
 void CallWidget::showEnterFullscreenButton() {
     m_enterFullscreenButton->show();

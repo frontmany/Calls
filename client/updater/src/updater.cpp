@@ -31,6 +31,7 @@ namespace updater
 					if (m_eventListener) {
 						m_eventListener->onNetworkError();
 					}
+					
 					m_reconnectCondition.notify_one();
 				}
 			},
@@ -110,6 +111,7 @@ namespace updater
 			}
 			else {
 				m_reconnectCondition.wait(lock);
+				std::this_thread::sleep_for(std::chrono::seconds(2));
 			}
 		}
 	}

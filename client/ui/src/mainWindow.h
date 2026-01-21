@@ -14,6 +14,7 @@ class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
 class DialogsController;
+class NotificationController;
 class ScreenCaptureController;
 class CameraCaptureController; 
 class ConfigManager;
@@ -60,6 +61,7 @@ private:
     void initializeScreenSharingManager();
     void initializeCameraSharingManager();
     void initializeDialogsController();
+    void initializeNotificationController();
     void initializeNavigationController();
     void initializeScreenCaptureController();
     void initializeCameraCaptureController();
@@ -86,6 +88,7 @@ private:
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
+    NotificationController* m_notificationController = nullptr;
     ScreenCaptureController* m_screenCaptureController = nullptr;
     CameraCaptureController* m_CameraCaptureController = nullptr;
     ConfigManager* m_configManager = nullptr;

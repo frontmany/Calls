@@ -23,7 +23,7 @@ namespace updater
 		class FileReceiver
 		{
 		public:
-			static constexpr int c_chunkSize = 8192;
+			static constexpr uint32_t c_chunkSize = 8192;
 
 			FileReceiver(asio::ip::tcp::socket& socket,
 				std::function<void(double)>&& onProgress,

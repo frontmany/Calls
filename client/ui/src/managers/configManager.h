@@ -69,6 +69,7 @@ private:
     std::unordered_set<std::string> getIgnoredFilesWhileCollectingForUpdateFromConfig();
     std::unordered_set<std::string> getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
     updater::OperationSystemType getOperationSystemTypeFromConfig();
+    QString validateAppDirectoryPath(const QString& path);
 
 private:
     const QString m_configPath;

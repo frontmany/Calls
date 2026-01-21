@@ -130,13 +130,9 @@ namespace updater
 			if (m_updateSession->isEmpty()) {
 				m_onAllFilesLoaded(true);
 				if (m_packetReceiver) {
-					m_packetReceiver->resume();
+					m_packetReceiver->startReceiving();
 				}
 				return;
-			}
-
-			if (m_packetReceiver) {
-				m_packetReceiver->pause();
 			}
 
 			if (m_fileReceiver) {
@@ -165,7 +161,7 @@ namespace updater
 				m_onAllFilesLoaded(false);
 
 				if (m_packetReceiver) {
-					m_packetReceiver->resume();
+					m_packetReceiver->startReceiving();
 				}
 			}
 			else {
@@ -177,13 +173,6 @@ namespace updater
 
 		void NetworkController::reset(bool stopContext)
 		{
-			m_connectionResolver.reset();
-			m_packetReceiver.reset();
-			m_packetSender.reset();
-			m_fileReceiver.reset();
-
-			m_workGuard.reset();
-
 			if (stopContext) {
 				m_context.stop();
 				if (m_asioThread.joinable()) {
@@ -226,6 +215,9 @@ namespace updater
 				},
 				[this]() {
 					m_onNetworkError();
+				},
+				[this](uint32_t packetType) {
+					return static_cast<PacketType>(packetType) != PacketType::UPDATE_METADATA;
 				});
 
 			if (!m_packetQueueThread.joinable()) {

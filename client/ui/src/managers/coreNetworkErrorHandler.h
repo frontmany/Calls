@@ -8,6 +8,7 @@
 
 class AuthorizationWidget;
 class DialogsController;
+class NotificationController;
 class NavigationController;
 class ConfigManager;
 class MainMenuWidget;
@@ -24,6 +25,7 @@ public:
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
     void setManagers(CallManager* callManager, ScreenSharingManager* screenSharingManager, CameraSharingManager* cameraSharingManager);
+    void setNotificationController(NotificationController* notificationController);
 
 public slots:
     void onConnectionDown();
@@ -37,6 +39,7 @@ private:
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
+    NotificationController* m_notificationController = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     CallManager* m_callManager = nullptr;
     ScreenSharingManager* m_screenSharingManager = nullptr;

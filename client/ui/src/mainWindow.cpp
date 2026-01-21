@@ -10,6 +10,7 @@
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
 #include "managers/dialogsController.h"
+#include "managers/notificationController.h"
 #include "media/screenCaptureController.h"
 #include "media/cameraCaptureController.h"
 #include "managers/configManager.h"
@@ -59,6 +60,7 @@ void MainWindow::init() {
     initializeScreenCaptureController();
     initializeCameraCaptureController();
     initializeDialogsController();
+    initializeNotificationController();
     initializeAudioManager();
     initializeAudioDevicesWatcher();
     initializeAudioSettingsManager();
@@ -185,6 +187,10 @@ void MainWindow::initializeDialogsController() {
     connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
 }
 
+void MainWindow::initializeNotificationController() {
+    m_notificationController = new NotificationController(this);
+}
+
 void MainWindow::initializeNavigationController() {
     m_navigationController = new NavigationController(m_coreClient, this);
     if (m_stackedLayout && m_authorizationWidget && m_mainMenuWidget && m_callWidget) {
@@ -223,6 +229,9 @@ void MainWindow::initializeCallManager() {
     if (m_mainMenuWidget && m_callWidget && m_stackedLayout) {
         m_callManager->setWidgets(m_mainMenuWidget, m_callWidget, m_stackedLayout);
     }
+    if (m_callManager && m_notificationController) {
+        m_callManager->setNotificationController(m_notificationController);
+    }
 }
 
 void MainWindow::initializeScreenSharingManager() {
@@ -230,12 +239,18 @@ void MainWindow::initializeScreenSharingManager() {
     if (m_callWidget) {
         m_screenSharingManager->setWidgets(m_callWidget);
     }
+    if (m_screenSharingManager && m_notificationController) {
+        m_screenSharingManager->setNotificationController(m_notificationController);
+    }
 }
 
 void MainWindow::initializeCameraSharingManager() {
     m_cameraSharingManager = new CameraSharingManager(m_coreClient, m_configManager, m_CameraCaptureController, m_dialogsController, this);
     if (m_callWidget && m_mainMenuWidget) {
         m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget);
+    }
+    if (m_cameraSharingManager && m_notificationController) {
+        m_cameraSharingManager->setNotificationController(m_notificationController);
     }
 }
 
@@ -247,12 +262,18 @@ void MainWindow::initializeCoreNetworkErrorHandler() {
     if (m_callManager && m_screenSharingManager && m_cameraSharingManager) {
         m_coreNetworkErrorHandler->setManagers(m_callManager, m_screenSharingManager, m_cameraSharingManager);
     }
+    if (m_coreNetworkErrorHandler && m_notificationController) {
+        m_coreNetworkErrorHandler->setNotificationController(m_notificationController);
+    }
 }
 
 void MainWindow::initializeUpdaterNetworkErrorHandler() {
     m_updaterNetworkErrorHandler = new UpdaterNetworkErrorHandler(m_updaterClient, m_navigationController, m_updateManager, m_configManager, this);
     if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
         m_updaterNetworkErrorHandler->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
+    }
+    if (m_updaterNetworkErrorHandler && m_notificationController) {
+        m_updaterNetworkErrorHandler->setNotificationController(m_notificationController);
     }
 }
 
@@ -571,17 +592,34 @@ void MainWindow::onStopAllRingtonesRequested()
 QString MainWindow::getConfigFilePath() const
 {
     updater::OperationSystemType operationSystemType = resolveOperationSystemType();
+    QString applicationDirPath = QCoreApplication::applicationDirPath();
+    
+    QStringList configPaths;
     
     if (operationSystemType == updater::OperationSystemType::WINDOWS) {
-        return "C:/prj/Callifornia/out/build/x64-Debug/client/ui/config.json";
+        configPaths << "C:/Users/Public/Callifornia/config.json"
+                    << "C:/Callifornia/config.json"
+                    << QDir(applicationDirPath).filePath("config.json");
     }
     else if (operationSystemType == updater::OperationSystemType::LINUX) {
-        return "/opt/Callifornia/config.json";
+        configPaths << "/opt/Callifornia/config.json"
+                    << QDir::homePath() + "/.config/Callifornia/config.json"
+                    << QDir(applicationDirPath).filePath("config.json");
     }
     else if (operationSystemType == updater::OperationSystemType::MAC) {
-        return "/Applications/Callifornia/config.json";
+        configPaths << "/Applications/Callifornia/config.json"
+                    << QDir::homePath() + "/Library/Application Support/Callifornia/config.json"
+                    << QDir(applicationDirPath).filePath("config.json");
     }
     else {
-        return "";
+        configPaths << QDir(applicationDirPath).filePath("config.json");
     }
+    
+    for (const QString& path : configPaths) {
+        if (QFile::exists(path)) {
+            return path;
+        }
+    }
+    
+    return QDir(applicationDirPath).filePath("config.json");
 }

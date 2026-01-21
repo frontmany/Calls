@@ -59,13 +59,8 @@ public:
     void stopBlurAnimation();
     void waitForBlurAnimation();
     void resetBlur();
-    void showNetworkErrorNotification();
-    void hideNetworkErrorNotification();
-    void showUpdatesCheckingNotification();
-    void hideUpdatesCheckingNotification();
     void showUpdateAvailableNotification();
     void hideUpdateAvailableNotification();
-    void showConnectionRestoredNotification(int durationMs);
 
 private slots:
     void onAuthorizationClicked();
@@ -100,7 +95,4 @@ private:
 
     QGraphicsBlurEffect* m_backgroundBlurEffect;
     QPropertyAnimation* m_blurAnimation;
-    QTimer* m_notificationTimer;
-
-    QTimer* m_updatesNotificationTimer;
 };

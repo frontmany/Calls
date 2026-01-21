@@ -12,8 +12,6 @@
 #include "utilities/logger.h"
 #include "utilities/utilities.h"
 
-#include "json.hpp"
-
 using namespace serverUpdater;
 using namespace serverUpdater::utilities;
 
@@ -210,141 +208,241 @@ namespace serverUpdater
 		connection->sendPacket(packetResponse);
 	}
 
+	std::vector<std::pair<std::filesystem::path, std::string>> 
+		ServerUpdater::parseClientFiles(const nlohmann::json& jsonObject)
+	{
+		std::vector<std::pair<std::filesystem::path, std::string>> filePathsWithHashes;
+
+		if (!jsonObject.contains(FILES) || !jsonObject[FILES].is_array()) {
+			LOG_ERROR("Missing or invalid FILES field in packet");
+			return filePathsWithHashes;
+		}
+
+		for (const auto& fileInfo : jsonObject[FILES]) {
+			if (fileInfo.contains(RELATIVE_FILE_PATH) && fileInfo.contains(FILE_HASH)) {
+				std::string relativePath = fileInfo[RELATIVE_FILE_PATH].get<std::string>();
+				std::string fileHash = fileInfo[FILE_HASH].get<std::string>();
+				filePathsWithHashes.emplace_back(relativePath, fileHash);
+			}
+			else {
+				LOG_ERROR("Incomplete file information in packet - missing RelativeFilePath or FileHash");
+			}
+		}
+
+		return filePathsWithHashes;
+	}
+
+	std::filesystem::path ServerUpdater::getOSSpecificPath(const std::filesystem::path& versionPath, OperationSystemType osType)
+	{
+		std::filesystem::path osSpecificPath;
+
+		switch (osType) {
+		case OperationSystemType::WINDOWS:
+			osSpecificPath = versionPath / "Windows";
+			LOG_DEBUG("Client OS: Windows");
+			break;
+		case OperationSystemType::LINUX:
+			osSpecificPath = versionPath / "Linux";
+			LOG_DEBUG("Client OS: Linux");
+			break;
+		case OperationSystemType::MAC:
+			osSpecificPath = versionPath / "Mac";
+			LOG_DEBUG("Client OS: Mac");
+			break;
+		default:
+			LOG_ERROR("Unknown operating system type");
+			break;
+		}
+
+		return osSpecificPath;
+	}
+
+	std::unordered_map<std::filesystem::path, std::string> 
+		ServerUpdater::scanServerFiles(const std::filesystem::path& osSpecificPath)
+	{
+		std::unordered_map<std::filesystem::path, std::string> serverFiles;
+
+		if (!std::filesystem::exists(osSpecificPath)) {
+			LOG_ERROR("OS-specific folder does not exist: {}", osSpecificPath.string());
+			return serverFiles;
+		}
+
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(osSpecificPath)) {
+			if (entry.is_regular_file()) {
+				std::filesystem::path relativePath = std::filesystem::relative(entry.path(), osSpecificPath);
+				std::string fileHash = utilities::calculateFileHash(entry.path());
+				serverFiles[relativePath] = fileHash;
+			}
+		}
+
+		LOG_DEBUG("Scanned {} files on server", serverFiles.size());
+		return serverFiles;
+	}
+
+	std::pair<std::vector<std::filesystem::path>, std::vector<std::filesystem::path>> 
+		ServerUpdater::determineFilesToSync(
+			const std::vector<std::pair<std::filesystem::path, std::string>>& clientFiles,
+			const std::unordered_map<std::filesystem::path, std::string>& serverFiles)
+	{
+		std::vector<std::filesystem::path> filesToDelete;
+		std::vector<std::filesystem::path> filesToSend;
+		std::unordered_set<std::filesystem::path> clientFilePaths;
+
+		for (const auto& [clientRelativePath, clientHash] : clientFiles) {
+			clientFilePaths.insert(clientRelativePath);
+
+			auto serverFileIt = serverFiles.find(clientRelativePath);
+			
+			if (serverFileIt == serverFiles.end()) {
+				filesToDelete.push_back(clientRelativePath);
+				LOG_DEBUG("File marked for deletion (not on server): {}", clientRelativePath.string());
+			}
+			else {
+				const std::string& serverHash = serverFileIt->second;
+				
+				if (serverHash != clientHash) {
+					filesToSend.push_back(clientRelativePath);
+					LOG_DEBUG("File marked for update (hash mismatch): {} (client: {}, server: {})", 
+						clientRelativePath.string(), clientHash.substr(0, 8), serverHash.substr(0, 8));
+				}
+				else {
+					LOG_DEBUG("File is up to date (hash matches): {}", clientRelativePath.string());
+				}
+			}
+		}
+
+		for (const auto& [serverRelativePath, serverHash] : serverFiles) {
+			if (clientFilePaths.find(serverRelativePath) == clientFilePaths.end()) {
+				filesToSend.push_back(serverRelativePath);
+				LOG_DEBUG("File marked for download (new file on server): {}", serverRelativePath.string());
+			}
+		}
+
+		LOG_INFO("File sync analysis: {} files to download, {} files to delete", 
+			filesToSend.size(), filesToDelete.size());
+
+		return std::make_pair(filesToSend, filesToDelete);
+	}
+
+	nlohmann::json ServerUpdater::createUpdateMetadata(
+		const std::vector<std::filesystem::path>& filesToSend,
+		const std::vector<std::filesystem::path>& filesToDelete,
+		const std::unordered_map<std::filesystem::path, std::string>& serverFiles,
+		const std::filesystem::path& osSpecificPath,
+		const std::string& version)
+	{
+		nlohmann::json responseJson;
+
+		nlohmann::json filesToDownloadArray = nlohmann::json::array();
+		for (const auto& filePath : filesToSend) {
+			auto fullPath = osSpecificPath / filePath;
+			if (std::filesystem::exists(fullPath)) {
+				uint64_t fileSize = std::filesystem::file_size(fullPath);
+				std::string fileHash = serverFiles.at(filePath);
+
+				nlohmann::json fileEntry;
+				fileEntry[RELATIVE_FILE_PATH] = filePath.string();
+				fileEntry[FILE_SIZE] = fileSize;
+				fileEntry[FILE_HASH] = fileHash;
+
+				filesToDownloadArray.push_back(fileEntry);
+			}
+			else {
+				LOG_WARN("File marked for sending does not exist: {}", fullPath.string());
+			}
+		}
+
+		nlohmann::json filesToDeleteArray = nlohmann::json::array();
+		for (const auto& filePath : filesToDelete) {
+			filesToDeleteArray.push_back(filePath.string());
+		}
+
+		responseJson[FILES_TO_DOWNLOAD] = filesToDownloadArray;
+		responseJson[FILES_TO_DELETE] = filesToDeleteArray;
+		responseJson[VERSION] = version;
+
+		return responseJson;
+	}
+
+	void ServerUpdater::sendUpdateMetadata(ConnectionPtr connection, const nlohmann::json& metadata)
+	{
+		Packet metadataPacket;
+		metadataPacket.setType(static_cast<int>(PacketType::UPDATE_METADATA));
+		metadataPacket.setData(metadata.dump());
+
+		connection->sendPacket(metadataPacket);
+	}
+
+	void ServerUpdater::sendUpdateFiles(ConnectionPtr connection, 
+										 const std::vector<std::filesystem::path>& filesToSend,
+										 const std::filesystem::path& osSpecificPath)
+	{
+		for (const auto& relativePath : filesToSend) {
+			auto fullPath = osSpecificPath / relativePath;
+			if (std::filesystem::exists(fullPath)) {
+				connection->sendFile(fullPath);
+				LOG_DEBUG("Sending file: {}", relativePath.string());
+			}
+			else {
+				LOG_WARN("Attempted to send non-existent file: {}", fullPath.string());
+			}
+		}
+	}
+
 	void ServerUpdater::onUpdateAccepted(ConnectionPtr connection, Packet&& packet)
 	{
 		LOG_INFO("Client accepted update, preparing files");
-		nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
-
-		OperationSystemType osType;
-		if (jsonObject.contains(OPERATION_SYSTEM)) {
-			osType = static_cast<OperationSystemType>(jsonObject[OPERATION_SYSTEM].get<int>());
+		
+		nlohmann::json jsonObject;
+		try {
+			jsonObject = nlohmann::json::parse(packet.data());
 		}
-		else {
+		catch (const std::exception& e) {
+			LOG_ERROR("Failed to parse packet JSON: {}", e.what());
+			return;
+		}
+
+		if (!jsonObject.contains(OPERATION_SYSTEM)) {
 			LOG_ERROR("Missing OPERATION_SYSTEM field in packet");
 			return;
 		}
+		OperationSystemType osType = static_cast<OperationSystemType>(jsonObject[OPERATION_SYSTEM].get<int>());
 
-		if (jsonObject.contains(FILES) && jsonObject[FILES].is_array()) {
-			std::vector<std::pair<std::filesystem::path, std::string>> filePathsWithHashes;
-
-			for (const auto& fileInfo : jsonObject[FILES]) {
-				if (fileInfo.contains(RELATIVE_FILE_PATH) && fileInfo.contains(FILE_HASH)) {
-					std::string relativePath = fileInfo[RELATIVE_FILE_PATH].get<std::string>();
-					std::string fileHash = fileInfo[FILE_HASH].get<std::string>();
-
-					filePathsWithHashes.emplace_back(relativePath, fileHash);
-				}
-				else {
-					LOG_ERROR("Incomplete file information in packet");
-					return;
-				}
-			}
-
-			auto [latestVersionPath, latestVersion] = findLatestVersion();
-
-			std::filesystem::path osSpecificPath;
-			switch (osType) {
-			case OperationSystemType::WINDOWS:
-				osSpecificPath = latestVersionPath / "Windows";
-				LOG_DEBUG("Client OS: Windows");
-				break;
-			case OperationSystemType::LINUX:
-				osSpecificPath = latestVersionPath / "Linux";
-				LOG_DEBUG("Client OS: Linux");
-				break;
-			case OperationSystemType::MAC:
-				osSpecificPath = latestVersionPath / "Mac";
-				LOG_DEBUG("Client OS: Mac");
-				break;
-			default:
-				LOG_ERROR("Unknown operating system type");
-				return;
-			}
-
-			if (!std::filesystem::exists(osSpecificPath)) {
-				LOG_ERROR("OS-specific folder does not exist: {}", osSpecificPath.string());
-				return;
-			}
-
-			std::vector<std::filesystem::path> filesToDelete;
-			std::vector<std::filesystem::path> filesToSend;
-
-			std::unordered_map<std::filesystem::path, std::string> newVersionFiles;
-
-			for (const auto& entry : std::filesystem::recursive_directory_iterator(osSpecificPath)) {
-				if (entry.is_regular_file()) {
-					std::filesystem::path relativePath = std::filesystem::relative(entry.path(), osSpecificPath);
-
-					std::string fileHash = utilities::calculateFileHash(entry.path());
-					newVersionFiles[relativePath] = fileHash;
-				}
-			}
-
-			std::unordered_set<std::filesystem::path> clientFiles;
-			for (const auto& [clientRelativePath, clientHash] : filePathsWithHashes) {
-				clientFiles.insert(clientRelativePath);
-
-				auto it = newVersionFiles.find(clientRelativePath);
-				if (it == newVersionFiles.end()) {
-					filesToDelete.push_back(clientRelativePath);
-				}
-				else if (it->second != clientHash) {
-					filesToSend.push_back(clientRelativePath);
-				}
-			}
-
-			for (const auto& [serverRelativePath, serverHash] : newVersionFiles) {
-				if (clientFiles.find(serverRelativePath) == clientFiles.end()) {
-					filesToSend.push_back(serverRelativePath);
-				}
-			}
-
-			nlohmann::json responseJson;
-
-			std::vector<std::filesystem::path> serverPathsToSend;
-
-			nlohmann::json filesToDownloadArray = nlohmann::json::array();
-			for (const auto& filePath : filesToSend) {
-				auto fullPath = osSpecificPath / filePath;
-				if (std::filesystem::exists(fullPath)) {
-					serverPathsToSend.push_back(fullPath);
-
-					uint64_t fileSize = std::filesystem::file_size(fullPath);
-					std::string fileHash = newVersionFiles[filePath];
-
-					nlohmann::json fileEntry;
-					fileEntry[RELATIVE_FILE_PATH] = filePath.string();
-					fileEntry[FILE_SIZE] = fileSize;
-					fileEntry[FILE_HASH] = fileHash;
-
-					filesToDownloadArray.push_back(fileEntry);
-				}
-			}
-
-			responseJson[FILES_TO_DOWNLOAD] = filesToDownloadArray;
-			responseJson[VERSION] = latestVersion;
-
-			nlohmann::json filesToDeleteArray = nlohmann::json::array();
-			for (const auto& filePath : filesToDelete) {
-				filesToDeleteArray.push_back(filePath.string());
-			}
-			responseJson[FILES_TO_DELETE] = filesToDeleteArray;
-
-			LOG_INFO("Sending update: {} files to download, {} files to delete", filesToSend.size(), filesToDelete.size());
-			LOG_DEBUG("Update version: {}", latestVersion);
-
-			Packet metadataPacket;
-			metadataPacket.setType(static_cast<int>(PacketType::UPDATE_METADATA));
-			metadataPacket.setData(responseJson.dump());
-
-			connection->sendPacket(metadataPacket);
-
-			for (const auto& path : serverPathsToSend)
-				connection->sendFile(path);
+		std::vector<std::pair<std::filesystem::path, std::string>> clientFiles = parseClientFiles(jsonObject);
+		if (clientFiles.empty() && jsonObject.contains(FILES)) {
+			LOG_WARN("No valid client files found in packet");
 		}
-		else {
-			LOG_ERROR("Missing FILES field in packet");
+
+		auto [latestVersionPath, latestVersion] = findLatestVersion();
+		if (latestVersion.empty()) {
+			LOG_ERROR("Failed to find latest version");
 			return;
 		}
+
+		std::filesystem::path osSpecificPath = getOSSpecificPath(latestVersionPath, osType);
+		if (osSpecificPath.empty()) {
+			return;
+		}
+
+		if (!std::filesystem::exists(osSpecificPath)) {
+			LOG_ERROR("OS-specific folder does not exist: {}", osSpecificPath.string());
+			return;
+		}
+
+		std::unordered_map<std::filesystem::path, std::string> serverFiles = scanServerFiles(osSpecificPath);
+		if (serverFiles.empty()) {
+			LOG_WARN("No files found on server in: {}", osSpecificPath.string());
+		}
+
+		auto [filesToSend, filesToDelete] = determineFilesToSync(clientFiles, serverFiles);
+
+		nlohmann::json metadata = createUpdateMetadata(filesToSend, filesToDelete, serverFiles, osSpecificPath, latestVersion);
+
+		LOG_INFO("Sending update: {} files to download, {} files to delete", filesToSend.size(), filesToDelete.size());
+		LOG_DEBUG("Update version: {}", latestVersion);
+
+		sendUpdateMetadata(connection, metadata);
+
+		sendUpdateFiles(connection, filesToSend, osSpecificPath);
 	}
 }

@@ -43,9 +43,10 @@ void Connection::sendPacket(const Packet& packet) {
 }
 
 void Connection::sendFile(const std::filesystem::path& path) {
+	bool wasEmpty = m_queue.empty();
 	m_queue.push(path);
 	
-	if (m_queue.size() == 1) {
+	if (wasEmpty) {
 		m_filesSender.sendFile();
 	}
 }

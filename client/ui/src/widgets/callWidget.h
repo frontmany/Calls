@@ -84,7 +84,6 @@ public:
     void removeAdditionalScreen(const std::string& screenId);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
-    void showErrorNotification(const QString& text, int durationMs);
 
 signals:
     void hangupClicked();
@@ -186,7 +185,6 @@ private:
     QTimer* m_callTimer;
     QTime* m_callDuration;
     QTimer* m_overlayButtonHideTimer;
-    QTimer* m_notificationTimer = nullptr;
 
     // States
     QString m_friendNickname;
@@ -195,9 +193,4 @@ private:
     bool m_speakerMuted = false;
     int m_inputVolume = 100;
     int m_outputVolume = 100;
-
-    // Error notification
-    QWidget* m_notificationWidget = nullptr;
-    QLabel* m_notificationLabel = nullptr;
-    QHBoxLayout* m_notificationLayout = nullptr;
 };

@@ -16,6 +16,7 @@ class CallWidget;
 class ConfigManager;
 class MainMenuWidget;
 class DialogsController;
+class NotificationController;
 
 class CameraSharingManager : public QObject {
     Q_OBJECT
@@ -24,6 +25,7 @@ public:
     explicit CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, DialogsController* dialogsController, QObject* parent = nullptr);
     
     void setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget);
+    void setNotificationController(NotificationController* notificationController);
 
     void stopLocalCameraCapture();
     void initializeCameraForCall();
@@ -54,6 +56,7 @@ private:
     ConfigManager* m_configManager = nullptr;
     CameraCaptureController* m_cameraCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
+    NotificationController* m_notificationController = nullptr;
     CallWidget* m_callWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     QMap<core::UserOperationType, QTimer*> m_operationTimers;

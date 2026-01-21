@@ -1,6 +1,7 @@
 #include "cameraSharingManager.h"
 #include "media/cameraCaptureController.h"
 #include "managers/dialogsController.h"
+#include "managers/notificationController.h"
 #include "widgets/callWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/configManager.h"
@@ -19,6 +20,11 @@ void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* ma
 {
     m_callWidget = callWidget;
     m_mainMenuWidget = mainMenuWidget;
+}
+
+void CameraSharingManager::setNotificationController(NotificationController* notificationController)
+{
+    m_notificationController = notificationController;
 }
 
 void CameraSharingManager::stopLocalCameraCapture()
@@ -58,7 +64,9 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
     if (active) {
         if (!m_cameraCaptureController || !m_cameraCaptureController->isCameraAvailable()) {
             if (!m_coreClient->isConnectionDown()) {
-                m_callWidget->showErrorNotification("No cameras available", 1500);
+                if (m_notificationController) {
+                    m_notificationController->showErrorNotification("No cameras available", 1500);
+                }
             }
             m_callWidget->setCameraButtonActive(false);
             return;
@@ -67,7 +75,9 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
         const std::string friendNickname = m_coreClient->getNicknameInCallWith();
         if (friendNickname.empty()) {
             if (!m_coreClient->isConnectionDown()) {
-                m_callWidget->showErrorNotification("No active call to share camera with", 1500);
+                if (m_notificationController) {
+                    m_notificationController->showErrorNotification("No active call to share camera with", 1500);
+                }
             }
             m_callWidget->setCameraButtonActive(false);
             return;
@@ -76,7 +86,9 @@ void CameraSharingManager::onCameraButtonClicked(bool toggled)
         std::error_code ec = m_coreClient->startCameraSharing();
         if (ec) {
             if (!m_coreClient->isConnectionDown()) {
-                m_callWidget->showErrorNotification("Failed to send camera sharing request", 1500);
+                if (m_notificationController) {
+                    m_notificationController->showErrorNotification("Failed to send camera sharing request", 1500);
+                }
             }
             m_callWidget->setCameraButtonActive(false);
         }
@@ -317,19 +329,19 @@ void CameraSharingManager::stopOperationTimer(core::UserOperationType operationK
 
     m_pendingOperationTexts.remove(operationKey);
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->hidePendingOperationDialog(operationKey);
+        m_notificationController->hidePendingOperation(operationKey);
     }
 }
 
 void CameraSharingManager::stopAllOperationTimers()
 {
-    if (m_dialogsController)
+    if (m_notificationController)
     {
         for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
         {
-            m_dialogsController->hidePendingOperationDialog(it.key());
+            m_notificationController->hidePendingOperation(it.key());
         }
     }
 
@@ -357,9 +369,9 @@ void CameraSharingManager::onOperationTimerTimeout(core::UserOperationType opera
         return;
     }
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->showPendingOperationDialog(dialogText, operationKey);
+        m_notificationController->showPendingOperation(dialogText, operationKey);
     }
 }
 

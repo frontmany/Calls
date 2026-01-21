@@ -2,6 +2,7 @@
 #include "media/audioEffectsManager.h"
 #include "managers/navigationController.h"
 #include "managers/dialogsController.h"
+#include "managers/notificationController.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
 #include "media/screenCaptureController.h"
@@ -38,6 +39,11 @@ void CallManager::setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWid
     m_mainMenuWidget = mainMenuWidget;
     m_callWidget = callWidget;
     m_stackedLayout = stackedLayout;
+}
+
+void CallManager::setNotificationController(NotificationController* notificationController)
+{
+    m_notificationController = notificationController;
 }
 
 void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
@@ -334,16 +340,8 @@ void CallManager::handleAcceptCallErrorNotificationAppearance()
 {
     QString errorText = "Failed to accept call";
 
-    if (!m_stackedLayout) return;
-
-    if (m_stackedLayout->currentWidget() == m_mainMenuWidget && m_mainMenuWidget) {
-        m_mainMenuWidget->showErrorNotification(errorText, 1500);
-    }
-    else if (m_stackedLayout->currentWidget() == m_callWidget && m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
-    }
-    else {
-        LOG_WARN("Trying to accept call from unexpected widget");
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification(errorText, 1500);
     }
 }
 
@@ -351,16 +349,8 @@ void CallManager::handleDeclineCallErrorNotificationAppearance()
 {
     QString errorText = "Failed to decline call. Please try again";
 
-    if (!m_stackedLayout) return;
-
-    if (m_stackedLayout->currentWidget() == m_mainMenuWidget && m_mainMenuWidget) {
-        m_mainMenuWidget->showErrorNotification(errorText, 1500);
-    }
-    else if (m_stackedLayout->currentWidget() == m_callWidget && m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
-    }
-    else {
-        LOG_WARN("Trying to decline call from unexpected widget");
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification(errorText, 1500);
     }
 }
 
@@ -368,11 +358,8 @@ void CallManager::handleStartCallingErrorNotificationAppearance()
 {
     QString errorText = "Failed to start calling. Please try again";
 
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->showErrorNotification(errorText, 1500);
-    }
-    else {
-        LOG_WARN("Trying to start calling from unexpected widget");
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification(errorText, 1500);
     }
 }
 
@@ -380,11 +367,8 @@ void CallManager::handleStopCallingErrorNotificationAppearance()
 {
     QString errorText = "Failed to stop calling. Please try again";
 
-    if (m_mainMenuWidget) {
-        m_mainMenuWidget->showErrorNotification(errorText, 1500);
-    }
-    else {
-        LOG_WARN("Trying to stop calling from unexpected widget");
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification(errorText, 1500);
     }
 }
 
@@ -392,11 +376,8 @@ void CallManager::handleEndCallErrorNotificationAppearance()
 {
     QString errorText = "Failed to end call. Please try again";
 
-    if (m_callWidget) {
-        m_callWidget->showErrorNotification(errorText, 1500);
-    }
-    else {
-        LOG_WARN("Trying to end call from unexpected widget");
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification(errorText, 1500);
     }
 }
 
@@ -504,9 +485,9 @@ void CallManager::onCallParticipantConnectionDown()
         m_callWidget->hideAdditionalScreens();
     }
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->showConnectionDownWithUserDialog("Connection with participant lost. Waiting for them...");
+        m_notificationController->showConnectionDownWithUser("Connection with participant lost. Waiting for them...");
     }
 }
 
@@ -518,28 +499,10 @@ void CallManager::onCallParticipantConnectionRestored()
         return;
     }
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
         const int restoredDurationMs = 2500;
-        m_dialogsController->showConnectionRestoredWithUserDialog("Connection with participant restored");
-
-        QTimer::singleShot(restoredDurationMs, this, [this]()
-        {
-            if (m_callWidget) {
-
-                // todo
-                /*
-                m_callWidget->restrictCameraButton();
-                m_callWidget->restrictScreenShareButton();
-                */
-                // abort this actions 
-            }
-
-            if (m_dialogsController)
-            {
-                m_dialogsController->hideConnectionRestoredWithUserDialog();
-            }
-        });
+        m_notificationController->showConnectionRestoredWithUser("Connection with participant restored", restoredDurationMs);
     }
 }
 
@@ -582,19 +545,19 @@ void CallManager::stopOperationTimer(core::UserOperationType operationKey)
 
     m_pendingOperationTexts.remove(operationKey);
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->hidePendingOperationDialog(operationKey);
+        m_notificationController->hidePendingOperation(operationKey);
     }
 }
 
 void CallManager::stopAllOperationTimers()
 {
-    if (m_dialogsController)
+    if (m_notificationController)
     {
         for (auto it = m_operationTimers.constBegin(); it != m_operationTimers.constEnd(); ++it)
         {
-            m_dialogsController->hidePendingOperationDialog(it.key());
+            m_notificationController->hidePendingOperation(it.key());
         }
     }
 
@@ -622,18 +585,18 @@ void CallManager::onOperationTimerTimeout(core::UserOperationType operationKey)
         return;
     }
 
-    if (m_dialogsController)
+    if (m_notificationController)
     {
-        m_dialogsController->showPendingOperationDialog(dialogText, operationKey);
+        m_notificationController->showPendingOperation(dialogText, operationKey);
     }
 }
 
 void CallManager::hideOperationDialog()
 {
     stopAllOperationTimers();
-    if (m_dialogsController) {
-        m_dialogsController->hideConnectionDownWithUserDialog();
-        m_dialogsController->hideConnectionRestoredWithUserDialog();
+    if (m_notificationController) {
+        m_notificationController->hideConnectionDownWithUser();
+        m_notificationController->hideConnectionRestoredWithUser();
     }
 }
 

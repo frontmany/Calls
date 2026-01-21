@@ -17,8 +17,15 @@ namespace updater
 
 		void FileReceiver::startReceivingFile(const FileMetadata& fileInfo)
 		{
+			if (m_fileStream.is_open()) {
+				m_fileStream.flush();
+				m_fileStream.close();
+			}
+			
 			m_currentFile = fileInfo;
 			m_currentChunksCount = 0;
+			m_receiveBuffer.fill(0);
+
 			openFile(fileInfo.relativeFilePath);
 		}
 
@@ -45,10 +52,19 @@ namespace updater
 
 						if (m_currentChunksCount < m_currentFile.expectedChunksCount) {
 							m_fileStream.write(m_receiveBuffer.data(), c_chunkSize);
+							if (!m_fileStream.good()) {
+								m_onError();
+								return;
+							}
 							receiveChunk();
 						}
 						else if (m_currentChunksCount == m_currentFile.expectedChunksCount) {
 							m_fileStream.write(m_receiveBuffer.data(), m_currentFile.lastChunkSize);
+							if (!m_fileStream.good()) {
+								m_onError();
+								return;
+							}
+
 							finalizeFile();
 							m_onFileComplete();
 						}
@@ -78,8 +94,11 @@ namespace updater
 
 		void FileReceiver::finalizeFile()
 		{
+			if (m_fileStream.is_open()) {
+				m_fileStream.flush();
+				m_fileStream.close();
+			}
 			m_currentChunksCount = 0;
-			m_fileStream.close();
 		}
 	}
 }

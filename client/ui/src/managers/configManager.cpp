@@ -25,33 +25,43 @@ ConfigManager::~ConfigManager()
 
 void ConfigManager::loadConfig() {
     try {
-        m_version = getApplicationVersionFromConfig();
-        m_updaterHost = getUpdaterHostFromConfig();
-        m_isSpeakerMuted = isSpeakerMutedFromConfig();
-        m_isCameraActive = isCameraActiveFromConfig();
-        m_isMicrophoneMuted = isMicrophoneMutedFromConfig();
-        m_outputVolume = getOutputVolumeFromConfig();
-        m_inputVolume = getInputVolumeFromConfig();
-        m_isMultiInstanceAllowed = isMultiInstanceAllowedFromConfig();
-        m_port = getPortFromConfig();
-        m_serverHost = getServerHostFromConfig();
-        m_firstLaunch = isFirstLaunchFromConfig();
-        m_appDirectory = getAppDirectoryFromConfig();
-        m_logDirectory = getLogDirectoryFromConfig();
-        m_crashDumpDirectory = getCrashDumpDirectoryFromConfig();
-        m_temporaryUpdateDirectory = getTemporaryUpdateDirectoryFromConfig();
-        m_deletionListFileName = getDeletionListFileNameFromConfig();
-        m_ignoredFilesWhileCollectingForUpdate = getIgnoredFilesWhileCollectingForUpdateFromConfig();
-        m_ignoredDirectoriesWhileCollectingForUpdate = getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
-        m_operationSystemType = getOperationSystemTypeFromConfig();
+        if (!QFile::exists(m_configPath)) {
+            LOG_INFO("Config file not found: " + m_configPath.toStdString());
+
+            setDefaultValues();
+            saveConfig();
+        }
+        else {
+            m_version = getApplicationVersionFromConfig();
+            m_updaterHost = getUpdaterHostFromConfig();
+            m_isSpeakerMuted = isSpeakerMutedFromConfig();
+            m_isCameraActive = isCameraActiveFromConfig();
+            m_isMicrophoneMuted = isMicrophoneMutedFromConfig();
+            m_outputVolume = getOutputVolumeFromConfig();
+            m_inputVolume = getInputVolumeFromConfig();
+            m_isMultiInstanceAllowed = isMultiInstanceAllowedFromConfig();
+            m_port = getPortFromConfig();
+            m_serverHost = getServerHostFromConfig();
+            m_firstLaunch = isFirstLaunchFromConfig();
+            m_appDirectory = getAppDirectoryFromConfig();
+            m_logDirectory = getLogDirectoryFromConfig();
+            m_crashDumpDirectory = getCrashDumpDirectoryFromConfig();
+            m_temporaryUpdateDirectory = getTemporaryUpdateDirectoryFromConfig();
+            m_deletionListFileName = getDeletionListFileNameFromConfig();
+            m_ignoredFilesWhileCollectingForUpdate = getIgnoredFilesWhileCollectingForUpdateFromConfig();
+            m_ignoredDirectoriesWhileCollectingForUpdate = getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
+            m_operationSystemType = getOperationSystemTypeFromConfig();
+        }
 
         m_isConfigLoaded = true;
     }
     catch (const std::exception& e) {
         LOG_ERROR(std::string("Failed to load config: ") + e.what());
 
-        if (!m_isConfigLoaded)
+        if (!m_isConfigLoaded) {
             setDefaultValues();
+            saveConfig();
+        }
     }
 }
 
@@ -99,7 +109,7 @@ void ConfigManager::saveConfig() {
         configFile.write(configDoc.toJson(QJsonDocument::Indented));
         configFile.close();
 
-        qDebug() << "Config saved successfully to:" << m_configPath;
+        LOG_INFO("Config saved successfully to: " + m_configPath.toStdString());
     }
     catch (const std::exception& e) {
         LOG_ERROR(std::string("Failed to save config: ") + e.what());
@@ -115,6 +125,7 @@ const QString& ConfigManager::getConfigPath() {
 }
 
 void ConfigManager::setDefaultValues() {
+    m_version = "1.0.0";
     m_isSpeakerMuted = false;
     m_isMicrophoneMuted = false;
     m_isMultiInstanceAllowed = false;
@@ -126,37 +137,33 @@ void ConfigManager::setDefaultValues() {
     m_updaterHost = "92.255.165.77";
     m_firstLaunch = true;
     
+    QString applicationDirPath = QCoreApplication::applicationDirPath();
+
     updater::OperationSystemType operationSystemType = resolveOperationSystemType();
-    QString defaultAppDirectory = "C:/prj/Callifornia/out/build/x64-Debug/client/ui";
+    QString basePath;
     
     if (operationSystemType == updater::OperationSystemType::WINDOWS) {
-        m_appDirectory = "C:/Callifornia";
-        m_logDirectory = "C:/Callifornia/logs";
-        m_crashDumpDirectory = "C:/Callifornia/crashes";
-        m_temporaryUpdateDirectory = "C:/Callifornia/update";
+        basePath = "C:/Users/Public/Callifornia";
     }
     else if (operationSystemType == updater::OperationSystemType::LINUX) {
-        m_appDirectory = "/opt/Callifornia";
-        m_logDirectory = "/opt/Callifornia/logs";
-        m_crashDumpDirectory = "/opt/Callifornia/crashes";
-        m_temporaryUpdateDirectory = "/opt/Callifornia/update";
+        basePath = "/opt/Callifornia";
     }
     else if (operationSystemType == updater::OperationSystemType::MAC) {
-        m_appDirectory = "/Applications/Callifornia";
-        m_logDirectory = "/Applications/Callifornia/logs";
-        m_crashDumpDirectory = "/Applications/Callifornia/crashes";
-        m_temporaryUpdateDirectory = "/Applications/Callifornia/update";
+        basePath = "/Applications/Callifornia";
     }
     else {
-        m_appDirectory = defaultAppDirectory;
-        m_logDirectory = QDir(defaultAppDirectory).filePath("logs");
-        m_crashDumpDirectory = QDir(defaultAppDirectory).filePath("crashes");
-        m_temporaryUpdateDirectory = QDir(defaultAppDirectory).filePath("update");
+        basePath = applicationDirPath;
     }
+    
+    QString validatedBasePath = validateAppDirectoryPath(basePath);
+    m_appDirectory = validatedBasePath;
+    m_logDirectory = QDir(validatedBasePath).filePath("logs");
+    m_crashDumpDirectory = QDir(validatedBasePath).filePath("crashes");
+    m_temporaryUpdateDirectory = QDir(validatedBasePath).filePath("update");
     
     m_deletionListFileName = "remove.json";
     m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
-    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs", "crash_dumps"};
+    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs", "crashes"};
     m_operationSystemType = operationSystemType;
 }
 
@@ -332,7 +339,7 @@ void ConfigManager::setServerHost(const QString& host) {
 QString ConfigManager::getApplicationVersionFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
+        return m_version;
     }
 
     QByteArray jsonData = file.readAll();
@@ -342,11 +349,11 @@ QString ConfigManager::getApplicationVersionFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QString();
+        return m_version;
     }
 
     if (!doc.isObject()) {
-        return QString();
+        return m_version;
     }
 
     QJsonObject jsonObj = doc.object();
@@ -363,7 +370,7 @@ QString ConfigManager::getApplicationVersionFromConfig() {
 QString ConfigManager::getUpdaterHostFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
+        return m_updaterHost;
     }
 
     QByteArray jsonData = file.readAll();
@@ -373,11 +380,11 @@ QString ConfigManager::getUpdaterHostFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QString();
+        return m_updaterHost;
     }
 
     if (!doc.isObject()) {
-        return QString();
+        return m_updaterHost;
     }
 
     QJsonObject jsonObj = doc.object();
@@ -394,7 +401,7 @@ QString ConfigManager::getUpdaterHostFromConfig() {
 QString ConfigManager::getServerHostFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
+        return m_serverHost;
     }
 
     QByteArray jsonData = file.readAll();
@@ -404,11 +411,11 @@ QString ConfigManager::getServerHostFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QString();
+        return m_serverHost;
     }
 
     if (!doc.isObject()) {
-        return QString();
+        return m_serverHost;
     }
 
     QJsonObject jsonObj = doc.object();
@@ -425,7 +432,7 @@ QString ConfigManager::getServerHostFromConfig() {
 QString ConfigManager::getPortFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
+        return m_port;
     }
 
     QByteArray jsonData = file.readAll();
@@ -435,11 +442,11 @@ QString ConfigManager::getPortFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError) {
-        return QString();
+        return m_port;
     }
 
     if (!doc.isObject()) {
-        return QString();
+        return m_port;
     }
 
     QJsonObject jsonObj = doc.object();
@@ -839,19 +846,25 @@ QString ConfigManager::getAppDirectoryFromConfig() {
     QString appDir = jsonObj[ConfigKeys::APP_DIRECTORY].toString();
 
     if (!appDir.isEmpty()) {
-        QDir configDir(appDir);
-        QDir actualDir(applicationDirPath);
-        QString normalizedConfigPath = QDir::cleanPath(configDir.absolutePath());
-        QString normalizedAppPath = QDir::cleanPath(actualDir.absolutePath());
-        
-        if (normalizedConfigPath.compare(normalizedAppPath, Qt::CaseInsensitive) == 0) {
-            return appDir;
-        } else {
-            return applicationDirPath;
-        }
+        return validateAppDirectoryPath(appDir);
     }
 
     return applicationDirPath;
+}
+
+QString ConfigManager::validateAppDirectoryPath(const QString& path) {
+    QString applicationDirPath = QCoreApplication::applicationDirPath();
+    
+    QDir configDir(path);
+    QDir actualDir(applicationDirPath);
+    QString normalizedConfigPath = QDir::cleanPath(configDir.absolutePath());
+    QString normalizedAppPath = QDir::cleanPath(actualDir.absolutePath());
+    
+    if (normalizedConfigPath.compare(normalizedAppPath, Qt::CaseInsensitive) == 0) {
+        return path;
+    } else {
+        return applicationDirPath;
+    }
 }
 
 QString ConfigManager::getTemporaryUpdateDirectoryFromConfig() {

@@ -1,71 +1,69 @@
-#include "dialogs/notificationDialogBase.h"
+#include "notifications/baseNotification.h"
 #include "utilities/utilities.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
-QString NotificationDialogStyle::mainWidgetStyle(bool isGreenStyle)
+QString BaseNotificationStyle::mainWidgetStyle(BaseNotificationStyleType styleType)
 {
-    if (isGreenStyle)
+    switch (styleType)
     {
+    case BaseNotificationStyleType::GREEN:
         return
             "QWidget#mainWidget {"
             "   background-color: rgb(235, 249, 237);"
             "   border-radius: 18px;"
             "}";
+    case BaseNotificationStyleType::RED:
+        return
+            "QWidget#mainWidget {"
+            "   background-color: rgb(255, 212, 212);"
+            "   border-radius: 18px;"
+            "}";
+    case BaseNotificationStyleType::BASE:
+    default:
+        return
+            "QWidget#mainWidget {"
+            "   background-color: rgb(255, 255, 255);"
+            "   border-radius: 24px;"
+            "}";
     }
-
-    return
-        "QWidget#mainWidget {"
-        "   background-color: rgb(255, 255, 255);"
-        "   border-radius: 24px;"
-        "}";
 }
 
-QString NotificationDialogStyle::labelStyle(bool isGreenStyle)
+QString BaseNotificationStyle::labelStyle(BaseNotificationStyleType styleType)
 {
-    if (isGreenStyle)
+    switch (styleType)
     {
+    case BaseNotificationStyleType::GREEN:
         return
             "color: rgb(25, 186, 0);"
             "font-size: 15px;"
             "font-family: 'Outfit';"
             "font-weight: 600;";
+    case BaseNotificationStyleType::RED:
+        return
+            "color: rgb(220, 0, 0);"
+            "font-size: 15px;"
+            "font-family: 'Outfit';"
+            "font-weight: 600;";
+    case BaseNotificationStyleType::BASE:
+    default:
+        return
+            "color: rgb(100, 100, 100);"
+            "font-size: 15px;"
+            "font-family: 'Outfit';"
+            "font-weight: normal;";
     }
-
-    return
-        "color: rgb(100, 100, 100);"
-        "font-size: 15px;"
-        "font-family: 'Outfit';"
-        "font-weight: normal;";
 }
 
-QString NotificationDialogStyle::mainWidgetRedStyle()
-{
-    return
-        "QWidget#mainWidget {"
-        "   background-color: rgb(255, 235, 235);"
-        "   border-radius: 18px;"
-        "}";
-}
-
-QString NotificationDialogStyle::labelRedStyle()
-{
-    return
-        "color: rgb(220, 0, 0);"
-        "font-size: 15px;"
-        "font-family: 'Outfit';"
-        "font-weight: 600;";
-}
-
-NotificationDialogBase::NotificationDialogBase(QWidget* parent,
+BaseNotification::BaseNotification(QWidget* parent,
     const QString& statusText,
-    bool isGreenStyle,
-    bool isAnimation)
+    BaseNotificationStyleType styleType,
+    bool waitingAnimation)
     : QWidget(parent)
-    , m_isGreenStyle(isGreenStyle)
-    , m_isAnimation(isAnimation)
+    , m_styleType(styleType)
+    , m_isWaitingAnimation(waitingAnimation)
 {
-    QFont font("Outfit", scale(14), QFont::Normal);
+    QFont font("Outfit", scale(14));
 
     setAttribute(Qt::WA_TranslucentBackground);
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
@@ -92,7 +90,7 @@ NotificationDialogBase::NotificationDialogBase(QWidget* parent,
     m_statusLabel->setFont(font);
     m_statusLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
     m_statusLabel->setWordWrap(false);
-    if (m_isAnimation)
+    if (m_isWaitingAnimation)
     {
         m_statusLabel->setContentsMargins(0, 0, scale(8), 0);
     }
@@ -105,7 +103,7 @@ NotificationDialogBase::NotificationDialogBase(QWidget* parent,
     if (m_movie->isValid())
     {
         m_gifLabel->setMovie(m_movie);
-        if (m_isAnimation)
+        if (m_isWaitingAnimation)
         {
             m_movie->start();
         }
@@ -116,44 +114,30 @@ NotificationDialogBase::NotificationDialogBase(QWidget* parent,
 
     QFontMetrics fontMetrics(font);
     int textWidth = fontMetrics.horizontalAdvance(statusText);
-    int animationWidth = m_isAnimation ? (contentSpacing + 32) : 0;
+    int animationWidth = m_isWaitingAnimation ? (contentSpacing + 32) : 0;
     int minDialogWidth = textWidth + horizontalMargin * 2 + animationWidth;
     setMinimumWidth(minDialogWidth);
     setMinimumHeight(50 - scale(2));
     setMaximumHeight(60 - scale(2));
 
-    setAnimationEnabled(m_isAnimation);
+    setAnimationEnabled(m_isWaitingAnimation);
     applyStyle();
 }
 
-void NotificationDialogBase::applyStyle()
+void BaseNotification::applyStyle()
 {
     if (m_mainWidget)
     {
-        if (m_isRedStyle)
-        {
-            m_mainWidget->setStyleSheet(NotificationDialogStyle::mainWidgetRedStyle());
-        }
-        else
-        {
-            m_mainWidget->setStyleSheet(NotificationDialogStyle::mainWidgetStyle(m_isGreenStyle));
-        }
+        m_mainWidget->setStyleSheet(BaseNotificationStyle::mainWidgetStyle(m_styleType));
     }
 
     if (m_statusLabel)
     {
-        if (m_isRedStyle)
-        {
-            m_statusLabel->setStyleSheet(NotificationDialogStyle::labelRedStyle());
-        }
-        else
-        {
-            m_statusLabel->setStyleSheet(NotificationDialogStyle::labelStyle(m_isGreenStyle));
-        }
+        m_statusLabel->setStyleSheet(BaseNotificationStyle::labelStyle(m_styleType));
     }
 }
 
-void NotificationDialogBase::setStatusText(const QString& text)
+void BaseNotification::setStatusText(const QString& text)
 {
     if (m_statusLabel)
     {
@@ -161,33 +145,19 @@ void NotificationDialogBase::setStatusText(const QString& text)
     }
 }
 
-void NotificationDialogBase::setGreenStyle(bool isGreenStyle)
+void BaseNotification::setStyle(BaseNotificationStyleType styleType)
 {
-    m_isGreenStyle = isGreenStyle;
-    if (isGreenStyle)
-    {
-        m_isRedStyle = false;
-    }
+    m_styleType = styleType;
     applyStyle();
 }
 
-void NotificationDialogBase::setRedStyle(bool isRedStyle)
+void BaseNotification::setAnimationEnabled(bool isAnimation)
 {
-    m_isRedStyle = isRedStyle;
-    if (isRedStyle)
-    {
-        m_isGreenStyle = false;
-    }
-    applyStyle();
-}
-
-void NotificationDialogBase::setAnimationEnabled(bool isAnimation)
-{
-    m_isAnimation = isAnimation;
+    m_isWaitingAnimation = isAnimation;
 
     if (m_movie)
     {
-        if (m_isAnimation)
+        if (m_isWaitingAnimation)
         {
             if (m_movie->state() != QMovie::Running)
             {
@@ -202,6 +172,6 @@ void NotificationDialogBase::setAnimationEnabled(bool isAnimation)
 
     if (m_gifLabel)
     {
-        m_gifLabel->setVisible(m_isAnimation);
+        m_gifLabel->setVisible(m_isWaitingAnimation);
     }
 }

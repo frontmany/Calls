@@ -35,8 +35,6 @@ bool UpdateManager::shouldRestart() {
 
 void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
 {
-    m_authorizationWidget->hideUpdatesCheckingNotification();
-
     if (result == updater::CheckResult::POSSIBLE_UPDATE) {
         m_authorizationWidget->showUpdateAvailableNotification();
         m_mainMenuWidget->showUpdateAvailableNotification();
