@@ -101,6 +101,7 @@ void NetworkController::createConnection(asio::ip::tcp::socket socket)
     {
         std::lock_guard<std::mutex> lock(m_connectionsMutex);
         m_setConnections.insert(connection);
+        LOG_INFO("[SERVER] New client connected (active connections: {})", m_setConnections.size());
     }
 }
 }

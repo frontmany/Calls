@@ -21,6 +21,13 @@ Connection::Connection(
 	m_packetsReceiver(m_socket, [this](Packet&& packet) {
 	m_queueReceivedPacket(OwnedPacket{ shared_from_this(), std::move(packet) }); }, [this]() {m_onDisconnected(shared_from_this()); })
 {
+	// Enable TCP keepalive to detect dead connections
+	std::error_code ec;
+	m_socket.set_option(asio::ip::tcp::socket::keep_alive(true), ec);
+	if (ec) {
+		LOG_WARN("Failed to enable keepalive: {}", ec.message());
+	}
+
 	std::random_device rd;
 	std::mt19937_64 gen(rd());
 	std::uniform_int_distribution<uint64_t> dis;

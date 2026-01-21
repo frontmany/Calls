@@ -33,16 +33,16 @@ void UpdaterNetworkErrorHandler::onNetworkError()
 {
     LOG_ERROR("Updater network error occurred");
 
-    if (!m_updaterClient->isLoadingUpdate()) {
-        return; // Do nothing if not loading an update
-    }
-
     if (m_authorizationWidget) {
         m_authorizationWidget->hideUpdateAvailableButton();
     }
 
     if (m_mainMenuWidget) {
         m_mainMenuWidget->hideUpdateAvailableButton();
+    }
+
+    if (!m_updaterClient->isLoadingUpdate()) {
+        return; // Do nothing if not loading an update
     }
 
     if (m_dialogsController) {
