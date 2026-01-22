@@ -76,7 +76,7 @@ QString StyleFirstLaunchDialog::okButtonStyle(int radius, int fontSize)
 FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, const QString& descriptionText)
     : QWidget(parent)
 {
-    QFont font("Outfit", 14, QFont::Normal);
+    QFont font("Outfit", scale(14), QFont::Normal);
 
     setAttribute(Qt::WA_TranslucentBackground);
     setMinimumWidth(scale(500));

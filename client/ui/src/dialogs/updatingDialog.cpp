@@ -72,7 +72,7 @@ QString StyleUpdatingDialog::exitButtonStyle(int radius, int paddingH, int paddi
 UpdatingDialog::UpdatingDialog(QWidget* parent)
     : QWidget(parent)
 {
-    QFont font("Outfit", 14, QFont::Normal);
+    QFont font("Outfit", scale(14), QFont::Normal);
 
     setAttribute(Qt::WA_TranslucentBackground);
     setMinimumWidth(scale(300));

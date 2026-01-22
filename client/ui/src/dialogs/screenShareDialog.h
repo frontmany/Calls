@@ -34,6 +34,9 @@ signals:
     void screenSelected(int index);
     void cancelled();
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
     void refreshScreenSharePreviews();
     void handleScreenPreviewClick(int screenIndex, bool currentlySelected);

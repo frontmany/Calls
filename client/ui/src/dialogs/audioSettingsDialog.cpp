@@ -190,7 +190,7 @@ void AudioSettingsDialog::applyStyle()
 {
     setStyleSheet(
         QString("QDialog { background: transparent; }"
-        "QLabel { font-size: %1px; }").arg(14) +
+        "QLabel { font-size: %1px; }").arg(scale(14)) +
         containerStyle(scale(22), scale(8)) +
         sliderStyle()
     );

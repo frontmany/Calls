@@ -7,6 +7,8 @@
 #include <QScrollArea>
 #include <QGraphicsDropShadowEffect>
 #include <QGuiApplication>
+#include <QTimer>
+#include <QResizeEvent>
 
 QString StyleScreenShareDialog::mainWidgetStyle(int radius, int border)
 {
@@ -159,13 +161,28 @@ QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, 
 ScreenShareDialog::ScreenShareDialog(QWidget* parent)
     : QWidget(parent)
 {
-    QFont font("Outfit", 12, QFont::Normal);
-    QFont titleFont("Outfit", 16, QFont::Bold);
+    QFont font("Outfit", scale(12), QFont::Normal);
+    QFont titleFont("Outfit", scale(16), QFont::Bold);
 
     setAttribute(Qt::WA_TranslucentBackground);
-    setMinimumWidth(scale(600));
-    setMinimumHeight(scale(720));
-    resize(scale(1280), scale(820));
+    
+    // Set maximum and minimum sizes based on parent overlay, similar to old implementation
+    if (parent)
+    {
+        const int margin = scale(40);
+        const QSize parentSize = parent->size();
+        const int maxW = std::max(0, parentSize.width() - margin);
+        const int maxH = std::max(0, parentSize.height() - margin);
+        const int desiredMinW = extraScale(1200, 3);
+        const int desiredMinH = extraScale(800, 3);
+        setMaximumSize(maxW, maxH);
+        setMinimumWidth(std::min(desiredMinW, maxW));
+        setMinimumHeight(std::min(desiredMinH, maxH));
+    }
+    else
+    {
+        setMinimumSize(scale(400), scale(300));
+    }
 
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
     shadowEffect->setBlurRadius(scale(30));
@@ -212,6 +229,7 @@ ScreenShareDialog::ScreenShareDialog(QWidget* parent)
     m_screensLayout->setHorizontalSpacing(scale(25));
     m_screensLayout->setVerticalSpacing(scale(25));
 
+    // Wrap container in a layout for centering, like in old implementation
     QHBoxLayout* scrollLayout = new QHBoxLayout();
     scrollLayout->addStretch();
     scrollLayout->addWidget(m_screensContainer);
@@ -268,10 +286,18 @@ void ScreenShareDialog::setScreens(const QList<QScreen*>& screens)
     updateScreenShareSelectionState();
 }
 
+void ScreenShareDialog::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    // Recalculate column layout when dialog width changes
+    if (!m_screens.isEmpty())
+    {
+        refreshScreenSharePreviews();
+    }
+}
+
 void ScreenShareDialog::refreshScreenSharePreviews()
 {
-    const int maxCols = 1;
-
     for (ScreenPreviewWidget* preview : m_previewWidgets)
     {
         preview->deleteLater();
@@ -287,6 +313,27 @@ void ScreenShareDialog::refreshScreenSharePreviews()
     while ((item = m_screensLayout->takeAt(0)) != nullptr)
     {
         delete item;
+    }
+
+    if (m_screens.isEmpty())
+    {
+        if (m_screensContainer)
+        {
+            m_screensContainer->adjustSize();
+        }
+        return;
+    }
+
+    // Calculate optimal column count based on dialog width, like in old implementation
+    int maxCols = 3;
+    const int width = this->width();
+    if (width < scale(700))
+    {
+        maxCols = 1;
+    }
+    else if (width < scale(1000))
+    {
+        maxCols = 2;
     }
 
     int row = 0;
@@ -311,6 +358,7 @@ void ScreenShareDialog::refreshScreenSharePreviews()
         }
     }
 
+    // Set stretch factors
     for (int c = 0; c < maxCols; ++c)
     {
         m_screensLayout->setColumnStretch(c, 1);

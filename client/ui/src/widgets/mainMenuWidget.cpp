@@ -332,7 +332,7 @@ QString StyleMainMenuWidget::stopCallingButtonStyle() {
         .arg(scale(11))                                          // %5 - border-radius
         .arg(scale(6))                                           // %6 - padding vertical
         .arg(scale(12))                                          // %7 - padding horizontal
-        .arg(11)                                                 // %8 - font-size
+        .arg(scale(11))                                          // %8 - font-size
         .arg(scale(8));                                          // %9 - margin
 }
 
@@ -357,7 +357,7 @@ QString StyleMainMenuWidget::disabledStopCallingButtonStyle() {
         .arg(QString::fromStdString(std::to_string(scale(11))))  // border-radius
         .arg(QString::fromStdString(std::to_string(scale(6))))   // padding vertical
         .arg(QString::fromStdString(std::to_string(scale(12))))  // padding horizontal
-        .arg(QString::fromStdString(std::to_string(11)))  // font-size
+        .arg(QString::fromStdString(std::to_string(scale(11))))  // font-size
         .arg(QString::fromStdString(std::to_string(scale(8))));  // margin
 }
 
@@ -401,7 +401,7 @@ void MainMenuWidget::setupUI() {
     m_titleLabel->setStyleSheet(StyleMainMenuWidget::titleStyle());
     m_titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_titleLabel->setMinimumHeight(scale(70));
-    QFont titleFont("Pacifico", 32);
+    QFont titleFont("Pacifico", scale(32));
     m_titleLabel->setFont(titleFont);
 
     // User info section
@@ -417,11 +417,11 @@ void MainMenuWidget::setupUI() {
 
     m_userTextLayout = new QVBoxLayout();
     m_nicknameLabel = new QLabel("Guest", m_userInfoWidget);
-    QFont nicknameFont("Outfit", 18, QFont::Normal);
+    QFont nicknameFont("Outfit", scale(18), QFont::Normal);
     m_nicknameLabel->setFont(nicknameFont);
 
     m_statusLabel = new QLabel("Offline", m_userInfoWidget);
-    QFont statusFont("Outfit", 11, QFont::Light);
+    QFont statusFont("Outfit", scale(11), QFont::Light);
     m_statusLabel->setFont(statusFont);
 
     m_nicknameLabel->setStyleSheet(StyleMainMenuWidget::nicknameStyle());
@@ -447,7 +447,7 @@ void MainMenuWidget::setupUI() {
     // Calling text
     m_callingText = new QLabel("Calling...", m_callingSection);
     m_callingText->setStyleSheet(StyleMainMenuWidget::callingTextStyle());
-    QFont callingFont("Outfit", 12, QFont::Normal);
+    QFont callingFont("Outfit", scale(12), QFont::Normal);
     m_callingText->setFont(callingFont);
 
     // Cancel call button
@@ -468,14 +468,14 @@ void MainMenuWidget::setupUI() {
     m_errorLabel->setStyleSheet(StyleMainMenuWidget::errorLabelStyle());
     m_errorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_errorLabel->hide();
-    QFont errorLabelFont("Outfit", 10, QFont::ExtraLight);
+    QFont errorLabelFont("Outfit", scale(10), QFont::ExtraLight);
     m_errorLabel->setFont(errorLabelFont);
 
     m_friendNicknameEdit = new QLineEdit(m_mainContainer);
     m_friendNicknameEdit->setFixedHeight(scale(50));
     m_friendNicknameEdit->setPlaceholderText("Enter friend's nickname");
     m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
-    QFont friendNicknameFont("Segoe UI", 12, QFont::Medium);
+    QFont friendNicknameFont("Segoe UI", scale(12), QFont::Medium);
     m_friendNicknameEdit->setFont(friendNicknameFont);
 
     // Set validator for nickname
@@ -487,7 +487,7 @@ void MainMenuWidget::setupUI() {
     m_callButton->setFixedHeight(scale(50));
     m_callButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
     m_callButton->setCursor(Qt::PointingHandCursor);
-    QFont callButtonFont("Outfit", 14, QFont::Normal);
+    QFont callButtonFont("Outfit", scale(14), QFont::Normal);
     m_callButton->setFont(callButtonFont);
 
     // Settings button with icon
@@ -505,7 +505,7 @@ void MainMenuWidget::setupUI() {
 
     QLabel* textLabel = new QLabel("Audio Controls");
     textLabel->setStyleSheet("color: inherit; background: transparent;");
-    QFont textLabelFont("Outfit", 12, QFont::Light);
+    QFont textLabelFont("Outfit", scale(12), QFont::Light);
     textLabel->setFont(textLabelFont);
 
     ButtonIcon* rightIcon = new ButtonIcon(this,

@@ -58,7 +58,7 @@ UpdateAvailableDialog::UpdateAvailableDialog(QWidget* parent)
     buttonLayout->setAlignment(Qt::AlignVCenter);
 
     QLabel* buttonTextLabel = new QLabel("New version! Click to update", buttonWidget);
-    QFont updateFont("Outfit", 13, QFont::Medium);
+    QFont updateFont("Outfit", scale(13), QFont::Medium);
     buttonTextLabel->setFont(updateFont);
     buttonTextLabel->setStyleSheet(QString("color: %1; background: transparent;").arg(COLOR_HEX_WHITE));
     buttonTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
