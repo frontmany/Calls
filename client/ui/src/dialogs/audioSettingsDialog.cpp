@@ -135,7 +135,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     m_slidersContainer = new QWidget(m_container);
     auto* slidersLayout = new QHBoxLayout(m_slidersContainer);
-    slidersLayout->setContentsMargins(scale(5), scale(16), scale(18), 0);
+    slidersLayout->setContentsMargins(scale(5), scale(26), scale(18), 0);
     slidersLayout->setSpacing(scale(24));
     slidersLayout->addLayout(micLayout, 1);
     slidersLayout->addLayout(speakerLayout, 1);
