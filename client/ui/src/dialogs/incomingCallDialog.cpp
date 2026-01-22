@@ -2,6 +2,8 @@
 #include "widgets/buttons.h"
 #include "widgets/incomingCallWidget.h"
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
+#include "utilities/color.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -158,13 +160,18 @@ void IncomingCallDialog::setupUi()
     m_avatarLabel->setFixedSize(avatarSize, avatarSize);
     m_avatarLabel->setAlignment(Qt::AlignCenter);
     QString avatarStyle = QString("QLabel {"
-        "background-color: rgb(20, 22, 28);"
-        "border: 1px solid rgba(255, 255, 255, 40);"
-        "border-radius: %1px;"
-        "color: white;"
-        "font-size: %2px;"
+        "background-color: %1;"
+        "border: %2px solid %3;"
+        "border-radius: %4px;"
+        "color: %5;"
+        "font-size: %6px;"
         "font-weight: bold;"
-        "}").arg(QString::fromStdString(std::to_string(avatarSize / 2)))
+        "}")
+        .arg(QColor(20, 22, 28).name())
+        .arg(scale(1))
+        .arg(COLOR_BORDER_WHITE.name())
+        .arg(QString::fromStdString(std::to_string(avatarSize / 2)))
+        .arg(COLOR_HEX_WHITE)
         .arg(QString::fromStdString(std::to_string(scale(20))));
     m_avatarLabel->setStyleSheet(avatarStyle);
     QString firstLetter = m_friendNickname.isEmpty() ? "G" : m_friendNickname.left(1).toUpper();
@@ -253,7 +260,7 @@ void IncomingCallDialog::setupTimer()
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &IncomingCallDialog::updateTimer);
-    m_timer->start(1000);
+    m_timer->start(TIMER_INTERVAL_MS);
 }
 
 void IncomingCallDialog::updateTimerLabel()

@@ -78,8 +78,6 @@ public:
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
-    void showUpdateAvailableButton();
-    void hideUpdateAvailableButton();
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
@@ -99,7 +97,6 @@ signals:
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
     void activateCameraClicked(bool activateD);
-    void updateButtonClicked();
 
 private slots:
     void onCallButtonClicked();
@@ -141,13 +138,6 @@ private:
     // Settings section
     QPushButton* m_settingsButton;
     SettingsPanel* m_settingsPanel;
-
-
-    QPushButton* m_updateNotificationButton;
-    QLabel* m_updateNotificationConfettiLabel;
-    QWidget* m_updateNotificationContainer;
-    QHBoxLayout* m_updateNotificationLayout;
-    QTimer* m_updateNotificationTimer;
 
     // Animations
     QPropertyAnimation* m_settingsAnimation;

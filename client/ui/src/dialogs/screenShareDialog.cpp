@@ -1,6 +1,7 @@
 #include "dialogs/screenShareDialog.h"
 #include "widgets/screenPreviewWidget.h"
 #include "utilities/utilities.h"
+#include "utilities/color.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QScrollArea>
@@ -11,94 +12,114 @@ QString StyleScreenShareDialog::mainWidgetStyle(int radius, int border)
 {
     return QString(
         "QWidget#mainWidget {"
-        "   background-color: rgb(248, 250, 252);"
-        "   border-radius: %1px;"
-        "   border: %2px solid rgb(210, 210, 210);"
+        "   background-color: %1;"
+        "   border-radius: %2px;"
+        "   border: %3px solid %4;"
         "}")
+        .arg(COLOR_BG_LIGHT_GRAY.name())
         .arg(radius)
-        .arg(border);
+        .arg(border)
+        .arg(COLOR_GRAY_210.name());
 }
 
 QString StyleScreenShareDialog::titleStyle(int fontSize, int padding)
 {
     return QString(
-        "color: rgb(60, 60, 60);"
-        "font-size: %1px;"
+        "color: %1;"
+        "font-size: %2px;"
         "font-family: 'Outfit';"
         "font-weight: bold;"
-        "padding: %2px;"
-    ).arg(fontSize).arg(padding);
+        "padding: %3px;"
+    ).arg(COLOR_TEXT_TERTIARY.name()).arg(fontSize).arg(padding);
 }
 
 QString StyleScreenShareDialog::instructionStyle(int fontSize, int padding)
 {
     return QString(
-        "color: rgb(100, 100, 100);"
+        "color: %1;"
         "font-family: 'Outfit';"
-        "font-size: %1px;"
-        "padding: %2px;"
-    ).arg(fontSize).arg(padding);
+        "font-size: %2px;"
+        "padding: %3px;"
+    ).arg(COLOR_TEXT_DISABLED.name()).arg(fontSize).arg(padding);
 }
 
 QString StyleScreenShareDialog::statusStyle(int fontSize, int padding, int radius)
 {
     return QString(
-        "color: rgb(100, 100, 100);"
+        "color: %1;"
         "font-family: 'Outfit';"
-        "font-size: %1px;"
-        "padding: %2px;"
+        "font-size: %2px;"
+        "padding: %3px;"
         "background-color: transparent;"
-        "border-radius: %3px;"
-    ).arg(fontSize).arg(padding).arg(radius);
+        "border-radius: %4px;"
+    ).arg(COLOR_TEXT_DISABLED.name()).arg(fontSize).arg(padding).arg(radius);
 }
 
 QString StyleScreenShareDialog::shareButtonStyle(int radius, int paddingH, int paddingV, int fontSize)
 {
     return QString(
         "QPushButton {"
-        "   background-color: rgb(21, 119, 232);"
-        "   color: white;"
-        "   border-radius: %1px;"
-        "   padding: %2px %3px;"
+        "   background-color: %1;"
+        "   color: %2;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
         "   font-family: 'Outfit';"
-        "   font-size: %4px;"
+        "   font-size: %6px;"
         "   font-weight: bold;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgb(18, 113, 222);"
+        "   background-color: %7;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgb(16, 103, 202);"
+        "   background-color: %8;"
         "}"
         "QPushButton:disabled {"
-        "   background-color: rgba(150, 150, 150, 0.20);"
-        "   color: rgba(90, 90, 90, 0.75);"
+        "   background-color: %9;"
+        "   color: %10;"
         "}"
-    ).arg(radius).arg(paddingV).arg(paddingH).arg(fontSize);
+    ).arg(COLOR_PRIMARY.name())
+     .arg(COLOR_BG_WHITE.name())
+     .arg(radius)
+     .arg(paddingV)
+     .arg(paddingH)
+     .arg(fontSize)
+     .arg(COLOR_PRIMARY_HOVER.name())
+     .arg(COLOR_PRIMARY_DARK.name())
+     .arg(COLOR_GLASS_GRAY_150_DARK_20.name(QColor::HexArgb))
+     .arg(COLOR_GLASS_GRAY_90_75.name(QColor::HexArgb));
 }
 
 QString StyleScreenShareDialog::closeButtonStyle(int radius, int paddingH, int paddingV, int fontSize)
 {
     return QString(
         "QPushButton {"
-        "   background-color: rgba(21, 119, 232, 0.08);"
-        "   color: rgb(21, 119, 232);"
-        "   border-radius: %1px;"
-        "   padding: %2px %3px;"
+        "   background-color: %1;"
+        "   color: %2;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
         "   font-family: 'Outfit';"
-        "   font-size: %4px;"
+        "   font-size: %6px;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(21, 119, 232, 0.14);"
-        "   color: rgb(18, 113, 222);"
+        "   background-color: %7;"
+        "   color: %8;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgba(21, 119, 232, 0.20);"
-        "   color: rgb(16, 103, 202);"
+        "   background-color: %9;"
+        "   color: %10;"
         "}"
-    ).arg(radius).arg(paddingV).arg(paddingH).arg(fontSize);
+    ).arg(COLOR_GLASS_PRIMARY_8.name(QColor::HexArgb))
+     .arg(COLOR_PRIMARY.name())
+     .arg(radius)
+     .arg(paddingV)
+     .arg(paddingH)
+     .arg(fontSize)
+     .arg(COLOR_GLASS_PRIMARY_36.name(QColor::HexArgb))
+     .arg(COLOR_PRIMARY_HOVER.name())
+     .arg(COLOR_GLASS_PRIMARY_20.name(QColor::HexArgb))
+     .arg(COLOR_PRIMARY_DARK.name());
 }
 
 QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, int handleMinHeight)
@@ -115,12 +136,12 @@ QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, 
         "   border-radius: %2px;"
         "}"
         "QScrollBar::handle:vertical {"
-        "   background-color: rgba(0, 0, 0, 60);"
+        "   background-color: %4;"
         "   border-radius: %2px;"
         "   min-height: %3px;"
         "}"
         "QScrollBar::handle:vertical:hover {"
-        "   background-color: rgba(0, 0, 0, 80);"
+        "   background-color: %5;"
         "}"
         "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
         "   height: 0px;"
@@ -128,7 +149,11 @@ QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, 
         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
         "   background: transparent;"
         "}"
-    ).arg(barWidth).arg(handleRadius).arg(handleMinHeight);
+    ).arg(barWidth)
+     .arg(handleRadius)
+     .arg(handleMinHeight)
+     .arg(COLOR_SHADOW_BLACK_60.name(QColor::HexArgb))
+     .arg(COLOR_SHADOW_BLACK_80.name(QColor::HexArgb));
 }
 
 ScreenShareDialog::ScreenShareDialog(QWidget* parent)
@@ -146,7 +171,7 @@ ScreenShareDialog::ScreenShareDialog(QWidget* parent)
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
+    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);
@@ -177,7 +202,7 @@ ScreenShareDialog::ScreenShareDialog(QWidget* parent)
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_scrollArea->setStyleSheet(StyleScreenShareDialog::scrollAreaStyle(scale(10), scale(5), scale(20)));
+    m_scrollArea->setStyleSheet(StyleScreenShareDialog::scrollAreaStyle(scale(6), scale(3), scale(20)));
 
     m_screensContainer = new QWidget();
     m_screensContainer->setStyleSheet("background-color: transparent;");
@@ -228,11 +253,11 @@ ScreenShareDialog::ScreenShareDialog(QWidget* parent)
         if (m_selectedIndex >= 0 && m_selectedIndex < m_screens.size()) {
             emit screenSelected(m_selectedIndex);
         }
-    });
+        });
     connect(closeButton, &QPushButton::clicked, this, [this]() {
         emit cancelled();
         hide();
-    });
+        });
 }
 
 void ScreenShareDialog::setScreens(const QList<QScreen*>& screens)
@@ -274,9 +299,9 @@ void ScreenShareDialog::refreshScreenSharePreviews()
         m_previewWidgets.append(preview);
 
         connect(preview, &ScreenPreviewWidget::screenClicked, this, [this](int index, bool currentlySelected)
-        {
-            handleScreenPreviewClick(index, currentlySelected);
-        });
+            {
+                handleScreenPreviewClick(index, currentlySelected);
+            });
 
         ++col;
         if (col >= maxCols)
@@ -366,4 +391,3 @@ void ScreenShareDialog::updateScreenShareSelectionState()
         }
     }
 }
-

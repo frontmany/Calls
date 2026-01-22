@@ -1,5 +1,6 @@
 #include "screenCaptureController.h"
 #include "media/frameProcessor.h"
+#include "utilities/constant.h"
 
 #include <QBuffer>
 #include <QGuiApplication>
@@ -50,7 +51,7 @@ void ScreenCaptureController::startCapture()
     }
 
     m_isCapturing = true;
-    m_captureTimer->start(72);
+    m_captureTimer->start(SCREEN_CAPTURE_INTERVAL_MS);
 
     emit captureStarted();
 }

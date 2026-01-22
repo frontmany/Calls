@@ -1,4 +1,6 @@
 #include "authorizationWidget.h"
+#include "utilities/constant.h"
+#include "utilities/color.h"
 
 #include <QRegularExpressionValidator>
 #include <QShortcut>
@@ -7,17 +9,16 @@
 
 #include "../utilities/utilities.h"
 
-const QColor StyleAuthorizationWidget::m_primaryColor = QColor(21, 119, 232);
-const QColor StyleAuthorizationWidget::m_hoverColor = QColor(18, 113, 222);
-const QColor StyleAuthorizationWidget::m_errorColor = QColor(220, 80, 80, 200);
-const QColor StyleAuthorizationWidget::m_successColor = QColor(100, 200, 100, 200);
-const QColor StyleAuthorizationWidget::m_textColor = QColor(1, 11, 19);
-const QColor StyleAuthorizationWidget::m_backgroundColor = QColor(245, 245, 245);
-const QColor StyleAuthorizationWidget::m_glassColor = QColor(255, 255, 255, 60);
-const QColor StyleAuthorizationWidget::m_glassBorderColor = QColor(255, 255, 255, 100);
-const QColor StyleAuthorizationWidget::m_textDarkColor = QColor(240, 240, 240);
-const QColor StyleAuthorizationWidget::m_disabledColor = QColor(160, 160, 160, 150);
-const QColor StyleAuthorizationWidget::m_updateAvailableColor = QColor(21, 119, 232);
+const QColor StyleAuthorizationWidget::m_primaryColor = COLOR_PRIMARY;
+const QColor StyleAuthorizationWidget::m_hoverColor = COLOR_PRIMARY_HOVER;
+const QColor StyleAuthorizationWidget::m_errorColor = COLOR_GLASS_ERROR_200;
+const QColor StyleAuthorizationWidget::m_successColor = COLOR_SUCCESS;
+const QColor StyleAuthorizationWidget::m_textColor = COLOR_TEXT_PRIMARY;
+const QColor StyleAuthorizationWidget::m_backgroundColor = COLOR_GRAY_100;
+const QColor StyleAuthorizationWidget::m_glassColor = COLOR_GLASS_WHITE_60;
+const QColor StyleAuthorizationWidget::m_glassBorderColor = COLOR_GLASS_WHITE_100;
+const QColor StyleAuthorizationWidget::m_textDarkColor = COLOR_GRAY_150;
+const QColor StyleAuthorizationWidget::m_disabledColor = COLOR_GLASS_DISABLED_150;
 
 QString StyleAuthorizationWidget::glassButtonStyle() {
     return QString("QPushButton {"
@@ -36,20 +37,22 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
         "   border: none;"
         "}"
         "QPushButton:disabled {"
-        "   background-color: rgba(21, 119, 232, 150);"
+        "   background-color: %8;"
         "   opacity: 0.6;"
-        "}").arg(m_primaryColor.name())
-        .arg(m_glassBorderColor.name())
-        .arg(m_glassBorderColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(15))))
-        .arg(QString::fromStdString(std::to_string(scale(12))))
-        .arg(QString::fromStdString(std::to_string(scale(24))))
-        .arg(m_primaryColor.darker(110).name());
+        "}")
+        .arg(m_primaryColor.name())                    // %1 - background-color
+        .arg(COLOR_HEX_WHITE)                          // %2 - color (белый текст)
+        .arg(m_glassBorderColor.name())               // %3 - border color
+        .arg(scale(15))                                // %4 - border-radius
+        .arg(scale(12))                                // %5 - padding vertical
+        .arg(scale(24))                                // %6 - padding horizontal
+        .arg(m_hoverColor.name())                      // %7 - hover background-color
+        .arg(COLOR_GLASS_PRIMARY_150.name());          // %8 - disabled background-color
 }
 
 QString StyleAuthorizationWidget::glassLineEditStyle() {
     return QString("QLineEdit {"
-        "   background-color: rgba(245, 245, 245, 235);"
+        "   background-color: %7;"
         "   border: 0px solid %1;"
         "   border-radius: %4px;"
         "   padding: %5px %6px;"
@@ -59,41 +62,50 @@ QString StyleAuthorizationWidget::glassLineEditStyle() {
         "}"
         "QLineEdit:focus {"
         "   border: 0px solid %3;"
-        "   background-color: rgba(255, 255, 255, 235);"
+        "   background-color: %8;"
         "}"
         "QLineEdit:disabled {"
-        "   background-color: rgba(245, 245, 245, 150);"
+        "   background-color: %9;"
         "   border: 0px solid %1;"
         "   opacity: 0.7;"
         "}"
         "QLineEdit::placeholder {"
-        "   color: rgba(240, 240, 240, 180);"
+        "   color: %10;"
         "}").arg(m_glassBorderColor.name())
         .arg(m_textColor.name())
         .arg(m_primaryColor.name())
         .arg(QString::fromStdString(std::to_string(scale(12))))
-        .arg(QString::fromStdString(std::to_string(scale(12))))
-        .arg(QString::fromStdString(std::to_string(scale(15))));
+        .arg(scale(12))
+        .arg(scale(15))
+        .arg(COLOR_GLASS_GRAY_235.name())
+        .arg(COLOR_GLASS_WHITE_235.name())
+        .arg(COLOR_GLASS_GRAY_150.name())
+        .arg(COLOR_PLACEHOLDER.name());
 }
 
 QString StyleAuthorizationWidget::glassLabelStyle() {
     return QString("QLabel {"
         "   color: %1;"
-        "   font-size: 14px;"
+        "   font-size: %2px;"
         "   font-weight: bold;"
         "   margin: 0px;"
         "   background: transparent;"
-        "}").arg(m_textColor.name());
+        "}")
+        .arg(m_textColor.name())
+        .arg(scale(14));
 }
 
 QString StyleAuthorizationWidget::glassErrorLabelStyle() {
     return QString("QLabel {"
         "   color: %1;"
-        "   margin: 2px 2px;"
-        "   padding: 5px;"
+        "   margin: %2px %2px;"
+        "   padding: %3px;"
         "   background: transparent;"
-        "   border-radius: 5px;"
-        "}").arg(m_errorColor.name());
+        "   border-radius: %3px;"
+        "}")
+        .arg(m_errorColor.name())
+        .arg(scale(2))
+        .arg(scale(5));
 }
 
 QString StyleAuthorizationWidget::glassTitleLabelStyle() {
@@ -114,91 +126,74 @@ QString StyleAuthorizationWidget::glassSubTitleLabelStyle() {
 
 QString StyleAuthorizationWidget::notificationRedLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(220, 80, 80, 65);"
+        "   background-color: %2;"
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+        "}")
+        .arg(scale(8))
+        .arg(QColor(220, 80, 80, 65).name());
 }
 
 QString StyleAuthorizationWidget::notificationGreenLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(82, 196, 65, 100);"
+        "   background-color: %1;"
         "   border: none;"
-        "   border-radius: %1px;"
+        "   border-radius: %2px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(QString::fromStdString(std::to_string(scale(8))));
+        "}")
+        .arg(QColor(82, 196, 65, 100).name())
+        .arg(scale(8));
 }
 
 QString StyleAuthorizationWidget::notificationLilacLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(200, 180, 220, 80);"  
+        "   background-color: %1;"  
         "   border: none;"
-        "   border-radius: %1px;"
+        "   border-radius: %2px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(QString::number(scale(8)));
-}
-
-QString StyleAuthorizationWidget::notificationUpdateAvailableStyle() {
-    return QString("QWidget {"
-        "   background-color: transparent;"
-        "   border: none;"
-        "   border-radius: %1px;"
-        "   margin: 0px;"
-        "   padding: 0px;"
-        "}").arg(QString::number(scale(8)));
-}
-
-QString StyleAuthorizationWidget::updateAvailableButtonStyle() {
-    return QString("QPushButton {"
-        "   background-color: rgba(21, 119, 232, 80);"
-        "   color: #1577E8;"
-        "   border: none;"
-        "   border-radius: %1px;"
-        "   padding: 0px;"
-        "   margin: 0px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(21, 119, 232, 120);"
-        "   color: #0D6BC8;"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: rgba(21, 119, 232, 150);"
-        "   color: #0A5FC8;"
-        "}").arg(QString::number(scale(12)));
+        "}")
+        .arg(QColor(200, 180, 220, 80).name())
+        .arg(scale(8));
 }
 
 QString StyleAuthorizationWidget::notificationRedTextStyle() {
     return QString("QLabel {"
-        "   color: #DC5050;"
+        "   color: %1;"
         "   background: transparent;"
-        "   font-size: %1px;"
+        "   font-size: %2px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(QString::number(scale(14)));
+        "}")
+        .arg(COLOR_HEX_ERROR)
+        .arg(scale(14));
 }
 
 QString StyleAuthorizationWidget::notificationLilacTextStyle() {
     return QString("QLabel {"
-        "   color: #8C6BC7;"
+        "   color: %1;"
         "   background: transparent;"
-        "   font-size: %1px;"
+        "   font-size: %2px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(QString::number(scale(14)));
+        "}")
+        .arg(COLOR_HEX_PURPLE)
+        .arg(scale(14));
 }
 
 QString StyleAuthorizationWidget::notificationGreenTextStyle() {
     return QString("QLabel {"
-        "   color: #19ba00;"
+        "   color: %1;"
         "   background: transparent;"
-        "   font-size: %1px;"
+        "   font-size: %2px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(QString::number(scale(14)));
+        "}")
+        .arg(COLOR_HEX_SUCCESS)
+        .arg(scale(14));
 }
 
 AuthorizationWidget::AuthorizationWidget(QWidget* parent) : QWidget(parent)
@@ -225,50 +220,6 @@ void AuthorizationWidget::setupUI() {
     m_notificationLabel->setFont(errorFont);
 
     m_notificationLayout->addWidget(m_notificationLabel);
-
-    m_updateAvailableWidget = new QWidget(this);
-    m_updateAvailableWidget->setStyleSheet(StyleAuthorizationWidget::notificationUpdateAvailableStyle());
-    m_updateAvailableWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_updateAvailableWidget->hide();
-
-    m_updateAvailableLayout = new QHBoxLayout(m_updateAvailableWidget);
-    m_updateAvailableLayout->setAlignment(Qt::AlignCenter);
-    m_updateAvailableLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
-
-    // Create button with custom layout inside
-    QWidget* buttonWidget = new QWidget();
-    buttonWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    QHBoxLayout* buttonLayout = new QHBoxLayout(buttonWidget);
-    buttonLayout->setContentsMargins(scale(15), 0, scale(18), 0);
-    buttonLayout->setSpacing(scale(8));
-    buttonLayout->setAlignment(Qt::AlignVCenter);
-
-    QLabel* buttonTextLabel = new QLabel("Update available! Click to download", buttonWidget);
-    QFont updateFont("Outfit", scale(12), QFont::Medium);
-    buttonTextLabel->setFont(updateFont);
-    buttonTextLabel->setStyleSheet("color: #1577E8; background: transparent;");
-    buttonTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    buttonTextLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-    buttonTextLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-
-    m_updateAvailableConfettiLabel = new QLabel(buttonWidget);
-    m_updateAvailableConfettiLabel->setPixmap(QPixmap(":/resources/confetti.png"));
-    m_updateAvailableConfettiLabel->setScaledContents(true);
-    m_updateAvailableConfettiLabel->setFixedSize(scale(24), scale(24));
-    m_updateAvailableConfettiLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    m_updateAvailableConfettiLabel->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    m_updateAvailableConfettiLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    buttonLayout->addWidget(buttonTextLabel, 0, Qt::AlignVCenter);
-    buttonLayout->addWidget(m_updateAvailableConfettiLabel, 0, Qt::AlignVCenter);
-
-    m_updateAvailableButton = new QPushButton(m_updateAvailableWidget);
-    m_updateAvailableButton->setMinimumSize(scale(328), scale(38));
-    m_updateAvailableButton->setCursor(Qt::PointingHandCursor);
-    m_updateAvailableButton->setLayout(buttonLayout);
-    m_updateAvailableButton->setStyleSheet(StyleAuthorizationWidget::updateAvailableButtonStyle());
-
-    m_updateAvailableLayout->addWidget(m_updateAvailableButton);
 
     m_container = new QWidget(this);
     m_container->setFixedSize(scale(450), scale(400));
@@ -314,7 +265,7 @@ void AuthorizationWidget::setupUI() {
     m_nicknameEdit->setFocus();
 
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
-        QRegularExpression("[\\p{L}0-9_]{3,15}"), this);
+        QRegularExpression(QString("[\\p{L}0-9_]{%1,%2}").arg(MIN_NICKNAME_LENGTH).arg(MAX_NICKNAME_LENGTH)), this);
     m_nicknameEdit->setValidator(validator);
 
     m_authorizeButton = new QPushButton("Authorize", m_container);
@@ -335,13 +286,11 @@ void AuthorizationWidget::setupUI() {
 
     m_mainLayout->addSpacing(scale(42));
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
-    m_mainLayout->addWidget(m_updateAvailableWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
     m_mainLayout->addWidget(m_container);
 
     connect(m_authorizeButton, &QPushButton::clicked, this, &AuthorizationWidget::onAuthorizationClicked);
     connect(m_nicknameEdit, &QLineEdit::textChanged, this, &AuthorizationWidget::onTextChanged);
     connect(m_nicknameEdit, &QLineEdit::returnPressed, this, &AuthorizationWidget::onAuthorizationClicked);
-    connect(m_updateAvailableButton, &QPushButton::clicked, [this]() {emit updateButtonClicked(); });
 
     QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
     QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
@@ -355,7 +304,7 @@ void AuthorizationWidget::setupAnimations() {
     m_backgroundBlurEffect->setBlurRadius(0);
 
     m_blurAnimation = new QPropertyAnimation(m_backgroundBlurEffect, "blurRadius", this);
-    m_blurAnimation->setDuration(1200);
+    m_blurAnimation->setDuration(BLUR_ANIMATION_DURATION_MS);
     m_blurAnimation->setEasingCurve(QEasingCurve::OutCubic);
 }
 
@@ -364,9 +313,9 @@ void AuthorizationWidget::paintEvent(QPaintEvent* event) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     QLinearGradient gradient(0, 90, width(), height());
-    gradient.setColorAt(0.0, QColor(230, 230, 230));
-    gradient.setColorAt(0.5, QColor(220, 230, 240));
-    gradient.setColorAt(1.0, QColor(240, 240, 240));
+    gradient.setColorAt(0.0, COLOR_GRADIENT_START);
+    gradient.setColorAt(0.5, COLOR_GRADIENT_MIDDLE);
+    gradient.setColorAt(1.0, COLOR_GRADIENT_END);
 
     painter.fillRect(rect(), gradient);
 
@@ -377,14 +326,14 @@ bool AuthorizationWidget::validateNickname(const QString& nickname) {
     if (nickname.isEmpty()) {
         return false;
     }
-    QRegularExpression regex("[\\p{L}0-9_]{3,15}");
+    QRegularExpression regex(QString("[\\p{L}0-9_]{%1,%2}").arg(MIN_NICKNAME_LENGTH).arg(MAX_NICKNAME_LENGTH));
     return regex.match(nickname).hasMatch();
 }
 
 void AuthorizationWidget::startBlurAnimation() {
     setGraphicsEffect(m_backgroundBlurEffect);
     m_blurAnimation->setStartValue(0);
-    m_blurAnimation->setEndValue(10);
+    m_blurAnimation->setEndValue(BLUR_ANIMATION_END_VALUE);
     m_blurAnimation->start();
 }
 
@@ -398,13 +347,6 @@ void AuthorizationWidget::waitForBlurAnimation() {
 
 void AuthorizationWidget::resetBlur() {
     m_backgroundBlurEffect->setBlurRadius(0);
-}
-
-void AuthorizationWidget::stopBlurAnimation() {
-    if (m_blurAnimation) {
-        m_blurAnimation->stop();
-    }
-    resetBlur();
 }
 
 void AuthorizationWidget::onAuthorizationClicked() {
@@ -439,12 +381,4 @@ void AuthorizationWidget::setAuthorizationDisabled(bool disabled) {
 
 void AuthorizationWidget::clearErrorMessage() {
     m_errorLabel->hide();
-}
-
-void AuthorizationWidget::showUpdateAvailableButton() {
-    m_updateAvailableWidget->show();
-}
-
-void AuthorizationWidget::hideUpdateAvailableButton() {
-    m_updateAvailableWidget->hide();
 }

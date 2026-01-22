@@ -77,6 +77,7 @@ namespace updater
 
 			std::atomic_bool m_shuttingDown = false;
 			std::atomic_bool m_connecting = false;
+			std::atomic_bool m_connectionDown = false;
 		};
 	}
 }

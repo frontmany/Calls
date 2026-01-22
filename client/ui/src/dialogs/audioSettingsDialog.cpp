@@ -4,17 +4,18 @@
 #include <QGridLayout>
 #include <QSizePolicy>
 #include <unordered_set>
+#include "utilities/color.h"
 
 namespace {
     QString containerStyle(int radius, int padding)
     {
-    return QString(
-        "#audioSettingsContainer {"
-        "   background-color: rgb(255, 255, 255);"
-        "   border-radius: %1px;"
-        "   padding: %2px;"
-        "}"
-        ).arg(radius).arg(padding);
+        return QString(
+            "#audioSettingsContainer {"
+            "   background-color: %1;"
+            "   border-radius: %2px;"
+            "   padding: %3px;"
+            "}"
+        ).arg(COLOR_BG_WHITE.name()).arg(radius).arg(padding);
     }
 }
 
@@ -41,7 +42,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     m_inputDevicesWidget = new QWidget(m_inputDevicesArea);
     m_outputDevicesWidget = new QWidget(m_outputDevicesArea);
-    const QString listBg = "background-color: rgba(255,255,255,230); border: none;";
+    const QString listBg = QString("background-color: %1; border: none;").arg(COLOR_GLASS_WHITE_230.name(QColor::HexArgb));
     m_inputDevicesWidget->setStyleSheet(listBg);
     m_outputDevicesWidget->setStyleSheet(listBg);
 
@@ -63,8 +64,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     QLabel* inputLabel = new QLabel("Input device", m_container);
     QLabel* outputLabel = new QLabel("Output device", m_container);
-    inputLabel->setStyleSheet("color: #010B13; font-weight: 600;");
-    outputLabel->setStyleSheet("color: #010B13; font-weight: 600;");
+    inputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_HEX_TEXT_PRIMARY));
+    outputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_HEX_TEXT_PRIMARY));
 
     m_closeButton = new ButtonIcon(m_container, scale(28), scale(28));
     m_closeButton->setIcons(QIcon(":/resources/close.png"), QIcon(":/resources/closeHover.png"));
@@ -166,20 +167,20 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
         if (m_blockDeviceSignals || !btn) return;
         emit inputDeviceSelected(btn->property("deviceIndex").toInt());
         updateDeviceLogos(m_inputButtonsGroup);
-    });
+        });
     connect(m_outputButtonsGroup, &QButtonGroup::buttonClicked, this, [this](QAbstractButton* btn) {
         if (m_blockDeviceSignals || !btn) return;
         emit outputDeviceSelected(btn->property("deviceIndex").toInt());
         updateDeviceLogos(m_outputButtonsGroup);
-    });
+        });
     connect(m_micToggle, &ToggleButtonIcon::toggled, this, [this](bool toggled) {
         m_micSlider->setEnabled(!toggled);
         emit muteMicrophoneClicked(toggled);
-    });
+        });
     connect(m_speakerToggle, &ToggleButtonIcon::toggled, this, [this](bool toggled) {
         m_speakerSlider->setEnabled(!toggled);
         emit muteSpeakerClicked(toggled);
-    });
+        });
     connect(m_micSlider, &QSlider::valueChanged, this, [this](int volume) { emit inputVolumeChanged(volume); });
     connect(m_speakerSlider, &QSlider::valueChanged, this, [this](int volume) { emit outputVolumeChanged(volume); });
     connect(m_closeButton, &ButtonIcon::clicked, this, [this]() { emit closeRequested(); });
@@ -188,8 +189,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 void AudioSettingsDialog::applyStyle()
 {
     setStyleSheet(
-        "QDialog { background: transparent; }"
-        "QLabel { font-size: 14px; }" +
+        QString("QDialog { background: transparent; }"
+        "QLabel { font-size: %1px; }").arg(scale(14)) +
         containerStyle(scale(22), scale(8)) +
         sliderStyle()
     );
@@ -204,35 +205,35 @@ QString AudioSettingsDialog::sliderStyle() const
             margin: 0px 0px;
         }
         QSlider::handle:horizontal {
-            background-color: rgb(230, 230, 230);
+            background-color: %7;
             width: %3px;
             height: %4px;
             border-radius: %5px;
-            margin: -4px 0;
+            margin: %12px 0;
             border: none;
         }
         QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
+            background-color: %8;
             border-radius: %6px;
         }
         QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
+            background-color: %9;
             border-radius: %6px;
         }
         QSlider::disabled {
             background-color: transparent;
         }
         QSlider::groove:horizontal:disabled {
-            background-color: rgb(180, 180, 180);
+            background-color: %10;
         }
         QSlider::handle:horizontal:disabled {
-            background-color: rgb(230, 230, 230);
+            background-color: %7;
         }
         QSlider::add-page:horizontal:disabled {
-            background-color: rgb(180, 180, 180);
+            background-color: %10;
         }
         QSlider::sub-page:horizontal:disabled {
-            background-color: rgb(150, 150, 150);
+            background-color: %11;
         }
     )")
         .arg(QString::number(scale(8)))
@@ -240,7 +241,13 @@ QString AudioSettingsDialog::sliderStyle() const
         .arg(QString::number(scale(17)))
         .arg(QString::number(scale(17)))
         .arg(QString::number(scale(8)))
-        .arg(QString::number(scale(4)));
+        .arg(QString::number(scale(4)))
+        .arg(COLOR_GRAY_200.name())
+        .arg(COLOR_SLIDER_GROOVE.name())
+        .arg(COLOR_SLIDER_SUBPAGE.name())
+        .arg(COLOR_GRAY_180.name())
+        .arg(COLOR_GRAY_150_DARK.name())
+        .arg(QString::number(scale(-4)));
 }
 
 QString AudioSettingsDialog::scrollAreaStyle() const
@@ -252,13 +259,16 @@ QString AudioSettingsDialog::scrollAreaStyle() const
         "}"
         "QScrollBar:vertical {"
         "   background-color: transparent;"
-        "   width: 6px;"
+        "   width: %2px;"
         "   margin: 0px;"
-        "   border-radius: 3px;"
+        "   border-radius: %3px;"
         "}"
         "QScrollBar::handle:vertical {"
-        "   background-color: rgba(0, 0, 0, 60);"
-        "   border-radius: 3px;"
+        "   background-color: %1;"
+        "   border-radius: %3px;"
+        "}"
+        "QScrollBar::handle:vertical:hover {"
+        "   background-color: %4;"
         "}"
         "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
         "   height: 0px;"
@@ -266,7 +276,10 @@ QString AudioSettingsDialog::scrollAreaStyle() const
         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
         "   background: transparent;"
         "}"
-    );
+    ).arg(COLOR_SHADOW_BLACK_60.name(QColor::HexArgb))
+     .arg(scale(6))
+     .arg(scale(3))
+     .arg(COLOR_SHADOW_BLACK_80.name(QColor::HexArgb));
 }
 
 void AudioSettingsDialog::refreshDevices(int currentInputIndex, int currentOutputIndex)
@@ -329,20 +342,6 @@ void AudioSettingsDialog::setSpeakerMuted(bool muted)
     m_speakerSlider->setEnabled(!muted);
 }
 
-int AudioSettingsDialog::currentInputDeviceIndex() const
-{
-    if (!m_inputButtonsGroup) return -1;
-    auto btn = m_inputButtonsGroup->checkedButton();
-    return btn ? btn->property("deviceIndex").toInt() : -1;
-}
-
-int AudioSettingsDialog::currentOutputDeviceIndex() const
-{
-    if (!m_outputButtonsGroup) return -1;
-    auto btn = m_outputButtonsGroup->checkedButton();
-    return btn ? btn->property("deviceIndex").toInt() : -1;
-}
-
 void AudioSettingsDialog::setSlidersVisible(bool visible)
 {
     if (m_slidersContainer) {
@@ -378,8 +377,8 @@ void AudioSettingsDialog::updateDeviceLogos(QButtonGroup* group)
         }
         if (row) {
             row->setStyleSheet(checked
-                ? "background-color: rgba(21,119,232,36); border-radius: 6px;"
-                : "background-color: transparent; border-radius: 6px;");
+                ? QString("background-color: %1; border-radius: %2px;").arg(COLOR_GLASS_PRIMARY_36.name(QColor::HexArgb)).arg(scale(6))
+                : QString("background-color: transparent; border-radius: %1px;").arg(scale(6)));
         }
     }
 }
@@ -420,16 +419,18 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
         btn->setCheckable(true);
         btn->setCursor(Qt::PointingHandCursor);
         btn->setStyleSheet(
+            QString(
             "QPushButton {"
             " background-color: transparent;"
             " border: none;"
-            " padding: 8px 10px;"
-            " color: #101010;"
+            " padding: %3px %4px;"
+            " color: %1;"
             " text-align: left;"
             "}"
             "QPushButton:checked {"
-            " color: #0c2a4f;"
+            " color: %2;"
             "}"
+            ).arg(COLOR_HEX_TEXT_SECONDARY).arg(COLOR_HEX_TEXT_TERTIARY).arg(scale(8)).arg(scale(10))
         );
         btn->setProperty("deviceIndex", device.deviceIndex);
         btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -458,9 +459,10 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
         if (device.deviceIndex == currentIndex) {
             btn->setChecked(true);
             logo->setVisible(true);
-            row->setStyleSheet("background-color: rgba(21,119,232,36); border-radius: 6px;");
-        } else {
-            row->setStyleSheet("background-color: transparent; border-radius: 6px;");
+            row->setStyleSheet(QString("background-color: %1; border-radius: %2px;").arg(COLOR_GLASS_PRIMARY_36.name(QColor::HexArgb)).arg(scale(6)));
+        }
+        else {
+            row->setStyleSheet(QString("background-color: transparent; border-radius: %1px;").arg(scale(6)));
         }
     }
 

@@ -8,6 +8,7 @@
 #include <QEvent>
 #include <QPainter>
 #include <QPropertyAnimation>
+#include "utilities/utilities.h"
 
 /*
 class ToggleSwitch : public QWidget {
@@ -58,8 +59,8 @@ class ButtonIcon : public QWidget
     Q_OBJECT
 
 public:
-    ButtonIcon(QWidget* parent, const QIcon& icon, const QIcon& iconHover, int width = 32, int height = 32);
-    ButtonIcon(QWidget* parent, int width = 32, int height = 32);
+    ButtonIcon(QWidget* parent, const QIcon& icon, const QIcon& iconHover, int width = scale(32), int height = scale(32));
+    ButtonIcon(QWidget* parent, int width = scale(32), int height = scale(32));
     void setIcons(const QIcon& icon, const QIcon& iconHover);
     void setSize(int width, int height);
 
@@ -80,7 +81,7 @@ private:
     QIcon m_icon;
     QIcon m_iconHover;
     QIcon* m_currentIcon = nullptr;
-    QSize m_iconSize{ 32, 32 };
+    QSize m_iconSize{ scale(32), scale(32) };
     bool m_hovered = false;
 };
 
@@ -89,8 +90,8 @@ class ToggleButtonIcon : public QWidget
     Q_OBJECT
 
 public:
-    ToggleButtonIcon(QWidget* parent, const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover, int width = 32, int height = 32);
-    ToggleButtonIcon(QWidget* parent, int width = 32, int height = 32);
+    ToggleButtonIcon(QWidget* parent, const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover, int width = scale(32), int height = scale(32));
+    ToggleButtonIcon(QWidget* parent, int width = scale(32), int height = scale(32));
     void setIcons(const QIcon& icon, const QIcon& iconHover, const QIcon& iconToggled, const QIcon& iconToggledHover);
     void setSize(int width, int height);
     void setToggled(bool toggled);
@@ -115,7 +116,7 @@ private:
     QIcon m_iconHover;
     QIcon m_iconToggledHover;
     QIcon* m_currentIcon = nullptr;
-    QSize m_iconSize{ 32, 32 };
+    QSize m_iconSize{ scale(32), scale(32) };
     bool m_hovered = false;
     bool m_toggled = false;
 };
@@ -231,7 +232,7 @@ private:
     QIcon m_currentIcon;
     QIcon m_temporaryIcon;
     QIcon m_temporaryIconHover;
-    QSize m_iconSize{ 32, 32 };
+    QSize m_iconSize{ scale(32), scale(32) };
     Theme m_theme;
     bool m_hovered = false;
     bool m_isTemporaryIcon = false;

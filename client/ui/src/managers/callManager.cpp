@@ -8,14 +8,10 @@
 #include "media/screenCaptureController.h"
 #include "media/cameraCaptureController.h"
 #include "utilities/logger.h"
+#include "utilities/constant.h"
 #include "errorCode.h"
 #include <system_error>
 #include <QList>
-
-namespace
-{
-    constexpr int kDefaultIncomingCallSeconds = 32;
-}
 
 CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, QObject* parent)
     : QObject(parent)
@@ -210,6 +206,10 @@ void CallManager::onAcceptCallResult(std::error_code ec, const QString& nickname
             m_navigationController->switchToCallWidget(nickname);
         }
 
+        if (m_dialogsController) {
+            m_dialogsController->hideUpdateAvailableDialog();
+        }
+
         if (m_audioManager) {
             m_audioManager->stopIncomingCallRingtone();
         }
@@ -259,6 +259,10 @@ void CallManager::onCallingAccepted()
         m_navigationController->switchToCallWidget(QString::fromStdString(m_coreClient->getNicknameInCallWith()));
     }
 
+    if (m_dialogsController) {
+        m_dialogsController->hideUpdateAvailableDialog();
+    }
+
     if (m_audioManager) {
         m_audioManager->playCallJoinedEffect();
     }
@@ -305,6 +309,10 @@ void CallManager::onRemoteUserEndedCall()
         m_mainMenuWidget->setStatusLabelOnline();
     }
 
+    if (m_dialogsController) {
+        m_dialogsController->showUpdateAvailableDialogIfConnected();
+    }
+
     if (m_audioManager) {
         m_audioManager->playEndCallEffect();
     }
@@ -318,7 +326,7 @@ void CallManager::onIncomingCall(const QString& friendNickname)
         m_audioManager->playIncomingCallRingtone();
     }
 
-    m_incomingCalls.insert(friendNickname, { friendNickname, kDefaultIncomingCallSeconds });
+    m_incomingCalls.insert(friendNickname, { friendNickname, DEFAULT_INCOMING_CALL_SECONDS });
     updateIncomingCallsUi();
 }
 
@@ -383,7 +391,7 @@ void CallManager::handleEndCallErrorNotificationAppearance()
 
 void CallManager::onStopOutgoingCallResult(std::error_code ec)
 {
-    stopOperationTimer(core::UserOperationType::DECLINE_CALL);
+    stopOperationTimer(core::UserOperationType::STOP_OUTGOING_CALL);
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setStopCallingButtonEnabled(true);
     }
@@ -407,7 +415,7 @@ void CallManager::onStopOutgoingCallResult(std::error_code ec)
 
 void CallManager::onDeclineCallResult(std::error_code ec, const QString& nickname)
 {
-    stopOperationTimer(core::UserOperationType::STOP_OUTGOING_CALL);
+    stopOperationTimer(core::UserOperationType::DECLINE_CALL);
     if (ec) {
         if (m_dialogsController) {
             m_dialogsController->setIncomingCallButtonsActive(nickname, true);
@@ -458,6 +466,10 @@ void CallManager::onEndCallResult(std::error_code ec)
             m_navigationController->switchToMainMenuWidget();
         }
 
+        if (m_dialogsController) {
+            m_dialogsController->showUpdateAvailableDialogIfConnected();
+        }
+
         if (m_audioManager) {
             m_audioManager->playEndCallEffect();
         }
@@ -501,7 +513,7 @@ void CallManager::onCallParticipantConnectionRestored()
 
     if (m_notificationController)
     {
-        const int restoredDurationMs = 2500;
+        const int restoredDurationMs = ERROR_MESSAGE_DURATION_MS;
         m_notificationController->showConnectionRestoredWithUser("Connection with participant restored", restoredDurationMs);
     }
 }
@@ -525,7 +537,7 @@ void CallManager::startOperationTimer(core::UserOperationType operationKey, cons
     {
         timer = new QTimer(this);
         timer->setSingleShot(true);
-        timer->setInterval(1000);
+        timer->setInterval(TIMER_INTERVAL_MS);
         connect(timer, &QTimer::timeout, this, [this, operationKey]()
         {
             onOperationTimerTimeout(operationKey);

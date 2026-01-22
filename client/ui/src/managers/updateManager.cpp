@@ -3,6 +3,7 @@
 #include "widgets/mainMenuWidget.h"
 #include "managers/dialogsController.h"
 #include "events/updaterEventListener.h"
+#include "utilities/constant.h"
 
 #include <QProcess>
 #include <QObject>
@@ -36,8 +37,9 @@ bool UpdateManager::shouldRestart() {
 void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
 {
     if (result == updater::CheckResult::POSSIBLE_UPDATE) {
-        m_authorizationWidget->showUpdateAvailableButton();
-        m_mainMenuWidget->showUpdateAvailableButton();
+        if (m_dialogsController) {
+            m_dialogsController->showUpdateAvailableDialog();
+        }
     }
     else if (result == updater::CheckResult::REQUIRED_UPDATE) {
         if (m_updaterClient) {
@@ -94,7 +96,7 @@ void UpdateManager::onUpdateLoaded(bool emptyUpdate)
             m_coreClient->logout();
         }
         else {
-            QTimer::singleShot(600, [this]() {
+            QTimer::singleShot(UPDATE_APPLIER_DELAY_MS, [this]() {
                 launchUpdateApplier();
             });
         }
@@ -153,4 +155,4 @@ void UpdateManager::launchUpdateApplier()
             LOG_ERROR("Failed to launch update applier: {}", updateApplierPath.toStdString());
         }
     }
-}
+} 

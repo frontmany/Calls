@@ -15,6 +15,7 @@
 
 #include "buttons.h"
 #include "screen.h"
+#include "utilities/constant.h"
 
 class QResizeEvent;
 class QShowEvent;
@@ -114,7 +115,6 @@ private slots:
 private:
     void setupUI();
     void setupShadowEffect();
-    void updateExitFullscreenButtonPosition();
     void updateOverlayButtonsPosition();
     void updateParticipantConnectionErrorBannerPosition();
     void showOverlayButtonWithTimeout();
@@ -128,7 +128,6 @@ private:
     // Spacers
     QSpacerItem* m_topMainLayoutSpacer;
     QSpacerItem* m_middleMainLayoutSpacer;
-    QList<QWidget*> m_spacerWidgets;
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
@@ -191,6 +190,6 @@ private:
     bool m_screenFullscreenActive = false;
     bool m_microphoneMuted = false;
     bool m_speakerMuted = false;
-    int m_inputVolume = 100;
-    int m_outputVolume = 100;
+    int m_inputVolume = DEFAULT_VOLUME;
+    int m_outputVolume = DEFAULT_VOLUME;
 };

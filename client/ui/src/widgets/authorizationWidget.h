@@ -15,6 +15,7 @@
 #include <QTimer>
 
 #include "buttons.h"
+#include "utilities/constant.h"
 
 struct StyleAuthorizationWidget {
     // Color constants
@@ -28,7 +29,6 @@ struct StyleAuthorizationWidget {
     static const QColor m_glassBorderColor;
     static const QColor m_textDarkColor;
     static const QColor m_disabledColor;
-    static const QColor m_updateAvailableColor;
 
     // Style methods
     static QString glassButtonStyle();
@@ -40,8 +40,6 @@ struct StyleAuthorizationWidget {
     static QString notificationRedLabelStyle();
     static QString notificationGreenLabelStyle();
     static QString notificationLilacLabelStyle();
-    static QString notificationUpdateAvailableStyle();
-    static QString updateAvailableButtonStyle();
     static QString notificationRedTextStyle();
     static QString notificationLilacTextStyle();
     static QString notificationGreenTextStyle();
@@ -53,14 +51,11 @@ class AuthorizationWidget : public QWidget {
 public:
     AuthorizationWidget(QWidget* parent = nullptr);
     void setAuthorizationDisabled(bool disabled);
-    void setErrorMessage(const QString& errorText, int durationMs = 2500);
+    void setErrorMessage(const QString& errorText, int durationMs = ERROR_MESSAGE_DURATION_MS);
     void clearErrorMessage();
     void startBlurAnimation();
-    void stopBlurAnimation();
     void waitForBlurAnimation();
     void resetBlur();
-    void showUpdateAvailableButton();
-    void hideUpdateAvailableButton();
 
 private slots:
     void onAuthorizationClicked();
@@ -68,7 +63,6 @@ private slots:
 
 signals:
     void authorizationButtonClicked(const QString& friendNickname);
-    void updateButtonClicked();
 
 private:
     void setupUI();
@@ -88,11 +82,6 @@ private:
     QWidget* m_notificationWidget;
     QHBoxLayout* m_notificationLayout;
     QLabel* m_notificationLabel;
-
-    QPushButton* m_updateAvailableButton;
-    QLabel* m_updateAvailableConfettiLabel;
-    QWidget* m_updateAvailableWidget;
-    QHBoxLayout* m_updateAvailableLayout;
 
     QGraphicsBlurEffect* m_backgroundBlurEffect;
     QPropertyAnimation* m_blurAnimation;

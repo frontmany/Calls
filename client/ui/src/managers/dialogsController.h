@@ -15,6 +15,11 @@ class ScreenShareDialog;
 class AlreadyRunningDialog;
 class FirstLaunchDialog;
 class IncomingCallDialog;
+class UpdateAvailableDialog;
+
+namespace updater {
+    class Client;
+}
 class DialogsController : public QObject
 {
 	Q_OBJECT
@@ -44,6 +49,11 @@ public:
     void hideIncomingCallsDialog(const QString& friendNickname);
     void setIncomingCallButtonsActive(const QString& friendNickname, bool active);
 
+    void showUpdateAvailableDialog();
+    void showUpdateAvailableDialogIfConnected();
+    void hideUpdateAvailableDialog();
+    void setUpdateClient(std::shared_ptr<updater::Client> updaterClient);
+
 signals:
     void inputDeviceSelected(int deviceIndex);
     void outputDeviceSelected(int deviceIndex);
@@ -60,6 +70,7 @@ signals:
     void incomingCallAccepted(const QString& friendNickname);
     void incomingCallDeclined(const QString& friendNickname);
     void incomingCallsDialogClosed(const QList<QString>& pendingCalls);
+    void updateButtonClicked();
 
 private:
     QWidget* m_parent;
@@ -79,4 +90,9 @@ private:
 
     OverlayWidget* m_audioSettingsOverlay = nullptr;
     AudioSettingsDialog* m_audioSettingsDialog = nullptr;
+
+    OverlayWidget* m_updateAvailableOverlay = nullptr;
+    UpdateAvailableDialog* m_updateAvailableDialog = nullptr;
+
+    std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 };

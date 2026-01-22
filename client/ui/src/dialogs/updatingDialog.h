@@ -23,8 +23,6 @@ public:
 
     void setProgress(double progressPercent);
     void setStatus(const QString& text, bool hideProgress);
-    void swapToRestarting();
-    void swapToUpToDate();
 
 signals:
     void closeRequested();

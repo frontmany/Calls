@@ -5,6 +5,7 @@
 #include "widgets/callWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/configManager.h"
+#include "utilities/constant.h"
 #include <QTimer>
 
 CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, DialogsController* dialogsController, QObject* parent)
@@ -309,7 +310,7 @@ void CameraSharingManager::startOperationTimer(core::UserOperationType operation
     {
         timer = new QTimer(this);
         timer->setSingleShot(true);
-        timer->setInterval(1000);
+        timer->setInterval(TIMER_INTERVAL_MS);
         connect(timer, &QTimer::timeout, this, [this, operationKey]()
         {
             onOperationTimerTimeout(operationKey);

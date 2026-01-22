@@ -4,14 +4,16 @@
 #include <QPainter>
 #include <QFontDatabase>
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
+#include "utilities/color.h"
 
 // Style definitions
-const QColor StyleIncomingCallWidget::m_backgroundColor = QColor(240, 240, 240);
-const QColor StyleIncomingCallWidget::m_borderColor = QColor(200, 200, 200, 100);
-const QColor StyleIncomingCallWidget::m_nicknameTextColor = QColor(1, 11, 19);
-const QColor StyleIncomingCallWidget::m_callTypeTextColor = QColor(102, 102, 102);
-const QColor StyleIncomingCallWidget::m_timerTextColor = QColor(115, 115, 115);
-const QColor StyleIncomingCallWidget::m_timerCircleColor = QColor(115, 115, 115);
+const QColor StyleIncomingCallWidget::m_backgroundColor = COLOR_BG_SECONDARY;
+const QColor StyleIncomingCallWidget::m_borderColor = COLOR_BORDER_LIGHT;
+const QColor StyleIncomingCallWidget::m_nicknameTextColor = COLOR_TEXT_PRIMARY;
+const QColor StyleIncomingCallWidget::m_callTypeTextColor = COLOR_TEXT_LIGHT;
+const QColor StyleIncomingCallWidget::m_timerTextColor = COLOR_TEXT_LIGHTER;
+const QColor StyleIncomingCallWidget::m_timerCircleColor = COLOR_TEXT_LIGHTER;
 
 QString StyleIncomingCallWidget::widgetStyle() {
     return QString("IncomingCallWidget {"
@@ -187,10 +189,6 @@ const QString& IncomingCallWidget::getFriendNickname() const {
     return m_friendNickname;
 }
 
-int IncomingCallWidget::getRemainingTime() const {
-    return m_remainingSeconds;
-}
-
 void IncomingCallWidget::setButtonsEnabled(bool enabled)
 {
     if (m_acceptButton) {
@@ -204,7 +202,7 @@ void IncomingCallWidget::setButtonsEnabled(bool enabled)
 void IncomingCallWidget::setupTimer() {
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &IncomingCallWidget::updateTimer);
-    m_timer->start(1000); // Update every second
+    m_timer->start(TIMER_INTERVAL_MS);
 }
 
 void IncomingCallWidget::updateTimer() {

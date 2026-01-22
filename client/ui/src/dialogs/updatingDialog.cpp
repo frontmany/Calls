@@ -1,4 +1,6 @@
 #include "dialogs/updatingDialog.h"
+#include "utilities/color.h"
+#include "utilities/utilities.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -9,29 +11,36 @@ QString StyleUpdatingDialog::mainWidgetStyle(int borderRadius)
 {
     return QString(
         "QWidget#mainWidget {"
-        "   background-color: rgb(226, 243, 231);"
-        "   border-radius: %1px;"
-        "   border: 1px solid rgb(210, 210, 210);"
+        "   background-color: %1;"
+        "   border-radius: %2px;"
+        "   border: %3px solid %4;"
         "}"
-    ).arg(borderRadius);
+    ).arg(COLOR_BG_UPDATE.name())
+     .arg(borderRadius)
+     .arg(scale(1))
+     .arg(COLOR_GRAY_210.name());
 }
 
 QString StyleUpdatingDialog::progressStyle()
 {
-    return
-        "color: rgb(80, 80, 80);"
-        "font-size: 14px;"
+    return QString(
+        "color: %1;"
+        "font-size: %2px;"
         "font-family: 'Outfit';"
-        "font-weight: bold;";
+        "font-weight: bold;"
+    ).arg(COLOR_GRAY_80.name())
+     .arg(scale(14));
 }
 
 QString StyleUpdatingDialog::titleStyle()
 {
-    return
-        "color: rgb(60, 60, 60);"
-        "font-size: 16px;"
+    return QString(
+        "color: %1;"
+        "font-size: %2px;"
         "font-family: 'Outfit';"
-        "font-weight: bold;";
+        "font-weight: bold;"
+    ).arg(COLOR_TEXT_TERTIARY.name())
+     .arg(scale(16));
 }
 
 QString StyleUpdatingDialog::exitButtonStyle(int radius, int paddingH, int paddingV, int fontSize)
@@ -39,37 +48,41 @@ QString StyleUpdatingDialog::exitButtonStyle(int radius, int paddingH, int paddi
     return QString(
         "QPushButton {"
         "   background-color: transparent;"
-        "   color: rgb(120, 120, 120);"
-        "   border-radius: %1px;"
-        "   padding: %2px %3px;"
+        "   color: %1;"
+        "   border-radius: %2px;"
+        "   padding: %3px %4px;"
         "   font-family: 'Outfit';"
-        "   font-size: %4px;"
+        "   font-size: %5px;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(0, 0, 0, 8);"
-        "   color: rgb(100, 100, 100);"
+        "   background-color: %6;"
+        "   color: %7;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgba(0, 0, 0, 15);"
+        "   background-color: %8;"
         "}"
-    ).arg(radius).arg(paddingV).arg(paddingH).arg(fontSize);
+    ).arg(COLOR_TEXT_PLACEHOLDER.name())
+     .arg(radius).arg(paddingV).arg(paddingH).arg(fontSize)
+     .arg(COLOR_SHADOW_BLACK_8.name())
+     .arg(COLOR_GRAY_100_DARK.name())
+     .arg(COLOR_SHADOW_BLACK_15.name());
 }
 
 UpdatingDialog::UpdatingDialog(QWidget* parent)
     : QWidget(parent)
 {
-    QFont font("Outfit", 14, QFont::Normal);
+    QFont font("Outfit", scale(14), QFont::Normal);
 
     setAttribute(Qt::WA_TranslucentBackground);
-    setMinimumWidth(300);
-    setMinimumHeight(250);
+    setMinimumWidth(scale(300));
+    setMinimumHeight(scale(250));
 
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
     shadowEffect->setBlurRadius(30);
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
+    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setObjectName("mainWidget");
@@ -80,12 +93,12 @@ UpdatingDialog::UpdatingDialog(QWidget* parent)
     mainLayout->addWidget(mainWidget);
 
     QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-    contentLayout->setContentsMargins(24, 24, 24, 24);
-    contentLayout->setSpacing(16);
+    contentLayout->setContentsMargins(scale(24), scale(24), scale(24), scale(24));
+    contentLayout->setSpacing(scale(16));
 
     m_gifLabel = new QLabel();
     m_gifLabel->setAlignment(Qt::AlignCenter);
-    m_gifLabel->setMinimumHeight(120);
+    m_gifLabel->setMinimumHeight(scale(120));
 
     m_movie = new QMovie(":/resources/updating.gif");
     if (m_movie->isValid())
@@ -107,8 +120,8 @@ UpdatingDialog::UpdatingDialog(QWidget* parent)
     buttonLayout->setAlignment(Qt::AlignCenter);
 
     m_exitButton = new QPushButton("Exit");
-    m_exitButton->setFixedWidth(120);
-    m_exitButton->setMinimumHeight(36);
+    m_exitButton->setFixedWidth(scale(120));
+    m_exitButton->setMinimumHeight(scale(36));
     m_exitButton->setStyleSheet(StyleUpdatingDialog::exitButtonStyle(8, 12, 6, 13));
     m_exitButton->setFont(font);
 
@@ -145,18 +158,4 @@ void UpdatingDialog::setStatus(const QString& text, bool hideProgress)
     {
         m_movie->stop();
     }
-}
-
-void UpdatingDialog::swapToRestarting()
-{
-    if (m_movie && m_movie->isValid()) m_movie->stop();
-    if (m_statusLabel) m_statusLabel->setText("Restarting...");
-    if (m_progressLabel) m_progressLabel->setVisible(false);
-}
-
-void UpdatingDialog::swapToUpToDate()
-{
-    if (m_movie && m_movie->isValid()) m_movie->stop();
-    if (m_statusLabel) m_statusLabel->setText("Already up to date");
-    if (m_progressLabel) m_progressLabel->setVisible(false);
 }

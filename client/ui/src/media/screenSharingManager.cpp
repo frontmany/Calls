@@ -4,6 +4,7 @@
 #include "managers/notificationController.h"
 #include "widgets/callWidget.h"
 #include "media/cameraCaptureController.h"
+#include "utilities/constant.h"
 #include <QApplication>
 #include <QResizeEvent>
 
@@ -257,7 +258,7 @@ void ScreenSharingManager::startOperationTimer(core::UserOperationType operation
     {
         timer = new QTimer(this);
         timer->setSingleShot(true);
-        timer->setInterval(1000);
+        timer->setInterval(TIMER_INTERVAL_MS);
         connect(timer, &QTimer::timeout, this, [this, operationKey]()
         {
             onOperationTimerTimeout(operationKey);

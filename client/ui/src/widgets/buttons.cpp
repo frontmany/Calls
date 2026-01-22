@@ -1,4 +1,5 @@
 #include "buttons.h"
+#include "utilities/color.h"
 /*
 
 AvatarIcon::AvatarIcon(QWidget* parent, int iconSize, int size, bool needHover, Theme theme)
@@ -83,9 +84,9 @@ void AvatarIcon::paintEvent(QPaintEvent* event)
 
         QRadialGradient gradient(circleRect.center(), circleRect.width());
         if (m_theme == Theme::LIGHT) {
-            gradient.setColorAt(0, QColor(63, 139, 252, 150));
-            gradient.setColorAt(0.7, QColor(127, 179, 255, 50));
-            gradient.setColorAt(1, QColor(189, 215, 255, 0));
+            gradient.setColorAt(0, COLOR_BUTTON_GRADIENT_START);
+            gradient.setColorAt(0.7, COLOR_BUTTON_GRADIENT_MIDDLE);
+            gradient.setColorAt(1, COLOR_BUTTON_GRADIENT_END);
         }
         else {
             gradient.setColorAt(0, QColor(255, 255, 255, 150));
@@ -127,7 +128,7 @@ void AvatarIcon::setTheme(Theme theme) {
 
 ToggleSwitch::ToggleSwitch(QWidget* parent, Theme theme)
     : QWidget(parent), m_isChecked(false), m_radius(20), m_indicatorX(5) {
-    setFixedSize(58, 31);
+    setFixedSize(scale(58), scale(31));
     m_theme = theme;
 
     m_sunIcon = QIcon(":/resources/ChatsWidget/sun.png");
@@ -169,8 +170,8 @@ void ToggleSwitch::mousePressEvent(QMouseEvent* event) {
 }
 
 void ToggleSwitch::updateAnimation() {
-    int iconSize = 24;
-    int padding = 6; 
+    int iconSize = scale(24);
+    int padding = scale(6); 
 
     if (m_isChecked) {
         m_animation->setStartValue(m_indicatorX);
@@ -249,7 +250,7 @@ void ButtonCursor::paintEvent(QPaintEvent* event)
     painter.setPen(Qt::NoPen);
     painter.drawRect(rect());
 
-    QPixmap pixmap = m_currentIcon.pixmap(32, 32);
+    QPixmap pixmap = m_currentIcon.pixmap(scale(32), scale(32));
     int x = (width() - pixmap.width()) / 2;
     int y = (height() - pixmap.height()) / 2;
     painter.drawPixmap(x, y, pixmap);

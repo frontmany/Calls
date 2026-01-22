@@ -1,5 +1,6 @@
 #include "dialogs/alreadyRunningDialog.h"
 #include "utilities/utilities.h"
+#include "utilities/color.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGraphicsDropShadowEffect>
@@ -10,54 +11,66 @@ QString StyleAlreadyRunningDialog::mainWidgetStyle(int radius, int border)
 {
     return QString(
         "QWidget#mainWidget {"
-        "   background-color: rgb(255, 240, 240);"
-        "   border-radius: %1px;"
-        "   border: %2px solid rgb(210, 210, 210);"
+        "   background-color: %1;"
+        "   border-radius: %2px;"
+        "   border: %3px solid %4;"
         "}")
+        .arg(COLOR_BG_ERROR_LIGHT.name())
         .arg(radius)
-        .arg(border);
+        .arg(border)
+        .arg(COLOR_GRAY_210.name());
 }
 
 QString StyleAlreadyRunningDialog::titleStyle(int scalePx, const QString& fontFamily)
 {
     return QString(
-        "color: rgb(60, 60, 60);"
-        "font-size: %1px;"
-        "font-family: '%2';"
+        "color: %1;"
+        "font-size: %2px;"
+        "font-family: '%3';"
         "font-weight: bold;"
-    ).arg(scalePx).arg(fontFamily);
+    ).arg(COLOR_TEXT_TERTIARY.name())
+     .arg(scalePx).arg(fontFamily);
 }
 
 QString StyleAlreadyRunningDialog::messageStyle(int scalePx, const QString& fontFamily)
 {
     return QString(
-        "color: rgb(120, 120, 120);"
-        "font-size: %1px;"
-        "font-family: '%2';"
+        "color: %1;"
+        "font-size: %2px;"
+        "font-family: '%3';"
         "font-weight: normal;"
-    ).arg(scalePx).arg(fontFamily);
+    ).arg(COLOR_TEXT_PLACEHOLDER.name())
+     .arg(scalePx).arg(fontFamily);
 }
 
 QString StyleAlreadyRunningDialog::closeButtonStyle(int radius, int paddingH, int paddingV, int fontSize)
 {
     return QString(
         "QPushButton {"
-        "   background-color: rgba(232, 53, 53, 0.20);"
-        "   color: rgb(232, 53, 53);"
-        "   border-radius: %1px;"
-        "   padding: %2px %3px;"
+        "   background-color: %1;"
+        "   color: %2;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
         "   font-family: 'Outfit';"
-        "   font-size: %4px;"
+        "   font-size: %6px;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(232, 53, 53, 0.25);"
-        "   color: rgb(212, 43, 43);"
+        "   background-color: %7;"
+        "   color: %8;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgba(232, 53, 53, 0.35);"
+        "   background-color: %9;"
         "}"
-    ).arg(radius).arg(paddingV).arg(paddingH).arg(fontSize);
+    ).arg(QColor(232, 53, 53, 51).name(QColor::HexArgb))  // %1 - background-color (0.20 * 255 ≈ 51)
+     .arg(COLOR_ERROR_BANNER.name())                        // %2 - color
+     .arg(radius)                                           // %3 - border-radius
+     .arg(paddingV)                                         // %4 - padding vertical
+     .arg(paddingH)                                         // %5 - padding horizontal
+     .arg(fontSize)                                         // %6 - font-size
+     .arg(QColor(232, 53, 53, 64).name(QColor::HexArgb))  // %7 - hover background-color (0.25 * 255 ≈ 64)
+     .arg(COLOR_ERROR_BANNER_HOVER.name())                 // %8 - hover color
+     .arg(QColor(232, 53, 53, 89).name(QColor::HexArgb));  // %9 - pressed background-color (0.35 * 255 ≈ 89)
 }
 
 AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
@@ -73,7 +86,7 @@ AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
+    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);

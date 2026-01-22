@@ -1,4 +1,6 @@
 #include "screenPreviewWidget.h"
+#include "utilities/utilities.h"
+#include "utilities/color.h"
 
 #include <QVBoxLayout>
 #include <QPainter>
@@ -21,12 +23,15 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
 
     m_previewLabel = new QLabel();
     m_previewLabel->setAlignment(Qt::AlignCenter);
-    m_previewLabel->setMinimumSize(previewSize.width() - 16, previewSize.height() - 16); // Учитываем margins
-    m_previewLabel->setStyleSheet(
-        "background-color: rgb(230, 230, 230);"
-        "border: 4px solid rgb(230, 230, 230);"
-        "border-radius: 4px;"
-    );
+    m_previewLabel->setMinimumSize(previewSize.width() - 16, previewSize.height() - 16); // ????????? margins
+    m_previewLabel->setStyleSheet(QString(
+        "background-color: %1;"
+        "border: %2px solid %1;"
+        "border-radius: %3px;"
+    )
+        .arg(COLOR_GRAY_200.name())
+        .arg(scale(4))
+        .arg(scale(4)));
     m_previewLabel->setScaledContents(true);
 
     layout->addWidget(m_previewLabel);
@@ -38,7 +43,7 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
 QSize ScreenPreviewWidget::calculatePreviewSize() const
 {
     if (!m_screen) {
-        return QSize(300, 200);
+        return QSize(scale(300), scale(200));
     }
 
     QSize screenSize = m_screen->size();
@@ -66,8 +71,8 @@ QSize ScreenPreviewWidget::calculatePreviewSize() const
         }
     }
 
-    width = qMax(width, 200);
-    height = qMax(height, 150);
+    width = qMax(width, scale(200));
+    height = qMax(height, scale(150));
 
     return QSize(width, height);
 }
@@ -77,26 +82,26 @@ void ScreenPreviewWidget::setSelected(bool selected)
     m_isSelected = selected;
 
     if (selected) {
-        setStyleSheet(
+        setStyleSheet(QString(
             "ScreenPreviewWidget {"
-            "   background-color: rgb(225, 245, 254);"
+            "   background-color: %1;"
             "   border: none;"
             "}"
-        );
+        ).arg(COLOR_SELECTION_BG.name()));
 
         QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
         shadowEffect->setBlurRadius(20);
-        shadowEffect->setColor(QColor(33, 150, 243, 120));
+        shadowEffect->setColor(COLOR_SHADOW_PRIMARY_120);
         shadowEffect->setOffset(0, 0);
         setGraphicsEffect(shadowEffect);
     }
     else {
-        setStyleSheet(
+        setStyleSheet(QString(
             "ScreenPreviewWidget {"
-            "   background-color: rgb(250, 250, 250);"
+            "   background-color: %1;"
             "   border: none;"
             "}"
-        );
+        ).arg(COLOR_SELECTION_BG_LIGHT.name()));
         setGraphicsEffect(nullptr);
     }
 
@@ -129,8 +134,8 @@ void ScreenPreviewWidget::paintEvent(QPaintEvent* event) {
     if (m_isSelected) {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(QPen(QColor(33, 150, 243), 3));
+        painter.setPen(QPen(COLOR_PRIMARY_LIGHT, scale(3)));
         painter.setBrush(Qt::NoBrush);
-        painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 8, 8);
+        painter.drawRoundedRect(rect().adjusted(scale(1), scale(1), -scale(1), -scale(1)), scale(8), scale(8));
     }
 }

@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QTimer>
 #include <QPainter>
+#include "utilities/constant.h"
 
 class ButtonIcon;
 
@@ -27,10 +28,9 @@ struct StyleIncomingCallWidget {
 class IncomingCallWidget : public QWidget {
     Q_OBJECT
 public:
-    IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime = 32);
+    IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime = DEFAULT_INCOMING_CALL_SECONDS);
     ~IncomingCallWidget();
     const QString& getFriendNickname() const;
-    int getRemainingTime() const;
     void setButtonsEnabled(bool enabled);
 
 signals:

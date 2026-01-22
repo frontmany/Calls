@@ -5,31 +5,34 @@
 #include <string>
 
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
+#include "utilities/color.h"
 
 // Style definitions
-const QColor StyleCallWidget::m_primaryColor = QColor(21, 119, 232);
-const QColor StyleCallWidget::m_hoverColor = QColor(18, 113, 222);
-const QColor StyleCallWidget::m_backgroundColor = QColor(230, 230, 230);
-const QColor StyleCallWidget::m_textColor = QColor(1, 11, 19);
+const QColor StyleCallWidget::m_primaryColor = COLOR_PRIMARY;
+const QColor StyleCallWidget::m_hoverColor = COLOR_PRIMARY_HOVER;
+const QColor StyleCallWidget::m_backgroundColor = COLOR_BG_PRIMARY;
+const QColor StyleCallWidget::m_textColor = COLOR_TEXT_PRIMARY;
 const QColor StyleCallWidget::m_containerColor = QColor(255, 255, 255, 50);
-const QColor StyleCallWidget::m_whiteColor = QColor(255, 255, 255);
-const QColor StyleCallWidget::m_controlButtonColor = QColor(255, 255, 255, 180);
-const QColor StyleCallWidget::m_controlButtonHoverColor = QColor(255, 255, 255, 220);
-const QColor StyleCallWidget::m_hangupButtonColor = QColor(232, 53, 53);
-const QColor StyleCallWidget::m_hangupButtonHoverColor = QColor(212, 43, 43);
-const QColor StyleCallWidget::m_sliderGrooveColor = QColor(77, 77, 77);
-const QColor StyleCallWidget::m_sliderHandleColor = QColor(255, 255, 255);
-const QColor StyleCallWidget::m_sliderSubPageColor = QColor(21, 119, 232);
-const QColor StyleCallWidget::m_volumeLabelColor = QColor(51, 51, 51);
+const QColor StyleCallWidget::m_whiteColor = COLOR_BG_WHITE;
+const QColor StyleCallWidget::m_controlButtonColor = COLOR_GLASS_WHITE_180;
+const QColor StyleCallWidget::m_controlButtonHoverColor = COLOR_GLASS_WHITE_220;
+const QColor StyleCallWidget::m_hangupButtonColor = COLOR_ERROR_BANNER;
+const QColor StyleCallWidget::m_hangupButtonHoverColor = COLOR_ERROR_BANNER_HOVER;
+const QColor StyleCallWidget::m_sliderGrooveColor = COLOR_SLIDER_GROOVE;
+const QColor StyleCallWidget::m_sliderHandleColor = COLOR_SLIDER_HANDLE;
+const QColor StyleCallWidget::m_sliderSubPageColor = COLOR_SLIDER_SUBPAGE;
+const QColor StyleCallWidget::m_volumeLabelColor = COLOR_TEXT_SECONDARY;
 const QColor StyleCallWidget::m_scrollAreaBackgroundColor = QColor(0, 0, 0, 0);
-const QColor StyleCallWidget::m_sliderContainerColor = QColor(255, 255, 255, 120);
+const QColor StyleCallWidget::m_sliderContainerColor = COLOR_GLASS_SETTINGS_120;
 
 QString StyleCallWidget::containerStyle() {
     return QString("QWidget {"
         "   background-color: transparent;"
-        "   border-radius: 20px;"
+        "   border-radius: %1px;"
         "   padding: 0px;"
-        "}");
+        "}")
+        .arg(scale(20));
 }
 
 QString StyleCallWidget::sliderContainerStyle() {
@@ -171,40 +174,45 @@ QString StyleCallWidget::volumeSliderStyle() {
             margin: -4px 0;
         }
         QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
+            background-color: %7;
             border-radius: %6px;
         }
         QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
+            background-color: %8;
             border-radius: %6px;
         }
         QSlider::disabled {
             background-color: transparent;
         }
         QSlider::groove:horizontal:disabled {
-            background-color: rgb(180, 180, 180);
+            background-color: %9;
         }
         QSlider::handle:horizontal:disabled {
-            background-color: rgb(230, 230, 230);
+            background-color: %10;
         }
         QSlider::add-page:horizontal:disabled {
-            background-color: rgb(180, 180, 180);
+            background-color: %9;
         }
         QSlider::sub-page:horizontal:disabled {
-            background-color: rgb(150, 150, 150);
+            background-color: %11;
         }
     )")
-        .arg(QString::fromStdString(std::to_string(scale(8))))
-        .arg(QString::fromStdString(std::to_string(scale(4))))
-        .arg(QString::fromStdString(std::to_string(scale(17))))
-        .arg(QString::fromStdString(std::to_string(scale(17))))
-        .arg(QString::fromStdString(std::to_string(scale(8))))
-        .arg(QString::fromStdString(std::to_string(scale(4))));
+        .arg(scale(8))
+        .arg(scale(4))
+        .arg(scale(17))
+        .arg(scale(17))
+        .arg(scale(8))
+        .arg(scale(4))
+        .arg(COLOR_SLIDER_GROOVE.name())
+        .arg(COLOR_SLIDER_SUBPAGE.name())
+        .arg(COLOR_GRAY_180.name())
+        .arg(COLOR_GRAY_200.name())
+        .arg(COLOR_GRAY_150_DARK.name());
 }
 
 QString StyleCallWidget::notificationRedLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(252, 121, 121, 100);"
+        "   background-color: %1;"
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -241,7 +249,7 @@ void CallWidget::setupUI() {
     m_mainScreen = new Screen(this);
     m_mainScreen->setStyleSheet("background-color: transparent; border: none;");
     m_mainScreen->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_mainScreen->setMinimumSize(100, 100);
+    m_mainScreen->setMinimumSize(scale(100), scale(100));
     m_mainScreen->hide();
     applyStandardSize();
 
@@ -271,7 +279,9 @@ void CallWidget::setupUI() {
 
     m_connectionErrorLabel = new QLabel(m_participantInfoContainer);
     m_connectionErrorLabel->setAlignment(Qt::AlignCenter);
-    m_connectionErrorLabel->setStyleSheet("color: #DC5050; background: transparent; font-size: 12px; margin: 0px; padding: 0px;");
+    m_connectionErrorLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; margin: 0px; padding: 0px;")
+        .arg(COLOR_HEX_ERROR)
+        .arg(scale(12)));
     QFont connectionErrorFont("Outfit", scale(11), QFont::Medium);
     m_connectionErrorLabel->setFont(connectionErrorFont);
     m_connectionErrorLabel->hide();
@@ -280,7 +290,7 @@ void CallWidget::setupUI() {
     m_participantInfoLayout->addWidget(m_connectionErrorLabel);
 
     m_participantConnectionErrorBanner = new QWidget(this);
-    m_participantConnectionErrorBanner->setStyleSheet("background-color: #DC3545;");
+    m_participantConnectionErrorBanner->setStyleSheet(QString("background-color: %1;").arg(COLOR_HEX_ERROR_BANNER));
     m_participantConnectionErrorBanner->setFixedHeight(scale(40));
     m_participantConnectionErrorBanner->hide();
     m_participantConnectionErrorBanner->setAttribute(Qt::WA_TranslucentBackground, false);
@@ -288,7 +298,9 @@ void CallWidget::setupUI() {
 
     m_participantConnectionErrorBannerLabel = new QLabel(m_participantConnectionErrorBanner);
     m_participantConnectionErrorBannerLabel->setAlignment(Qt::AlignCenter);
-    m_participantConnectionErrorBannerLabel->setStyleSheet("color: #FFFFFF; background: transparent; font-size: 14px; font-weight: 600; margin: 0px; padding: 0px;");
+    m_participantConnectionErrorBannerLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; font-weight: 600; margin: 0px; padding: 0px;")
+        .arg(COLOR_HEX_WHITE)
+        .arg(scale(14)));
     QFont bannerFont("Outfit", scale(14), QFont::Bold);
     m_participantConnectionErrorBannerLabel->setFont(bannerFont);
 
@@ -430,15 +442,15 @@ void CallWidget::setupUI() {
 }
 
 void CallWidget::setupShadowEffect() {
-    setupElementShadow(m_timerLabel, 15, QColor(0, 0, 0, 60));
-    setupElementShadow(m_friendNicknameLabel, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_enterFullscreenButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_microphoneButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_screenShareButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_cameraButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_settingsButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 50));
-    setupElementShadow(m_exitFullscreenButton, 10, QColor(0, 0, 0, 50));
+    setupElementShadow(m_timerLabel, scale(15), COLOR_SHADOW_BLACK_60);
+    setupElementShadow(m_friendNicknameLabel, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_enterFullscreenButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_microphoneButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_screenShareButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_cameraButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_settingsButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_hangupButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_exitFullscreenButton, scale(10), COLOR_SHADOW_BLACK_50);
 }
 
 void CallWidget::setupElementShadow(QWidget* widget, int blurRadius, const QColor& color) {
@@ -488,7 +500,7 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
     QFont timerFont("Outfit", scale(48), QFont::Bold);
     m_timerLabel->setFont(timerFont);
 
-    m_callTimer->start(1000);
+    m_callTimer->start(TIMER_INTERVAL_MS);
 }
 
 void CallWidget::updateCallTimer() {
@@ -559,7 +571,7 @@ void CallWidget::applyStandardSize() {
     }
 
     m_mainScreen->setRoundedCornersEnabled(true);
-    m_mainScreen->setMinimumSize(100, 100);
+    m_mainScreen->setMinimumSize(scale(100), scale(100));
     m_mainScreen->setMaximumSize(targetSize);
 }
 
@@ -575,7 +587,7 @@ void CallWidget::applyDecreasedSize() {
         targetSize = QSize(adjustedWidth, availableHeight);
     }
     
-    m_mainScreen->setMinimumSize(100, 100);
+    m_mainScreen->setMinimumSize(scale(100), scale(100));
     m_mainScreen->setMaximumSize(targetSize);
 }
 

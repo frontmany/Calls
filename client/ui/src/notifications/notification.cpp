@@ -1,5 +1,6 @@
 #include "notifications/notification.h"
 #include "utilities/utilities.h"
+#include "utilities/color.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
@@ -8,24 +9,30 @@ QString NotificationStyle::mainWidgetStyle(NotificationStyleType styleType)
     switch (styleType)
     {
     case NotificationStyleType::GREEN:
-        return
+        return QString(
             "QWidget#mainWidget {"
-            "   background-color: rgb(235, 249, 237);"
-            "   border-radius: 18px;"
-            "}";
+            "   background-color: %1;"
+            "   border-radius: %2px;"
+            "}")
+            .arg(COLOR_SUCCESS_BG.name())
+            .arg(scale(18));
     case NotificationStyleType::RED:
-        return
+        return QString(
             "QWidget#mainWidget {"
-            "   background-color: rgb(255, 212, 212);"
-            "   border-radius: 18px;"
-            "}";
+            "   background-color: %1;"
+            "   border-radius: %2px;"
+            "}")
+            .arg(COLOR_ERROR_BG.name())
+            .arg(scale(18));
     case NotificationStyleType::BASE:
     default:
-        return
+        return QString(
             "QWidget#mainWidget {"
-            "   background-color: rgb(255, 255, 255);"
-            "   border-radius: 24px;"
-            "}";
+            "   background-color: %1;"
+            "   border-radius: %2px;"
+            "}")
+            .arg(COLOR_BG_WHITE.name())
+            .arg(scale(24));
     }
 }
 
@@ -34,24 +41,33 @@ QString NotificationStyle::labelStyle(NotificationStyleType styleType)
     switch (styleType)
     {
     case NotificationStyleType::GREEN:
-        return
-            "color: rgb(25, 186, 0);"
-            "font-size: 15px;"
+        return QString(
+            "color: %1;"
+            "font-size: %2px;"
             "font-family: 'Outfit';"
-            "font-weight: 600;";
+            "font-weight: 600;"
+        )
+            .arg(COLOR_SUCCESS_TEXT.name())
+            .arg(scale(15));
     case NotificationStyleType::RED:
-        return
-            "color: rgb(220, 0, 0);"
-            "font-size: 15px;"
+        return QString(
+            "color: %1;"
+            "font-size: %2px;"
             "font-family: 'Outfit';"
-            "font-weight: 600;";
+            "font-weight: 600;"
+        )
+            .arg(COLOR_ERROR_DARK.name())
+            .arg(scale(15));
     case NotificationStyleType::BASE:
     default:
-        return
-            "color: rgb(100, 100, 100);"
-            "font-size: 15px;"
+        return QString(
+            "color: %1;"
+            "font-size: %2px;"
             "font-family: 'Outfit';"
-            "font-weight: normal;";
+            "font-weight: normal;"
+        )
+            .arg(COLOR_TEXT_DISABLED.name())
+            .arg(scale(15));
     }
 }
 
@@ -97,7 +113,7 @@ Notification::Notification(QWidget* parent,
 
     m_gifLabel = new QLabel();
     m_gifLabel->setAlignment(Qt::AlignCenter);
-    m_gifLabel->setFixedSize(32, 32);
+    m_gifLabel->setFixedSize(scale(32), scale(32));
 
     m_movie = new QMovie(":/resources/waiting.gif");
     if (m_movie->isValid())

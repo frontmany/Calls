@@ -14,7 +14,6 @@ public:
     void saveConfig();
     void setDefaultValues();
 
-    bool isConfigLoaded();
     bool isFirstLaunch() const;
     bool isCameraActive() const;
     bool isSpeakerMuted() const;
@@ -36,18 +35,13 @@ public:
     const std::unordered_set<std::string>& getIgnoredDirectoriesWhileCollectingForUpdate() const;
     updater::OperationSystemType getOperationSystemType() const;
 
-    void setVersion(const QString& version);
-    void setUpdaterHost(const QString& host);
     void setSpeakerMuted(bool muted);
     void setMicrophoneMuted(bool muted);
     void setOutputVolume(int volume);
     void setInputVolume(int volume);
     void setMultiInstanceAllowed(bool allowed);
-    void setPort(const QString& port);
-    void setServerHost(const QString& host);
     void setCameraActive(bool active);
     void setFirstLaunch(bool firstLaunch);
-    void setOperationSystemType(updater::OperationSystemType operationSystemType);
 
 private:
     bool isFirstLaunchFromConfig();

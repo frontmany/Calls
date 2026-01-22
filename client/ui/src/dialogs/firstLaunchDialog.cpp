@@ -1,5 +1,6 @@
 #include "dialogs/firstLaunchDialog.h"
 #include "utilities/utilities.h"
+#include "utilities/color.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGraphicsDropShadowEffect>
@@ -14,51 +15,62 @@ QString StyleFirstLaunchDialog::mainWidgetStyle(int radius, int border)
 {
     return QString(
         "QWidget#mainWidget {"
-        "   background-color: rgb(245, 245, 245);"
-        "   border-radius: %1px;"
-        "   border: %2px solid rgb(210, 210, 210);"
+        "   background-color: %1;"
+        "   border-radius: %2px;"
+        "   border: %3px solid %4;"
         "}")
+        .arg(COLOR_BG_TERTIARY.name())
         .arg(radius)
-        .arg(border);
+        .arg(border)
+        .arg(COLOR_GRAY_210.name());
 }
 
 QString StyleFirstLaunchDialog::descriptionStyle(int fontSize, int padding)
 {
     return QString(
-        "color: rgb(60, 60, 60);"
-        "font-size: %1px;"
+        "color: %1;"
+        "font-size: %2px;"
         "font-family: 'Outfit';"
         "line-height: 1.6;"
-        "padding: %2px;"
+        "padding: %3px;"
         "background-color: transparent;"
         "text-align: left;"
-    ).arg(fontSize).arg(padding);
+    ).arg(COLOR_TEXT_TERTIARY.name())
+     .arg(fontSize).arg(padding);
 }
 
 QString StyleFirstLaunchDialog::okButtonStyle(int radius, int fontSize)
 {
     return QString(
         "QPushButton {"
-        "   background-color: rgb(21, 119, 232);"
-        "   color: rgb(255, 255, 255);"
-        "   border-radius: %1px;"
-        "   padding: 8px 16px;"
+        "   background-color: %1;"
+        "   color: %2;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
         "   font-family: 'Outfit';"
-        "   font-size: %2px;"
+        "   font-size: %6px;"
         "   font-weight: 500;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgb(18, 113, 222);"
+        "   background-color: %7;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgb(16, 107, 212);"
+        "   background-color: %8;"
         "}"
         "QPushButton:focus {"
         "   outline: none;"
         "   border: none;"
         "}"
-    ).arg(radius).arg(fontSize);
+    ).arg(COLOR_PRIMARY.name())
+     .arg(COLOR_HEX_WHITE)
+     .arg(radius)
+     .arg(scale(8)).arg(scale(16))
+     .arg(fontSize)
+     .arg(COLOR_PRIMARY_HOVER.name())
+     .arg(COLOR_PRIMARY_DARKER.name())
+     .arg(scale(8))
+     .arg(scale(16));
 }
 
 FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, const QString& descriptionText)
@@ -74,7 +86,7 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
+    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);

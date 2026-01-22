@@ -1,4 +1,5 @@
 #include "screen.h"
+#include "utilities/utilities.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -56,7 +57,7 @@ QSize Screen::sizeHint() const
 
 QSize Screen::minimumSizeHint() const
 {
-    return QSize(100, 100);
+    return QSize(scale(100), scale(100));
 }
 
 void Screen::paintEvent(QPaintEvent* event)

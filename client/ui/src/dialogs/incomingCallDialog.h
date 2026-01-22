@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QTimer>
 #include <QMouseEvent>
+#include "utilities/constant.h"
 
 class ButtonIcon;
 
@@ -12,7 +13,7 @@ class IncomingCallDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit IncomingCallDialog(QWidget* parent, const QString& friendNickname, int remainingTime = 32);
+    explicit IncomingCallDialog(QWidget* parent, const QString& friendNickname, int remainingTime = DEFAULT_INCOMING_CALL_SECONDS);
 
     const QString& getFriendNickname() const;
     void setButtonsEnabled(bool enabled);

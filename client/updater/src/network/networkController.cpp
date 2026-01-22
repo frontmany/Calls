@@ -62,10 +62,12 @@ namespace updater
 			m_connectionResolver->connect(host, std::stoi(port),
 				[this]() { 
 					m_connecting = false;
+					m_connectionDown = false;
 					initializeAfterHandshake(); 
 				},
 				[this]() { 
 					m_connecting = false;
+					m_connectionDown = true;
 					m_onNetworkError(); 
 				});
 		}
@@ -73,6 +75,7 @@ namespace updater
 		void NetworkController::disconnect()
 		{
 			m_shuttingDown = true;
+			m_connectionDown = true;
 
 			if (m_socket.is_open()) {
 				std::error_code ec;
@@ -90,7 +93,7 @@ namespace updater
 
 		bool NetworkController::isConnected() const
 		{
-			return m_socket.is_open() && !m_shuttingDown;
+			return m_socket.is_open() && !m_shuttingDown && !m_connectionDown;
 		}
 
 		void NetworkController::processPacketQueue()
@@ -109,6 +112,7 @@ namespace updater
 						handleMetadataPacket(std::move(p));
 					}
 					else {
+						m_connectionDown = true;
 						m_onNetworkError();
 					}
 				}
@@ -149,6 +153,7 @@ namespace updater
 
 			const FileMetadata& completedFile = m_fileReceiver->getCurrentFile();
 			if (completedFile.fileHash != updater::utilities::calculateFileHash(completedFile.relativeFilePath)) {
+				m_connectionDown = true;
 				m_onNetworkError();
 				return;
 			}
@@ -186,12 +191,14 @@ namespace updater
 
 			m_shuttingDown = false;
 			m_connecting = false;
+			m_connectionDown = false;
 		}
 
 		void NetworkController::initializeAfterHandshake()
 		{
 			m_packetSender = std::make_unique<PacketSender>(m_socket,
 				[this]() { 
+					m_connectionDown = true;
 					m_onNetworkError(); 
 				});
 
@@ -203,6 +210,7 @@ namespace updater
 					}
 				},
 				[this]() { 
+					m_connectionDown = true;
 					m_onNetworkError(); 
 				},
 				[this]() {
@@ -214,6 +222,7 @@ namespace updater
 					m_packetQueue.push(std::move(packet));
 				},
 				[this]() {
+					m_connectionDown = true;
 					m_onNetworkError();
 				},
 				[this](uint32_t packetType) {

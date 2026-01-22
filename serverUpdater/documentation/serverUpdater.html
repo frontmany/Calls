@@ -118,10 +118,73 @@
             white-space: pre;
             font-size: 13px;
         }
+        .nav-bar {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+        .nav-section {
+            margin-bottom: 12px;
+        }
+        .nav-section:last-child {
+            margin-bottom: 0;
+        }
+        .nav-section-title {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .nav-section-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .nav-link {
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+        .nav-link:hover {
+            background-color: #f3f4f6;
+        }
+        .nav-link.active {
+            color: var(--text);
+            font-weight: 600;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <nav class="nav-bar">
+            <div class="nav-section">
+                <div class="nav-section-title">UI</div>
+                <div class="nav-section-links">
+                    <a href="../../client/ui/documentation/dialogsController.html" class="nav-link">DialogsController</a>
+                    <a href="../../client/ui/documentation/notificationController.html" class="nav-link">NotificationController</a>
+                </div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">ServerUpdater</div>
+                <div class="nav-section-links">
+                    <a href="serverUpdater.html" class="nav-link active">ServerUpdater</a>
+                </div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">UpdateApplier</div>
+                <div class="nav-section-links">
+                    <a href="../../clientUpdateApplier/documentation/updateApplier.html" class="nav-link">UpdateApplier</a>
+                </div>
+            </div>
+        </nav>
         <header>
             <h1>ServerUpdater Architecture and Infrastructure</h1>
             <p class="subtitle">Update server for client applications: network protocol, version management, and file distribution.</p>
@@ -262,20 +325,32 @@
 │   ├── Windows/
 │   │   ├── app.exe
 │   │   ├── config.ini
+│   │   ├── configMergeRules.json # Required: config merge rules
+│   │   ├── updateApplierNEW.exe  # Required: new update applier
 │   │   └── ...
 │   ├── Linux/
 │   │   ├── app
 │   │   ├── config.ini
+│   │   ├── configMergeRules.json # Required: config merge rules
+│   │   ├── updateApplierNEW      # Required: new update applier
 │   │   └── ...
 │   └── Mac/
 │       ├── app.app
 │       ├── config.ini
+│       ├── configMergeRules.json # Required: config merge rules
+│       ├── updateApplierNEW      # Required: new update applier
 │       └── ...
 ├── 1.1.0/
 │   ├── version.json
 │   ├── Windows/
+│   │   ├── configMergeRules.json
+│   │   └── updateApplierNEW.exe
 │   ├── Linux/
+│   │   ├── configMergeRules.json
+│   │   └── updateApplierNEW
 │   └── Mac/
+│       ├── configMergeRules.json
+│       └── updateApplierNEW
 └── 2.0.0/
     ├── version.json
     ├── Windows/
@@ -313,6 +388,30 @@
                 All files within OS folders are sent with their relative paths preserved. The server recursively
                 scans all subdirectories and files.
             </p>
+
+            <h3>Required Files in OS-Specific Folders</h3>
+            <p>
+                Each OS-specific folder (Windows/, Linux/, Mac/) must contain the following files:
+            </p>
+            <ul>
+                <li><code>configMergeRules.json</code> - Configuration merge rules file (exact filename required)
+                    <ul>
+                        <li>JSON array of rule objects for merging old config values into new config</li>
+                        <li>See UpdateApplier documentation for format details</li>
+                        <li>If missing, new config replaces old config without merging</li>
+                    </ul>
+                </li>
+                <li><code>updateApplierNEW</code> - New update applier executable (exact filename required)
+                    <ul>
+                        <li>Windows: <code>updateApplierNEW.exe</code> (in <code>Windows/</code> folder)</li>
+                        <li>Linux: <code>updateApplierNEW</code> (in <code>Linux/</code> folder)</li>
+                        <li>Mac: <code>updateApplierNEW</code> (in <code>Mac/</code> folder)</li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="rule">
+                <strong>Important:</strong> These files must be placed inside OS-specific subdirectories (e.g., <code>versions/1.0.0/Windows/configMergeRules.json</code> and <code>versions/1.0.0/Windows/updateApplierNEW.exe</code>). The filenames must match exactly as specified.
+            </div>
         </section>
 
         <section class="section">

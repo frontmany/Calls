@@ -28,8 +28,6 @@ public:
     void setMicrophoneMuted(bool muted);
     void setSpeakerMuted(bool muted);
     void setSlidersVisible(bool visible);
-    int currentInputDeviceIndex() const;
-    int currentOutputDeviceIndex() const;
 
 signals:
     void inputDeviceSelected(int deviceIndex);

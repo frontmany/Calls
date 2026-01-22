@@ -141,7 +141,7 @@ void MainWindow::changeEvent(QEvent* event)
             !(newState & Qt::WindowMaximized) && 
             !(newState & Qt::WindowFullScreen))
         {
-            resize(800, 600);
+            resize(scale(800), scale(600));
         }
     }
 
@@ -185,6 +185,9 @@ void MainWindow::initializeCameraCaptureController() {
 void MainWindow::initializeDialogsController() {
     m_dialogsController = new DialogsController(this);
     connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
+    if (m_updaterClient) {
+        m_dialogsController->setUpdateClient(m_updaterClient);
+    }
 }
 
 void MainWindow::initializeNotificationController() {
@@ -298,9 +301,6 @@ void MainWindow::applyAudioSettings() {
 void MainWindow::connectWidgetsToManagers() {
     // AuthorizationWidget connections
     if (m_authorizationWidget) {
-        if (m_updateManager) {
-            connect(m_authorizationWidget, &AuthorizationWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
-        }
         if (m_authorizationManager) {
             connect(m_authorizationWidget, &AuthorizationWidget::authorizationButtonClicked, m_authorizationManager, &AuthorizationManager::onAuthorizationButtonClicked);
         }
@@ -334,9 +334,6 @@ void MainWindow::connectWidgetsToManagers() {
                         currentOutputDevice);
                 }
             });
-        }
-        if (m_updateManager) {
-            connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
         }
         if (m_callManager) {
             connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, m_callManager, &CallManager::onStartCallingButtonClicked);
@@ -425,6 +422,11 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_dialogsController, &DialogsController::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
         connect(m_dialogsController, &DialogsController::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
         connect(m_dialogsController, &DialogsController::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+    }
+
+    // Update available dialog connections
+    if (m_dialogsController && m_updateManager) {
+        connect(m_dialogsController, &DialogsController::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
     }
 
     // Manager to MainWindow connections

@@ -2,6 +2,7 @@
 #include "utilities/logger.h"
 #include "utilities/configKeys.h"
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -116,25 +117,21 @@ void ConfigManager::saveConfig() {
     }
 }
 
-bool ConfigManager::isConfigLoaded() {
-    return m_isConfigLoaded;
-}
-
 const QString& ConfigManager::getConfigPath() {
     return m_configPath;
 }
 
 void ConfigManager::setDefaultValues() {
-    m_version = "1.0.0";
+    m_version = DEFAULT_VERSION;
     m_isSpeakerMuted = false;
     m_isMicrophoneMuted = false;
     m_isMultiInstanceAllowed = false;
     m_isCameraActive = false;
-    m_outputVolume = 100;
-    m_inputVolume = 100;
-    m_port = "8081";
-    m_serverHost = "92.255.165.77";
-    m_updaterHost = "92.255.165.77";
+    m_outputVolume = DEFAULT_VOLUME;
+    m_inputVolume = DEFAULT_VOLUME;
+    m_port = DEFAULT_PORT;
+    m_serverHost = DEFAULT_SERVER_HOST;
+    m_updaterHost = DEFAULT_UPDATER_HOST;
     m_firstLaunch = true;
     
     QString applicationDirPath = QCoreApplication::applicationDirPath();
@@ -161,9 +158,9 @@ void ConfigManager::setDefaultValues() {
     m_crashDumpDirectory = QDir(validatedBasePath).filePath("crashes");
     m_temporaryUpdateDirectory = QDir(validatedBasePath).filePath("update");
     
-    m_deletionListFileName = "remove.json";
+    m_deletionListFileName = DELETION_LIST_FILE_NAME;
     m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
-    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{"logs", "crashes"};
+    m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{IGNORED_DIRECTORY_LOGS, IGNORED_DIRECTORY_CRASHES};
     m_operationSystemType = operationSystemType;
 }
 
@@ -205,20 +202,6 @@ const QString& ConfigManager::getVersion() const {
 
 const QString& ConfigManager::getServerHost() const {
     return m_serverHost;
-}
-
-void ConfigManager::setVersion(const QString& version) {
-    if (m_version != version) {
-        m_version = version;
-        saveConfig();
-    }
-}
-
-void ConfigManager::setUpdaterHost(const QString& host) {
-    if (m_updaterHost != host) {
-        m_updaterHost = host;
-        saveConfig();
-    }
 }
 
 void ConfigManager::setSpeakerMuted(bool muted) {
@@ -296,8 +279,8 @@ bool ConfigManager::isFirstLaunchFromConfig() {
 }
 
 void ConfigManager::setOutputVolume(int volume) {
-    if (volume < 0) volume = 0;
-    if (volume > 200) volume = 200;
+    if (volume < MIN_VOLUME) volume = MIN_VOLUME;
+    if (volume > MAX_VOLUME) volume = MAX_VOLUME;
     
     if (m_outputVolume != volume) {
         m_outputVolume = volume;
@@ -306,8 +289,8 @@ void ConfigManager::setOutputVolume(int volume) {
 }
 
 void ConfigManager::setInputVolume(int volume) {
-    if (volume < 0) volume = 0;
-    if (volume > 200) volume = 200;
+    if (volume < MIN_VOLUME) volume = MIN_VOLUME;
+    if (volume > MAX_VOLUME) volume = MAX_VOLUME;
     
     if (m_inputVolume != volume) {
         m_inputVolume = volume;
@@ -318,20 +301,6 @@ void ConfigManager::setInputVolume(int volume) {
 void ConfigManager::setMultiInstanceAllowed(bool allowed) {
     if (m_isMultiInstanceAllowed != allowed) {
         m_isMultiInstanceAllowed = allowed;
-        saveConfig();
-    }
-}
-
-void ConfigManager::setPort(const QString& port) {
-    if (m_port != port) {
-        m_port = port;
-        saveConfig();
-    }
-}
-
-void ConfigManager::setServerHost(const QString& host) {
-    if (m_serverHost != host) {
-        m_serverHost = host;
         saveConfig();
     }
 }
@@ -529,7 +498,7 @@ int ConfigManager::getInputVolumeFromConfig() {
     QJsonObject jsonObj = doc.object();
     QJsonValue volumeValue = jsonObj[ConfigKeys::INPUT_VOLUME];
     
-    int volume = 100;
+    int volume = DEFAULT_VOLUME;
     if (volumeValue.isDouble()) {
         volume = volumeValue.toInt();
     }
@@ -537,15 +506,15 @@ int ConfigManager::getInputVolumeFromConfig() {
         bool ok;
         volume = volumeValue.toString().toInt(&ok);
         if (!ok) {
-            volume = 100;
+            volume = DEFAULT_VOLUME;
         }
     }
     else {
-        volume = 100;
+        volume = DEFAULT_VOLUME;
     }
     
-    if (volume < 0) volume = 0;
-    if (volume > 200) volume = 200;
+    if (volume < MIN_VOLUME) volume = MIN_VOLUME;
+    if (volume > MAX_VOLUME) volume = MAX_VOLUME;
 
     return volume;
 }
@@ -573,7 +542,7 @@ int ConfigManager::getOutputVolumeFromConfig() {
     QJsonObject jsonObj = doc.object();
     QJsonValue volumeValue = jsonObj[ConfigKeys::OUTPUT_VOLUME];
     
-    int volume = 100;
+    int volume = DEFAULT_VOLUME;
     if (volumeValue.isDouble()) {
         volume = volumeValue.toInt();
     }
@@ -581,15 +550,15 @@ int ConfigManager::getOutputVolumeFromConfig() {
         bool ok;
         volume = volumeValue.toString().toInt(&ok);
         if (!ok) {
-            volume = 100;
+            volume = DEFAULT_VOLUME;
         }
     }
     else {
-        volume = 100;
+        volume = DEFAULT_VOLUME;
     }
     
-    if (volume < 0) volume = 0;
-    if (volume > 200) volume = 200;
+    if (volume < MIN_VOLUME) volume = MIN_VOLUME;
+    if (volume > MAX_VOLUME) volume = MAX_VOLUME;
 
     return volume;
 }
@@ -1005,13 +974,6 @@ std::unordered_set<std::string> ConfigManager::getIgnoredDirectoriesWhileCollect
 
 updater::OperationSystemType ConfigManager::getOperationSystemType() const {
     return m_operationSystemType;
-}
-
-void ConfigManager::setOperationSystemType(updater::OperationSystemType operationSystemType) {
-    if (m_operationSystemType != operationSystemType) {
-        m_operationSystemType = operationSystemType;
-        saveConfig();
-    }
 }
 
 updater::OperationSystemType ConfigManager::getOperationSystemTypeFromConfig() {

@@ -63,10 +63,73 @@
         }
         .sequence ol { margin: 0; padding-left: 20px; }
         .sequence li { margin: 4px 0; }
+        .nav-bar {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+        .nav-section {
+            margin-bottom: 12px;
+        }
+        .nav-section:last-child {
+            margin-bottom: 0;
+        }
+        .nav-section-title {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .nav-section-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .nav-link {
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+        .nav-link:hover {
+            background-color: #f3f4f6;
+        }
+        .nav-link.active {
+            color: var(--text);
+            font-weight: 600;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <nav class="nav-bar">
+            <div class="nav-section">
+                <div class="nav-section-title">UI</div>
+                <div class="nav-section-links">
+                    <a href="dialogsController.html" class="nav-link">DialogsController</a>
+                    <a href="notificationController.html" class="nav-link active">NotificationController</a>
+                </div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">ServerUpdater</div>
+                <div class="nav-section-links">
+                    <a href="../../serverUpdater/documentation/serverUpdater.html" class="nav-link">ServerUpdater</a>
+                </div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">UpdateApplier</div>
+                <div class="nav-section-links">
+                    <a href="../../clientUpdateApplier/documentation/updateApplier.html" class="nav-link">UpdateApplier</a>
+                </div>
+            </div>
+        </nav>
         <header>
             <h1>NotificationController Logic and Behavior</h1>
             <p class="subtitle">Centralized notification rendering, stacking, and auto-hide behavior.</p>

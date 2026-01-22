@@ -7,38 +7,42 @@
 
 #include "buttons.h"
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
+#include "utilities/color.h"
+#include "utilities/color.h"
 
 // Style definitions
-const QColor StyleMainMenuWidget::m_primaryColor = QColor(21, 119, 232);
-const QColor StyleMainMenuWidget::m_selectionColor = QColor(79, 161, 255);
-const QColor StyleMainMenuWidget::m_hoverColor = QColor(18, 113, 222);
-const QColor StyleMainMenuWidget::m_backgroundColor = QColor(230, 230, 230);
-const QColor StyleMainMenuWidget::m_textColor = QColor(1, 11, 19);
-const QColor StyleMainMenuWidget::m_onlineColor = QColor(100, 200, 100);
-const QColor StyleMainMenuWidget::m_offlineColor = QColor(150, 150, 150);
-const QColor StyleMainMenuWidget::m_callingColor = QColor(255, 165, 0);
-const QColor StyleMainMenuWidget::m_errorColor = QColor(220, 80, 80, 200);
-const QColor StyleMainMenuWidget::m_disabledColor = QColor(120, 120, 120);
-const QColor StyleMainMenuWidget::m_settingsButtonColor = QColor(235, 235, 235, 190);
-const QColor StyleMainMenuWidget::m_settingsButtonHoverColor = QColor(235, 235, 235, 110);
-const QColor StyleMainMenuWidget::m_lineEditBackgroundColor = QColor(245, 245, 245, 190);
-const QColor StyleMainMenuWidget::m_lineEditFocusBackgroundColor = QColor(255, 255, 255, 190);
-const QColor StyleMainMenuWidget::m_placeholderColor = QColor(240, 240, 240, 180);
-const QColor StyleMainMenuWidget::m_callingSectionBackgroundColor = QColor(255, 245, 235, 180);
-const QColor StyleMainMenuWidget::m_stopCallingButtonColor = QColor(232, 53, 53, 180);
-const QColor StyleMainMenuWidget::m_stopCallingButtonHoverColor = QColor(232, 53, 53, 220);
-const QColor StyleMainMenuWidget::m_incomingCallBackgroundColor = QColor(245, 245, 245, 200);
+const QColor StyleMainMenuWidget::m_primaryColor = COLOR_PRIMARY;
+const QColor StyleMainMenuWidget::m_selectionColor = COLOR_PRIMARY_SELECTION;
+const QColor StyleMainMenuWidget::m_hoverColor = COLOR_PRIMARY_HOVER;
+const QColor StyleMainMenuWidget::m_backgroundColor = COLOR_BG_PRIMARY;
+const QColor StyleMainMenuWidget::m_textColor = COLOR_TEXT_PRIMARY;
+const QColor StyleMainMenuWidget::m_onlineColor = COLOR_ONLINE;
+const QColor StyleMainMenuWidget::m_offlineColor = COLOR_OFFLINE;
+const QColor StyleMainMenuWidget::m_callingColor = COLOR_CALLING;
+const QColor StyleMainMenuWidget::m_errorColor = COLOR_GLASS_ERROR_200;
+const QColor StyleMainMenuWidget::m_disabledColor = COLOR_DISABLED;
+const QColor StyleMainMenuWidget::m_settingsButtonColor = COLOR_GLASS_SETTINGS_190;
+const QColor StyleMainMenuWidget::m_settingsButtonHoverColor = COLOR_GLASS_SETTINGS_110;
+const QColor StyleMainMenuWidget::m_lineEditBackgroundColor = COLOR_GLASS_GRAY_190;
+const QColor StyleMainMenuWidget::m_lineEditFocusBackgroundColor = COLOR_GLASS_WHITE_190;
+const QColor StyleMainMenuWidget::m_placeholderColor = COLOR_PLACEHOLDER;
+const QColor StyleMainMenuWidget::m_callingSectionBackgroundColor = COLOR_GLASS_CALLING_180;
+const QColor StyleMainMenuWidget::m_stopCallingButtonColor = COLOR_GLASS_ERROR_BANNER_180;
+const QColor StyleMainMenuWidget::m_stopCallingButtonHoverColor = COLOR_GLASS_ERROR_BANNER_220;
+const QColor StyleMainMenuWidget::m_incomingCallBackgroundColor = COLOR_GLASS_GRAY_200;
 const QColor StyleMainMenuWidget::m_settingsPanelBackgroundColor = QColor(240, 240, 240, 200);
-const QColor StyleMainMenuWidget::m_scrollBarColor = QColor(208, 208, 208);
-const QColor StyleMainMenuWidget::m_scrollBarHoverColor = QColor(176, 176, 176);
-const QColor StyleMainMenuWidget::m_scrollBarPressedColor = QColor(144, 144, 144);
+const QColor StyleMainMenuWidget::m_scrollBarColor = COLOR_SCROLLBAR_BG;
+const QColor StyleMainMenuWidget::m_scrollBarHoverColor = COLOR_SCROLLBAR_BG_HOVER;
+const QColor StyleMainMenuWidget::m_scrollBarPressedColor = COLOR_SCROLLBAR_BG_PRESSED;
 
 QString StyleMainMenuWidget::containerStyle() {
     return QString("QWidget {"
         "   background-color: transparent;"
-        "   border-radius: 20px;"
+        "   border-radius: %1px;"
         "   padding: 0px;"
-        "}");
+        "}")
+        .arg(scale(20));
 }
 
 QString StyleMainMenuWidget::titleStyle() {
@@ -62,8 +66,8 @@ QString StyleMainMenuWidget::buttonStyle() {
         "   background-color: %1;"
         "   color: white;"
         "   border: none;"
-        "   border-radius: 15px;"
-        "   padding: 12px 24px;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
         "   margin: 0px;"
         "}"
         "QPushButton:focus {"
@@ -72,7 +76,12 @@ QString StyleMainMenuWidget::buttonStyle() {
         "}"
         "QPushButton:hover {"
         "   background-color: %2;"
-        "}").arg(m_primaryColor.name()).arg(m_hoverColor.name());
+        "}")
+        .arg(m_primaryColor.name())
+        .arg(m_hoverColor.name())
+        .arg(scale(15))
+        .arg(scale(12))
+        .arg(scale(24));
 }
 
 QString StyleMainMenuWidget::disabledButtonStyle() {
@@ -80,20 +89,29 @@ QString StyleMainMenuWidget::disabledButtonStyle() {
         "   background-color: rgba(%1, %2, %3, 120);"
         "   color: rgba(255, 255, 255, 150);"
         "   border: none;"
-        "   border-radius: 15px;"
-        "   padding: 12px 24px;"
+        "   border-radius: %4px;"
+        "   padding: %5px %6px;"
         "   margin: 0px;"
-        "}").arg(m_primaryColor.red()).arg(m_primaryColor.green()).arg(m_primaryColor.blue());
+        "}")
+        .arg(m_primaryColor.red())
+        .arg(m_primaryColor.green())
+        .arg(m_primaryColor.blue())
+        .arg(scale(15))
+        .arg(scale(12))
+        .arg(scale(24));
 }
 
 QString StyleMainMenuWidget::errorLabelStyle() {
     return QString("QLabel {"
         "   color: %1;"
-        "   margin: 2px 2px;"
-        "   padding: 5px;"
+        "   margin: %2px %2px;"
+        "   padding: %3px;"
         "   background: transparent;"
-        "   border-radius: 5px;"
-        "}").arg(m_errorColor.name());
+        "   border-radius: %3px;"
+        "}")
+        .arg(m_errorColor.name())
+        .arg(scale(2))
+        .arg(scale(5));
 }
 
 QString StyleMainMenuWidget::settingsButtonStyle() {
@@ -101,9 +119,9 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
         "   background-color: rgba(%1, %2, %3, %4);"
         "   color: white;"
         "   border: none;"
-        "   border-radius: 15px;"
-        "   padding: 12px 40px 12px 15px;"
-        "   font-size: 14px;"
+        "   border-radius: %9px;"
+        "   padding: %10px %11px %10px %12px;"
+        "   font-size: %13px;"
         "   font-weight: bold;"
         "   margin: 0px;"
         "}"
@@ -124,7 +142,12 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
         "}").arg(m_settingsButtonColor.red()).arg(m_settingsButtonColor.green())
         .arg(m_settingsButtonColor.blue()).arg(m_settingsButtonColor.alpha())
         .arg(m_settingsButtonHoverColor.red()).arg(m_settingsButtonHoverColor.green())
-        .arg(m_settingsButtonHoverColor.blue()).arg(m_settingsButtonHoverColor.alpha());
+        .arg(m_settingsButtonHoverColor.blue()).arg(m_settingsButtonHoverColor.alpha())
+        .arg(scale(15))
+        .arg(scale(12))
+        .arg(scale(40))
+        .arg(scale(15))
+        .arg(scale(14));
 }
 
 QString StyleMainMenuWidget::lineEditStyle() {
@@ -197,19 +220,29 @@ QString StyleMainMenuWidget::avatarStyle() {
 QString StyleMainMenuWidget::incomingCallWidgetStyle() {
     return QString("QWidget {"
         "   background-color: rgba(%1, %2, %3, %4);"
-        "   border-radius: 10px;"
-        "   margin: 2px;"
-        "}").arg(m_incomingCallBackgroundColor.red()).arg(m_incomingCallBackgroundColor.green())
-        .arg(m_incomingCallBackgroundColor.blue()).arg(m_incomingCallBackgroundColor.alpha());
+        "   border-radius: %5px;"
+        "   margin: %6px;"
+        "}")
+        .arg(m_incomingCallBackgroundColor.red())
+        .arg(m_incomingCallBackgroundColor.green())
+        .arg(m_incomingCallBackgroundColor.blue())
+        .arg(m_incomingCallBackgroundColor.alpha())
+        .arg(scale(10))
+        .arg(scale(2));
 }
 
 QString StyleMainMenuWidget::settingsPanelStyle() {
     return QString("QWidget {"
         "   background-color: rgba(%1, %2, %3, %4);"
-        "   border-radius: 10px;"
-        "   padding: 15px;"
-        "}").arg(m_settingsPanelBackgroundColor.red()).arg(m_settingsPanelBackgroundColor.green())
-        .arg(m_settingsPanelBackgroundColor.blue()).arg(m_settingsPanelBackgroundColor.alpha());
+        "   border-radius: %5px;"
+        "   padding: %6px;"
+        "}")
+        .arg(m_settingsPanelBackgroundColor.red())
+        .arg(m_settingsPanelBackgroundColor.green())
+        .arg(m_settingsPanelBackgroundColor.blue())
+        .arg(m_settingsPanelBackgroundColor.alpha())
+        .arg(scale(10))
+        .arg(scale(15));
 }
 
 QString StyleMainMenuWidget::scrollAreaStyle() {
@@ -220,14 +253,14 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
         "}"
         "QScrollBar:vertical {"
         "   background-color: transparent;"
-        "   width: 6px;"
+        "   width: %2px;"
         "   margin: 0px;"
-        "   border-radius: 3px;"
+        "   border-radius: %3px;"
         "}"
         "QScrollBar::handle:vertical {"
         "   background-color: %1;"
-        "   border-radius: 3px;"
-        "   min-height: 20px;"
+        "   border-radius: %3px;"
+        "   min-height: %4px;"
         "}"
         "QScrollBar::handle:vertical:hover {"
         "   background-color: %2;"
@@ -243,7 +276,13 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
         "   background: none;"
         "}"
-    ).arg(m_scrollBarColor.name()).arg(m_scrollBarHoverColor.name()).arg(m_scrollBarPressedColor.name());
+    )
+        .arg(m_scrollBarColor.name())
+        .arg(scale(6))
+        .arg(scale(3))
+        .arg(scale(20))
+        .arg(m_scrollBarHoverColor.name())
+        .arg(m_scrollBarPressedColor.name());
 }
 
 QString StyleMainMenuWidget::callingSectionStyle() {
@@ -286,13 +325,15 @@ QString StyleMainMenuWidget::stopCallingButtonStyle() {
         "   padding: %6px %7px;"
         "   font-size: %8px;"
         "   margin: %9px;"
-        "}").arg(m_stopCallingButtonColor.red()).arg(m_stopCallingButtonColor.green())
-        .arg(m_stopCallingButtonColor.blue()).arg(m_stopCallingButtonColor.alpha())
-        .arg(QString::fromStdString(std::to_string(scale(11))))  // border-radius
-        .arg(QString::fromStdString(std::to_string(scale(6))))   // padding vertical
-        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding horizontal
-        .arg(QString::fromStdString(std::to_string(scale(11))))  // font-size
-        .arg(QString::fromStdString(std::to_string(scale(8))));  // margin
+        "}").arg(m_stopCallingButtonColor.red())                // %1 - red
+        .arg(m_stopCallingButtonColor.green())                   // %2 - green
+        .arg(m_stopCallingButtonColor.blue())                    // %3 - blue
+        .arg(m_stopCallingButtonColor.alpha())                  // %4 - alpha
+        .arg(scale(11))                                          // %5 - border-radius
+        .arg(scale(6))                                           // %6 - padding vertical
+        .arg(scale(12))                                          // %7 - padding horizontal
+        .arg(scale(11))                                          // %8 - font-size
+        .arg(scale(8));                                          // %9 - margin
 }
 
 QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
@@ -336,9 +377,6 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
 
 
     // ������ ��� ����������� �� ����������
-    m_updateNotificationTimer = new QTimer(this);
-    m_updateNotificationTimer->setSingleShot(true);
-    connect(m_updateNotificationTimer, &QTimer::timeout, this, &MainMenuWidget::hideUpdateAvailableButton);
 }
 
 void MainMenuWidget::setupUI() {
@@ -356,70 +394,6 @@ void MainMenuWidget::setupUI() {
     m_containerLayout = new QVBoxLayout(m_mainContainer);
     m_containerLayout->setSpacing(scale(20));
     m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-
-    m_updateNotificationContainer = new QWidget(this);
-    m_updateNotificationContainer->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_updateNotificationContainer->hide();
-    
-    m_updateNotificationLayout = new QHBoxLayout(m_updateNotificationContainer);
-    m_updateNotificationLayout->setContentsMargins(0, 0, 0, 0);
-    m_updateNotificationLayout->setSpacing(0);
-    m_updateNotificationLayout->setAlignment(Qt::AlignCenter);
-
-    // Create button with custom layout inside
-    QWidget* updateButtonWidget = new QWidget();
-    updateButtonWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    QHBoxLayout* updateButtonLayout = new QHBoxLayout(updateButtonWidget);
-    updateButtonLayout->setContentsMargins(scale(15), 0, scale(18), 0);
-    updateButtonLayout->setSpacing(scale(8));
-    updateButtonLayout->setAlignment(Qt::AlignVCenter);
-
-    QLabel* buttonTextLabel = new QLabel("New version available! Click to update", updateButtonWidget);
-    QFont updateFont("Outfit", scale(13), QFont::Medium);
-    buttonTextLabel->setFont(updateFont);
-    buttonTextLabel->setStyleSheet("color: #1577E8; background: transparent;");
-    buttonTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    buttonTextLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-    buttonTextLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-
-    m_updateNotificationConfettiLabel = new QLabel(updateButtonWidget);
-    m_updateNotificationConfettiLabel->setPixmap(QPixmap(":/resources/confetti.png"));
-    m_updateNotificationConfettiLabel->setScaledContents(true);
-    m_updateNotificationConfettiLabel->setFixedSize(scale(24), scale(24));
-    m_updateNotificationConfettiLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    m_updateNotificationConfettiLabel->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    m_updateNotificationConfettiLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    updateButtonLayout->addWidget(buttonTextLabel, 0, Qt::AlignVCenter);
-    updateButtonLayout->addWidget(m_updateNotificationConfettiLabel, 0, Qt::AlignVCenter);
-
-    m_updateNotificationButton = new QPushButton(m_updateNotificationContainer);
-    m_updateNotificationButton->setMinimumSize(scale(360), scale(38));
-    m_updateNotificationButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    m_updateNotificationButton->setCursor(Qt::PointingHandCursor);
-    m_updateNotificationButton->setLayout(updateButtonLayout);
-
-    m_updateNotificationButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: rgba(21, 119, 232, 80);"
-        "   color: #1577E8;"
-        "   border: none;"
-        "   border-radius: 12px;"
-        "   padding: 0px;"
-        "   margin: 0px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(21, 119, 232, 120);"
-        "   color: #0D6BC8;"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: rgba(21, 119, 232, 150);"
-        "   color: #0A5FC8;"
-        "}"
-    );
-
-    m_updateNotificationLayout->addWidget(m_updateNotificationButton);
-
 
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
@@ -506,7 +480,7 @@ void MainMenuWidget::setupUI() {
 
     // Set validator for nickname
     QRegularExpressionValidator* validator = new QRegularExpressionValidator(
-        QRegularExpression("[\\p{L}0-9_]{3,15}"), this);
+        QRegularExpression(QString("[\\p{L}0-9_]{%1,%2}").arg(MIN_NICKNAME_LENGTH).arg(MAX_NICKNAME_LENGTH)), this);
     m_friendNicknameEdit->setValidator(validator); 
 
     m_callButton = new QPushButton("Make Call", m_mainContainer);
@@ -568,8 +542,6 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
-    m_mainLayout->addWidget(m_updateNotificationContainer, 0, Qt::AlignCenter);
-    m_mainLayout->addSpacing(scale(20));
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
@@ -583,7 +555,6 @@ void MainMenuWidget::setupUI() {
     connect(m_settingsPanel, &SettingsPanel::muteMicrophoneClicked, [this](bool mute) {emit muteMicrophoneClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::muteSpeakerClicked, [this](bool mute) {emit muteSpeakerClicked(mute); });
     connect(m_settingsPanel, &SettingsPanel::cameraButtonClicked, [this](bool activated) {emit activateCameraClicked(activated); });
-    connect(m_updateNotificationButton, &QPushButton::clicked, this, [this]() {emit updateButtonClicked(); hideUpdateAvailableButton(); });
 
     QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
     QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
@@ -595,7 +566,7 @@ void MainMenuWidget::setupUI() {
 void MainMenuWidget::setupAnimations() {
     // Settings panel animation
     m_settingsAnimation = new QPropertyAnimation(m_settingsPanel, "maximumHeight", this);
-    m_settingsAnimation->setDuration(200);
+    m_settingsAnimation->setDuration(UI_ANIMATION_DURATION_MS);
     m_settingsAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_settingsAnimation->setStartValue(0);
     m_settingsAnimation->setEndValue(scale(170));
@@ -608,7 +579,7 @@ void MainMenuWidget::setupAnimations() {
 
     // Calling section animation
     m_callingAnimation = new QPropertyAnimation(m_callingSection, "maximumHeight", this);
-    m_callingAnimation->setDuration(200);
+    m_callingAnimation->setDuration(UI_ANIMATION_DURATION_MS);
     m_callingAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     m_callingAnimation->setStartValue(0);
     m_callingAnimation->setEndValue(scale(50));
@@ -630,9 +601,9 @@ void MainMenuWidget::paintEvent(QPaintEvent* event) {
 
     // Draw background gradient
     QLinearGradient gradient(0, 90, width(), height());
-    gradient.setColorAt(0.0, QColor(230, 230, 230));
-    gradient.setColorAt(0.5, QColor(220, 230, 240));
-    gradient.setColorAt(1.0, QColor(240, 240, 240));
+    gradient.setColorAt(0.0, COLOR_GRADIENT_START);
+    gradient.setColorAt(0.5, COLOR_GRADIENT_MIDDLE);
+    gradient.setColorAt(1.0, COLOR_GRADIENT_END);
     painter.fillRect(rect(), gradient);
 
     // Draw the main container background with texture if loaded
@@ -724,14 +695,6 @@ void MainMenuWidget::updateCallingState(bool calling) {
     }
 }
 
-void MainMenuWidget::showUpdateAvailableButton() {
-    m_updateNotificationContainer->show();
-}
-
-void MainMenuWidget::hideUpdateAvailableButton() {
-    m_updateNotificationContainer->hide();
-}
-
 void MainMenuWidget::onCallButtonClicked() {
     QString friendNickname = m_friendNicknameEdit->text().trimmed();
     emit startCallingButtonClicked(friendNickname);
@@ -742,7 +705,7 @@ void MainMenuWidget::setErrorMessage(const QString& errorText) {
     m_errorLabel->show();
     m_friendNicknameEdit->setFocus();
 
-    QTimer::singleShot(2500, this, &MainMenuWidget::clearErrorMessage);
+    QTimer::singleShot(ERROR_MESSAGE_DURATION_MS, this, &MainMenuWidget::clearErrorMessage);
 }
 
 void MainMenuWidget::clearErrorMessage() {

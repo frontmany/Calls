@@ -1,4 +1,5 @@
 #include "overlayWidget.h"
+#include "utilities/color.h"
 #include <QResizeEvent>
 
 OverlayWidget::OverlayWidget(QWidget* parent)
@@ -28,7 +29,7 @@ bool OverlayWidget::eventFilter(QObject* obj, QEvent* event) {
 
 void OverlayWidget::paintEvent(QPaintEvent*) {
     QPainter painter(this);
-    painter.fillRect(rect(), QColor(25, 25, 25, 160));
+    painter.fillRect(rect(), COLOR_SHADOW_BLACK_160);
 }
 
 void OverlayWidget::updateGeometryToParent() {

@@ -2,29 +2,36 @@
 #include "buttons.h"
 #include <QIcon>
 #include "utilities/utilities.h"
+#include "utilities/constant.h"
+#include "utilities/color.h"
 
-const QColor SettingsPanel::StyleSettingsPanel::primaryColor = QColor(224, 168, 0);
-const QColor SettingsPanel::StyleSettingsPanel::hoverColor = QColor(219, 164, 0);
-const QColor SettingsPanel::StyleSettingsPanel::backgroundColor = QColor(230, 230, 230);
-const QColor SettingsPanel::StyleSettingsPanel::textColor = QColor(1, 11, 19);
-const QColor SettingsPanel::StyleSettingsPanel::containerColor = QColor(255, 255, 255, 200);
+const QColor SettingsPanel::StyleSettingsPanel::primaryColor = COLOR_SETTINGS_PRIMARY;
+const QColor SettingsPanel::StyleSettingsPanel::hoverColor = COLOR_SETTINGS_HOVER;
+const QColor SettingsPanel::StyleSettingsPanel::backgroundColor = COLOR_BG_PRIMARY;
+const QColor SettingsPanel::StyleSettingsPanel::textColor = COLOR_TEXT_PRIMARY;
+const QColor SettingsPanel::StyleSettingsPanel::containerColor = COLOR_GLASS_WHITE_200;
 
 QString SettingsPanel::StyleSettingsPanel::containerStyle() {
     return QString("QWidget {"
         "   background-color: %1;"
-        "   border-radius: 20px;"
+        "   border-radius: %2px;"
         "   padding: 0px;"
-        "}").arg(containerColor.name());
+        "}")
+        .arg(containerColor.name())
+        .arg(scale(20));
 }
 
 QString SettingsPanel::StyleSettingsPanel::titleStyle() {
     return QString("QLabel {"
         "   color: %1;"
-        "   font-size: 14px;"
+        "   font-size: %2px;"
         "   font-weight: bold;"
-        "   margin-bottom: 10px;"
+        "   margin-bottom: %3px;"
         "   text-align: center;"
-        "}").arg(textColor.name());
+        "}")
+        .arg(textColor.name())
+        .arg(scale(14))
+        .arg(scale(10));
 }
 
 QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
@@ -42,89 +49,98 @@ QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
             margin: -4px 0;
         }
         QSlider::add-page:horizontal {
-            background-color: rgb(77, 77, 77);
+            background-color: %7;
             border-radius: %6px;
         }
         QSlider::sub-page:horizontal {
-            background-color: rgb(21, 119, 232);
+            background-color: %8;
             border-radius: %6px;
         }
         QSlider::disabled {
             background-color: transparent;
         }
         QSlider::groove:horizontal:disabled {
-            background-color: rgb(180, 180, 180);
+            background-color: %9;
         }
         QSlider::handle:horizontal:disabled {
-            background-color: rgb(230, 230, 230);
+            background-color: %10;
         }
         QSlider::add-page:horizontal:disabled {
-            background-color: rgb(180, 180, 180);
+            background-color: %9;
         }
         QSlider::sub-page:horizontal:disabled {
-            background-color: rgb(150, 150, 150);
+            background-color: %11;
         }
     )")
-        .arg(QString::fromStdString(std::to_string(scale(8))))
-        .arg(QString::fromStdString(std::to_string(scale(4))))
-        .arg(QString::fromStdString(std::to_string(scale(17))))
-        .arg(QString::fromStdString(std::to_string(scale(17))))
-        .arg(QString::fromStdString(std::to_string(scale(8))))
-        .arg(QString::fromStdString(std::to_string(scale(4))));
+        .arg(scale(8))
+        .arg(scale(4))
+        .arg(scale(17))
+        .arg(scale(17))
+        .arg(scale(8))
+        .arg(scale(4))
+        .arg(COLOR_SLIDER_GROOVE.name())
+        .arg(COLOR_SLIDER_SUBPAGE.name())
+        .arg(COLOR_GRAY_180.name())
+        .arg(COLOR_GRAY_200.name())
+        .arg(COLOR_GRAY_150_DARK.name());
 }
 
 
 QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
     return QString(
         "QPushButton {"
-        "   background-color: rgba(235, 235, 235, %1);"
+        "   background-color: %1;"
         "   color: %2;"
-        "   border: 0px solid #d0d0d0;"
+        "   border: 0px solid %10;"
         "   border-radius: %3px;"
         "   padding: %4px %5px;"
         "   margin: %6px %7px %8px %9px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: rgba(235, 235, 235, %10);"
+        "   background-color: %11;"
         "   border-color: #c0c0c0;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: rgba(235, 235, 235, %11);"
+        "   background-color: %12;"
         "}"
         "QPushButton:focus {"
         "   outline: none;"
-        "   border-color: rgba(235, 235, 235, %12);"
+        "   border-color: %13;"
         "}"
     )
-        .arg(QString::fromStdString(std::to_string(190)))    // background-color alpha
-        .arg("#333333") // color
-        .arg(QString::fromStdString(std::to_string(scale(8))))      // border-radius
-        .arg(QString::fromStdString(std::to_string(scale(8))))      // padding vertical
-        .arg(QString::fromStdString(std::to_string(scale(16))))     // padding horizontal
-        .arg(QString::fromStdString(std::to_string(scale(10))))     // margin top
-        .arg(QString::fromStdString(std::to_string(scale(0))))      // margin right
-        .arg(QString::fromStdString(std::to_string(scale(8))))      // margin bottom
-        .arg(QString::fromStdString(std::to_string(scale(0))))      // margin left
-        .arg(QString::fromStdString(std::to_string(110)))    // hover background-color alpha
-        .arg(QString::fromStdString(std::to_string(110)))    // pressed background-color alpha
-        .arg(QString::fromStdString(std::to_string(110)));   // focus border-color alpha
+        .arg(COLOR_GLASS_SETTINGS_190.name())    // %1 - background-color
+        .arg(COLOR_HEX_TEXT_SECONDARY)            // %2 - color
+        .arg(scale(8))                            // %3 - border-radius
+        .arg(scale(8))                            // %4 - padding vertical
+        .arg(scale(16))                           // %5 - padding horizontal
+        .arg(scale(10))                           // %6 - margin top
+        .arg(scale(0))                            // %7 - margin right
+        .arg(scale(8))                            // %8 - margin bottom
+        .arg(scale(0))                            // %9 - margin left
+        .arg(COLOR_HEX_BORDER)                    // %10 - border color
+        .arg(COLOR_GLASS_SETTINGS_110.name())     // %11 - hover background-color
+        .arg(COLOR_GLASS_SETTINGS_110.name())     // %12 - pressed background-color
+        .arg(COLOR_GLASS_SETTINGS_110.name());    // %13 - focus border-color
 }
 
 QString SettingsPanel::StyleSettingsPanel::volumeLabelStyle() {
     return QString(
         "QLabel {"
-        "   color: #333333;"
-        "   font-size: 13px;"
+        "   color: %1;"
+        "   font-size: %2px;"
         "   font-weight: bold;"
-        "   margin: 5px 0px;"
+        "   margin: %3px 0px;"
         "}"
-    );
+    )
+        .arg(COLOR_HEX_TEXT_SECONDARY)
+        .arg(scale(13))
+        .arg(scale(5));
 }
 
 QString SettingsPanel::StyleSettingsPanel::volumeValueStyle() {
     return QString(
         "QLabel {"
-        "   color: #666666;"
+        "   color: %1;"
         "   font-size: 12px;"
         "   margin: 5px 0px;"
         "   min-width: 30px;"
@@ -135,9 +151,11 @@ QString SettingsPanel::StyleSettingsPanel::volumeValueStyle() {
 QString SettingsPanel::StyleSettingsPanel::settingsPanelStyle() {
     return QString("QWidget {"
         "   background-color: transparent;"
-        "   border-radius: 10px;"
-        "   padding: 15px;"
-        "}");
+        "   border-radius: %1px;"
+        "   padding: %2px;"
+        "}")
+        .arg(scale(10))
+        .arg(scale(15));
 }
 
 SettingsPanel::SettingsPanel(QWidget* parent) : QWidget(parent) {
@@ -195,8 +213,8 @@ void SettingsPanel::setupUI() {
 
     // Microphone slider
     m_micSlider = new QSlider(Qt::Horizontal, this);
-    m_micSlider->setRange(0, 200);
-    m_micSlider->setValue(100);
+    m_micSlider->setRange(MIN_VOLUME, MAX_VOLUME);
+    m_micSlider->setValue(DEFAULT_VOLUME);
     m_micSlider->setFixedHeight(scale(30));
     m_micSlider->setStyleSheet(StyleSettingsPanel::sliderStyle());
     m_micSlider->setCursor(Qt::PointingHandCursor);
@@ -223,8 +241,8 @@ void SettingsPanel::setupUI() {
 
     // Speaker slider
     m_speakerSlider = new QSlider(Qt::Horizontal, this);
-    m_speakerSlider->setRange(0, 200);
-    m_speakerSlider->setValue(100);
+    m_speakerSlider->setRange(MIN_VOLUME, MAX_VOLUME);
+    m_speakerSlider->setValue(DEFAULT_VOLUME);
     m_speakerSlider->setFixedHeight(scale(30));
     m_speakerSlider->setStyleSheet(StyleSettingsPanel::sliderStyle());
     m_speakerSlider->setCursor(Qt::PointingHandCursor);
