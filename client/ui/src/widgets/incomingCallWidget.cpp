@@ -46,7 +46,7 @@ QString StyleIncomingCallWidget::timerStyle() {
         "   font-weight: bold;"
         "   background-color: transparent;"
         "}").arg(m_timerTextColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(16))));  // font-size
+        .arg(QString::fromStdString(std::to_string(16)));  // font-size
 }
 
 QString StyleIncomingCallWidget::avatarStyle() {
@@ -57,7 +57,7 @@ QString StyleIncomingCallWidget::avatarStyle() {
         "   font-size: %2px;"
         "   font-weight: bold;"
         "}").arg(QString::fromStdString(std::to_string(scale(25))))  // border-radius
-        .arg(QString::fromStdString(std::to_string(scale(18)))); // font-size
+        .arg(QString::fromStdString(std::to_string(18))); // font-size
 }
 IncomingCallWidget::IncomingCallWidget(QWidget* parent, const QString& friendNickname, int remainingTime)
     : QWidget(parent)
@@ -112,13 +112,13 @@ void IncomingCallWidget::setupUI() {
     m_nicknameLabel = new QLabel(m_friendNickname, textWidget);
     m_nicknameLabel->setAttribute(Qt::WA_TranslucentBackground);
     m_nicknameLabel->setStyleSheet(StyleIncomingCallWidget::nicknameStyle());
-    QFont nicknameLabelFont("Outfit", scale(13), QFont::Bold);
+    QFont nicknameLabelFont("Outfit", 13, QFont::Bold);
     m_nicknameLabel->setFont(nicknameLabelFont);
 
     m_callTypeLabel = new QLabel("incoming call", textWidget);
     m_callTypeLabel->setAttribute(Qt::WA_TranslucentBackground);
     m_callTypeLabel->setStyleSheet(StyleIncomingCallWidget::callTypeStyle());
-    QFont callTypeFont("Outfit", scale(12), QFont::Light);
+    QFont callTypeFont("Outfit", 12, QFont::Light);
     m_callTypeLabel->setFont(callTypeFont);
 
     textLayout->addWidget(m_nicknameLabel);

@@ -274,7 +274,7 @@ void CallWidget::setupUI() {
     m_friendNicknameLabel->setAlignment(Qt::AlignCenter);
     m_friendNicknameLabel->setStyleSheet(StyleCallWidget::titleStyle());
     m_friendNicknameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    QFont nicknameFont("Outfit", scale(18), QFont::Normal);
+    QFont nicknameFont("Outfit", 18, QFont::Normal);
     m_friendNicknameLabel->setFont(nicknameFont);
 
     m_connectionErrorLabel = new QLabel(m_participantInfoContainer);
@@ -282,7 +282,7 @@ void CallWidget::setupUI() {
     m_connectionErrorLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; margin: 0px; padding: 0px;")
         .arg(COLOR_HEX_ERROR)
         .arg(scale(12)));
-    QFont connectionErrorFont("Outfit", scale(11), QFont::Medium);
+    QFont connectionErrorFont("Outfit", 11, QFont::Medium);
     m_connectionErrorLabel->setFont(connectionErrorFont);
     m_connectionErrorLabel->hide();
 
@@ -301,7 +301,7 @@ void CallWidget::setupUI() {
     m_participantConnectionErrorBannerLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; font-weight: 600; margin: 0px; padding: 0px;")
         .arg(COLOR_HEX_WHITE)
         .arg(scale(14)));
-    QFont bannerFont("Outfit", scale(14), QFont::Bold);
+    QFont bannerFont("Outfit", 14, QFont::Bold);
     m_participantConnectionErrorBannerLabel->setFont(bannerFont);
 
     QHBoxLayout* bannerLayout = new QHBoxLayout(m_participantConnectionErrorBanner);
@@ -497,7 +497,7 @@ void CallWidget::setCallInfo(const QString& friendNickname) {
     m_timerLabel->setText("00:00");
 
     m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
-    QFont timerFont("Outfit", scale(48), QFont::Bold);
+    QFont timerFont("Outfit", 48, QFont::Bold);
     m_timerLabel->setFont(timerFont);
 
     m_callTimer->start(TIMER_INTERVAL_MS);
@@ -509,7 +509,7 @@ void CallWidget::updateCallTimer() {
     bool isLongCall = (m_callDuration->hour() > 0);
 
     if (isLongCall) {
-        QFont timerFont("Pacifico", scale(52), QFont::Bold);
+        QFont timerFont("Pacifico", 52, QFont::Bold);
         m_timerLabel->setFont(timerFont);
     }
 

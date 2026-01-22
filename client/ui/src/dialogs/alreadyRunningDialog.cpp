@@ -76,7 +76,7 @@ QString StyleAlreadyRunningDialog::closeButtonStyle(int radius, int paddingH, in
 AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
     : QWidget(parent)
 {
-    QFont font("Outfit", scale(14), QFont::Normal);
+    QFont font("Outfit", 14, QFont::Normal);
 
     setAttribute(Qt::WA_TranslucentBackground);
     setMinimumWidth(scale(420));
@@ -113,7 +113,7 @@ AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
     QLabel* titleLabel = new QLabel("Callifornia is already running");
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setStyleSheet(StyleAlreadyRunningDialog::titleStyle(scale(18)));
-    titleLabel->setFont(QFont("Outfit", scale(18), QFont::Bold));
+    titleLabel->setFont(QFont("Outfit", 18, QFont::Bold));
 
     QLabel* messageLabel = new QLabel("Please close the other instance before starting a new one.");
     messageLabel->setAlignment(Qt::AlignCenter);

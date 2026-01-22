@@ -159,8 +159,8 @@ QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, 
 ScreenShareDialog::ScreenShareDialog(QWidget* parent)
     : QWidget(parent)
 {
-    QFont font("Outfit", scale(12), QFont::Normal);
-    QFont titleFont("Outfit", scale(16), QFont::Bold);
+    QFont font("Outfit", 12, QFont::Normal);
+    QFont titleFont("Outfit", 16, QFont::Bold);
 
     setAttribute(Qt::WA_TranslucentBackground);
     setMinimumWidth(scale(600));

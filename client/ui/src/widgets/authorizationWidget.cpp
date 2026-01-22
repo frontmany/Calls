@@ -216,7 +216,7 @@ void AuthorizationWidget::setupUI() {
     m_notificationLayout->setContentsMargins(scale(18), scale(8), scale(18), scale(8));
 
     m_notificationLabel = new QLabel(m_notificationWidget);
-    QFont errorFont("Outfit", scale(12), QFont::Medium);
+    QFont errorFont("Outfit", 12, QFont::Medium);
     m_notificationLabel->setFont(errorFont);
 
     m_notificationLayout->addWidget(m_notificationLabel);
@@ -235,21 +235,21 @@ void AuthorizationWidget::setupUI() {
     m_titleLabel->setStyleSheet(StyleAuthorizationWidget::glassTitleLabelStyle());
     m_titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_titleLabel->setMinimumHeight(scale(62));
-    QFont titleFont("Pacifico", scale(28));
+    QFont titleFont("Pacifico", 28);
     m_titleLabel->setFont(titleFont);
 
     m_subtitleLabel = new QLabel("Enter your nickname to start making calls", m_container);
     m_subtitleLabel->setAlignment(Qt::AlignCenter);
     m_subtitleLabel->setStyleSheet(StyleAuthorizationWidget::glassSubTitleLabelStyle());
     m_subtitleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    QFont subTitleFont("Outfit", scale(13), QFont::ExtraLight);
+    QFont subTitleFont("Outfit", 13, QFont::ExtraLight);
     m_subtitleLabel->setFont(subTitleFont);
 
     m_errorLabel = new QLabel("field cannot be empty", m_container);
     m_errorLabel->setStyleSheet(StyleAuthorizationWidget::glassErrorLabelStyle());
     m_errorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_errorLabel->hide();
-    QFont errorLabelFont("Outfit", scale(10), QFont::ExtraLight);
+    QFont errorLabelFont("Outfit", 10, QFont::ExtraLight);
     m_errorLabel->setFont(errorLabelFont);
 
     m_nicknameEdit = new QLineEdit(m_container);
@@ -259,7 +259,7 @@ void AuthorizationWidget::setupUI() {
     m_nicknameEdit->setMaxLength(scale(20));
     m_nicknameEdit->setMinimumHeight(scale(40));
     m_nicknameEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    QFont segoeFont("Segoe UI", scale(12), QFont::Medium);
+    QFont segoeFont("Segoe UI", 12, QFont::Medium);
     m_nicknameEdit->setFont(segoeFont);
     m_nicknameEdit->setAttribute(Qt::WA_InputMethodEnabled, true);
     m_nicknameEdit->setFocus();
@@ -274,7 +274,7 @@ void AuthorizationWidget::setupUI() {
     m_authorizeButton->setCursor(Qt::PointingHandCursor);
     m_authorizeButton->setMinimumHeight(scale(45));
     m_authorizeButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    QFont authorizeButtonFont("Outfit", scale(14), QFont::Bold);
+    QFont authorizeButtonFont("Outfit", 14, QFont::Bold);
     m_authorizeButton->setFont(authorizeButtonFont);
 
     m_glassLayout->addWidget(m_titleLabel);

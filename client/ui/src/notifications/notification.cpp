@@ -79,7 +79,7 @@ Notification::Notification(QWidget* parent,
     , m_styleType(styleType)
     , m_isWaitingAnimation(waitingAnimation)
 {
-    QFont font("Outfit", scale(14));
+    QFont font("Outfit", 14);
 
     setAttribute(Qt::WA_TranslucentBackground);
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);

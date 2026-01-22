@@ -181,13 +181,13 @@ void IncomingCallDialog::setupUi()
     m_nicknameLabel->setAlignment(Qt::AlignCenter);
     m_nicknameLabel->setStyleSheet(StyleIncomingCallWidget::nicknameStyle());
     m_nicknameLabel->setWordWrap(true);
-    QFont nicknameFont("Outfit", scale(20), QFont::Bold);
+    QFont nicknameFont("Outfit", 20, QFont::Bold);
     m_nicknameLabel->setFont(nicknameFont);
 
     m_callTypeLabel = new QLabel("Incoming call", this);
     m_callTypeLabel->setAlignment(Qt::AlignCenter);
     m_callTypeLabel->setStyleSheet(StyleIncomingCallWidget::callTypeStyle());
-    QFont callTypeFont("Outfit", scale(14), QFont::Light);
+    QFont callTypeFont("Outfit", 14, QFont::Light);
     m_callTypeLabel->setFont(callTypeFont);
 
     m_timerLabel = new QLabel(this);

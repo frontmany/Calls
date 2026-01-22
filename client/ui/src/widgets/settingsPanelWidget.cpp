@@ -174,7 +174,7 @@ void SettingsPanel::setupUI() {
     m_devicePickerButton = new QPushButton("Audio devices", this);
     m_devicePickerButton->setFixedHeight(scale(60));
     m_devicePickerButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
-    QFont refreshButtonFont("Outfit", scale(13), QFont::Medium);
+    QFont refreshButtonFont("Outfit", 13, QFont::Medium);
     m_devicePickerButton->setFont(refreshButtonFont);
     m_devicePickerButton->setToolTip("Select input/output devices");
     m_devicePickerButton->setCursor(Qt::PointingHandCursor);
