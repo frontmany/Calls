@@ -3,6 +3,7 @@
 #include "managers/navigationController.h"
 #include "managers/dialogsController.h"
 #include "managers/notificationController.h"
+#include "managers/updateManager.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
 #include "media/screenCaptureController.h"
@@ -13,7 +14,7 @@
 #include <system_error>
 #include <QList>
 
-CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, QObject* parent)
+CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_audioManager(audioManager)
@@ -21,6 +22,7 @@ CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManag
     , m_screenCaptureController(screenCaptureController)
     , m_cameraCaptureController(cameraCaptureController)
     , m_dialogsController(dialogsController)
+    , m_updateManager(updateManager)
 {
     if (m_dialogsController)
     {
@@ -309,8 +311,8 @@ void CallManager::onRemoteUserEndedCall()
         m_mainMenuWidget->setStatusLabelOnline();
     }
 
-    if (m_dialogsController) {
-        m_dialogsController->showUpdateAvailableDialogIfConnected();
+    if (m_dialogsController && m_updateManager && m_updateManager->isUpdateNeeded()) {
+        m_dialogsController->showUpdateAvailableDialog();
     }
 
     if (m_audioManager) {
@@ -466,8 +468,8 @@ void CallManager::onEndCallResult(std::error_code ec)
             m_navigationController->switchToMainMenuWidget();
         }
 
-        if (m_dialogsController) {
-            m_dialogsController->showUpdateAvailableDialogIfConnected();
+        if (m_dialogsController && m_updateManager && m_updateManager->isUpdateNeeded()) {
+            m_dialogsController->showUpdateAvailableDialog();
         }
 
         if (m_audioManager) {
@@ -495,6 +497,7 @@ void CallManager::onCallParticipantConnectionDown()
         m_callWidget->setScreenShareButtonRestricted(true);
         m_callWidget->hideMainScreen();
         m_callWidget->hideAdditionalScreens();
+        m_callWidget->hideEnterFullscreenButton();
     }
 
     if (m_notificationController)
@@ -511,8 +514,15 @@ void CallManager::onCallParticipantConnectionRestored()
         return;
     }
 
+    if (m_callWidget) {
+        m_callWidget->setCameraButtonRestricted(false);
+        m_callWidget->setScreenShareButtonRestricted(false);
+    }
+
     if (m_notificationController)
     {
+        m_notificationController->hideConnectionDownWithUser();
+        
         const int restoredDurationMs = ERROR_MESSAGE_DURATION_MS;
         m_notificationController->showConnectionRestoredWithUser("Connection with participant restored", restoredDurationMs);
     }

@@ -50,7 +50,6 @@ public:
     void setIncomingCallButtonsActive(const QString& friendNickname, bool active);
 
     void showUpdateAvailableDialog();
-    void showUpdateAvailableDialogIfConnected();
     void hideUpdateAvailableDialog();
     void setUpdateClient(std::shared_ptr<updater::Client> updaterClient);
 

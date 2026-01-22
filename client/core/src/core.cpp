@@ -174,6 +174,8 @@ namespace core
             m_eventListener->onConnectionRestored();
 
             if (!activeCall) {
+                bool hadActiveCall = m_stateManager.isActiveCall();
+                
                 m_stateManager.setScreenSharing(false);
                 m_stateManager.setCameraSharing(false);
                 m_stateManager.setViewingRemoteScreen(false);
@@ -181,7 +183,9 @@ namespace core
                 m_stateManager.clearCallState();
                 m_audioEngine.stopStream();
 
-                m_eventListener->onCallEndedByRemote({});
+                if (hadActiveCall) {
+                    m_eventListener->onCallEndedByRemote({});
+                }
             }
         }
         else {

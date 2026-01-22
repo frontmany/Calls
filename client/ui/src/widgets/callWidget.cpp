@@ -866,6 +866,7 @@ void CallWidget::setScreenShareButtonRestricted(bool restricted)
         m_screenShareButton->setIcons(m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted, m_screenShareIconRestricted);
     }
     else {
+        m_screenShareButton->setDisabled(false);
         m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover, m_screenShareIconActive, m_screenShareIconActiveHover);
         m_screenShareButton->setToggled(false);
         m_screenShareButton->setToolTip("Start screen share");
@@ -898,6 +899,7 @@ void CallWidget::setCameraButtonRestricted(bool restricted)
         m_cameraButton->setIcons(m_cameraIconRestricted, m_cameraIconRestricted, m_cameraIconRestricted, m_cameraIconRestricted);
     }
     else {
+        m_cameraButton->setDisabled(false);
         m_cameraButton->setIcons(m_cameraIconDisabled, m_cameraIconDisabledHover, m_cameraIconActive, m_cameraIconActiveHover);
         m_cameraButton->setToggled(false);
         m_cameraButton->setToolTip("Enable camera");

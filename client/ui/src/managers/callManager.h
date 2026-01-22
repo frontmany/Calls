@@ -18,6 +18,7 @@ class ScreenCaptureController;
 class CameraCaptureController;
 class DialogsController;
 class NotificationController;
+class UpdateManager;
 
 class CallManager : public QObject {
     Q_OBJECT
@@ -30,7 +31,7 @@ private:
     };
 
 public:
-    explicit CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, QObject* parent = nullptr);
+    explicit CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, ScreenCaptureController* screenCaptureController, CameraCaptureController* cameraCaptureController, DialogsController* dialogsController, UpdateManager* updateManager = nullptr, QObject* parent = nullptr);
     
     void setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout);
     void setNotificationController(NotificationController* notificationController);
@@ -85,6 +86,7 @@ private:
     CameraCaptureController* m_cameraCaptureController = nullptr;
     DialogsController* m_dialogsController = nullptr;
     NotificationController* m_notificationController = nullptr;
+    UpdateManager* m_updateManager = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;

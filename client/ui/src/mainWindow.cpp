@@ -228,7 +228,7 @@ void MainWindow::initializeAuthorizationManager() {
 }
 
 void MainWindow::initializeCallManager() {
-    m_callManager = new CallManager(m_coreClient, m_audioManager, m_navigationController, m_screenCaptureController, m_CameraCaptureController, m_dialogsController, this);
+    m_callManager = new CallManager(m_coreClient, m_audioManager, m_navigationController, m_screenCaptureController, m_CameraCaptureController, m_dialogsController, m_updateManager, this);
     if (m_mainMenuWidget && m_callWidget && m_stackedLayout) {
         m_callManager->setWidgets(m_mainMenuWidget, m_callWidget, m_stackedLayout);
     }

@@ -33,15 +33,22 @@ bool UpdateManager::shouldRestart() {
     return m_shouldRestart;
 }
 
+bool UpdateManager::isUpdateNeeded() const {
+    return m_updateNeeded;
+}
+
 
 void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
 {
     if (result == updater::CheckResult::POSSIBLE_UPDATE) {
-        if (m_dialogsController) {
+        m_updateNeeded = true;
+        // Показываем диалог только если пользователь не в звонке
+        if (m_dialogsController && m_coreClient && !m_coreClient->isActiveCall()) {
             m_dialogsController->showUpdateAvailableDialog();
         }
     }
     else if (result == updater::CheckResult::REQUIRED_UPDATE) {
+        m_updateNeeded = true;
         if (m_updaterClient) {
             m_updaterClient->startUpdate(resolveOperationSystemType());
         }
@@ -50,6 +57,7 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
         }
     }
     else if (result == updater::CheckResult::UPDATE_NOT_NEEDED) {
+        m_updateNeeded = false;
     }
     else {
         LOG_ERROR("error: unknown CheckResult type");

@@ -575,11 +575,3 @@ void DialogsController::setUpdateClient(std::shared_ptr<updater::Client> updater
 {
     m_updaterClient = updaterClient;
 }
-
-void DialogsController::showUpdateAvailableDialogIfConnected()
-{
-    if (m_updaterClient && m_updaterClient->isConnected())
-    {
-        showUpdateAvailableDialog();
-    }
-}
