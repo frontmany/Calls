@@ -12,6 +12,9 @@ source_group("Source Files" FILES ${SOURCES})
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
+# Enable Position Independent Code for shared library compatibility (required on Linux)
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
