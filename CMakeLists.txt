@@ -76,7 +76,7 @@ if(FETCH_DEPENDENCIES)
     FetchContent_Declare(
         CrashCatch
         GIT_REPOSITORY https://github.com/keithpotz/CrashCatch.git
-        GIT_TAG v1.2.0
+        GIT_TAG v1.2
         SOURCE_DIR ${VENDOR_DIR}/CrashCatch
     )
 

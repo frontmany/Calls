@@ -2,6 +2,24 @@
 
 ## Prerequisites
 
+### Required Tools
+
+- **Build Essentials** - C/C++ compiler and build tools. Install with:
+  - Ubuntu/Debian: `sudo apt-get install build-essential`
+  - Fedora/RHEL: `sudo dnf groupinstall "Development Tools"` or `sudo dnf install gcc gcc-c++ make`
+  - Arch: `sudo pacman -S base-devel`
+
+- **CMake** (version 3.16 or higher) - Build system generator. Install with:
+  - Ubuntu/Debian: `sudo apt-get install cmake`
+  - Fedora/RHEL: `sudo dnf install cmake`
+  - Arch: `sudo pacman -S cmake`
+  - Or download from [cmake.org](https://cmake.org/download/)
+
+- **Git** - Required for fetching dependencies. Install with:
+  - Ubuntu/Debian: `sudo apt-get install git`
+  - Fedora/RHEL: `sudo dnf install git`
+  - Arch: `sudo pacman -S git`
+
 ### Qt6 Setup
 
 **Important:** Qt6 must be installed separately before building. The `FETCH_DEPENDENCIES` option does not install Qt.

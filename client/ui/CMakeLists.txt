@@ -28,18 +28,26 @@ source_group("Source Files" FILES ${SOURCES})
 #   или через переменную окружения CMAKE_PREFIX_PATH
 #   (альтернативно: cmake -DQt6_DIR=/path/to/Qt6/lib/cmake/Qt6)
 if(WIN32)
-    # Значение по умолчанию для Windows (можно переопределить через -DCMAKE_PREFIX_PATH=...)
-    if("${CMAKE_PREFIX_PATH}" STREQUAL "")
-        set(CMAKE_PREFIX_PATH "C:/Qt/6.9.3/msvc2022_64" CACHE PATH "Qt6 prefix path")
-    endif()
+    # Значение по умолчанию для Windows
+    set(QT6_DEFAULT_PATH "C:/Qt/6.9.3/msvc2022_64")
 else()
     # Для Linux: проверяем переменную окружения или используем значение по умолчанию
     if(DEFINED ENV{CMAKE_PREFIX_PATH})
-        set(CMAKE_PREFIX_PATH "$ENV{CMAKE_PREFIX_PATH}" CACHE PATH "Qt6 prefix path")
-    elseif("${CMAKE_PREFIX_PATH}" STREQUAL "")
-        # Значение по умолчанию для Linux (можно переопределить через -DCMAKE_PREFIX_PATH=...)
-        set(CMAKE_PREFIX_PATH "/opt/Qt/6.9.3/gcc_64" CACHE PATH "Qt6 prefix path")
+        set(QT6_DEFAULT_PATH "$ENV{CMAKE_PREFIX_PATH}")
+    else()
+        # Значение по умолчанию для Linux
+        set(QT6_DEFAULT_PATH "/opt/Qt/6.9.3/gcc_64")
     endif()
+endif()
+
+# Добавляем путь к Qt в CMAKE_PREFIX_PATH если его там еще нет
+if(CMAKE_PREFIX_PATH)
+    list(FIND CMAKE_PREFIX_PATH "${QT6_DEFAULT_PATH}" QT6_PATH_INDEX)
+    if(QT6_PATH_INDEX EQUAL -1)
+        list(APPEND CMAKE_PREFIX_PATH "${QT6_DEFAULT_PATH}")
+    endif()
+else()
+    set(CMAKE_PREFIX_PATH "${QT6_DEFAULT_PATH}")
 endif()
 
 find_package(Qt6 COMPONENTS Widgets Core Multimedia REQUIRED)
