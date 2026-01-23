@@ -9,22 +9,22 @@
 #include "utilities/color.h"
 
 // Style definitions
-const QColor StyleCallWidget::m_primaryColor = COLOR_PRIMARY;
-const QColor StyleCallWidget::m_hoverColor = COLOR_PRIMARY_HOVER;
-const QColor StyleCallWidget::m_backgroundColor = COLOR_BG_PRIMARY;
-const QColor StyleCallWidget::m_textColor = COLOR_TEXT_PRIMARY;
+const QColor StyleCallWidget::m_primaryColor = COLOR_ACCENT;
+const QColor StyleCallWidget::m_hoverColor = COLOR_ACCENT_HOVER;
+const QColor StyleCallWidget::m_backgroundColor = COLOR_BACKGROUND_MAIN;
+const QColor StyleCallWidget::m_textColor = COLOR_TEXT_MAIN;
 const QColor StyleCallWidget::m_containerColor = QColor(255, 255, 255, 50);
-const QColor StyleCallWidget::m_whiteColor = COLOR_BG_WHITE;
-const QColor StyleCallWidget::m_controlButtonColor = COLOR_GLASS_WHITE_180;
-const QColor StyleCallWidget::m_controlButtonHoverColor = COLOR_GLASS_WHITE_220;
-const QColor StyleCallWidget::m_hangupButtonColor = COLOR_ERROR_BANNER;
-const QColor StyleCallWidget::m_hangupButtonHoverColor = COLOR_ERROR_BANNER_HOVER;
-const QColor StyleCallWidget::m_sliderGrooveColor = COLOR_SLIDER_GROOVE;
+const QColor StyleCallWidget::m_whiteColor = COLOR_BACKGROUND_PURE;
+const QColor StyleCallWidget::m_controlButtonColor = COLOR_OVERLAY_PURE_180;
+const QColor StyleCallWidget::m_controlButtonHoverColor = COLOR_OVERLAY_PURE_220;
+const QColor StyleCallWidget::m_hangupButtonColor = COLOR_BANNER_ERROR;
+const QColor StyleCallWidget::m_hangupButtonHoverColor = COLOR_BANNER_ERROR_HOVER;
+const QColor StyleCallWidget::m_sliderGrooveColor = COLOR_SLIDER_TRACK;
 const QColor StyleCallWidget::m_sliderHandleColor = COLOR_SLIDER_HANDLE;
-const QColor StyleCallWidget::m_sliderSubPageColor = COLOR_SLIDER_SUBPAGE;
+const QColor StyleCallWidget::m_sliderSubPageColor = COLOR_SLIDER_FILL;
 const QColor StyleCallWidget::m_volumeLabelColor = COLOR_TEXT_SECONDARY;
 const QColor StyleCallWidget::m_scrollAreaBackgroundColor = QColor(0, 0, 0, 0);
-const QColor StyleCallWidget::m_sliderContainerColor = COLOR_GLASS_SETTINGS_120;
+const QColor StyleCallWidget::m_sliderContainerColor = COLOR_OVERLAY_SETTINGS_120;
 
 QString StyleCallWidget::containerStyle() {
     return QString("QWidget {"
@@ -203,11 +203,11 @@ QString StyleCallWidget::volumeSliderStyle() {
         .arg(scale(17))
         .arg(scale(8))
         .arg(scale(4))
-        .arg(COLOR_SLIDER_GROOVE.name())
-        .arg(COLOR_SLIDER_SUBPAGE.name())
-        .arg(COLOR_GRAY_180.name())
-        .arg(COLOR_GRAY_200.name())
-        .arg(COLOR_GRAY_150_DARK.name());
+        .arg(COLOR_SLIDER_TRACK.name())
+        .arg(COLOR_SLIDER_FILL.name())
+        .arg(COLOR_NEUTRAL_180.name())
+        .arg(COLOR_NEUTRAL_200.name())
+        .arg(COLOR_SLIDER_HANDLE_NEUTRAL.name());
 }
 
 QString StyleCallWidget::notificationRedLabelStyle() {
@@ -280,7 +280,7 @@ void CallWidget::setupUI() {
     m_connectionErrorLabel = new QLabel(m_participantInfoContainer);
     m_connectionErrorLabel->setAlignment(Qt::AlignCenter);
     m_connectionErrorLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; margin: 0px; padding: 0px;")
-        .arg(COLOR_HEX_ERROR)
+        .arg(COLOR_STATUS_ERROR.name())
         .arg(scale(12)));
     QFont connectionErrorFont("Outfit", scale(11), QFont::Medium);
     m_connectionErrorLabel->setFont(connectionErrorFont);
@@ -290,7 +290,7 @@ void CallWidget::setupUI() {
     m_participantInfoLayout->addWidget(m_connectionErrorLabel);
 
     m_participantConnectionErrorBanner = new QWidget(this);
-    m_participantConnectionErrorBanner->setStyleSheet(QString("background-color: %1;").arg(COLOR_HEX_ERROR_BANNER));
+    m_participantConnectionErrorBanner->setStyleSheet(QString("background-color: %1;").arg(COLOR_BANNER_ERROR.name()));
     m_participantConnectionErrorBanner->setFixedHeight(scale(40));
     m_participantConnectionErrorBanner->hide();
     m_participantConnectionErrorBanner->setAttribute(Qt::WA_TranslucentBackground, false);
@@ -299,7 +299,7 @@ void CallWidget::setupUI() {
     m_participantConnectionErrorBannerLabel = new QLabel(m_participantConnectionErrorBanner);
     m_participantConnectionErrorBannerLabel->setAlignment(Qt::AlignCenter);
     m_participantConnectionErrorBannerLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; font-weight: 600; margin: 0px; padding: 0px;")
-        .arg(COLOR_HEX_WHITE)
+        .arg(COLOR_BACKGROUND_PURE.name())
         .arg(scale(14)));
     QFont bannerFont("Outfit", scale(14), QFont::Bold);
     m_participantConnectionErrorBannerLabel->setFont(bannerFont);
@@ -442,15 +442,15 @@ void CallWidget::setupUI() {
 }
 
 void CallWidget::setupShadowEffect() {
-    setupElementShadow(m_timerLabel, scale(15), COLOR_SHADOW_BLACK_60);
-    setupElementShadow(m_friendNicknameLabel, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_enterFullscreenButton, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_microphoneButton, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_screenShareButton, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_cameraButton, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_settingsButton, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_hangupButton, scale(10), COLOR_SHADOW_BLACK_50);
-    setupElementShadow(m_exitFullscreenButton, scale(10), COLOR_SHADOW_BLACK_50);
+    setupElementShadow(m_timerLabel, scale(15), COLOR_SHADOW_MEDIUM_60);
+    setupElementShadow(m_friendNicknameLabel, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_enterFullscreenButton, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_microphoneButton, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_screenShareButton, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_cameraButton, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_settingsButton, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_hangupButton, scale(10), COLOR_SHADOW_MEDIUM_50);
+    setupElementShadow(m_exitFullscreenButton, scale(10), COLOR_SHADOW_MEDIUM_50);
 }
 
 void CallWidget::setupElementShadow(QWidget* widget, int blurRadius, const QColor& color) {

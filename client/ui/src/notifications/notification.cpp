@@ -14,7 +14,7 @@ QString NotificationStyle::mainWidgetStyle(NotificationStyleType styleType)
             "   background-color: %1;"
             "   border-radius: %2px;"
             "}")
-            .arg(COLOR_SUCCESS_BG.name())
+            .arg(COLOR_STATUS_SUCCESS_BACKGROUND.name())
             .arg(scale(18));
     case NotificationStyleType::RED:
         return QString(
@@ -22,7 +22,7 @@ QString NotificationStyle::mainWidgetStyle(NotificationStyleType styleType)
             "   background-color: %1;"
             "   border-radius: %2px;"
             "}")
-            .arg(COLOR_ERROR_BG.name())
+            .arg(COLOR_STATUS_ERROR_BACKGROUND.name())
             .arg(scale(18));
     case NotificationStyleType::BASE:
     default:
@@ -31,7 +31,7 @@ QString NotificationStyle::mainWidgetStyle(NotificationStyleType styleType)
             "   background-color: %1;"
             "   border-radius: %2px;"
             "}")
-            .arg(COLOR_BG_WHITE.name())
+            .arg(COLOR_BACKGROUND_PURE.name())
             .arg(scale(24));
     }
 }
@@ -47,7 +47,7 @@ QString NotificationStyle::labelStyle(NotificationStyleType styleType)
             "font-family: 'Outfit';"
             "font-weight: 600;"
         )
-            .arg(COLOR_SUCCESS_TEXT.name())
+            .arg(COLOR_STATUS_SUCCESS_TEXT.name())
             .arg(scale(15));
     case NotificationStyleType::RED:
         return QString(
@@ -56,7 +56,7 @@ QString NotificationStyle::labelStyle(NotificationStyleType styleType)
             "font-family: 'Outfit';"
             "font-weight: 600;"
         )
-            .arg(COLOR_ERROR_DARK.name())
+            .arg(COLOR_STATUS_ERROR_INTENSE.name())
             .arg(scale(15));
     case NotificationStyleType::BASE:
     default:

@@ -19,10 +19,10 @@ QString StyleFirstLaunchDialog::mainWidgetStyle(int radius, int border)
         "   border-radius: %2px;"
         "   border: %3px solid %4;"
         "}")
-        .arg(COLOR_BG_TERTIARY.name())
+        .arg(COLOR_BACKGROUND_TERTIARY.name())
         .arg(radius)
         .arg(border)
-        .arg(COLOR_GRAY_210.name());
+        .arg(COLOR_BORDER_NEUTRAL.name());
 }
 
 QString StyleFirstLaunchDialog::descriptionStyle(int fontSize, int padding)
@@ -62,13 +62,13 @@ QString StyleFirstLaunchDialog::okButtonStyle(int radius, int fontSize)
         "   outline: none;"
         "   border: none;"
         "}"
-    ).arg(COLOR_PRIMARY.name())
-     .arg(COLOR_HEX_WHITE)
+    ).arg(COLOR_ACCENT.name())
+     .arg(COLOR_BACKGROUND_PURE.name())
      .arg(radius)
      .arg(scale(8)).arg(scale(16))
      .arg(fontSize)
-     .arg(COLOR_PRIMARY_HOVER.name())
-     .arg(COLOR_PRIMARY_DARKER.name())
+     .arg(COLOR_ACCENT_HOVER.name())
+     .arg(COLOR_ACCENT_PRESSED.name())
      .arg(scale(8))
      .arg(scale(16));
 }
@@ -86,7 +86,7 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
+    shadowEffect->setColor(COLOR_SHADOW_STRONG_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);

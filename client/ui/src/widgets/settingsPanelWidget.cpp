@@ -5,11 +5,11 @@
 #include "utilities/constant.h"
 #include "utilities/color.h"
 
-const QColor SettingsPanel::StyleSettingsPanel::primaryColor = COLOR_SETTINGS_PRIMARY;
-const QColor SettingsPanel::StyleSettingsPanel::hoverColor = COLOR_SETTINGS_HOVER;
-const QColor SettingsPanel::StyleSettingsPanel::backgroundColor = COLOR_BG_PRIMARY;
-const QColor SettingsPanel::StyleSettingsPanel::textColor = COLOR_TEXT_PRIMARY;
-const QColor SettingsPanel::StyleSettingsPanel::containerColor = COLOR_GLASS_WHITE_200;
+const QColor SettingsPanel::StyleSettingsPanel::primaryColor = COLOR_SETTINGS_ACCENT;
+const QColor SettingsPanel::StyleSettingsPanel::hoverColor = COLOR_SETTINGS_ACCENT_HOVER;
+const QColor SettingsPanel::StyleSettingsPanel::backgroundColor = COLOR_BACKGROUND_MAIN;
+const QColor SettingsPanel::StyleSettingsPanel::textColor = COLOR_TEXT_MAIN;
+const QColor SettingsPanel::StyleSettingsPanel::containerColor = COLOR_OVERLAY_PURE_200;
 
 QString SettingsPanel::StyleSettingsPanel::containerStyle() {
     return QString("QWidget {"
@@ -78,11 +78,11 @@ QString SettingsPanel::StyleSettingsPanel::sliderStyle() {
         .arg(scale(17))
         .arg(scale(8))
         .arg(scale(4))
-        .arg(COLOR_SLIDER_GROOVE.name())
-        .arg(COLOR_SLIDER_SUBPAGE.name())
-        .arg(COLOR_GRAY_180.name())
-        .arg(COLOR_GRAY_200.name())
-        .arg(COLOR_GRAY_150_DARK.name());
+        .arg(COLOR_SLIDER_TRACK.name())
+        .arg(COLOR_SLIDER_FILL.name())
+        .arg(COLOR_NEUTRAL_180.name())
+        .arg(COLOR_NEUTRAL_200.name())
+        .arg(COLOR_SLIDER_HANDLE_NEUTRAL.name());
 }
 
 
@@ -108,8 +108,8 @@ QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
         "   border-color: %13;"
         "}"
     )
-        .arg(COLOR_GLASS_SETTINGS_190.name())    // %1 - background-color
-        .arg(COLOR_HEX_TEXT_SECONDARY)            // %2 - color
+        .arg(COLOR_OVERLAY_SETTINGS_190.name())    // %1 - background-color
+        .arg(COLOR_TEXT_SECONDARY.name())         // %2 - color
         .arg(scale(8))                            // %3 - border-radius
         .arg(scale(8))                            // %4 - padding vertical
         .arg(scale(16))                           // %5 - padding horizontal
@@ -117,10 +117,10 @@ QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
         .arg(scale(0))                            // %7 - margin right
         .arg(scale(8))                            // %8 - margin bottom
         .arg(scale(0))                            // %9 - margin left
-        .arg(COLOR_HEX_BORDER)                    // %10 - border color
-        .arg(COLOR_GLASS_SETTINGS_110.name())     // %11 - hover background-color
-        .arg(COLOR_GLASS_SETTINGS_110.name())     // %12 - pressed background-color
-        .arg(COLOR_GLASS_SETTINGS_110.name());    // %13 - focus border-color
+        .arg(COLOR_BORDER_NEUTRAL.name())                // %10 - border color
+        .arg(COLOR_OVERLAY_SETTINGS_110.name())     // %11 - hover background-color
+        .arg(COLOR_OVERLAY_SETTINGS_110.name())     // %12 - pressed background-color
+        .arg(COLOR_OVERLAY_SETTINGS_110.name());    // %13 - focus border-color
 }
 
 QString SettingsPanel::StyleSettingsPanel::volumeLabelStyle() {
@@ -132,7 +132,7 @@ QString SettingsPanel::StyleSettingsPanel::volumeLabelStyle() {
         "   margin: %3px 0px;"
         "}"
     )
-        .arg(COLOR_HEX_TEXT_SECONDARY)
+        .arg(COLOR_TEXT_SECONDARY.name())
         .arg(scale(13))
         .arg(scale(5));
 }

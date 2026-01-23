@@ -29,7 +29,7 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
         "border: %2px solid %1;"
         "border-radius: %3px;"
     )
-        .arg(COLOR_GRAY_200.name())
+        .arg(COLOR_NEUTRAL_200.name())
         .arg(scale(4))
         .arg(scale(4)));
     m_previewLabel->setScaledContents(true);
@@ -87,11 +87,11 @@ void ScreenPreviewWidget::setSelected(bool selected)
             "   background-color: %1;"
             "   border: none;"
             "}"
-        ).arg(COLOR_SELECTION_BG.name()));
+        ).arg(COLOR_SELECTION_BACKGROUND.name()));
 
         QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
         shadowEffect->setBlurRadius(20);
-        shadowEffect->setColor(COLOR_SHADOW_PRIMARY_120);
+        shadowEffect->setColor(COLOR_SHADOW_ACCENT_120);
         shadowEffect->setOffset(0, 0);
         setGraphicsEffect(shadowEffect);
     }
@@ -101,7 +101,7 @@ void ScreenPreviewWidget::setSelected(bool selected)
             "   background-color: %1;"
             "   border: none;"
             "}"
-        ).arg(COLOR_SELECTION_BG_LIGHT.name()));
+        ).arg(COLOR_SELECTION_BACKGROUND_SECONDARY.name()));
         setGraphicsEffect(nullptr);
     }
 
@@ -134,7 +134,7 @@ void ScreenPreviewWidget::paintEvent(QPaintEvent* event) {
     if (m_isSelected) {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(QPen(COLOR_PRIMARY_LIGHT, scale(3)));
+        painter.setPen(QPen(COLOR_ACCENT_OUTLINE, scale(3)));
         painter.setBrush(Qt::NoBrush);
         painter.drawRoundedRect(rect().adjusted(scale(1), scale(1), -scale(1), -scale(1)), scale(8), scale(8));
     }

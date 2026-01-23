@@ -502,7 +502,7 @@ void CallManager::onCallParticipantConnectionDown()
 
     if (m_notificationController)
     {
-        m_notificationController->showConnectionDownWithUser("Connection with participant lost. Waiting for them...");
+        m_notificationController->showConnectionDownWithUser("Connection lost. Waiting for participant... (2 min)");
     }
 }
 

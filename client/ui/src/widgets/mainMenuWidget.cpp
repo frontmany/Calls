@@ -12,29 +12,29 @@
 #include "utilities/color.h"
 
 // Style definitions
-const QColor StyleMainMenuWidget::m_primaryColor = COLOR_PRIMARY;
-const QColor StyleMainMenuWidget::m_selectionColor = COLOR_PRIMARY_SELECTION;
-const QColor StyleMainMenuWidget::m_hoverColor = COLOR_PRIMARY_HOVER;
-const QColor StyleMainMenuWidget::m_backgroundColor = COLOR_BG_PRIMARY;
-const QColor StyleMainMenuWidget::m_textColor = COLOR_TEXT_PRIMARY;
-const QColor StyleMainMenuWidget::m_onlineColor = COLOR_ONLINE;
-const QColor StyleMainMenuWidget::m_offlineColor = COLOR_OFFLINE;
-const QColor StyleMainMenuWidget::m_callingColor = COLOR_CALLING;
-const QColor StyleMainMenuWidget::m_errorColor = COLOR_GLASS_ERROR_200;
-const QColor StyleMainMenuWidget::m_disabledColor = COLOR_DISABLED;
-const QColor StyleMainMenuWidget::m_settingsButtonColor = COLOR_GLASS_SETTINGS_190;
-const QColor StyleMainMenuWidget::m_settingsButtonHoverColor = COLOR_GLASS_SETTINGS_110;
-const QColor StyleMainMenuWidget::m_lineEditBackgroundColor = COLOR_GLASS_GRAY_190;
-const QColor StyleMainMenuWidget::m_lineEditFocusBackgroundColor = COLOR_GLASS_WHITE_190;
-const QColor StyleMainMenuWidget::m_placeholderColor = COLOR_PLACEHOLDER;
-const QColor StyleMainMenuWidget::m_callingSectionBackgroundColor = COLOR_GLASS_CALLING_180;
-const QColor StyleMainMenuWidget::m_stopCallingButtonColor = COLOR_GLASS_ERROR_BANNER_180;
-const QColor StyleMainMenuWidget::m_stopCallingButtonHoverColor = COLOR_GLASS_ERROR_BANNER_220;
-const QColor StyleMainMenuWidget::m_incomingCallBackgroundColor = COLOR_GLASS_GRAY_200;
+const QColor StyleMainMenuWidget::m_primaryColor = COLOR_ACCENT;
+const QColor StyleMainMenuWidget::m_selectionColor = COLOR_SELECTION_ACCENT;
+const QColor StyleMainMenuWidget::m_hoverColor = COLOR_ACCENT_HOVER;
+const QColor StyleMainMenuWidget::m_backgroundColor = COLOR_BACKGROUND_MAIN;
+const QColor StyleMainMenuWidget::m_textColor = COLOR_TEXT_MAIN;
+const QColor StyleMainMenuWidget::m_onlineColor = COLOR_STATUS_ONLINE;
+const QColor StyleMainMenuWidget::m_offlineColor = COLOR_STATUS_OFFLINE;
+const QColor StyleMainMenuWidget::m_callingColor = COLOR_STATUS_CALLING;
+const QColor StyleMainMenuWidget::m_errorColor = COLOR_OVERLAY_ERROR_200;
+const QColor StyleMainMenuWidget::m_disabledColor = COLOR_STATE_DISABLED;
+const QColor StyleMainMenuWidget::m_settingsButtonColor = COLOR_OVERLAY_SETTINGS_190;
+const QColor StyleMainMenuWidget::m_settingsButtonHoverColor = COLOR_OVERLAY_SETTINGS_110;
+const QColor StyleMainMenuWidget::m_lineEditBackgroundColor = COLOR_OVERLAY_NEUTRAL_190;
+const QColor StyleMainMenuWidget::m_lineEditFocusBackgroundColor = COLOR_OVERLAY_PURE_190;
+const QColor StyleMainMenuWidget::m_placeholderColor = COLOR_INPUT_PLACEHOLDER;
+const QColor StyleMainMenuWidget::m_callingSectionBackgroundColor = COLOR_OVERLAY_CALLING_180;
+const QColor StyleMainMenuWidget::m_stopCallingButtonColor = COLOR_OVERLAY_ERROR_BANNER_180;
+const QColor StyleMainMenuWidget::m_stopCallingButtonHoverColor = COLOR_OVERLAY_ERROR_BANNER_220;
+const QColor StyleMainMenuWidget::m_incomingCallBackgroundColor = COLOR_OVERLAY_NEUTRAL_200;
 const QColor StyleMainMenuWidget::m_settingsPanelBackgroundColor = QColor(240, 240, 240, 200);
-const QColor StyleMainMenuWidget::m_scrollBarColor = COLOR_SCROLLBAR_BG;
-const QColor StyleMainMenuWidget::m_scrollBarHoverColor = COLOR_SCROLLBAR_BG_HOVER;
-const QColor StyleMainMenuWidget::m_scrollBarPressedColor = COLOR_SCROLLBAR_BG_PRESSED;
+const QColor StyleMainMenuWidget::m_scrollBarColor = COLOR_SCROLLBAR_BACKGROUND;
+const QColor StyleMainMenuWidget::m_scrollBarHoverColor = COLOR_SCROLLBAR_BACKGROUND_HOVER;
+const QColor StyleMainMenuWidget::m_scrollBarPressedColor = COLOR_SCROLLBAR_BACKGROUND_PRESSED;
 
 QString StyleMainMenuWidget::containerStyle() {
     return QString("QWidget {"

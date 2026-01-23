@@ -9,16 +9,16 @@
 
 #include "../utilities/utilities.h"
 
-const QColor StyleAuthorizationWidget::m_primaryColor = COLOR_PRIMARY;
-const QColor StyleAuthorizationWidget::m_hoverColor = COLOR_PRIMARY_HOVER;
-const QColor StyleAuthorizationWidget::m_errorColor = COLOR_GLASS_ERROR_200;
-const QColor StyleAuthorizationWidget::m_successColor = COLOR_SUCCESS;
-const QColor StyleAuthorizationWidget::m_textColor = COLOR_TEXT_PRIMARY;
-const QColor StyleAuthorizationWidget::m_backgroundColor = COLOR_GRAY_100;
-const QColor StyleAuthorizationWidget::m_glassColor = COLOR_GLASS_WHITE_60;
-const QColor StyleAuthorizationWidget::m_glassBorderColor = COLOR_GLASS_WHITE_100;
-const QColor StyleAuthorizationWidget::m_textDarkColor = COLOR_GRAY_150;
-const QColor StyleAuthorizationWidget::m_disabledColor = COLOR_GLASS_DISABLED_150;
+const QColor StyleAuthorizationWidget::m_primaryColor = COLOR_ACCENT;
+const QColor StyleAuthorizationWidget::m_hoverColor = COLOR_ACCENT_HOVER;
+const QColor StyleAuthorizationWidget::m_errorColor = COLOR_OVERLAY_ERROR_200;
+const QColor StyleAuthorizationWidget::m_successColor = COLOR_STATUS_SUCCESS;
+const QColor StyleAuthorizationWidget::m_textColor = COLOR_TEXT_MAIN;
+const QColor StyleAuthorizationWidget::m_backgroundColor = COLOR_NEUTRAL_100;
+const QColor StyleAuthorizationWidget::m_glassColor = COLOR_OVERLAY_PURE_60;
+const QColor StyleAuthorizationWidget::m_glassBorderColor = COLOR_OVERLAY_PURE_100;
+const QColor StyleAuthorizationWidget::m_textDarkColor = COLOR_NEUTRAL_150;
+const QColor StyleAuthorizationWidget::m_disabledColor = COLOR_OVERLAY_DISABLED_150;
 
 QString StyleAuthorizationWidget::glassButtonStyle() {
     return QString("QPushButton {"
@@ -41,13 +41,13 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
         "   opacity: 0.6;"
         "}")
         .arg(m_primaryColor.name())                    // %1 - background-color
-        .arg(COLOR_HEX_WHITE)                          // %2 - color (белый текст)
+        .arg(COLOR_BACKGROUND_PURE.name())                     // %2 - color (белый текст)
         .arg(m_glassBorderColor.name())               // %3 - border color
         .arg(scale(15))                                // %4 - border-radius
         .arg(scale(12))                                // %5 - padding vertical
         .arg(scale(24))                                // %6 - padding horizontal
         .arg(m_hoverColor.name())                      // %7 - hover background-color
-        .arg(COLOR_GLASS_PRIMARY_150.name());          // %8 - disabled background-color
+        .arg(COLOR_OVERLAY_ACCENT_150.name());          // %8 - disabled background-color
 }
 
 QString StyleAuthorizationWidget::glassLineEditStyle() {
@@ -77,10 +77,10 @@ QString StyleAuthorizationWidget::glassLineEditStyle() {
         .arg(QString::fromStdString(std::to_string(scale(12))))
         .arg(scale(12))
         .arg(scale(15))
-        .arg(COLOR_GLASS_GRAY_235.name())
-        .arg(COLOR_GLASS_WHITE_235.name())
-        .arg(COLOR_GLASS_GRAY_150.name())
-        .arg(COLOR_PLACEHOLDER.name());
+        .arg(COLOR_OVERLAY_NEUTRAL_235.name())
+        .arg(COLOR_OVERLAY_PURE_235.name())
+        .arg(COLOR_OVERLAY_NEUTRAL_150.name())
+        .arg(COLOR_INPUT_PLACEHOLDER.name());
 }
 
 QString StyleAuthorizationWidget::glassLabelStyle() {
@@ -168,7 +168,7 @@ QString StyleAuthorizationWidget::notificationRedTextStyle() {
         "   margin: 0px;"
         "   padding: 0px;"
         "}")
-        .arg(COLOR_HEX_ERROR)
+        .arg(COLOR_STATUS_ERROR.name())
         .arg(scale(14));
 }
 
@@ -180,7 +180,7 @@ QString StyleAuthorizationWidget::notificationLilacTextStyle() {
         "   margin: 0px;"
         "   padding: 0px;"
         "}")
-        .arg(COLOR_HEX_PURPLE)
+        .arg(COLOR_ACCENT_PURPLE.name())
         .arg(scale(14));
 }
 
@@ -192,7 +192,7 @@ QString StyleAuthorizationWidget::notificationGreenTextStyle() {
         "   margin: 0px;"
         "   padding: 0px;"
         "}")
-        .arg(COLOR_HEX_SUCCESS)
+        .arg(COLOR_STATUS_SUCCESS.name())
         .arg(scale(14));
 }
 

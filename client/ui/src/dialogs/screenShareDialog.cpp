@@ -18,10 +18,10 @@ QString StyleScreenShareDialog::mainWidgetStyle(int radius, int border)
         "   border-radius: %2px;"
         "   border: %3px solid %4;"
         "}")
-        .arg(COLOR_BG_LIGHT_GRAY.name())
+        .arg(COLOR_BACKGROUND_SUBTLE.name())
         .arg(radius)
         .arg(border)
-        .arg(COLOR_GRAY_210.name());
+        .arg(COLOR_BORDER_NEUTRAL.name());
 }
 
 QString StyleScreenShareDialog::titleStyle(int fontSize, int padding)
@@ -80,16 +80,16 @@ QString StyleScreenShareDialog::shareButtonStyle(int radius, int paddingH, int p
         "   background-color: %9;"
         "   color: %10;"
         "}"
-    ).arg(COLOR_PRIMARY.name())
-     .arg(COLOR_BG_WHITE.name())
+    ).arg(COLOR_ACCENT.name())
+     .arg(COLOR_BACKGROUND_PURE.name())
      .arg(radius)
      .arg(paddingV)
      .arg(paddingH)
      .arg(fontSize)
-     .arg(COLOR_PRIMARY_HOVER.name())
-     .arg(COLOR_PRIMARY_DARK.name())
-     .arg(COLOR_GLASS_GRAY_150_DARK_20.name(QColor::HexArgb))
-     .arg(COLOR_GLASS_GRAY_90_75.name(QColor::HexArgb));
+     .arg(COLOR_ACCENT_HOVER.name())
+     .arg(COLOR_ACCENT_PRESSED.name())
+     .arg(COLOR_OVERLAY_DISABLED_20.name(QColor::HexArgb))
+     .arg(COLOR_OVERLAY_DISABLED_75.name(QColor::HexArgb));
 }
 
 QString StyleScreenShareDialog::closeButtonStyle(int radius, int paddingH, int paddingV, int fontSize)
@@ -112,16 +112,16 @@ QString StyleScreenShareDialog::closeButtonStyle(int radius, int paddingH, int p
         "   background-color: %9;"
         "   color: %10;"
         "}"
-    ).arg(COLOR_GLASS_PRIMARY_8.name(QColor::HexArgb))
-     .arg(COLOR_PRIMARY.name())
+    ).arg(COLOR_OVERLAY_ACCENT_8.name(QColor::HexArgb))
+     .arg(COLOR_ACCENT.name())
      .arg(radius)
      .arg(paddingV)
      .arg(paddingH)
      .arg(fontSize)
-     .arg(COLOR_GLASS_PRIMARY_36.name(QColor::HexArgb))
-     .arg(COLOR_PRIMARY_HOVER.name())
-     .arg(COLOR_GLASS_PRIMARY_20.name(QColor::HexArgb))
-     .arg(COLOR_PRIMARY_DARK.name());
+     .arg(COLOR_OVERLAY_ACCENT_36.name(QColor::HexArgb))
+     .arg(COLOR_ACCENT_HOVER.name())
+     .arg(COLOR_OVERLAY_ACCENT_20.name(QColor::HexArgb))
+     .arg(COLOR_ACCENT_PRESSED.name());
 }
 
 QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, int handleMinHeight)
@@ -154,8 +154,8 @@ QString StyleScreenShareDialog::scrollAreaStyle(int barWidth, int handleRadius, 
     ).arg(barWidth)
      .arg(handleRadius)
      .arg(handleMinHeight)
-     .arg(COLOR_SHADOW_BLACK_60.name(QColor::HexArgb))
-     .arg(COLOR_SHADOW_BLACK_80.name(QColor::HexArgb));
+     .arg(COLOR_SHADOW_MEDIUM_60.name(QColor::HexArgb))
+     .arg(COLOR_SHADOW_STRONG_80.name(QColor::HexArgb));
 }
 
 ScreenShareDialog::ScreenShareDialog(QWidget* parent)
@@ -188,7 +188,7 @@ ScreenShareDialog::ScreenShareDialog(QWidget* parent)
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
+    shadowEffect->setColor(COLOR_SHADOW_STRONG_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);

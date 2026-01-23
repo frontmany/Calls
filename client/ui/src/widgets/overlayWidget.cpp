@@ -29,7 +29,7 @@ bool OverlayWidget::eventFilter(QObject* obj, QEvent* event) {
 
 void OverlayWidget::paintEvent(QPaintEvent*) {
     QPainter painter(this);
-    painter.fillRect(rect(), COLOR_SHADOW_BLACK_160);
+    painter.fillRect(rect(), COLOR_SHADOW_STRONG_160);
 }
 
 void OverlayWidget::updateGeometryToParent() {

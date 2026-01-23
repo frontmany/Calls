@@ -22,13 +22,13 @@ QString StyleUpdateAvailableDialog::buttonStyle()
         "   background-color: %6;"
         "   color: %7;"
         "}")
-        .arg(COLOR_GLASS_PRIMARY_LIGHT_185.name())  // %1 - background-color (светлый синий)
-        .arg(COLOR_HEX_WHITE)                       // %2 - color (белый текст)
+        .arg(COLOR_OVERLAY_ACCENT_SUBTLE_185.name())  // %1 - background-color (светлый синий)
+        .arg(COLOR_BACKGROUND_PURE.name())                  // %2 - color (белый текст)
         .arg(scale(18))                             // %3 - border-radius
-        .arg(COLOR_GLASS_PRIMARY_190.name())        // %4 - hover background-color (темнее при наведении)
-        .arg(COLOR_HEX_WHITE)                       // %5 - hover color (белый текст)
-        .arg(COLOR_GLASS_PRIMARY_220.name())       // %6 - pressed background-color (еще темнее)
-        .arg(COLOR_HEX_WHITE);                      // %7 - pressed color (белый текст)
+        .arg(COLOR_OVERLAY_ACCENT_190.name())        // %4 - hover background-color (темнее при наведении)
+        .arg(COLOR_BACKGROUND_PURE.name())                  // %5 - hover color (белый текст)
+        .arg(COLOR_OVERLAY_ACCENT_220.name())       // %6 - pressed background-color (еще темнее)
+        .arg(COLOR_BACKGROUND_PURE.name());                 // %7 - pressed color (белый текст)
 }
 
 QString StyleUpdateAvailableDialog::containerStyle()
@@ -60,7 +60,7 @@ UpdateAvailableDialog::UpdateAvailableDialog(QWidget* parent)
     QLabel* buttonTextLabel = new QLabel("New version! Click to update", buttonWidget);
     QFont updateFont("Outfit", scale(13), QFont::Medium);
     buttonTextLabel->setFont(updateFont);
-    buttonTextLabel->setStyleSheet(QString("color: %1; background: transparent;").arg(COLOR_HEX_WHITE));
+    buttonTextLabel->setStyleSheet(QString("color: %1; background: transparent;").arg(COLOR_BACKGROUND_PURE.name()));
     buttonTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     buttonTextLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
     buttonTextLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);

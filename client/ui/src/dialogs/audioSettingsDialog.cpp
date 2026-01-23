@@ -15,7 +15,7 @@ namespace {
             "   border-radius: %2px;"
             "   padding: %3px;"
             "}"
-        ).arg(COLOR_BG_WHITE.name()).arg(radius).arg(padding);
+        ).arg(COLOR_BACKGROUND_PURE.name()).arg(radius).arg(padding);
     }
 }
 
@@ -42,7 +42,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     m_inputDevicesWidget = new QWidget(m_inputDevicesArea);
     m_outputDevicesWidget = new QWidget(m_outputDevicesArea);
-    const QString listBg = QString("background-color: %1; border: none;").arg(COLOR_GLASS_WHITE_230.name(QColor::HexArgb));
+    const QString listBg = QString("background-color: %1; border: none;").arg(COLOR_OVERLAY_PURE_230.name(QColor::HexArgb));
     m_inputDevicesWidget->setStyleSheet(listBg);
     m_outputDevicesWidget->setStyleSheet(listBg);
 
@@ -64,8 +64,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     QLabel* inputLabel = new QLabel("Input device", m_container);
     QLabel* outputLabel = new QLabel("Output device", m_container);
-    inputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_HEX_TEXT_PRIMARY));
-    outputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_HEX_TEXT_PRIMARY));
+    inputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_TEXT_MAIN.name()));
+    outputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_TEXT_MAIN.name()));
 
     m_closeButton = new ButtonIcon(m_container, scale(28), scale(28));
     m_closeButton->setIcons(QIcon(":/resources/close.png"), QIcon(":/resources/closeHover.png"));
@@ -242,11 +242,11 @@ QString AudioSettingsDialog::sliderStyle() const
         .arg(QString::number(scale(17)))
         .arg(QString::number(scale(8)))
         .arg(QString::number(scale(4)))
-        .arg(COLOR_GRAY_200.name())
-        .arg(COLOR_SLIDER_GROOVE.name())
-        .arg(COLOR_SLIDER_SUBPAGE.name())
-        .arg(COLOR_GRAY_180.name())
-        .arg(COLOR_GRAY_150_DARK.name())
+        .arg(COLOR_NEUTRAL_200.name())
+        .arg(COLOR_SLIDER_TRACK.name())
+        .arg(COLOR_SLIDER_FILL.name())
+        .arg(COLOR_NEUTRAL_180.name())
+        .arg(COLOR_SLIDER_HANDLE_NEUTRAL.name())
         .arg(QString::number(scale(-4)));
 }
 
@@ -276,10 +276,10 @@ QString AudioSettingsDialog::scrollAreaStyle() const
         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
         "   background: transparent;"
         "}"
-    ).arg(COLOR_SHADOW_BLACK_60.name(QColor::HexArgb))
+    ).arg(COLOR_SHADOW_MEDIUM_60.name(QColor::HexArgb))
      .arg(scale(6))
      .arg(scale(3))
-     .arg(COLOR_SHADOW_BLACK_80.name(QColor::HexArgb));
+     .arg(COLOR_SHADOW_STRONG_80.name(QColor::HexArgb));
 }
 
 void AudioSettingsDialog::refreshDevices(int currentInputIndex, int currentOutputIndex)
@@ -377,7 +377,7 @@ void AudioSettingsDialog::updateDeviceLogos(QButtonGroup* group)
         }
         if (row) {
             row->setStyleSheet(checked
-                ? QString("background-color: %1; border-radius: %2px;").arg(COLOR_GLASS_PRIMARY_36.name(QColor::HexArgb)).arg(scale(6))
+                ? QString("background-color: %1; border-radius: %2px;").arg(COLOR_OVERLAY_ACCENT_36.name(QColor::HexArgb)).arg(scale(6))
                 : QString("background-color: transparent; border-radius: %1px;").arg(scale(6)));
         }
     }
@@ -430,7 +430,7 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
             "QPushButton:checked {"
             " color: %2;"
             "}"
-            ).arg(COLOR_HEX_TEXT_SECONDARY).arg(COLOR_HEX_TEXT_TERTIARY).arg(scale(8)).arg(scale(10))
+            ).arg(COLOR_TEXT_SECONDARY.name()).arg(COLOR_TEXT_TERTIARY.name()).arg(scale(8)).arg(scale(10))
         );
         btn->setProperty("deviceIndex", device.deviceIndex);
         btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -459,7 +459,7 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
         if (device.deviceIndex == currentIndex) {
             btn->setChecked(true);
             logo->setVisible(true);
-            row->setStyleSheet(QString("background-color: %1; border-radius: %2px;").arg(COLOR_GLASS_PRIMARY_36.name(QColor::HexArgb)).arg(scale(6)));
+            row->setStyleSheet(QString("background-color: %1; border-radius: %2px;").arg(COLOR_OVERLAY_ACCENT_36.name(QColor::HexArgb)).arg(scale(6)));
         }
         else {
             row->setStyleSheet(QString("background-color: transparent; border-radius: %1px;").arg(scale(6)));

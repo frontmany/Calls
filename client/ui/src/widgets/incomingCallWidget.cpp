@@ -8,12 +8,12 @@
 #include "utilities/color.h"
 
 // Style definitions
-const QColor StyleIncomingCallWidget::m_backgroundColor = COLOR_BG_SECONDARY;
-const QColor StyleIncomingCallWidget::m_borderColor = COLOR_BORDER_LIGHT;
-const QColor StyleIncomingCallWidget::m_nicknameTextColor = COLOR_TEXT_PRIMARY;
-const QColor StyleIncomingCallWidget::m_callTypeTextColor = COLOR_TEXT_LIGHT;
-const QColor StyleIncomingCallWidget::m_timerTextColor = COLOR_TEXT_LIGHTER;
-const QColor StyleIncomingCallWidget::m_timerCircleColor = COLOR_TEXT_LIGHTER;
+const QColor StyleIncomingCallWidget::m_backgroundColor = COLOR_BACKGROUND_SECONDARY;
+const QColor StyleIncomingCallWidget::m_borderColor = COLOR_BORDER_SUBTLE;
+const QColor StyleIncomingCallWidget::m_nicknameTextColor = COLOR_TEXT_MAIN;
+const QColor StyleIncomingCallWidget::m_callTypeTextColor = COLOR_TEXT_MUTED;
+const QColor StyleIncomingCallWidget::m_timerTextColor = COLOR_TEXT_MUTED_SECONDARY;
+const QColor StyleIncomingCallWidget::m_timerCircleColor = COLOR_TEXT_MUTED_SECONDARY;
 
 QString StyleIncomingCallWidget::widgetStyle() {
     return QString("IncomingCallWidget {"

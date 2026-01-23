@@ -169,9 +169,9 @@ void IncomingCallDialog::setupUi()
         "}")
         .arg(QColor(20, 22, 28).name())
         .arg(scale(1))
-        .arg(COLOR_BORDER_WHITE.name())
+        .arg(COLOR_BORDER_OVERLAY.name())
         .arg(QString::fromStdString(std::to_string(avatarSize / 2)))
-        .arg(COLOR_HEX_WHITE)
+        .arg(COLOR_BACKGROUND_PURE.name())
         .arg(QString::fromStdString(std::to_string(scale(20))));
     m_avatarLabel->setStyleSheet(avatarStyle);
     QString firstLetter = m_friendNickname.isEmpty() ? "G" : m_friendNickname.left(1).toUpper();

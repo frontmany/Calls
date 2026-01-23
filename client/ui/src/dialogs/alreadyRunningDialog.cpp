@@ -15,10 +15,10 @@ QString StyleAlreadyRunningDialog::mainWidgetStyle(int radius, int border)
         "   border-radius: %2px;"
         "   border: %3px solid %4;"
         "}")
-        .arg(COLOR_BG_ERROR_LIGHT.name())
+        .arg(COLOR_BACKGROUND_ERROR_SUBTLE.name())
         .arg(radius)
         .arg(border)
-        .arg(COLOR_GRAY_210.name());
+        .arg(COLOR_BORDER_NEUTRAL.name());
 }
 
 QString StyleAlreadyRunningDialog::titleStyle(int scalePx, const QString& fontFamily)
@@ -63,13 +63,13 @@ QString StyleAlreadyRunningDialog::closeButtonStyle(int radius, int paddingH, in
         "   background-color: %9;"
         "}"
     ).arg(QColor(232, 53, 53, 51).name(QColor::HexArgb))  // %1 - background-color (0.20 * 255 ≈ 51)
-     .arg(COLOR_ERROR_BANNER.name())                        // %2 - color
+     .arg(COLOR_BANNER_ERROR.name())                        // %2 - color
      .arg(radius)                                           // %3 - border-radius
      .arg(paddingV)                                         // %4 - padding vertical
      .arg(paddingH)                                         // %5 - padding horizontal
      .arg(fontSize)                                         // %6 - font-size
      .arg(QColor(232, 53, 53, 64).name(QColor::HexArgb))  // %7 - hover background-color (0.25 * 255 ≈ 64)
-     .arg(COLOR_ERROR_BANNER_HOVER.name())                 // %8 - hover color
+     .arg(COLOR_BANNER_ERROR_HOVER.name())                 // %8 - hover color
      .arg(QColor(232, 53, 53, 89).name(QColor::HexArgb));  // %9 - pressed background-color (0.35 * 255 ≈ 89)
 }
 
@@ -86,7 +86,7 @@ AlreadyRunningDialog::AlreadyRunningDialog(QWidget* parent)
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
+    shadowEffect->setColor(COLOR_SHADOW_STRONG_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);

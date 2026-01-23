@@ -15,10 +15,10 @@ QString StyleUpdatingDialog::mainWidgetStyle(int borderRadius)
         "   border-radius: %2px;"
         "   border: %3px solid %4;"
         "}"
-    ).arg(COLOR_BG_UPDATE.name())
+    ).arg(COLOR_BACKGROUND_UPDATE.name())
      .arg(borderRadius)
      .arg(scale(1))
-     .arg(COLOR_GRAY_210.name());
+     .arg(COLOR_BORDER_NEUTRAL.name());
 }
 
 QString StyleUpdatingDialog::progressStyle()
@@ -28,7 +28,7 @@ QString StyleUpdatingDialog::progressStyle()
         "font-size: %2px;"
         "font-family: 'Outfit';"
         "font-weight: bold;"
-    ).arg(COLOR_GRAY_80.name())
+    ).arg(COLOR_NEUTRAL_80.name())
      .arg(scale(14));
 }
 
@@ -64,9 +64,9 @@ QString StyleUpdatingDialog::exitButtonStyle(int radius, int paddingH, int paddi
         "}"
     ).arg(COLOR_TEXT_PLACEHOLDER.name())
      .arg(radius).arg(paddingV).arg(paddingH).arg(fontSize)
-     .arg(COLOR_SHADOW_BLACK_8.name())
-     .arg(COLOR_GRAY_100_DARK.name())
-     .arg(COLOR_SHADOW_BLACK_15.name());
+     .arg(COLOR_SHADOW_SUBTLE_8.name())
+     .arg(COLOR_TEXT_NEUTRAL_100.name())
+     .arg(COLOR_SHADOW_SUBTLE_15.name());
 }
 
 UpdatingDialog::UpdatingDialog(QWidget* parent)
@@ -82,7 +82,7 @@ UpdatingDialog::UpdatingDialog(QWidget* parent)
     shadowEffect->setBlurRadius(30);
     shadowEffect->setXOffset(0);
     shadowEffect->setYOffset(0);
-    shadowEffect->setColor(COLOR_SHADOW_BLACK_150);
+    shadowEffect->setColor(COLOR_SHADOW_STRONG_150);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setObjectName("mainWidget");
