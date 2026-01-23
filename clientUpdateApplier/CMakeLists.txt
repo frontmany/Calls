@@ -16,9 +16,9 @@ source_group("Source Files" FILES ${SOURCES})
 
 # Настраиваемый путь к Qt6
 # Можно задать через:
-#   cmake -DQt6_DIR=/path/to/Qt6/lib/cmake/Qt6
 #   cmake -DCMAKE_PREFIX_PATH=/path/to/Qt6
 #   или через переменную окружения CMAKE_PREFIX_PATH
+#   (альтернативно: cmake -DQt6_DIR=/path/to/Qt6/lib/cmake/Qt6)
 if(WIN32)
     # Значение по умолчанию для Windows (можно переопределить через -DCMAKE_PREFIX_PATH=...)
     if("${CMAKE_PREFIX_PATH}" STREQUAL "")
@@ -30,7 +30,7 @@ else()
         set(CMAKE_PREFIX_PATH "$ENV{CMAKE_PREFIX_PATH}" CACHE PATH "Qt6 prefix path")
     elseif("${CMAKE_PREFIX_PATH}" STREQUAL "")
         # Значение по умолчанию для Linux (можно переопределить через -DCMAKE_PREFIX_PATH=...)
-        set(CMAKE_PREFIX_PATH "/home/vboxuser/Qt/6.9.3/gcc_64" CACHE PATH "Qt6 prefix path")
+        set(CMAKE_PREFIX_PATH "/opt/Qt/6.9.3/gcc_64" CACHE PATH "Qt6 prefix path")
     endif()
 endif()
 
