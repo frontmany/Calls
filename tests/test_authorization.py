@@ -13,11 +13,13 @@ def auth_only_scenario(client, handler):
 class AuthorizationTest(TestRunner):
     def test_authorization(self):
         """Test single user authorization"""
+        from test_runner_base import generate_unique_nickname
         events_list = multiprocessing.Manager().list()
+        unique_nickname = generate_unique_nickname("test_user")
         
         process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "test_user_1", events_list, "auth_test", auth_only_scenario)
+            args=("localhost", self.port, unique_nickname, events_list, "auth_test", auth_only_scenario)
         )
         
         process.start()

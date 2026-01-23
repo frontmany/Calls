@@ -62,6 +62,7 @@ def discover_and_run_all_tests():
     try:
         total_passed = 0
         total_tests = 0
+        failed_tests = []  # List of (module_name, method_name) tuples
         
         for test_class, module_name in all_test_classes:
             test_instance = test_class("8081")
@@ -75,11 +76,22 @@ def discover_and_run_all_tests():
                     test_display_name = f"{module_name}.{method_name}"
                     if runner.run_test(test_method, test_display_name):
                         total_passed += 1
+                    else:
+                        failed_tests.append((module_name, method_name))
                     time.sleep(2)
         
         print(f"\n{'='*60}")
         print(f"FINAL RESULTS: {total_passed}/{total_tests} tests passed")
         print(f"{'='*60}")
+        
+        if failed_tests:
+            print(f"\n❌ FAILED TESTS ({len(failed_tests)}):")
+            print("-" * 60)
+            for module_name, method_name in failed_tests:
+                print(f"  • {method_name} (in {module_name}.py)")
+            print("-" * 60)
+        else:
+            print("\n✅ All tests passed!")
         
     finally:
         runner.stop_server()
@@ -124,6 +136,7 @@ def run_basic_tests_only():
     try:
         total_passed = 0
         total_tests = 0
+        failed_tests = []  # List of (module_name, method_name) tuples
         
         for test_class, module_name in all_test_classes:
             test_instance = test_class("8081")
@@ -137,11 +150,22 @@ def run_basic_tests_only():
                     test_display_name = f"{module_name}.{method_name}"
                     if runner.run_test(test_method, test_display_name):
                         total_passed += 1
+                    else:
+                        failed_tests.append((module_name, method_name))
                     time.sleep(2)
         
         print(f"\n{'='*60}")
         print(f"RESULTS: {total_passed}/{total_tests} tests passed")
         print(f"{'='*60}")
+        
+        if failed_tests:
+            print(f"\n❌ FAILED TESTS ({len(failed_tests)}):")
+            print("-" * 60)
+            for module_name, method_name in failed_tests:
+                print(f"  • {method_name} (in {module_name}.py)")
+            print("-" * 60)
+        else:
+            print("\n✅ All tests passed!")
         
     finally:
         runner.stop_server()

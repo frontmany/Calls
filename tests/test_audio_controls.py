@@ -17,11 +17,13 @@ def audio_test_scenario(client, handler):
 class AudioControlsTest(TestRunner):
     def test_audio_controls(self):
         """Test audio controls"""
+        from test_runner_base import generate_unique_nickname
         events = multiprocessing.Manager().list()
+        unique_nickname = generate_unique_nickname("audio_user")
         
         process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "audio_user", events, "audio_test", audio_test_scenario)
+            args=("localhost", self.port, unique_nickname, events, "audio_test", audio_test_scenario)
         )
         
         process.start()

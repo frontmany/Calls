@@ -367,5 +367,6 @@ PYBIND11_MODULE(callsClientPy, m) {
         }, "Stop camera sharing")
         .def("send_camera", [](core::Client& self, const std::vector<unsigned char>& data) -> int {
             return static_cast<int>(self.sendCamera(data).value());
-        }, "Send camera data", py::arg("data"));
+        }, "Send camera data", py::arg("data"))
+        .def("stop", &core::Client::stop, "Stop client and cleanup resources");
 }

@@ -3,6 +3,9 @@ import threading
 import multiprocessing
 import sys
 import os
+import uuid
+import random
+from functools import partial
 
 # Try multiple possible paths for Python bindings
 possible_client_paths = [
@@ -264,6 +267,13 @@ def run_client(host, port, nickname, events_list, handler_name, test_scenario):
         scenario_func = None
     
     return run_client_flexible(host, port, nickname, events_list, handler_name, scenario_func)
+
+
+def generate_unique_nickname(base_name):
+    """Generate unique nickname by appending random suffix"""
+    # Use timestamp + random to ensure uniqueness
+    suffix = f"{int(time.time() * 1000) % 100000}_{random.randint(1000, 9999)}"
+    return f"{base_name}_{suffix}"
 
 
 def run_client_flexible(host, port, nickname, events_list, handler_name, scenario_func=None, wait_time=3):

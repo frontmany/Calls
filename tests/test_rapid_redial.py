@@ -1,44 +1,49 @@
 import sys
 import time
 import multiprocessing
+from functools import partial
 
 from test_runner_base import CallbacksHandler, run_client_flexible, TestRunner
 
 
-def rapid_busy_callee_scenario(client, handler):
-    """Decline all incoming calls from persistent_caller"""
+def rapid_busy_callee_scenario(client, handler, caller_nickname):
+    """Decline all incoming calls from caller"""
     for i in range(40):
         for event in handler.events:
-            if event == "incoming_call_persistent_caller":
-                print(f"[{handler.name}] Declining call from persistent_caller")
-                client.decline_call("persistent_caller")
+            if event == f"incoming_call_{caller_nickname}":
+                print(f"[{handler.name}] Declining call from {caller_nickname}")
+                client.decline_call(caller_nickname)
                 handler.events.remove(event)
                 break
         time.sleep(0.3)
 
 
-def rapid_persistent_caller_scenario(client, handler):
+def rapid_persistent_caller_scenario(client, handler, target_nickname):
     """Try calling multiple times"""
     for attempt in range(3):
         print(f"[{handler.name}] Call attempt {attempt + 1}")
-        client.start_outgoing_call("busy_callee")
+        client.start_outgoing_call(target_nickname)
         time.sleep(3)
 
 
 class RapidRedialTest(TestRunner):
     def test_rapid_redial(self):
         """Rapid redials after declined/timeout"""
+        from test_runner_base import generate_unique_nickname
         callee_events = multiprocessing.Manager().list()
         caller_events = multiprocessing.Manager().list()
         
+        callee_nickname = generate_unique_nickname("busy_callee")
+        caller_nickname = generate_unique_nickname("persistent_caller")
+        
         callee_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "busy_callee", callee_events, "busy_callee", rapid_busy_callee_scenario, 12)
+            args=("localhost", self.port, callee_nickname, callee_events, "busy_callee", partial(rapid_busy_callee_scenario, caller_nickname=caller_nickname), 12)
         )
         
         caller_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "persistent_caller", caller_events, "persistent_caller", rapid_persistent_caller_scenario, 10)
+            args=("localhost", self.port, caller_nickname, caller_events, "persistent_caller", partial(rapid_persistent_caller_scenario, target_nickname=callee_nickname), 10)
         )
         
         callee_process.start()
@@ -52,7 +57,7 @@ class RapidRedialTest(TestRunner):
             if p.is_alive():
                 p.terminate()
         
-        callee_got_calls = any("incoming_call_persistent_caller" in str(event) 
+        callee_got_calls = any(f"incoming_call_{caller_nickname}" in str(event) 
                               for event in callee_events)
         caller_made_attempts = "auth_result_OK" in caller_events
         

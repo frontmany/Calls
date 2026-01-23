@@ -16,11 +16,13 @@ def logout_scenario(client, handler):
 class LogoutTest(TestRunner):
     def test_logout(self):
         """Test user logout"""
+        from test_runner_base import generate_unique_nickname
         events = multiprocessing.Manager().list()
+        unique_nickname = generate_unique_nickname("logout_user")
         
         process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "logout_user", events, "logout_user", logout_scenario, 5)
+            args=("localhost", self.port, unique_nickname, events, "logout_user", logout_scenario, 5)
         )
         
         process.start()

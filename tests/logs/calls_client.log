@@ -1722,3 +1722,665 @@
 [2026-01-23 12:47:12.168] [info] [calls_client] [thread 25996] Network controller initialized, server port: 8081
 [2026-01-23 12:52:07.314] [info] [calls_client] [thread 28576] Network controller initialized, server port: 8081
 [2026-01-23 12:54:14.656] [info] [calls_client] [thread 32404] Network controller initialized, server port: 8081
+[2026-01-23 12:59:07.846] [info] [calls_client] [thread 13656] Network controller initialized, server port: 8081
+[2026-01-23 12:59:12.814] [info] [calls_client] [thread 15768] User authorized: C71A9
+[2026-01-23 12:59:18.423] [info] [calls_client] [thread 24156] Connection down with user C71A9
+[2026-01-23 12:59:20.681] [info] [calls_client] [thread 15768] User authorized: 6DCDE
+[2026-01-23 12:59:22.616] [info] [calls_client] [thread 15768] User authorized: 61DE5
+[2026-01-23 12:59:22.735] [info] [calls_client] [thread 15768] Call initiated from 61DE5 to 6DCDE
+[2026-01-23 12:59:22.811] [info] [calls_client] [thread 15768] Call accepted: 61DE5 -> 6DCDE
+[2026-01-23 12:59:27.973] [info] [calls_client] [thread 24156] Connection down with user 6DCDE
+[2026-01-23 12:59:27.974] [info] [calls_client] [thread 24156] Connection down with user 61DE5
+[2026-01-23 12:59:30.584] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6DCDE
+[2026-01-23 12:59:32.611] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 61DE5
+[2026-01-23 12:59:41.993] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6DCDE
+[2026-01-23 12:59:43.943] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 61DE5
+[2026-01-23 12:59:53.766] [info] [calls_client] [thread 15768] User authorized: 44612
+[2026-01-23 12:59:59.028] [info] [calls_client] [thread 24156] Connection down with user 44612
+[2026-01-23 13:00:01.673] [info] [calls_client] [thread 15768] User authorized: 449D9
+[2026-01-23 13:00:02.780] [info] [calls_client] [thread 15768] User authorized: 6BED9
+[2026-01-23 13:00:02.897] [info] [calls_client] [thread 15768] Call initiated from 6BED9 to 449D9
+[2026-01-23 13:00:03.002] [info] [calls_client] [thread 15768] Call accepted: 6BED9 -> 449D9
+[2026-01-23 13:00:03.764] [info] [calls_client] [thread 15768] User authorized: A5A06
+[2026-01-23 13:00:06.881] [info] [calls_client] [thread 15768] Call initiated from A5A06 to 6BED9
+[2026-01-23 13:00:06.900] [info] [calls_client] [thread 15768] Call ended: 6BED9 ended call with 449D9
+[2026-01-23 13:00:07.027] [info] [calls_client] [thread 15768] Call accepted: A5A06 -> 6BED9
+[2026-01-23 13:00:13.115] [info] [calls_client] [thread 24156] Connection down with user 449D9
+[2026-01-23 13:00:17.437] [info] [calls_client] [thread 24156] Connection down with user A5A06
+[2026-01-23 13:00:19.599] [info] [calls_client] [thread 24156] Connection down with user 6BED9
+[2026-01-23 13:00:21.311] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 449D9
+[2026-01-23 13:00:22.289] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: A5A06
+[2026-01-23 13:00:24.278] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6BED9
+[2026-01-23 13:00:33.852] [info] [calls_client] [thread 15768] User authorized: A72EA
+[2026-01-23 13:00:35.773] [info] [calls_client] [thread 15768] User authorized: A2EA4
+[2026-01-23 13:00:36.915] [info] [calls_client] [thread 15768] User authorized: E3176
+[2026-01-23 13:00:37.891] [info] [calls_client] [thread 15768] Call initiated from A2EA4 to A72EA
+[2026-01-23 13:00:37.981] [info] [calls_client] [thread 15768] Call accepted: A2EA4 -> A72EA
+[2026-01-23 13:00:38.117] [info] [calls_client] [thread 15768] User authorized: 22F0F
+[2026-01-23 13:00:39.031] [info] [calls_client] [thread 15768] Call initiated from E3176 to A72EA
+[2026-01-23 13:00:40.233] [info] [calls_client] [thread 15768] Call initiated from 22F0F to A72EA
+[2026-01-23 13:00:43.392] [info] [calls_client] [thread 24156] Connection down with user A2EA4
+[2026-01-23 13:00:44.474] [info] [calls_client] [thread 24156] Connection down with user E3176
+[2026-01-23 13:00:44.475] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: E3176 -> A72EA
+[2026-01-23 13:00:44.475] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: A72EA -> E3176
+[2026-01-23 13:00:45.555] [info] [calls_client] [thread 24156] Connection down with user 22F0F
+[2026-01-23 13:00:45.555] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: 22F0F -> A72EA
+[2026-01-23 13:00:45.555] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: A72EA -> 22F0F
+[2026-01-23 13:00:45.556] [info] [calls_client] [thread 24156] Connection down with user A72EA
+[2026-01-23 13:00:50.281] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6BED9
+[2026-01-23 13:00:51.770] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: A5A06
+[2026-01-23 13:00:53.601] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 449D9
+[2026-01-23 13:00:55.099] [info] [calls_client] [thread 15768] User authorized: 0D92E
+[2026-01-23 13:01:10.425] [info] [calls_client] [thread 24156] Connection down with user 0D92E
+[2026-01-23 13:01:13.551] [info] [calls_client] [thread 15768] User authorized: 5FD62
+[2026-01-23 13:01:14.492] [info] [calls_client] [thread 15768] User authorized: E6C44
+[2026-01-23 13:01:14.617] [info] [calls_client] [thread 15768] Call initiated from E6C44 to 5FD62
+[2026-01-23 13:01:17.612] [info] [calls_client] [thread 15768] Call initiated from E6C44 to 5FD62
+[2026-01-23 13:01:18.427] [info] [calls_client] [thread 33208] User logout: C71A9
+[2026-01-23 13:01:20.620] [info] [calls_client] [thread 15768] Call initiated from E6C44 to 5FD62
+[2026-01-23 13:01:24.484] [error] [calls_client] [thread 33208] Connection down with user task failed
+[2026-01-23 13:01:24.484] [error] [calls_client] [thread 33208] Connection down with user task failed
+[2026-01-23 13:01:24.485] [error] [calls_client] [thread 33208] Connection down with user task failed
+[2026-01-23 13:01:24.485] [error] [calls_client] [thread 33208] Connection down with user task failed
+[2026-01-23 13:01:27.974] [info] [calls_client] [thread 33208] User logout: 6DCDE
+[2026-01-23 13:01:27.974] [info] [calls_client] [thread 33208] Call ended due to logout: 6DCDE ended call with 61DE5
+[2026-01-23 13:01:27.989] [info] [calls_client] [thread 33208] User logout: 61DE5
+[2026-01-23 13:01:35.298] [info] [calls_client] [thread 24156] Connection down with user E6C44
+[2026-01-23 13:01:35.299] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: E6C44 -> 5FD62
+[2026-01-23 13:01:35.300] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: 5FD62 -> E6C44
+[2026-01-23 13:01:36.380] [info] [calls_client] [thread 24156] Connection down with user 5FD62
+[2026-01-23 13:01:36.381] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: E6C44 -> 5FD62
+[2026-01-23 13:01:36.381] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: E6C44 -> 5FD62
+[2026-01-23 13:01:36.381] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: E6C44 -> 5FD62
+[2026-01-23 13:01:36.381] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: E6C44 -> 5FD62
+[2026-01-23 13:01:38.333] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: A5A06
+[2026-01-23 13:01:39.246] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 449D9
+[2026-01-23 13:01:41.258] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6BED9
+[2026-01-23 13:01:42.854] [error] [calls_client] [thread 33208] Connection down with user task failed
+[2026-01-23 13:01:50.697] [info] [calls_client] [thread 15768] User authorized: 6DCDE
+[2026-01-23 13:01:52.683] [info] [calls_client] [thread 15768] User authorized: 61DE5
+[2026-01-23 13:01:52.803] [info] [calls_client] [thread 15768] Call initiated from 61DE5 to 6DCDE
+[2026-01-23 13:01:52.825] [info] [calls_client] [thread 15768] Call accepted: 61DE5 -> 6DCDE
+[2026-01-23 13:01:53.684] [info] [calls_client] [thread 24156] Connection down with user 61DE5
+[2026-01-23 13:01:55.848] [info] [calls_client] [thread 24156] Connection down with user 6DCDE
+[2026-01-23 13:01:59.035] [info] [calls_client] [thread 33208] User logout: 44612
+[2026-01-23 13:02:00.171] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6DCDE
+[2026-01-23 13:02:02.076] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 61DE5
+[2026-01-23 13:02:11.434] [info] [calls_client] [thread 15768] User authorized: 292A9
+[2026-01-23 13:02:12.537] [info] [calls_client] [thread 15768] User logout: 292A9
+[2026-01-23 13:02:13.123] [info] [calls_client] [thread 33208] User logout: 449D9
+[2026-01-23 13:02:17.445] [info] [calls_client] [thread 33208] User logout: A5A06
+[2026-01-23 13:02:17.446] [info] [calls_client] [thread 33208] Call ended due to logout: A5A06 ended call with 6BED9
+[2026-01-23 13:02:19.606] [info] [calls_client] [thread 33208] User logout: 6BED9
+[2026-01-23 13:02:22.892] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6DCDE
+[2026-01-23 13:02:25.037] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 61DE5
+[2026-01-23 13:02:35.213] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 6DCDE
+[2026-01-23 13:02:37.191] [warning] [calls_client] [thread 15768] Authorization failed - nickname already taken: 61DE5
+[2026-01-23 13:02:43.407] [info] [calls_client] [thread 33208] User logout: A2EA4
+[2026-01-23 13:02:43.408] [info] [calls_client] [thread 33208] Call ended due to logout: A2EA4 ended call with A72EA
+[2026-01-23 13:02:44.486] [info] [calls_client] [thread 33208] User logout: E3176
+[2026-01-23 13:02:45.566] [info] [calls_client] [thread 33208] User logout: 22F0F
+[2026-01-23 13:02:45.568] [info] [calls_client] [thread 33208] User logout: A72EA
+[2026-01-23 13:02:46.387] [info] [calls_client] [thread 15768] User authorized: 6D116
+[2026-01-23 13:02:52.089] [info] [calls_client] [thread 24156] Connection down with user 6D116
+[2026-01-23 13:02:54.522] [info] [calls_client] [thread 15768] User authorized: A72EA
+[2026-01-23 13:02:56.604] [info] [calls_client] [thread 15768] User authorized: A2EA4
+[2026-01-23 13:02:58.151] [info] [calls_client] [thread 15768] User authorized: E3176
+[2026-01-23 13:02:58.729] [info] [calls_client] [thread 15768] Call initiated from A2EA4 to A72EA
+[2026-01-23 13:02:58.860] [info] [calls_client] [thread 15768] Call accepted: A2EA4 -> A72EA
+[2026-01-23 13:02:59.318] [info] [calls_client] [thread 15768] User authorized: 22F0F
+[2026-01-23 13:03:00.271] [info] [calls_client] [thread 15768] Call initiated from E3176 to A72EA
+[2026-01-23 13:03:01.436] [info] [calls_client] [thread 15768] Call initiated from 22F0F to A72EA
+[2026-01-23 13:03:03.984] [info] [calls_client] [thread 24156] Connection down with user A2EA4
+[2026-01-23 13:03:05.067] [info] [calls_client] [thread 24156] Connection down with user E3176
+[2026-01-23 13:03:05.068] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: E3176 -> A72EA
+[2026-01-23 13:03:05.068] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: A72EA -> E3176
+[2026-01-23 13:03:06.151] [info] [calls_client] [thread 24156] Connection down with user A72EA
+[2026-01-23 13:03:06.152] [info] [calls_client] [thread 24156] Incoming call ended due to connection down: 22F0F -> A72EA
+[2026-01-23 13:03:06.152] [info] [calls_client] [thread 24156] Outgoing call ended due to connection down: 22F0F -> A72EA
+[2026-01-23 13:03:06.153] [info] [calls_client] [thread 24156] Connection down with user 22F0F
+[2026-01-23 13:03:10.442] [info] [calls_client] [thread 33208] User logout: 0D92E
+[2026-01-23 13:15:41.300] [info] [calls_client] [thread 22976] Network controller initialized, server port: 8081
+[2026-01-23 13:15:46.165] [info] [calls_client] [thread 21068] User authorized: 2AEF7
+[2026-01-23 13:15:51.030] [info] [calls_client] [thread 11376] Connection down with user 2AEF7
+[2026-01-23 13:16:01.132] [info] [calls_client] [thread 21068] User authorized: 62506
+[2026-01-23 13:16:06.169] [info] [calls_client] [thread 11376] Connection down with user 62506
+[2026-01-23 13:16:29.496] [info] [calls_client] [thread 21068] User authorized: 47E9D
+[2026-01-23 13:16:30.598] [info] [calls_client] [thread 21068] User logout: 47E9D
+[2026-01-23 13:24:39.276] [info] [calls_client] [thread 26512] Network controller initialized, server port: 8081
+[2026-01-23 13:24:44.102] [info] [calls_client] [thread 21476] User authorized: D8657
+[2026-01-23 13:24:48.936] [info] [calls_client] [thread 20564] Connection down with user D8657
+[2026-01-23 13:24:51.735] [info] [calls_client] [thread 21476] User authorized: 1F121
+[2026-01-23 13:24:53.678] [info] [calls_client] [thread 21476] User authorized: FE7D1
+[2026-01-23 13:24:53.826] [info] [calls_client] [thread 21476] Call initiated from FE7D1 to 1F121
+[2026-01-23 13:24:53.866] [info] [calls_client] [thread 21476] Call accepted: FE7D1 -> 1F121
+[2026-01-23 13:24:59.192] [info] [calls_client] [thread 20564] Connection down with user 1F121
+[2026-01-23 13:24:59.196] [info] [calls_client] [thread 20564] Connection down with user FE7D1
+[2026-01-23 13:25:01.435] [info] [calls_client] [thread 21476] User authorized: 24624
+[2026-01-23 13:25:03.384] [info] [calls_client] [thread 21476] User authorized: 6CAEE
+[2026-01-23 13:25:03.536] [info] [calls_client] [thread 21476] Call initiated from 6CAEE to 24624
+[2026-01-23 13:25:03.567] [info] [calls_client] [thread 21476] Call accepted: 6CAEE -> 24624
+[2026-01-23 13:25:08.352] [info] [calls_client] [thread 20564] Connection down with user 6CAEE
+[2026-01-23 13:25:08.355] [info] [calls_client] [thread 20564] Connection down with user 24624
+[2026-01-23 13:25:11.170] [info] [calls_client] [thread 21476] User authorized: 077A1
+[2026-01-23 13:25:13.143] [info] [calls_client] [thread 21476] User authorized: A25B0
+[2026-01-23 13:25:13.259] [info] [calls_client] [thread 21476] Call initiated from A25B0 to 077A1
+[2026-01-23 13:25:18.597] [info] [calls_client] [thread 20564] Connection down with user A25B0
+[2026-01-23 13:25:18.598] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: A25B0 -> 077A1
+[2026-01-23 13:25:18.598] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 077A1 -> A25B0
+[2026-01-23 13:25:18.599] [info] [calls_client] [thread 20564] Connection down with user 077A1
+[2026-01-23 13:25:20.806] [info] [calls_client] [thread 21476] User authorized: 57792
+[2026-01-23 13:25:25.714] [info] [calls_client] [thread 20564] Connection down with user 57792
+[2026-01-23 13:25:28.573] [info] [calls_client] [thread 21476] User authorized: ED2E8
+[2026-01-23 13:25:29.541] [info] [calls_client] [thread 21476] User authorized: FC609
+[2026-01-23 13:25:29.655] [info] [calls_client] [thread 21476] Call initiated from FC609 to ED2E8
+[2026-01-23 13:25:29.695] [info] [calls_client] [thread 21476] Call accepted: FC609 -> ED2E8
+[2026-01-23 13:25:30.525] [info] [calls_client] [thread 21476] User authorized: 5BCE7
+[2026-01-23 13:25:33.643] [info] [calls_client] [thread 21476] Call initiated from 5BCE7 to FC609
+[2026-01-23 13:25:33.667] [info] [calls_client] [thread 21476] Call ended: FC609 ended call with ED2E8
+[2026-01-23 13:25:33.773] [info] [calls_client] [thread 21476] Call accepted: 5BCE7 -> FC609
+[2026-01-23 13:25:39.490] [info] [calls_client] [thread 20564] Connection down with user ED2E8
+[2026-01-23 13:25:43.859] [info] [calls_client] [thread 20564] Connection down with user 5BCE7
+[2026-01-23 13:25:45.973] [info] [calls_client] [thread 20564] Connection down with user FC609
+[2026-01-23 13:25:48.015] [info] [calls_client] [thread 21476] User authorized: 5ED0A
+[2026-01-23 13:25:48.976] [info] [calls_client] [thread 21476] User authorized: 3C02A
+[2026-01-23 13:25:49.102] [info] [calls_client] [thread 21476] Call initiated from 3C02A to 5ED0A
+[2026-01-23 13:25:49.136] [info] [calls_client] [thread 21476] Call accepted: 3C02A -> 5ED0A
+[2026-01-23 13:25:51.002] [info] [calls_client] [thread 21476] User authorized: AC8AF
+[2026-01-23 13:25:54.232] [info] [calls_client] [thread 20564] Connection down with user 3C02A
+[2026-01-23 13:25:56.348] [info] [calls_client] [thread 20564] Connection down with user 5ED0A
+[2026-01-23 13:26:06.596] [info] [calls_client] [thread 20564] Connection down with user AC8AF
+[2026-01-23 13:26:08.318] [info] [calls_client] [thread 21476] User authorized: 998AA
+[2026-01-23 13:26:10.418] [info] [calls_client] [thread 21476] User authorized: E9B3C
+[2026-01-23 13:26:11.582] [info] [calls_client] [thread 21476] User authorized: 5DB0B
+[2026-01-23 13:26:12.567] [info] [calls_client] [thread 21476] Call initiated from E9B3C to 998AA
+[2026-01-23 13:26:12.684] [info] [calls_client] [thread 21476] User authorized: 27645
+[2026-01-23 13:26:12.745] [info] [calls_client] [thread 21476] Call accepted: E9B3C -> 998AA
+[2026-01-23 13:26:13.700] [info] [calls_client] [thread 21476] Call initiated from 5DB0B to 998AA
+[2026-01-23 13:26:14.805] [info] [calls_client] [thread 21476] Call initiated from 27645 to 998AA
+[2026-01-23 13:26:17.974] [info] [calls_client] [thread 20564] Connection down with user E9B3C
+[2026-01-23 13:26:19.078] [info] [calls_client] [thread 20564] Connection down with user 5DB0B
+[2026-01-23 13:26:19.079] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 5DB0B -> 998AA
+[2026-01-23 13:26:19.080] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 998AA -> 5DB0B
+[2026-01-23 13:26:20.188] [info] [calls_client] [thread 20564] Connection down with user 27645
+[2026-01-23 13:26:20.190] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 27645 -> 998AA
+[2026-01-23 13:26:20.191] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 998AA -> 27645
+[2026-01-23 13:26:20.192] [info] [calls_client] [thread 20564] Connection down with user 998AA
+[2026-01-23 13:26:24.333] [info] [calls_client] [thread 21476] User authorized: 69D40
+[2026-01-23 13:26:25.823] [info] [calls_client] [thread 21476] User authorized: 8798B
+[2026-01-23 13:26:27.816] [info] [calls_client] [thread 21476] User authorized: 284BE
+[2026-01-23 13:26:28.778] [info] [calls_client] [thread 21476] User authorized: EFD8B
+[2026-01-23 13:26:29.967] [info] [calls_client] [thread 21476] Call initiated from 284BE to 8798B
+[2026-01-23 13:26:30.930] [info] [calls_client] [thread 21476] Call initiated from EFD8B to 69D40
+[2026-01-23 13:26:39.885] [info] [calls_client] [thread 20564] Connection down with user 69D40
+[2026-01-23 13:26:39.886] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: EFD8B -> 69D40
+[2026-01-23 13:26:39.887] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: EFD8B -> 69D40
+[2026-01-23 13:26:40.888] [info] [calls_client] [thread 20564] Connection down with user 8798B
+[2026-01-23 13:26:40.889] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 284BE -> 8798B
+[2026-01-23 13:26:40.890] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 284BE -> 8798B
+[2026-01-23 13:26:42.892] [info] [calls_client] [thread 20564] Connection down with user 284BE
+[2026-01-23 13:26:43.899] [info] [calls_client] [thread 20564] Connection down with user EFD8B
+[2026-01-23 13:26:46.157] [info] [calls_client] [thread 21476] User authorized: 714B2
+[2026-01-23 13:26:47.165] [info] [calls_client] [thread 21476] User authorized: 139DF
+[2026-01-23 13:26:47.285] [info] [calls_client] [thread 21476] Call initiated from 139DF to 714B2
+[2026-01-23 13:26:48.939] [info] [calls_client] [thread 29760] User logout: D8657
+[2026-01-23 13:26:50.314] [info] [calls_client] [thread 21476] Call initiated from 139DF to 714B2
+[2026-01-23 13:26:53.315] [info] [calls_client] [thread 21476] Call initiated from 139DF to 714B2
+[2026-01-23 13:26:54.990] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:26:54.991] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:26:54.992] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:26:54.993] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:26:54.993] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:26:59.204] [info] [calls_client] [thread 29760] User logout: 1F121
+[2026-01-23 13:26:59.205] [info] [calls_client] [thread 29760] Call ended due to logout: 1F121 ended call with FE7D1
+[2026-01-23 13:26:59.206] [info] [calls_client] [thread 29760] User logout: FE7D1
+[2026-01-23 13:27:08.361] [info] [calls_client] [thread 29760] User logout: 6CAEE
+[2026-01-23 13:27:08.362] [info] [calls_client] [thread 29760] Call ended due to logout: 6CAEE ended call with 24624
+[2026-01-23 13:27:08.362] [info] [calls_client] [thread 29760] User logout: 24624
+[2026-01-23 13:27:08.424] [info] [calls_client] [thread 20564] Connection down with user 714B2
+[2026-01-23 13:27:08.425] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 139DF -> 714B2
+[2026-01-23 13:27:08.426] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 139DF -> 714B2
+[2026-01-23 13:27:08.427] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 139DF -> 714B2
+[2026-01-23 13:27:08.427] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 139DF -> 714B2
+[2026-01-23 13:27:08.427] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 139DF -> 714B2
+[2026-01-23 13:27:08.427] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 139DF -> 714B2
+[2026-01-23 13:27:08.427] [info] [calls_client] [thread 20564] Connection down with user 139DF
+[2026-01-23 13:27:10.720] [info] [calls_client] [thread 21476] User authorized: 1C4D7
+[2026-01-23 13:27:11.673] [info] [calls_client] [thread 21476] User authorized: 3F601
+[2026-01-23 13:27:13.662] [info] [calls_client] [thread 21476] User authorized: 4AA31
+[2026-01-23 13:27:13.782] [info] [calls_client] [thread 21476] Call initiated from 4AA31 to 3F601
+[2026-01-23 13:27:13.803] [info] [calls_client] [thread 21476] Call initiated from 3F601 to 1C4D7
+[2026-01-23 13:27:14.076] [info] [calls_client] [thread 21476] Call accepted: 3F601 -> 1C4D7
+[2026-01-23 13:27:18.610] [info] [calls_client] [thread 20564] Connection down with user 4AA31
+[2026-01-23 13:27:18.612] [info] [calls_client] [thread 29760] User logout: A25B0
+[2026-01-23 13:27:18.613] [info] [calls_client] [thread 29760] User logout: 077A1
+[2026-01-23 13:27:23.649] [info] [calls_client] [thread 20564] Connection down with user 3F601
+[2026-01-23 13:27:24.649] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:27:24.649] [info] [calls_client] [thread 20564] Connection down with user 1C4D7
+[2026-01-23 13:27:24.651] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:27:24.653] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:27:25.725] [info] [calls_client] [thread 29760] User logout: 57792
+[2026-01-23 13:27:26.594] [info] [calls_client] [thread 21476] User authorized: 36E08
+[2026-01-23 13:27:28.610] [info] [calls_client] [thread 21476] User authorized: ABDBD
+[2026-01-23 13:27:28.730] [info] [calls_client] [thread 21476] Call initiated from ABDBD to 36E08
+[2026-01-23 13:27:28.849] [info] [calls_client] [thread 21476] Call accepted: ABDBD -> 36E08
+[2026-01-23 13:27:30.977] [info] [calls_client] [thread 20564] Connection down with user ABDBD
+[2026-01-23 13:27:31.188] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:27:32.991] [info] [calls_client] [thread 20564] Connection down with user 36E08
+[2026-01-23 13:27:37.474] [info] [calls_client] [thread 21476] User authorized: 766C2
+[2026-01-23 13:27:39.461] [info] [calls_client] [thread 21476] User authorized: E8256
+[2026-01-23 13:27:39.497] [info] [calls_client] [thread 29760] User logout: ED2E8
+[2026-01-23 13:27:39.613] [info] [calls_client] [thread 21476] Call initiated from E8256 to 766C2
+[2026-01-23 13:27:39.745] [info] [calls_client] [thread 21476] Call accepted: E8256 -> 766C2
+[2026-01-23 13:27:42.340] [info] [calls_client] [thread 20564] Connection down with user E8256
+[2026-01-23 13:27:43.863] [info] [calls_client] [thread 29760] User logout: 5BCE7
+[2026-01-23 13:27:43.864] [info] [calls_client] [thread 29760] Call ended due to logout: 5BCE7 ended call with FC609
+[2026-01-23 13:27:44.450] [info] [calls_client] [thread 20564] Connection down with user 766C2
+[2026-01-23 13:27:45.975] [info] [calls_client] [thread 29760] User logout: FC609
+[2026-01-23 13:27:48.449] [info] [calls_client] [thread 21476] User authorized: 00CA2
+[2026-01-23 13:27:49.552] [info] [calls_client] [thread 21476] User logout: 00CA2
+[2026-01-23 13:27:54.246] [info] [calls_client] [thread 29760] User logout: 3C02A
+[2026-01-23 13:27:54.247] [info] [calls_client] [thread 29760] Call ended due to logout: 3C02A ended call with 5ED0A
+[2026-01-23 13:27:56.362] [info] [calls_client] [thread 29760] User logout: 5ED0A
+[2026-01-23 13:27:59.083] [info] [calls_client] [thread 21476] User authorized: F79F1
+[2026-01-23 13:28:01.107] [info] [calls_client] [thread 21476] User authorized: A69F7
+[2026-01-23 13:28:01.227] [info] [calls_client] [thread 21476] Call initiated from A69F7 to F79F1
+[2026-01-23 13:28:01.311] [info] [calls_client] [thread 21476] Call accepted: A69F7 -> F79F1
+[2026-01-23 13:28:02.413] [info] [calls_client] [thread 21476] Call ended: A69F7 ended call with F79F1
+[2026-01-23 13:28:06.599] [info] [calls_client] [thread 29760] User logout: AC8AF
+[2026-01-23 13:28:14.753] [info] [calls_client] [thread 20564] Connection down with user A69F7
+[2026-01-23 13:28:14.754] [info] [calls_client] [thread 20564] Connection down with user F79F1
+[2026-01-23 13:28:16.958] [info] [calls_client] [thread 21476] User authorized: 49863
+[2026-01-23 13:28:17.988] [info] [calls_client] [thread 29760] User logout: E9B3C
+[2026-01-23 13:28:17.989] [info] [calls_client] [thread 29760] Call ended due to logout: E9B3C ended call with 998AA
+[2026-01-23 13:28:18.873] [info] [calls_client] [thread 21476] User authorized: 2138C
+[2026-01-23 13:28:18.989] [info] [calls_client] [thread 21476] Call initiated from 2138C to 49863
+[2026-01-23 13:28:19.082] [info] [calls_client] [thread 29760] User logout: 5DB0B
+[2026-01-23 13:28:20.079] [info] [calls_client] [thread 21476] Calling stopped: 2138C -> 49863
+[2026-01-23 13:28:20.194] [info] [calls_client] [thread 29760] User logout: 27645
+[2026-01-23 13:28:20.195] [info] [calls_client] [thread 29760] User logout: 998AA
+[2026-01-23 13:28:30.329] [info] [calls_client] [thread 20564] Connection down with user 2138C
+[2026-01-23 13:28:31.330] [info] [calls_client] [thread 20564] Connection down with user 49863
+[2026-01-23 13:28:33.260] [info] [calls_client] [thread 21476] User authorized: C40A7
+[2026-01-23 13:28:38.463] [info] [calls_client] [thread 20564] Connection down with user C40A7
+[2026-01-23 13:28:39.889] [info] [calls_client] [thread 29760] User logout: 69D40
+[2026-01-23 13:28:40.902] [info] [calls_client] [thread 29760] User logout: 8798B
+[2026-01-23 13:28:41.321] [info] [calls_client] [thread 21476] User authorized: 26A1D
+[2026-01-23 13:28:42.906] [info] [calls_client] [thread 29760] User logout: 284BE
+[2026-01-23 13:28:43.441] [info] [calls_client] [thread 21476] User authorized: 15F6A
+[2026-01-23 13:28:43.908] [info] [calls_client] [thread 29760] User logout: EFD8B
+[2026-01-23 13:28:44.550] [info] [calls_client] [thread 21476] User authorized: 2519E
+[2026-01-23 13:28:45.595] [info] [calls_client] [thread 21476] Call initiated from 15F6A to 26A1D
+[2026-01-23 13:28:45.685] [info] [calls_client] [thread 21476] User authorized: 1BBA1
+[2026-01-23 13:28:45.695] [info] [calls_client] [thread 21476] Call accepted: 15F6A -> 26A1D
+[2026-01-23 13:28:46.693] [info] [calls_client] [thread 21476] Call initiated from 2519E to 26A1D
+[2026-01-23 13:28:47.831] [info] [calls_client] [thread 21476] Call initiated from 1BBA1 to 26A1D
+[2026-01-23 13:28:50.716] [info] [calls_client] [thread 20564] Connection down with user 15F6A
+[2026-01-23 13:28:51.722] [info] [calls_client] [thread 20564] Connection down with user 2519E
+[2026-01-23 13:28:51.724] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 2519E -> 26A1D
+[2026-01-23 13:28:51.724] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 26A1D -> 2519E
+[2026-01-23 13:28:52.724] [info] [calls_client] [thread 20564] Connection down with user 26A1D
+[2026-01-23 13:28:52.727] [info] [calls_client] [thread 20564] Incoming call ended due to connection down: 1BBA1 -> 26A1D
+[2026-01-23 13:28:52.728] [info] [calls_client] [thread 20564] Outgoing call ended due to connection down: 1BBA1 -> 26A1D
+[2026-01-23 13:28:52.732] [info] [calls_client] [thread 20564] Connection down with user 1BBA1
+[2026-01-23 13:28:59.286] [error] [calls_client] [thread 29760] Connection down with user task failed
+[2026-01-23 13:48:01.743] [info] [calls_client] [thread 11368] Network controller initialized, server port: 8081
+[2026-01-23 13:48:06.589] [info] [calls_client] [thread 23016] User authorized: B1C9D
+[2026-01-23 13:48:11.501] [info] [calls_client] [thread 29168] Connection down with user B1C9D
+[2026-01-23 13:48:14.427] [info] [calls_client] [thread 23016] User authorized: 57038
+[2026-01-23 13:48:16.385] [info] [calls_client] [thread 23016] User authorized: E645E
+[2026-01-23 13:48:16.506] [info] [calls_client] [thread 23016] Call initiated from E645E to 57038
+[2026-01-23 13:48:16.553] [info] [calls_client] [thread 23016] Call accepted: E645E -> 57038
+[2026-01-23 13:48:22.351] [info] [calls_client] [thread 29168] Connection down with user E645E
+[2026-01-23 13:48:22.352] [info] [calls_client] [thread 29168] Connection down with user 57038
+[2026-01-23 13:48:24.287] [info] [calls_client] [thread 23016] User authorized: 0F1C1
+[2026-01-23 13:48:26.299] [info] [calls_client] [thread 23016] User authorized: 36ABA
+[2026-01-23 13:48:26.418] [info] [calls_client] [thread 23016] Call initiated from 36ABA to 0F1C1
+[2026-01-23 13:48:26.517] [info] [calls_client] [thread 23016] Call accepted: 36ABA -> 0F1C1
+[2026-01-23 13:48:31.886] [info] [calls_client] [thread 29168] Connection down with user 0F1C1
+[2026-01-23 13:48:31.887] [info] [calls_client] [thread 29168] Connection down with user 36ABA
+[2026-01-23 13:48:34.091] [info] [calls_client] [thread 23016] User authorized: 305E7
+[2026-01-23 13:48:36.049] [info] [calls_client] [thread 23016] User authorized: E883B
+[2026-01-23 13:48:36.170] [info] [calls_client] [thread 23016] Call initiated from E883B to 305E7
+[2026-01-23 13:48:41.433] [info] [calls_client] [thread 29168] Connection down with user E883B
+[2026-01-23 13:48:41.434] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: E883B -> 305E7
+[2026-01-23 13:48:41.434] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 305E7 -> E883B
+[2026-01-23 13:48:41.434] [info] [calls_client] [thread 29168] Connection down with user 305E7
+[2026-01-23 13:48:43.767] [info] [calls_client] [thread 23016] User authorized: 9E1AE
+[2026-01-23 13:48:48.762] [info] [calls_client] [thread 29168] Connection down with user 9E1AE
+[2026-01-23 13:48:51.706] [info] [calls_client] [thread 23016] User authorized: E5526
+[2026-01-23 13:48:52.626] [info] [calls_client] [thread 23016] User authorized: 87A6C
+[2026-01-23 13:48:52.740] [info] [calls_client] [thread 23016] Call initiated from 87A6C to E5526
+[2026-01-23 13:48:52.824] [info] [calls_client] [thread 23016] Call accepted: 87A6C -> E5526
+[2026-01-23 13:48:53.658] [info] [calls_client] [thread 23016] User authorized: CCF75
+[2026-01-23 13:48:56.773] [info] [calls_client] [thread 23016] Call initiated from CCF75 to 87A6C
+[2026-01-23 13:48:56.859] [info] [calls_client] [thread 23016] Call ended: 87A6C ended call with E5526
+[2026-01-23 13:48:56.970] [info] [calls_client] [thread 23016] Call accepted: CCF75 -> 87A6C
+[2026-01-23 13:49:02.877] [info] [calls_client] [thread 29168] Connection down with user E5526
+[2026-01-23 13:49:07.224] [info] [calls_client] [thread 29168] Connection down with user CCF75
+[2026-01-23 13:49:09.435] [info] [calls_client] [thread 29168] Connection down with user 87A6C
+[2026-01-23 13:49:11.132] [info] [calls_client] [thread 23016] User authorized: 9A9BF
+[2026-01-23 13:49:12.131] [info] [calls_client] [thread 23016] User authorized: 871C0
+[2026-01-23 13:49:12.265] [info] [calls_client] [thread 23016] Call initiated from 871C0 to 9A9BF
+[2026-01-23 13:49:12.355] [info] [calls_client] [thread 23016] Call accepted: 871C0 -> 9A9BF
+[2026-01-23 13:49:14.164] [info] [calls_client] [thread 23016] User authorized: 0761F
+[2026-01-23 13:49:18.280] [info] [calls_client] [thread 23016] Call initiated from 0761F to 9A9BF
+[2026-01-23 13:49:19.071] [info] [calls_client] [thread 29168] Connection down with user 871C0
+[2026-01-23 13:49:21.259] [info] [calls_client] [thread 29168] Connection down with user 9A9BF
+[2026-01-23 13:49:21.260] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 0761F -> 9A9BF
+[2026-01-23 13:49:21.260] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: 0761F -> 9A9BF
+[2026-01-23 13:49:29.703] [info] [calls_client] [thread 29168] Connection down with user 0761F
+[2026-01-23 13:49:31.421] [info] [calls_client] [thread 23016] User authorized: 562A0
+[2026-01-23 13:49:33.508] [info] [calls_client] [thread 23016] User authorized: F31A8
+[2026-01-23 13:49:34.608] [info] [calls_client] [thread 23016] User authorized: DEBB8
+[2026-01-23 13:49:35.626] [info] [calls_client] [thread 23016] Call initiated from F31A8 to 562A0
+[2026-01-23 13:49:35.753] [info] [calls_client] [thread 23016] User authorized: 5A6DF
+[2026-01-23 13:49:35.798] [info] [calls_client] [thread 23016] Call accepted: F31A8 -> 562A0
+[2026-01-23 13:49:36.723] [info] [calls_client] [thread 23016] Call initiated from DEBB8 to 562A0
+[2026-01-23 13:49:37.887] [info] [calls_client] [thread 23016] Call initiated from 5A6DF to 562A0
+[2026-01-23 13:49:40.547] [info] [calls_client] [thread 29168] Connection down with user F31A8
+[2026-01-23 13:49:41.626] [info] [calls_client] [thread 29168] Connection down with user DEBB8
+[2026-01-23 13:49:41.627] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: DEBB8 -> 562A0
+[2026-01-23 13:49:41.627] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 562A0 -> DEBB8
+[2026-01-23 13:49:42.712] [info] [calls_client] [thread 29168] Connection down with user 562A0
+[2026-01-23 13:49:42.713] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 5A6DF -> 562A0
+[2026-01-23 13:49:42.713] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: 5A6DF -> 562A0
+[2026-01-23 13:49:42.713] [info] [calls_client] [thread 29168] Connection down with user 5A6DF
+[2026-01-23 13:49:47.448] [info] [calls_client] [thread 23016] User authorized: E43C5
+[2026-01-23 13:49:48.889] [info] [calls_client] [thread 23016] User authorized: 3DA70
+[2026-01-23 13:49:50.455] [info] [calls_client] [thread 23016] User authorized: 8C4CB
+[2026-01-23 13:49:51.971] [info] [calls_client] [thread 23016] User authorized: 1E24F
+[2026-01-23 13:49:52.618] [info] [calls_client] [thread 23016] Call initiated from 8C4CB to 3DA70
+[2026-01-23 13:49:54.086] [info] [calls_client] [thread 23016] Call initiated from 1E24F to E43C5
+[2026-01-23 13:50:02.655] [info] [calls_client] [thread 29168] Connection down with user E43C5
+[2026-01-23 13:50:02.656] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 1E24F -> E43C5
+[2026-01-23 13:50:02.656] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: 1E24F -> E43C5
+[2026-01-23 13:50:03.655] [info] [calls_client] [thread 29168] Connection down with user 3DA70
+[2026-01-23 13:50:03.656] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 8C4CB -> 3DA70
+[2026-01-23 13:50:03.656] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: 8C4CB -> 3DA70
+[2026-01-23 13:50:05.659] [info] [calls_client] [thread 29168] Connection down with user 8C4CB
+[2026-01-23 13:50:06.766] [info] [calls_client] [thread 29168] Connection down with user 1E24F
+[2026-01-23 13:50:09.460] [info] [calls_client] [thread 23016] User authorized: 6DCF9
+[2026-01-23 13:50:10.459] [info] [calls_client] [thread 23016] User authorized: ED89C
+[2026-01-23 13:50:10.579] [info] [calls_client] [thread 23016] Call initiated from ED89C to 6DCF9
+[2026-01-23 13:50:11.518] [info] [calls_client] [thread 29940] User logout: B1C9D
+[2026-01-23 13:50:13.617] [info] [calls_client] [thread 23016] Call initiated from ED89C to 6DCF9
+[2026-01-23 13:50:16.579] [info] [calls_client] [thread 23016] Call initiated from ED89C to 6DCF9
+[2026-01-23 13:50:17.559] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:17.559] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:17.560] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:17.560] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:17.560] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:17.560] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:17.561] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:22.364] [info] [calls_client] [thread 29940] User logout: E645E
+[2026-01-23 13:50:22.365] [info] [calls_client] [thread 29940] Call ended due to logout: E645E ended call with 57038
+[2026-01-23 13:50:22.365] [info] [calls_client] [thread 29940] User logout: 57038
+[2026-01-23 13:50:31.714] [info] [calls_client] [thread 29168] Connection down with user ED89C
+[2026-01-23 13:50:31.715] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: ED89C -> 6DCF9
+[2026-01-23 13:50:31.715] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 6DCF9 -> ED89C
+[2026-01-23 13:50:31.716] [info] [calls_client] [thread 29168] Connection down with user 6DCF9
+[2026-01-23 13:50:31.716] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: ED89C -> 6DCF9
+[2026-01-23 13:50:31.716] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: ED89C -> 6DCF9
+[2026-01-23 13:50:31.716] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: ED89C -> 6DCF9
+[2026-01-23 13:50:31.716] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: ED89C -> 6DCF9
+[2026-01-23 13:50:31.887] [info] [calls_client] [thread 29940] User logout: 0F1C1
+[2026-01-23 13:50:31.888] [info] [calls_client] [thread 29940] Call ended due to logout: 0F1C1 ended call with 36ABA
+[2026-01-23 13:50:31.889] [info] [calls_client] [thread 29940] User logout: 36ABA
+[2026-01-23 13:50:33.939] [info] [calls_client] [thread 23016] User authorized: B12BE
+[2026-01-23 13:50:34.985] [info] [calls_client] [thread 23016] User authorized: 59D51
+[2026-01-23 13:50:36.998] [info] [calls_client] [thread 23016] User authorized: B7502
+[2026-01-23 13:50:37.127] [info] [calls_client] [thread 23016] Call initiated from B7502 to 59D51
+[2026-01-23 13:50:37.242] [info] [calls_client] [thread 23016] Call initiated from 59D51 to B12BE
+[2026-01-23 13:50:37.262] [info] [calls_client] [thread 23016] Call accepted: 59D51 -> B12BE
+[2026-01-23 13:50:39.244] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:41.437] [info] [calls_client] [thread 29940] User logout: E883B
+[2026-01-23 13:50:41.438] [info] [calls_client] [thread 29940] User logout: 305E7
+[2026-01-23 13:50:42.251] [info] [calls_client] [thread 29168] Connection down with user B7502
+[2026-01-23 13:50:47.435] [info] [calls_client] [thread 29168] Connection down with user B12BE
+[2026-01-23 13:50:47.436] [info] [calls_client] [thread 29168] Connection down with user 59D51
+[2026-01-23 13:50:48.771] [info] [calls_client] [thread 29940] User logout: 9E1AE
+[2026-01-23 13:50:49.867] [info] [calls_client] [thread 23016] User authorized: 99DDB
+[2026-01-23 13:50:51.950] [info] [calls_client] [thread 23016] User authorized: 5029F
+[2026-01-23 13:50:52.107] [info] [calls_client] [thread 23016] Call initiated from 5029F to 99DDB
+[2026-01-23 13:50:52.243] [info] [calls_client] [thread 23016] Call accepted: 5029F -> 99DDB
+[2026-01-23 13:50:54.668] [info] [calls_client] [thread 29168] Connection down with user 5029F
+[2026-01-23 13:50:54.969] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:50:56.787] [info] [calls_client] [thread 29168] Connection down with user 99DDB
+[2026-01-23 13:51:01.367] [info] [calls_client] [thread 23016] User authorized: 4AB27
+[2026-01-23 13:51:02.882] [info] [calls_client] [thread 29940] User logout: E5526
+[2026-01-23 13:51:03.330] [info] [calls_client] [thread 23016] User authorized: 4A82E
+[2026-01-23 13:51:03.457] [info] [calls_client] [thread 23016] Call initiated from 4A82E to 4AB27
+[2026-01-23 13:51:03.503] [info] [calls_client] [thread 23016] Call accepted: 4A82E -> 4AB27
+[2026-01-23 13:51:06.133] [info] [calls_client] [thread 29168] Connection down with user 4A82E
+[2026-01-23 13:51:07.242] [info] [calls_client] [thread 29940] User logout: CCF75
+[2026-01-23 13:51:07.243] [info] [calls_client] [thread 29940] Call ended due to logout: CCF75 ended call with 87A6C
+[2026-01-23 13:51:08.237] [info] [calls_client] [thread 29168] Connection down with user 4AB27
+[2026-01-23 13:51:09.441] [info] [calls_client] [thread 29940] User logout: 87A6C
+[2026-01-23 13:51:12.378] [info] [calls_client] [thread 23016] User authorized: 60EE4
+[2026-01-23 13:51:13.482] [info] [calls_client] [thread 23016] User logout: 60EE4
+[2026-01-23 13:51:19.073] [info] [calls_client] [thread 29940] User logout: 871C0
+[2026-01-23 13:51:19.074] [info] [calls_client] [thread 29940] Call ended due to logout: 871C0 ended call with 9A9BF
+[2026-01-23 13:51:21.274] [info] [calls_client] [thread 29940] User logout: 9A9BF
+[2026-01-23 13:51:23.142] [info] [calls_client] [thread 23016] User authorized: 40405
+[2026-01-23 13:51:25.151] [info] [calls_client] [thread 23016] User authorized: DC06D
+[2026-01-23 13:51:25.273] [info] [calls_client] [thread 23016] Call initiated from DC06D to 40405
+[2026-01-23 13:51:25.427] [info] [calls_client] [thread 23016] Call accepted: DC06D -> 40405
+[2026-01-23 13:51:26.462] [info] [calls_client] [thread 23016] Call ended: DC06D ended call with 40405
+[2026-01-23 13:51:29.719] [info] [calls_client] [thread 29940] User logout: 0761F
+[2026-01-23 13:51:38.802] [info] [calls_client] [thread 29168] Connection down with user 40405
+[2026-01-23 13:51:38.803] [info] [calls_client] [thread 29168] Connection down with user DC06D
+[2026-01-23 13:51:40.559] [info] [calls_client] [thread 29940] User logout: F31A8
+[2026-01-23 13:51:40.560] [info] [calls_client] [thread 29940] Call ended due to logout: F31A8 ended call with 562A0
+[2026-01-23 13:51:41.061] [info] [calls_client] [thread 23016] User authorized: 67045
+[2026-01-23 13:51:41.632] [info] [calls_client] [thread 29940] User logout: DEBB8
+[2026-01-23 13:51:42.714] [info] [calls_client] [thread 29940] User logout: 562A0
+[2026-01-23 13:51:42.715] [info] [calls_client] [thread 29940] User logout: 5A6DF
+[2026-01-23 13:51:43.026] [info] [calls_client] [thread 23016] User authorized: 6CC8E
+[2026-01-23 13:51:43.140] [info] [calls_client] [thread 23016] Call initiated from 6CC8E to 67045
+[2026-01-23 13:51:44.230] [info] [calls_client] [thread 23016] Calling stopped: 6CC8E -> 67045
+[2026-01-23 13:51:54.889] [info] [calls_client] [thread 29168] Connection down with user 67045
+[2026-01-23 13:51:54.889] [info] [calls_client] [thread 29168] Connection down with user 6CC8E
+[2026-01-23 13:51:57.342] [info] [calls_client] [thread 23016] User authorized: 0092B
+[2026-01-23 13:52:02.437] [info] [calls_client] [thread 29168] Connection down with user 0092B
+[2026-01-23 13:52:02.661] [info] [calls_client] [thread 29940] User logout: E43C5
+[2026-01-23 13:52:03.661] [info] [calls_client] [thread 29940] User logout: 3DA70
+[2026-01-23 13:52:05.507] [info] [calls_client] [thread 23016] User authorized: A38FD
+[2026-01-23 13:52:05.665] [info] [calls_client] [thread 29940] User logout: 8C4CB
+[2026-01-23 13:52:06.781] [info] [calls_client] [thread 29940] User logout: 1E24F
+[2026-01-23 13:52:07.527] [info] [calls_client] [thread 23016] User authorized: 8FD4E
+[2026-01-23 13:52:08.689] [info] [calls_client] [thread 23016] User authorized: 202D9
+[2026-01-23 13:52:09.645] [info] [calls_client] [thread 23016] Call initiated from 8FD4E to A38FD
+[2026-01-23 13:52:09.808] [info] [calls_client] [thread 23016] User authorized: 21F99
+[2026-01-23 13:52:09.862] [info] [calls_client] [thread 23016] Call accepted: 8FD4E -> A38FD
+[2026-01-23 13:52:10.832] [info] [calls_client] [thread 23016] Call initiated from 202D9 to A38FD
+[2026-01-23 13:52:11.966] [info] [calls_client] [thread 23016] Call initiated from 21F99 to A38FD
+[2026-01-23 13:52:14.856] [info] [calls_client] [thread 29168] Connection down with user 8FD4E
+[2026-01-23 13:52:15.862] [info] [calls_client] [thread 29168] Connection down with user 202D9
+[2026-01-23 13:52:15.862] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: 202D9 -> A38FD
+[2026-01-23 13:52:15.862] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: A38FD -> 202D9
+[2026-01-23 13:52:16.863] [info] [calls_client] [thread 29168] Connection down with user A38FD
+[2026-01-23 13:52:16.863] [info] [calls_client] [thread 29168] Incoming call ended due to connection down: 21F99 -> A38FD
+[2026-01-23 13:52:16.863] [info] [calls_client] [thread 29168] Outgoing call ended due to connection down: 21F99 -> A38FD
+[2026-01-23 13:52:16.863] [info] [calls_client] [thread 29168] Connection down with user 21F99
+[2026-01-23 13:52:23.408] [error] [calls_client] [thread 29940] Connection down with user task failed
+[2026-01-23 13:54:54.414] [info] [calls_client] [thread 18772] Network controller initialized, server port: 8081
+[2026-01-23 13:54:59.230] [info] [calls_client] [thread 13240] User authorized: BA196
+[2026-01-23 13:55:04.134] [info] [calls_client] [thread 32516] Connection down with user BA196
+[2026-01-23 13:55:07.075] [info] [calls_client] [thread 13240] User authorized: A284D
+[2026-01-23 13:55:09.092] [info] [calls_client] [thread 13240] User authorized: 94AED
+[2026-01-23 13:55:09.212] [info] [calls_client] [thread 13240] Call initiated from 94AED to A284D
+[2026-01-23 13:55:09.305] [info] [calls_client] [thread 13240] Call accepted: 94AED -> A284D
+[2026-01-23 13:55:14.803] [info] [calls_client] [thread 32516] Connection down with user A284D
+[2026-01-23 13:55:14.803] [info] [calls_client] [thread 32516] Connection down with user 94AED
+[2026-01-23 13:55:17.072] [info] [calls_client] [thread 13240] User authorized: E59DD
+[2026-01-23 13:55:19.006] [info] [calls_client] [thread 13240] User authorized: 1811A
+[2026-01-23 13:55:19.124] [info] [calls_client] [thread 13240] Call initiated from 1811A to E59DD
+[2026-01-23 13:55:19.199] [info] [calls_client] [thread 13240] Call accepted: 1811A -> E59DD
+[2026-01-23 13:55:24.673] [info] [calls_client] [thread 32516] Connection down with user E59DD
+[2026-01-23 13:55:24.674] [info] [calls_client] [thread 32516] Connection down with user 1811A
+[2026-01-23 13:55:26.967] [info] [calls_client] [thread 13240] User authorized: 8F83E
+[2026-01-23 13:55:28.830] [info] [calls_client] [thread 13240] User authorized: 95805
+[2026-01-23 13:55:28.950] [info] [calls_client] [thread 13240] Call initiated from 95805 to 8F83E
+[2026-01-23 13:55:34.319] [info] [calls_client] [thread 32516] Connection down with user 8F83E
+[2026-01-23 13:55:34.320] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 95805 -> 8F83E
+[2026-01-23 13:55:34.320] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: 95805 -> 8F83E
+[2026-01-23 13:55:34.320] [info] [calls_client] [thread 32516] Connection down with user 95805
+[2026-01-23 13:55:36.672] [info] [calls_client] [thread 13240] User authorized: 90CC4
+[2026-01-23 13:55:41.741] [info] [calls_client] [thread 32516] Connection down with user 90CC4
+[2026-01-23 13:55:44.576] [info] [calls_client] [thread 13240] User authorized: 68CA2
+[2026-01-23 13:55:45.530] [info] [calls_client] [thread 13240] User authorized: 8092B
+[2026-01-23 13:55:45.647] [info] [calls_client] [thread 13240] Call initiated from 8092B to 68CA2
+[2026-01-23 13:55:45.695] [info] [calls_client] [thread 13240] Call accepted: 8092B -> 68CA2
+[2026-01-23 13:55:46.582] [info] [calls_client] [thread 13240] User authorized: 689CC
+[2026-01-23 13:55:49.699] [info] [calls_client] [thread 13240] Call initiated from 689CC to 8092B
+[2026-01-23 13:55:49.754] [info] [calls_client] [thread 13240] Call ended: 8092B ended call with 68CA2
+[2026-01-23 13:55:49.859] [info] [calls_client] [thread 13240] Call accepted: 689CC -> 8092B
+[2026-01-23 13:55:55.726] [info] [calls_client] [thread 32516] Connection down with user 68CA2
+[2026-01-23 13:56:00.055] [info] [calls_client] [thread 32516] Connection down with user 689CC
+[2026-01-23 13:56:02.157] [info] [calls_client] [thread 32516] Connection down with user 8092B
+[2026-01-23 13:56:04.056] [info] [calls_client] [thread 13240] User authorized: E3591
+[2026-01-23 13:56:05.011] [info] [calls_client] [thread 13240] User authorized: 9C6AE
+[2026-01-23 13:56:05.128] [info] [calls_client] [thread 13240] Call initiated from 9C6AE to E3591
+[2026-01-23 13:56:05.179] [info] [calls_client] [thread 13240] Call accepted: 9C6AE -> E3591
+[2026-01-23 13:56:07.103] [info] [calls_client] [thread 13240] User authorized: 5AF28
+[2026-01-23 13:56:10.589] [info] [calls_client] [thread 32516] Connection down with user 9C6AE
+[2026-01-23 13:56:12.697] [info] [calls_client] [thread 32516] Connection down with user E3591
+[2026-01-23 13:56:22.237] [info] [calls_client] [thread 32516] Connection down with user 5AF28
+[2026-01-23 13:56:24.436] [info] [calls_client] [thread 13240] User authorized: 38AC7
+[2026-01-23 13:56:26.559] [info] [calls_client] [thread 13240] User authorized: 1865D
+[2026-01-23 13:56:27.717] [info] [calls_client] [thread 13240] User authorized: EA087
+[2026-01-23 13:56:28.677] [info] [calls_client] [thread 13240] Call initiated from 1865D to 38AC7
+[2026-01-23 13:56:28.820] [info] [calls_client] [thread 13240] Call accepted: 1865D -> 38AC7
+[2026-01-23 13:56:28.862] [info] [calls_client] [thread 13240] User authorized: E7C69
+[2026-01-23 13:56:29.845] [info] [calls_client] [thread 13240] Call initiated from EA087 to 38AC7
+[2026-01-23 13:56:30.979] [info] [calls_client] [thread 13240] Call initiated from E7C69 to 38AC7
+[2026-01-23 13:56:34.064] [info] [calls_client] [thread 32516] Connection down with user 1865D
+[2026-01-23 13:56:35.130] [info] [calls_client] [thread 32516] Connection down with user EA087
+[2026-01-23 13:56:35.131] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: EA087 -> 38AC7
+[2026-01-23 13:56:35.131] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 38AC7 -> EA087
+[2026-01-23 13:56:36.198] [info] [calls_client] [thread 32516] Connection down with user E7C69
+[2026-01-23 13:56:36.198] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: E7C69 -> 38AC7
+[2026-01-23 13:56:36.198] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 38AC7 -> E7C69
+[2026-01-23 13:56:36.199] [info] [calls_client] [thread 32516] Connection down with user 38AC7
+[2026-01-23 13:56:40.681] [info] [calls_client] [thread 13240] User authorized: EDF37
+[2026-01-23 13:56:42.126] [info] [calls_client] [thread 13240] User authorized: DD873
+[2026-01-23 13:56:43.645] [info] [calls_client] [thread 13240] User authorized: C88E3
+[2026-01-23 13:56:45.168] [info] [calls_client] [thread 13240] User authorized: 8F39C
+[2026-01-23 13:56:45.760] [info] [calls_client] [thread 13240] Call initiated from C88E3 to DD873
+[2026-01-23 13:56:47.287] [info] [calls_client] [thread 13240] Call initiated from 8F39C to EDF37
+[2026-01-23 13:56:56.125] [info] [calls_client] [thread 32516] Connection down with user EDF37
+[2026-01-23 13:56:56.126] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 8F39C -> EDF37
+[2026-01-23 13:56:56.126] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: 8F39C -> EDF37
+[2026-01-23 13:56:57.127] [info] [calls_client] [thread 32516] Connection down with user DD873
+[2026-01-23 13:56:57.127] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: C88E3 -> DD873
+[2026-01-23 13:56:57.128] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: C88E3 -> DD873
+[2026-01-23 13:56:59.338] [info] [calls_client] [thread 32516] Connection down with user C88E3
+[2026-01-23 13:57:00.345] [info] [calls_client] [thread 32516] Connection down with user 8F39C
+[2026-01-23 13:57:02.822] [info] [calls_client] [thread 13240] User authorized: B9DF7
+[2026-01-23 13:57:03.661] [info] [calls_client] [thread 13240] User authorized: 266B3
+[2026-01-23 13:57:03.790] [info] [calls_client] [thread 13240] Call initiated from 266B3 to B9DF7
+[2026-01-23 13:57:04.150] [info] [calls_client] [thread 24524] User logout: BA196
+[2026-01-23 13:57:06.779] [info] [calls_client] [thread 13240] Call initiated from 266B3 to B9DF7
+[2026-01-23 13:57:09.777] [info] [calls_client] [thread 13240] Call initiated from 266B3 to B9DF7
+[2026-01-23 13:57:10.198] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:10.200] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:10.201] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:10.201] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:10.202] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:10.203] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:10.204] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:14.810] [info] [calls_client] [thread 24524] User logout: A284D
+[2026-01-23 13:57:14.810] [info] [calls_client] [thread 24524] Call ended due to logout: A284D ended call with 94AED
+[2026-01-23 13:57:14.811] [info] [calls_client] [thread 24524] User logout: 94AED
+[2026-01-23 13:57:24.677] [info] [calls_client] [thread 24524] User logout: E59DD
+[2026-01-23 13:57:24.678] [info] [calls_client] [thread 24524] Call ended due to logout: E59DD ended call with 1811A
+[2026-01-23 13:57:24.679] [info] [calls_client] [thread 24524] User logout: 1811A
+[2026-01-23 13:57:25.096] [info] [calls_client] [thread 32516] Connection down with user B9DF7
+[2026-01-23 13:57:25.097] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 266B3 -> B9DF7
+[2026-01-23 13:57:25.097] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: 266B3 -> B9DF7
+[2026-01-23 13:57:25.097] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 266B3 -> B9DF7
+[2026-01-23 13:57:25.098] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: 266B3 -> B9DF7
+[2026-01-23 13:57:25.098] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 266B3 -> B9DF7
+[2026-01-23 13:57:25.098] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: 266B3 -> B9DF7
+[2026-01-23 13:57:25.099] [info] [calls_client] [thread 32516] Connection down with user 266B3
+[2026-01-23 13:57:27.383] [info] [calls_client] [thread 13240] User authorized: E4460
+[2026-01-23 13:57:28.290] [info] [calls_client] [thread 13240] User authorized: 654C8
+[2026-01-23 13:57:30.248] [info] [calls_client] [thread 13240] User authorized: 59BAF
+[2026-01-23 13:57:30.362] [info] [calls_client] [thread 13240] Call initiated from 59BAF to 654C8
+[2026-01-23 13:57:30.445] [info] [calls_client] [thread 13240] Call initiated from 654C8 to E4460
+[2026-01-23 13:57:30.719] [info] [calls_client] [thread 13240] Call accepted: 654C8 -> E4460
+[2026-01-23 13:57:34.327] [info] [calls_client] [thread 24524] User logout: 8F83E
+[2026-01-23 13:57:34.327] [info] [calls_client] [thread 24524] User logout: 95805
+[2026-01-23 13:57:35.723] [info] [calls_client] [thread 32516] Connection down with user 59BAF
+[2026-01-23 13:57:40.363] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:40.364] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:40.365] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:41.052] [info] [calls_client] [thread 32516] Connection down with user E4460
+[2026-01-23 13:57:41.053] [info] [calls_client] [thread 32516] Connection down with user 654C8
+[2026-01-23 13:57:41.755] [info] [calls_client] [thread 24524] User logout: 90CC4
+[2026-01-23 13:57:43.359] [info] [calls_client] [thread 13240] User authorized: 1DE2F
+[2026-01-23 13:57:45.331] [info] [calls_client] [thread 13240] User authorized: CE5E2
+[2026-01-23 13:57:45.483] [info] [calls_client] [thread 13240] Call initiated from CE5E2 to 1DE2F
+[2026-01-23 13:57:45.603] [info] [calls_client] [thread 13240] Call accepted: CE5E2 -> 1DE2F
+[2026-01-23 13:57:47.515] [info] [calls_client] [thread 32516] Connection down with user 1DE2F
+[2026-01-23 13:57:48.607] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:57:49.695] [info] [calls_client] [thread 32516] Connection down with user CE5E2
+[2026-01-23 13:57:53.944] [info] [calls_client] [thread 13240] User authorized: 7FD35
+[2026-01-23 13:57:55.743] [info] [calls_client] [thread 24524] User logout: 68CA2
+[2026-01-23 13:57:55.881] [info] [calls_client] [thread 13240] User authorized: 51D4B
+[2026-01-23 13:57:55.998] [info] [calls_client] [thread 13240] Call initiated from 51D4B to 7FD35
+[2026-01-23 13:57:56.074] [info] [calls_client] [thread 13240] Call accepted: 51D4B -> 7FD35
+[2026-01-23 13:57:58.361] [info] [calls_client] [thread 32516] Connection down with user 7FD35
+[2026-01-23 13:58:00.069] [info] [calls_client] [thread 24524] User logout: 689CC
+[2026-01-23 13:58:00.070] [info] [calls_client] [thread 24524] Call ended due to logout: 689CC ended call with 8092B
+[2026-01-23 13:58:00.456] [info] [calls_client] [thread 32516] Connection down with user 51D4B
+[2026-01-23 13:58:02.173] [info] [calls_client] [thread 24524] User logout: 8092B
+[2026-01-23 13:58:04.543] [info] [calls_client] [thread 13240] User authorized: 2CEC5
+[2026-01-23 13:58:05.645] [info] [calls_client] [thread 13240] User logout: 2CEC5
+[2026-01-23 13:58:10.607] [info] [calls_client] [thread 24524] User logout: 9C6AE
+[2026-01-23 13:58:10.607] [info] [calls_client] [thread 24524] Call ended due to logout: 9C6AE ended call with E3591
+[2026-01-23 13:58:12.705] [info] [calls_client] [thread 24524] User logout: E3591
+[2026-01-23 13:58:15.578] [info] [calls_client] [thread 13240] User authorized: F4CE6
+[2026-01-23 13:58:17.440] [info] [calls_client] [thread 13240] User authorized: 079A3
+[2026-01-23 13:58:17.558] [info] [calls_client] [thread 13240] Call initiated from 079A3 to F4CE6
+[2026-01-23 13:58:17.606] [info] [calls_client] [thread 13240] Call accepted: 079A3 -> F4CE6
+[2026-01-23 13:58:18.650] [info] [calls_client] [thread 13240] Call ended: 079A3 ended call with F4CE6
+[2026-01-23 13:58:22.247] [info] [calls_client] [thread 24524] User logout: 5AF28
+[2026-01-23 13:58:31.117] [info] [calls_client] [thread 32516] Connection down with user F4CE6
+[2026-01-23 13:58:31.118] [info] [calls_client] [thread 32516] Connection down with user 079A3
+[2026-01-23 13:58:33.582] [info] [calls_client] [thread 13240] User authorized: 9B629
+[2026-01-23 13:58:34.074] [info] [calls_client] [thread 24524] User logout: 1865D
+[2026-01-23 13:58:34.079] [info] [calls_client] [thread 24524] Call ended due to logout: 1865D ended call with 38AC7
+[2026-01-23 13:58:35.137] [info] [calls_client] [thread 24524] User logout: EA087
+[2026-01-23 13:58:35.545] [info] [calls_client] [thread 13240] User authorized: 5C6FF
+[2026-01-23 13:58:35.660] [info] [calls_client] [thread 13240] Call initiated from 5C6FF to 9B629
+[2026-01-23 13:58:36.208] [info] [calls_client] [thread 24524] User logout: E7C69
+[2026-01-23 13:58:36.210] [info] [calls_client] [thread 24524] User logout: 38AC7
+[2026-01-23 13:58:36.750] [info] [calls_client] [thread 13240] Calling stopped: 5C6FF -> 9B629
+[2026-01-23 13:58:46.919] [info] [calls_client] [thread 32516] Connection down with user 5C6FF
+[2026-01-23 13:58:47.926] [info] [calls_client] [thread 32516] Connection down with user 9B629
+[2026-01-23 13:58:50.105] [info] [calls_client] [thread 13240] User authorized: DD41B
+[2026-01-23 13:58:55.978] [info] [calls_client] [thread 32516] Connection down with user DD41B
+[2026-01-23 13:58:56.127] [info] [calls_client] [thread 24524] User logout: EDF37
+[2026-01-23 13:58:57.128] [info] [calls_client] [thread 24524] User logout: DD873
+[2026-01-23 13:58:58.563] [info] [calls_client] [thread 13240] User authorized: 45236
+[2026-01-23 13:58:59.340] [info] [calls_client] [thread 24524] User logout: C88E3
+[2026-01-23 13:59:00.348] [info] [calls_client] [thread 24524] User logout: 8F39C
+[2026-01-23 13:59:00.543] [info] [calls_client] [thread 13240] User authorized: 18EE2
+[2026-01-23 13:59:01.627] [info] [calls_client] [thread 13240] User authorized: 2AB72
+[2026-01-23 13:59:02.659] [info] [calls_client] [thread 13240] Call initiated from 18EE2 to 45236
+[2026-01-23 13:59:02.695] [info] [calls_client] [thread 13240] Call accepted: 18EE2 -> 45236
+[2026-01-23 13:59:02.847] [info] [calls_client] [thread 13240] User authorized: C9651
+[2026-01-23 13:59:03.749] [info] [calls_client] [thread 13240] Call initiated from 2AB72 to 45236
+[2026-01-23 13:59:04.966] [info] [calls_client] [thread 13240] Call initiated from C9651 to 45236
+[2026-01-23 13:59:08.049] [info] [calls_client] [thread 32516] Connection down with user 18EE2
+[2026-01-23 13:59:09.056] [info] [calls_client] [thread 32516] Connection down with user 2AB72
+[2026-01-23 13:59:09.057] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: 2AB72 -> 45236
+[2026-01-23 13:59:09.057] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: 45236 -> 2AB72
+[2026-01-23 13:59:10.064] [info] [calls_client] [thread 32516] Connection down with user 45236
+[2026-01-23 13:59:10.065] [info] [calls_client] [thread 32516] Incoming call ended due to connection down: C9651 -> 45236
+[2026-01-23 13:59:10.065] [info] [calls_client] [thread 32516] Outgoing call ended due to connection down: C9651 -> 45236
+[2026-01-23 13:59:10.065] [info] [calls_client] [thread 32516] Connection down with user C9651
+[2026-01-23 13:59:16.560] [error] [calls_client] [thread 24524] Connection down with user task failed
+[2026-01-23 13:59:17.569] [error] [calls_client] [thread 24524] Connection down with user task failed
