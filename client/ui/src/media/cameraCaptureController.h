@@ -38,6 +38,7 @@ private slots:
     void handleCameraError(QCamera::Error error, const QString& errorString);
     void onFrameProcessed(const QPixmap& pixmap, const std::vector<unsigned char>& imageData);
     void onProcessingError(const QString& errorMessage);
+    void onVideoInputsChanged();
 
 private:
     QTimer* m_captureTimer;
@@ -48,6 +49,7 @@ private:
     QCamera* m_camera;
     QMediaCaptureSession* m_captureSession;
     QVideoSink* m_videoSink;
+    QMediaDevices* m_mediaDevices;
 
     QThread* m_processingThread;
     FrameProcessor* m_frameProcessor;

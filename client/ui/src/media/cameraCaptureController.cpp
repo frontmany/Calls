@@ -10,6 +10,7 @@ CameraCaptureController::CameraCaptureController(QObject* parent)
     m_camera(nullptr),
     m_captureSession(new QMediaCaptureSession(this)),
     m_videoSink(new QVideoSink(this)),
+    m_mediaDevices(new QMediaDevices(this)),
     m_processingThread(new QThread(this)),
     m_frameProcessor(new FrameProcessor())
 {
@@ -19,6 +20,7 @@ CameraCaptureController::CameraCaptureController(QObject* parent)
     connect(this, &CameraCaptureController::frameReadyForProcessing, m_frameProcessor, &FrameProcessor::processVideoFrame);
     connect(m_frameProcessor, &FrameProcessor::frameProcessed, this, &CameraCaptureController::onFrameProcessed);
     connect(m_frameProcessor, &FrameProcessor::processingError, this, &CameraCaptureController::onProcessingError);
+    connect(m_mediaDevices, &QMediaDevices::videoInputsChanged, this, &CameraCaptureController::onVideoInputsChanged);
     
     connect(m_processingThread, &QThread::finished, m_frameProcessor, &QObject::deleteLater);
     
@@ -147,4 +149,13 @@ bool CameraCaptureController::isCameraAvailable() const
 {
     auto cameras = QMediaDevices::videoInputs();
     return !cameras.isEmpty();
+}
+
+void CameraCaptureController::onVideoInputsChanged()
+{
+    // If we're capturing but no cameras are available, emit an error
+    if (m_isCapturing && !isCameraAvailable()) {
+        emit errorOccurred("Camera device became unavailable");
+        stopCapture();
+    }
 }

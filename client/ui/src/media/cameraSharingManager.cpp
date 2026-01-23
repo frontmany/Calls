@@ -250,9 +250,24 @@ void CameraSharingManager::onIncomingCamera(const std::vector<unsigned char>& da
 
 void CameraSharingManager::onCameraErrorOccurred(const QString& errorMessage)
 {
+    // Stop local camera capture
     if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
         m_cameraCaptureController->stopCapture();
     }
+    
+    // If camera sharing is active, stop it to notify the remote user
+    if (m_coreClient && m_coreClient->isCameraSharing()) {
+        std::error_code ec = m_coreClient->stopCameraSharing();
+        if (ec) {
+            LOG_WARN("Failed to stop camera sharing after camera error: {}", ec.message());
+        } else {
+            if (m_callWidget) {
+                m_callWidget->setCameraButtonRestricted(true);
+            }
+            startOperationTimer(core::UserOperationType::STOP_CAMERA_SHARING, "Stopping camera sharing...");
+        }
+    }
+    
     if (m_callWidget) {
         m_callWidget->setCameraButtonActive(false);
     }
