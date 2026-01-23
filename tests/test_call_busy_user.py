@@ -16,7 +16,7 @@ def busy_user_b_scenario(client, handler):
 def busy_user_c_scenario(client, handler):
     """User C calls B"""
     print(f"[{handler.name}] Calling user_b")
-    client.start_calling("user_b")
+    client.start_outgoing_call("user_b")
     handler.wait_for_event("call_result_OK", 10)
 
 
@@ -24,30 +24,30 @@ def busy_user_a_scenario(client, handler):
     """User A waits and then calls B who should be busy"""
     time.sleep(4)
     print(f"[{handler.name}] Calling user_b (should be busy)")
-    client.start_calling("user_b")
+    client.start_outgoing_call("user_b")
     time.sleep(2)
 
 
 class CallBusyUserTest(TestRunner):
     def test_call_busy_user(self):
         """A calls B who is already in call with C"""
-        b_handler = CallbacksHandler("user_b")
-        c_handler = CallbacksHandler("user_c")
-        a_handler = CallbacksHandler("user_a")
+        b_events = multiprocessing.Manager().list()
+        c_events = multiprocessing.Manager().list()
+        a_events = multiprocessing.Manager().list()
         
         b_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_b", b_handler, busy_user_b_scenario, 8)
+            args=("localhost", self.port, "user_b", b_events, "user_b", busy_user_b_scenario, 8)
         )
         
         c_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_c", c_handler, busy_user_c_scenario)
+            args=("localhost", self.port, "user_c", c_events, "user_c", busy_user_c_scenario)
         )
         
         a_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_a", a_handler, busy_user_a_scenario, 8)
+            args=("localhost", self.port, "user_a", a_events, "user_a", busy_user_a_scenario, 8)
         )
         
         b_process.start()
@@ -64,8 +64,8 @@ class CallBusyUserTest(TestRunner):
             if p.is_alive():
                 p.terminate()
         
-        bc_success = ("call_result_OK" in c_handler.events and
-                     "incoming_call_user_c" in b_handler.events)
+        bc_success = ("call_result_OK" in c_events and
+                     "incoming_call_user_c" in b_events)
         
         return bc_success
 

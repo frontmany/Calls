@@ -8,7 +8,7 @@ from test_runner_base import CallbacksHandler, run_client_flexible, TestRunner
 def triple_user_a_scenario(client, handler):
     """User A calls B"""
     print(f"[{handler.name}] Calling user_b")
-    client.start_calling("user_b")
+    client.start_outgoing_call("user_b")
     handler.wait_for_event("call_result_OK", 10)
 
 
@@ -17,7 +17,7 @@ def triple_user_b_scenario(client, handler):
     if handler.wait_for_event("incoming_call_user_a", 10):
         print(f"[{handler.name}] Received call from user_a")
         print(f"[{handler.name}] Now calling user_c")
-        client.start_calling("user_c")
+        client.start_outgoing_call("user_c")
         handler.wait_for_event("call_result_OK", 10)
 
 
@@ -41,23 +41,23 @@ def triple_user_c_scenario(client, handler):
 class TripleCallTest(TestRunner):
     def test_triple_call_chain(self):
         """A calls B, B calls C, establishes A-C connection"""
-        a_handler = CallbacksHandler("user_a")
-        b_handler = CallbacksHandler("user_b")
-        c_handler = CallbacksHandler("user_c")
+        a_events = multiprocessing.Manager().list()
+        b_events = multiprocessing.Manager().list()
+        c_events = multiprocessing.Manager().list()
         
         c_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_c", c_handler, triple_user_c_scenario, 8)
+            args=("localhost", self.port, "user_c", c_events, "user_c", triple_user_c_scenario, 8)
         )
         
         b_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_b", b_handler, triple_user_b_scenario, 8)
+            args=("localhost", self.port, "user_b", b_events, "user_b", triple_user_b_scenario, 8)
         )
         
         a_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_a", a_handler, triple_user_a_scenario)
+            args=("localhost", self.port, "user_a", a_events, "user_a", triple_user_a_scenario)
         )
         
         c_process.start()
@@ -74,9 +74,9 @@ class TripleCallTest(TestRunner):
             if p.is_alive():
                 p.terminate()
         
-        a_success = "call_result_OK" in a_handler.events
-        b_received = "incoming_call_user_a" in b_handler.events
-        c_received = any(event.startswith("incoming_call_") for event in c_handler.events)
+        a_success = "call_result_OK" in a_events
+        b_received = "incoming_call_user_a" in b_events
+        c_received = any(event.startswith("incoming_call_") for event in c_events)
         
         return a_success and b_received and c_received
 

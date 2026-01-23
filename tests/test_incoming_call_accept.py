@@ -7,7 +7,7 @@ from test_runner_base import CallbacksHandler, run_client_flexible, TestRunner
 
 def accept_caller_scenario(client, handler):
     """Caller scenario for accept test"""
-    client.start_calling("responder")
+    client.start_outgoing_call("responder")
     handler.wait_for_event("call_result_OK", 10)
 
 
@@ -22,17 +22,17 @@ def accept_responder_scenario(client, handler):
 class IncomingCallAcceptTest(TestRunner):
     def test_incoming_call_accept(self):
         """Test accepting incoming call"""
-        caller_handler = CallbacksHandler("caller")
-        responder_handler = CallbacksHandler("responder")
+        caller_events = multiprocessing.Manager().list()
+        responder_events = multiprocessing.Manager().list()
         
         responder_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "responder", responder_handler, accept_responder_scenario)
+            args=("localhost", self.port, "responder", responder_events, "responder", accept_responder_scenario)
         )
         
         caller_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "caller", caller_handler, accept_caller_scenario)
+            args=("localhost", self.port, "caller", caller_events, "caller", accept_caller_scenario)
         )
         
         responder_process.start()
@@ -47,7 +47,7 @@ class IncomingCallAcceptTest(TestRunner):
         if responder_process.is_alive():
             responder_process.terminate()
         
-        return "accept_result_OK" in responder_handler.events
+        return "accept_result_OK" in responder_events
 
 
 if __name__ == "__main__":

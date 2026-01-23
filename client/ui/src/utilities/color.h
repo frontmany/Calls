@@ -51,7 +51,7 @@ inline const QColor COLOR_BACKGROUND_UPDATE = QColor(226, 243, 231);
 inline const QColor COLOR_BACKGROUND_ERROR_SUBTLE = QColor(255, 240, 240);
 
 // ============================================================================
-// Neutral Colors (унифицированные нейтральные оттенки)
+// Neutral Colors
 // ============================================================================
 inline const QColor COLOR_NEUTRAL_100 = QColor(245, 245, 245);
 inline const QColor COLOR_NEUTRAL_150 = QColor(240, 240, 240);
@@ -70,7 +70,7 @@ inline const QColor COLOR_BORDER_SUBTLE = QColor(200, 200, 200, 100);
 inline const QColor COLOR_BORDER_OVERLAY = QColor(255, 255, 255, 40);
 
 // ============================================================================
-// Overlay Colors (полупрозрачные цвета)
+// Overlay Colors
 // ============================================================================
 inline const QColor COLOR_OVERLAY_PURE_60 = QColor(255, 255, 255, 60);
 inline const QColor COLOR_OVERLAY_PURE_100 = QColor(255, 255, 255, 100);

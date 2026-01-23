@@ -21,7 +21,7 @@ def overlapping_caller_scenario(client, handler):
     target = targets.get(handler.name, "user_b")
     
     print(f"[{handler.name}] Calling {target}")
-    client.start_calling(target)
+    client.start_outgoing_call(target)
     time.sleep(3)
 
 
@@ -36,15 +36,15 @@ class OverlappingCallsTest(TestRunner):
         ]
         
         processes = []
-        handlers = []
+        events_list = []
         
         for caller, callee in call_scenarios:
-            handler = CallbacksHandler(caller)
-            handlers.append(handler)
+            events = multiprocessing.Manager().list()
+            events_list.append(events)
             
             process = multiprocessing.Process(
                 target=run_client_flexible,
-                args=("localhost", self.port, caller, handler, overlapping_caller_scenario, 8)
+                args=("localhost", self.port, caller, events, caller, overlapping_caller_scenario, 8)
             )
             processes.append(process)
         

@@ -13,11 +13,11 @@ def auth_only_scenario(client, handler):
 class AuthorizationTest(TestRunner):
     def test_authorization(self):
         """Test single user authorization"""
-        process_handler = CallbacksHandler("auth_test")
+        events_list = multiprocessing.Manager().list()
         
         process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "test_user_1", process_handler, auth_only_scenario)
+            args=("localhost", self.port, "test_user_1", events_list, "auth_test", auth_only_scenario)
         )
         
         process.start()
@@ -27,7 +27,7 @@ class AuthorizationTest(TestRunner):
             process.terminate()
             return False
         
-        return "auth_result_OK" in process_handler.events
+        return "auth_result_OK" in events_list
 
 
 if __name__ == "__main__":

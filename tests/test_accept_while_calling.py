@@ -8,7 +8,7 @@ from test_runner_base import CallbacksHandler, run_client_flexible, TestRunner
 def accept_while_user_a_scenario(client, handler):
     """User A calls B, but when C calls, accepts C's call"""
     print(f"[{handler.name}] Calling user_b")
-    client.start_calling("user_b")
+    client.start_outgoing_call("user_b")
     time.sleep(1)
     
     # Wait for incoming call from C
@@ -30,30 +30,30 @@ def accept_while_user_c_scenario(client, handler):
     """User C waits then calls A"""
     time.sleep(3)
     print(f"[{handler.name}] Calling user_a")
-    client.start_calling("user_a")
+    client.start_outgoing_call("user_a")
     handler.wait_for_event("call_result_OK", 10)
 
 
 class AcceptWhileCallingTest(TestRunner):
     def test_accept_while_calling(self):
         """A calls B, at this time C calls A - A accepts call from C"""
-        b_handler = CallbacksHandler("user_b")
-        a_handler = CallbacksHandler("user_a")
-        c_handler = CallbacksHandler("user_c")
+        b_events = multiprocessing.Manager().list()
+        a_events = multiprocessing.Manager().list()
+        c_events = multiprocessing.Manager().list()
         
         b_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_b", b_handler, accept_while_user_b_scenario, 8)
+            args=("localhost", self.port, "user_b", b_events, "user_b", accept_while_user_b_scenario, 8)
         )
         
         a_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_a", a_handler, accept_while_user_a_scenario, 8)
+            args=("localhost", self.port, "user_a", a_events, "user_a", accept_while_user_a_scenario, 8)
         )
         
         c_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "user_c", c_handler, accept_while_user_c_scenario, 8)
+            args=("localhost", self.port, "user_c", c_events, "user_c", accept_while_user_c_scenario, 8)
         )
         
         b_process.start()
@@ -70,8 +70,8 @@ class AcceptWhileCallingTest(TestRunner):
             if p.is_alive():
                 p.terminate()
         
-        a_got_c_call = "incoming_call_user_c" in a_handler.events
-        c_called_success = "call_result_OK" in c_handler.events or "auth_result_OK" in c_handler.events
+        a_got_c_call = "incoming_call_user_c" in a_events
+        c_called_success = "call_result_OK" in c_events or "auth_result_OK" in c_events
         
         return a_got_c_call or c_called_success
 

@@ -5,40 +5,44 @@ import multiprocessing
 from test_runner_base import CallbacksHandler, run_client_flexible, TestRunner
 
 
-def queue_popular_user_scenario(client, handler):
-    """Accept first call, decline others"""
-    accepted_count = 0
-    for i in range(40):
+def multiple_incoming_popular_scenario(client, handler):
+    """Popular user receives multiple calls, accepts first, declines others"""
+    accepted = False
+    for i in range(50):
+        # Check for incoming calls
         for event in list(handler.events):
             if event.startswith("incoming_call_caller_"):
                 caller = event.replace("incoming_call_", "")
-                if accepted_count == 0:
+                if not accepted:
                     print(f"[{handler.name}] Accepting call from {caller}")
                     client.accept_call(caller)
-                    accepted_count += 1
+                    handler.wait_for_event("accept_result_OK", 5)
+                    accepted = True
                 else:
                     print(f"[{handler.name}] Declining call from {caller}")
                     client.decline_call(caller)
-        time.sleep(0.25)
+                    # Remove event to avoid processing again
+                    handler.events.remove(event)
+        time.sleep(0.2)
 
 
-def queue_caller_scenario(client, handler):
-    """Caller scenario for queue test"""
+def multiple_incoming_caller_scenario(client, handler):
+    """Caller scenario: call popular user"""
     time.sleep(2)
     print(f"[{handler.name}] Calling popular_user")
     client.start_outgoing_call("popular_user")
     handler.wait_for_event("call_result_OK", 10)
 
 
-class CallQueueTest(TestRunner):
-    def test_incoming_call_queue(self):
-        """Multiple users call one user, testing queue"""
+class MultipleIncomingCallsTest(TestRunner):
+    def test_multiple_incoming_calls(self):
+        """Test handling multiple incoming calls"""
         popular_events = multiprocessing.Manager().list()
         callers = [f"caller_{i}" for i in range(3)]
         
         popular_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "popular_user", popular_events, "popular_user", queue_popular_user_scenario, 10)
+            args=("localhost", self.port, "popular_user", popular_events, "popular_user", multiple_incoming_popular_scenario, 12)
         )
         popular_process.start()
         time.sleep(2)
@@ -52,7 +56,7 @@ class CallQueueTest(TestRunner):
             
             process = multiprocessing.Process(
                 target=run_client_flexible,
-                args=("localhost", self.port, caller, events, caller, queue_caller_scenario)
+                args=("localhost", self.port, caller, events, caller, multiple_incoming_caller_scenario)
             )
             caller_processes.append(process)
             process.start()
@@ -68,18 +72,18 @@ class CallQueueTest(TestRunner):
             if process.is_alive():
                 process.terminate()
         
-        popular_got_calls = any(event.startswith("incoming_call_caller_") 
-                               for event in popular_events)
-        call_attempts = sum(1 for events in caller_events_list 
-                          if "call_result_OK" in events or "auth_result_OK" in events)
+        # Check that popular user received multiple calls
+        incoming_calls = [e for e in popular_events if e.startswith("incoming_call_caller_")]
+        accept_success = "accept_result_OK" in popular_events
         
-        return popular_got_calls and call_attempts >= 2
+        return len(incoming_calls) >= 2 and accept_success
+
 
 if __name__ == "__main__":
-    test = CallQueueTest("8081")
+    test = MultipleIncomingCallsTest("8081")
     if test.start_server():
         try:
-            result = test.test_incoming_call_queue()
-            print(f"Call queue test: {'PASSED' if result else 'FAILED'}")
+            result = test.test_multiple_incoming_calls()
+            print(f"Multiple incoming calls test: {'PASSED' if result else 'FAILED'}")
         finally:
             test.stop_server()

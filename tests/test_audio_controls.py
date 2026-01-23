@@ -17,11 +17,11 @@ def audio_test_scenario(client, handler):
 class AudioControlsTest(TestRunner):
     def test_audio_controls(self):
         """Test audio controls"""
-        handler = CallbacksHandler("audio_test")
+        events = multiprocessing.Manager().list()
         
         process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "audio_user", handler, audio_test_scenario)
+            args=("localhost", self.port, "audio_user", events, "audio_test", audio_test_scenario)
         )
         
         process.start()
@@ -30,7 +30,7 @@ class AudioControlsTest(TestRunner):
         if process.is_alive():
             process.terminate()
         
-        return "auth_result_OK" in handler.events
+        return "auth_result_OK" in events
 
 
 if __name__ == "__main__":

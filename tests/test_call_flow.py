@@ -8,7 +8,7 @@ from test_runner_base import CallbacksHandler, run_client_flexible, TestRunner
 def caller_scenario(client, handler):
     """Caller scenario: call responder"""
     print(f"[{handler.name}] Starting call to responder")
-    client.start_calling("responder")
+    client.start_outgoing_call("responder")
     handler.wait_for_event("call_result_OK", 10)
 
 
@@ -24,17 +24,17 @@ def responder_scenario(client, handler):
 class CallFlowTest(TestRunner):
     def test_call_flow(self):
         """Test complete call flow between two clients"""
-        caller_handler = CallbacksHandler("caller")
-        responder_handler = CallbacksHandler("responder")
+        caller_events = multiprocessing.Manager().list()
+        responder_events = multiprocessing.Manager().list()
         
         responder_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "responder", responder_handler, responder_scenario)
+            args=("localhost", self.port, "responder", responder_events, "responder", responder_scenario)
         )
         
         caller_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "caller", caller_handler, caller_scenario)
+            args=("localhost", self.port, "caller", caller_events, "caller", caller_scenario)
         )
         
         responder_process.start()
@@ -49,8 +49,8 @@ class CallFlowTest(TestRunner):
         if responder_process.is_alive():
             responder_process.terminate()
         
-        call_success = "call_result_OK" in caller_handler.events
-        accept_success = "accept_result_OK" in responder_handler.events
+        call_success = "call_result_OK" in caller_events
+        accept_success = "accept_result_OK" in responder_events
         
         return call_success and accept_success
 

@@ -2,70 +2,239 @@ import time
 import threading
 import multiprocessing
 import sys
+import os
 
-sys.path.append('C:/prj/Callifornia/out/build/x64-Release/clientPy')
-import callsClientPy
+# Try multiple possible paths for Python bindings
+possible_client_paths = [
+    'C:/prj/Callifornia/out/build/x64-Release/clientCorePythonWrapper',
+    'C:/prj/Callifornia/out/build/x64-Debug/clientCorePythonWrapper',
+    'C:/prj/Callifornia/out/build/x64-Release/clientPy',
+    'C:/prj/Callifornia/out/build/x64-Debug/clientPy',
+    'C:/prj/Callifornia/build/clientPy/Release',
+    'C:/prj/Callifornia/build/clientPy/Debug',
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'clientCorePythonWrapper'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'clientCorePythonWrapper'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'clientPy'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'clientPy'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'clientPy', 'Release'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'clientPy', 'Debug'),
+]
 
-sys.path.append('C:/prj/Callifornia/out/build/x64-Release/serverPy')
-import callsServerPy
+possible_server_paths = [
+    'C:/prj/Callifornia/out/build/x64-Release/serverPythonWrapper',
+    'C:/prj/Callifornia/out/build/x64-Debug/serverPythonWrapper',
+    'C:/prj/Callifornia/out/build/x64-Release/serverPy',
+    'C:/prj/Callifornia/out/build/x64-Debug/serverPy',
+    'C:/prj/Callifornia/build/serverPy/Release',
+    'C:/prj/Callifornia/build/serverPy/Debug',
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'serverPythonWrapper'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'serverPythonWrapper'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'serverPy'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'serverPy'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'serverPy', 'Release'),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'serverPy', 'Debug'),
+]
+
+# Try to import callsClientPy
+callsClientPy = None
+found_client_path = None
+for path in possible_client_paths:
+    abs_path = os.path.abspath(path)
+    if os.path.exists(abs_path):
+        # Check for module files (.pyd on Windows, .so on Linux)
+        module_files = [f for f in os.listdir(abs_path) 
+                       if f.startswith('callsClientPy') and 
+                       (f.endswith('.pyd') or f.endswith('.so') or f.endswith('.dll'))]
+        if module_files or True:  # Try import even if file not found (might be in subdirectory)
+            if abs_path not in sys.path:
+                sys.path.insert(0, abs_path)
+            try:
+                import callsClientPy
+                found_client_path = abs_path
+                break
+            except ImportError as e:
+                # Remove path if import failed
+                if abs_path in sys.path:
+                    sys.path.remove(abs_path)
+                continue
+
+if callsClientPy is None:
+    tried_paths_str = "\n".join(f"  - {os.path.abspath(p)} {'(exists)' if os.path.exists(os.path.abspath(p)) else '(not found)'}" 
+                               for p in possible_client_paths)
+    raise ImportError(
+        f"Could not find callsClientPy module.\n\n"
+        f"Tried paths:\n{tried_paths_str}\n\n"
+        f"Please build the project first. The module should be a .pyd file (Windows) "
+        f"or .so file (Linux) in one of the above directories."
+    )
+
+# Try to import callsServerPy
+callsServerPy = None
+found_server_path = None
+for path in possible_server_paths:
+    abs_path = os.path.abspath(path)
+    if os.path.exists(abs_path):
+        # Check for module files
+        module_files = [f for f in os.listdir(abs_path) 
+                       if f.startswith('callsServerPy') and 
+                       (f.endswith('.pyd') or f.endswith('.so') or f.endswith('.dll'))]
+        if module_files or True:  # Try import even if file not found
+            if abs_path not in sys.path:
+                sys.path.insert(0, abs_path)
+            try:
+                import callsServerPy
+                found_server_path = abs_path
+                break
+            except ImportError as e:
+                # Remove path if import failed
+                if abs_path in sys.path:
+                    sys.path.remove(abs_path)
+                continue
+
+if callsServerPy is None:
+    tried_paths_str = "\n".join(f"  - {os.path.abspath(p)} {'(exists)' if os.path.exists(os.path.abspath(p)) else '(not found)'}" 
+                               for p in possible_server_paths)
+    raise ImportError(
+        f"Could not find callsServerPy module.\n\n"
+        f"Tried paths:\n{tried_paths_str}\n\n"
+        f"Please build the project first. The module should be a .pyd file (Windows) "
+        f"or .so file (Linux) in one of the above directories."
+    )
 
 
-class CallbacksHandler:
+class CallbacksHandler(callsClientPy.EventListener):
     """Thread-safe handler for collecting events from client callbacks"""
     
     def __init__(self, name=""):
+        super().__init__()
         self.name = name
         self.events = multiprocessing.Manager().list()
         self.event_condition = multiprocessing.Condition()
     
-    def onAuthorizationResult(self, ec):
-        event = f"auth_result_{ec.name}"
+    def onAuthorizationResult(self, ec_value):
+        # ec_value is now int (error code value)
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"auth_result_{status}"
         self.events.append(event)
-        print(f"[{self.name}] Authorization result: {ec.name}")
+        print(f"[{self.name}] Authorization result: {status}")
     
-    def onStartCallingResult(self, ec):
-        event = f"call_result_{ec.name}"
+    def onStartOutgoingCallResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"call_result_{status}"
         self.events.append(event)
-        print(f"[{self.name}] Start calling result: {ec.name}")
+        print(f"[{self.name}] Start outgoing call result: {status}")
     
-    def onAcceptCallResult(self, ec, nickname):
-        event = f"accept_result_{ec.name}"
+    def onAcceptCallResult(self, ec_value, nickname):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"accept_result_{status}"
         self.events.append(event)
-        print(f"[{self.name}] Accept call result: {ec.name} from {nickname}")
+        print(f"[{self.name}] Accept call result: {status} from {nickname}")
     
-    def onMaximumCallingTimeReached(self):
+    def onOutgoingCallTimeout(self, ec_value):
         self.events.append("max_time_reached")
-        print(f"[{self.name}] Maximum calling time reached")
+        print(f"[{self.name}] Outgoing call timeout")
     
-    def onCallingAccepted(self):
+    def onOutgoingCallAccepted(self):
         self.events.append("calling_accepted")
-        print(f"[{self.name}] Calling accepted")
+        print(f"[{self.name}] Outgoing call accepted")
     
-    def onCallingDeclined(self):
+    def onOutgoingCallDeclined(self):
         self.events.append("calling_declined")
-        print(f"[{self.name}] Calling declined")
+        print(f"[{self.name}] Outgoing call declined")
     
     def onIncomingCall(self, friend_nickname):
         event = f"incoming_call_{friend_nickname}"
         self.events.append(event)
         print(f"[{self.name}] Incoming call from {friend_nickname}")
     
-    def onIncomingCallExpired(self, friend_nickname):
+    def onIncomingCallExpired(self, ec_value, friend_nickname):
         event = f"call_expired_{friend_nickname}"
         self.events.append(event)
         print(f"[{self.name}] Incoming call expired from {friend_nickname}")
     
-    def onNetworkError(self):
+    def onConnectionDown(self):
         self.events.append("network_error")
-        print(f"[{self.name}] Network error")
+        print(f"[{self.name}] Connection down")
     
     def onConnectionRestored(self):
         self.events.append("connection_restored")
         print(f"[{self.name}] Connection restored")
     
-    def onRemoteUserEndedCall(self):
+    def onCallEndedByRemote(self, ec_value):
         self.events.append("remote_ended_call")
         print(f"[{self.name}] Remote user ended call")
+    
+    def onLogoutCompleted(self):
+        self.events.append("logout_completed")
+        print(f"[{self.name}] Logout completed")
+    
+    def onEndCallResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"end_call_result_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] End call result: {status}")
+    
+    def onDeclineCallResult(self, ec_value, nickname):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"decline_result_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] Decline call result: {status} from {nickname}")
+    
+    def onStopOutgoingCallResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"stop_outgoing_result_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] Stop outgoing call result: {status}")
+    
+    def onStartScreenSharingResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"start_screen_sharing_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] Start screen sharing result: {status}")
+    
+    def onStopScreenSharingResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"stop_screen_sharing_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] Stop screen sharing result: {status}")
+    
+    def onStartCameraSharingResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"start_camera_sharing_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] Start camera sharing result: {status}")
+    
+    def onStopCameraSharingResult(self, ec_value):
+        is_success = (ec_value == 0)
+        status = "OK" if is_success else "ERROR"
+        event = f"stop_camera_sharing_{status}"
+        self.events.append(event)
+        print(f"[{self.name}] Stop camera sharing result: {status}")
+    
+    def onIncomingScreenSharingStarted(self):
+        self.events.append("incoming_screen_sharing_started")
+        print(f"[{self.name}] Incoming screen sharing started")
+    
+    def onIncomingScreenSharingStopped(self):
+        self.events.append("incoming_screen_sharing_stopped")
+        print(f"[{self.name}] Incoming screen sharing stopped")
+    
+    def onIncomingCameraSharingStarted(self):
+        self.events.append("incoming_camera_sharing_started")
+        print(f"[{self.name}] Incoming camera sharing started")
+    
+    def onIncomingCameraSharingStopped(self):
+        self.events.append("incoming_camera_sharing_stopped")
+        print(f"[{self.name}] Incoming camera sharing stopped")
     
     def wait_for_event(self, event_name, timeout):
         """Wait for specific event with timeout"""
@@ -77,7 +246,7 @@ class CallbacksHandler:
         return False
 
 
-def run_client(host, port, nickname, process_handler, test_scenario):
+def run_client(host, port, nickname, events_list, handler_name, test_scenario):
     """
     Legacy function for backward compatibility with hardcoded scenarios.
     Consider using run_client_flexible for new tests.
@@ -94,10 +263,10 @@ def run_client(host, port, nickname, process_handler, test_scenario):
     else:
         scenario_func = None
     
-    return run_client_flexible(host, port, nickname, process_handler, scenario_func)
+    return run_client_flexible(host, port, nickname, events_list, handler_name, scenario_func)
 
 
-def run_client_flexible(host, port, nickname, process_handler, scenario_func=None, wait_time=3):
+def run_client_flexible(host, port, nickname, events_list, handler_name, scenario_func=None, wait_time=3):
     """
     Flexible client runner that accepts custom scenario function.
     
@@ -105,8 +274,9 @@ def run_client_flexible(host, port, nickname, process_handler, scenario_func=Non
         host: Server host address
         port: Server port
         nickname: User nickname for authorization
-        process_handler: Handler object for callbacks
-        scenario_func: Optional function(callsClientPy, handler) that implements test scenario
+        events_list: Shared list for events (multiprocessing.Manager().list())
+        handler_name: Name for the handler (for logging)
+        scenario_func: Optional function(client, handler) that implements test scenario
         wait_time: Time to wait before stopping client (default: 3 seconds)
     
     Returns:
@@ -114,75 +284,49 @@ def run_client_flexible(host, port, nickname, process_handler, scenario_func=Non
     
     Example:
         def custom_scenario(client, handler):
-            client.start_calling("friend")
+            client.start_outgoing_call("friend")
             handler.wait_for_event("call_result_OK", 10)
         
-        run_client_flexible("localhost", "8081", "user1", handler, custom_scenario)
+        events = multiprocessing.Manager().list()
+        run_client_flexible("localhost", "8081", "user1", events, "user1", custom_scenario)
     """
     
-    class LocalHandler(callsClientPy.Handler):
-        def __init__(self, ph):
-            super().__init__()
-            self.process_handler = ph
-        
-        def onAuthorizationResult(self, ec):
-            self.process_handler.onAuthorizationResult(ec)
-        
-        def onStartCallingResult(self, ec):
-            self.process_handler.onStartCallingResult(ec)
-        
-        def onAcceptCallResult(self, ec, nickname):
-            self.process_handler.onAcceptCallResult(ec, nickname)
-        
-        def onMaximumCallingTimeReached(self):
-            self.process_handler.onMaximumCallingTimeReached()
-        
-        def onCallingAccepted(self):
-            self.process_handler.onCallingAccepted()
-        
-        def onCallingDeclined(self):
-            self.process_handler.onCallingDeclined()
-        
-        def onIncomingCall(self, friend_nickname):
-            self.process_handler.onIncomingCall(friend_nickname)
-        
-        def onIncomingCallExpired(self, friend_nickname):
-            self.process_handler.onIncomingCallExpired(friend_nickname)
-        
-        def onNetworkError(self):
-            self.process_handler.onNetworkError()
-        
-        def onConnectionRestored(self):
-            self.process_handler.onConnectionRestored()
-        
-        def onRemoteUserEndedCall(self):
-            self.process_handler.onRemoteUserEndedCall()
+    # Create handler inside this process (can't pickle C++ objects)
+    process_handler = CallbacksHandler(handler_name)
+    process_handler.events = events_list  # Use shared list
     
-    handler = LocalHandler(process_handler)
+    # Create Client instance
+    client = callsClientPy.Client()
     
-    if not callsClientPy.init(host, port, handler):
+    # Initialize client with event listener
+    if not client.init(host, port, process_handler):
+        print(f"[{handler_name}] Failed to initialize client")
         return False
     
-    callsClientPy.run()
     time.sleep(1)
     
-    callsClientPy.authorize(nickname)
+    # Authorize
+    ec_value = client.authorize(nickname)  # Returns int now
     if not process_handler.wait_for_event("auth_result_OK", 5):
-        callsClientPy.stop()
+        print(f"[{handler_name}] Authorization failed or timeout")
+        client.stop()
         return False
     
+    # Run scenario if provided
     if scenario_func:
-        scenario_func(callsClientPy, process_handler)
+        scenario_func(client, process_handler)
     
     time.sleep(wait_time)
-    callsClientPy.stop()
+    
+    # Stop client
+    client.stop()
     return True
 
 
 def _scenario_caller(client, handler, target_user):
     """Scenario: call specific user"""
     print(f"[{handler.name}] Starting call to {target_user}")
-    client.start_calling(target_user)
+    client.start_outgoing_call(target_user)
     handler.wait_for_event("call_result_OK", 10)
 
 
@@ -282,4 +426,6 @@ class TestRunner:
             return result
         except Exception as e:
             print(f"❌ Test {test_name}: FAILED - {e}")
+            import traceback
+            traceback.print_exc()
             return False

@@ -1717,3 +1717,8 @@
 [2025-12-07 20:48:46.992] [calls_client] [info] Call ended by remote user
 [2025-12-07 20:48:45.974] [calls_client] [debug] Critical packet (type: 34) added to priority queue
 [2025-12-07 20:48:46.562] [calls_client] [debug] Critical packet (type: 33) added to priority queue
+[2026-01-23 12:36:59.728] [info] [calls_client] [thread 30368] Network controller initialized, server port: 8081
+[2026-01-23 12:42:35.511] [info] [calls_client] [thread 16092] Network controller initialized, server port: 8081
+[2026-01-23 12:47:12.168] [info] [calls_client] [thread 25996] Network controller initialized, server port: 8081
+[2026-01-23 12:52:07.314] [info] [calls_client] [thread 28576] Network controller initialized, server port: 8081
+[2026-01-23 12:54:14.656] [info] [calls_client] [thread 32404] Network controller initialized, server port: 8081

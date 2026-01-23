@@ -21,24 +21,24 @@ def rapid_persistent_caller_scenario(client, handler):
     """Try calling multiple times"""
     for attempt in range(3):
         print(f"[{handler.name}] Call attempt {attempt + 1}")
-        client.start_calling("busy_callee")
+        client.start_outgoing_call("busy_callee")
         time.sleep(3)
 
 
 class RapidRedialTest(TestRunner):
     def test_rapid_redial(self):
         """Rapid redials after declined/timeout"""
-        callee_handler = CallbacksHandler("busy_callee")
-        caller_handler = CallbacksHandler("persistent_caller")
+        callee_events = multiprocessing.Manager().list()
+        caller_events = multiprocessing.Manager().list()
         
         callee_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "busy_callee", callee_handler, rapid_busy_callee_scenario, 12)
+            args=("localhost", self.port, "busy_callee", callee_events, "busy_callee", rapid_busy_callee_scenario, 12)
         )
         
         caller_process = multiprocessing.Process(
             target=run_client_flexible,
-            args=("localhost", self.port, "persistent_caller", caller_handler, rapid_persistent_caller_scenario, 10)
+            args=("localhost", self.port, "persistent_caller", caller_events, "persistent_caller", rapid_persistent_caller_scenario, 10)
         )
         
         callee_process.start()
@@ -53,8 +53,8 @@ class RapidRedialTest(TestRunner):
                 p.terminate()
         
         callee_got_calls = any("incoming_call_persistent_caller" in str(event) 
-                              for event in callee_handler.events)
-        caller_made_attempts = "auth_result_OK" in caller_handler.events
+                              for event in callee_events)
+        caller_made_attempts = "auth_result_OK" in caller_events
         
         return callee_got_calls or caller_made_attempts
 

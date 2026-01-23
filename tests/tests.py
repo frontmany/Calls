@@ -6,7 +6,7 @@ import inspect
 
 from test_runner_base import TestRunner
 
-sys.path.append('C:/prj/Callifornia/build/clientPy/Release')
+sys.path.append('C:/prj/Callifornia/out/build/x64-Release/clientPy')
 import callsClientPy
 
 
@@ -24,6 +24,13 @@ def discover_and_run_all_tests():
         'test_overlapping_calls',
         'test_rapid_redial',
         'test_triple_call',
+        'test_screen_sharing',
+        'test_camera_sharing',
+        'test_logout',
+        'test_end_call',
+        'test_stop_outgoing_call',
+        'test_state_queries',
+        'test_multiple_incoming_calls',
     ]
     
     all_test_classes = []
