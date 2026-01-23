@@ -175,3 +175,4 @@ namespace updateApplier::utilities::log
         } \
     } while(0)
 #endif
+

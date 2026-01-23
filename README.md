@@ -194,6 +194,14 @@ cmake --build build --config Debug
 
 ## Build for Linux
 
+**Note:** It is recommended to exclude Python wrappers from the build on Linux to avoid issues with Position Independent Code (PIC) requirements. Python wrappers require all static libraries (opus, portaudio, cryptopp, spdlog) to be compiled with `-fPIC`, which may require rebuilding these dependencies.
+
+To exclude Python wrappers, comment out the following lines in `CMakeLists.txt`:
+```cmake
+# add_subdirectory(clientCorePythonWrapper)
+# add_subdirectory(serverPythonWrapper)
+```
+
 **First build (fetch dependencies):**
 
 ```bash
