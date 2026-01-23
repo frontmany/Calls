@@ -1,4 +1,5 @@
 #include "network/updateSession.h"
+#include <cmath>
 
 namespace updater
 {

@@ -10,7 +10,7 @@
 
 namespace py = pybind11;
 
-class PyEventListener : public core::EventListener, public py::trampoline_self_life_support
+class PyEventListener : public core::EventListener
 {
 public:
     using core::EventListener::EventListener;
@@ -222,7 +222,7 @@ PYBIND11_MODULE(callsClientPy, m) {
         .export_values();
 
     // EventListener interface - methods with error_code now take int instead
-    py::class_<core::EventListener, PyEventListener, py::smart_holder>(m, "EventListener")
+    py::class_<core::EventListener, PyEventListener>(m, "EventListener")
         .def(py::init<>())
         .def("onAuthorizationResult", [](core::EventListener& self, int ec_value) {
             self.onAuthorizationResult(std::error_code(ec_value, core::error_category()));

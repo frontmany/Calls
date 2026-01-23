@@ -1,4 +1,5 @@
 #include "network/fileReceiver.h"
+#include <cmath>
 
 namespace updater
 {
