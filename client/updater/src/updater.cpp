@@ -103,15 +103,18 @@ namespace updater
 
 				m_networkController.connect(m_serverHost, m_serverPort);
 
+				// Always wait before next attempt. Previously wait_for was interrupted
+				// by notify on fast connect failure, causing reconnect spam when
+				// updater server is not running.
+				std::this_thread::sleep_for(reconnectInterval);
+
 				lock.lock();
-				
-				if (m_reconnecting && !m_stopReconnectThread) {
-					m_reconnectCondition.wait_for(lock, reconnectInterval);
-				}
 			}
 			else {
 				m_reconnectCondition.wait(lock);
-				std::this_thread::sleep_for(std::chrono::seconds(2));
+				if (!m_stopReconnectThread) {
+					std::this_thread::sleep_for(reconnectInterval);
+				}
 			}
 		}
 	}

@@ -71,6 +71,7 @@ namespace server {
             }
 
             std::function<void()> errorHandler = [this]() {
+                LOG_ERROR("Packet sender/receiver error on server - send or receive failed");
             };
 
             auto pingReceivedHandler = [this](uint32_t pingType, const asio::ip::udp::endpoint& endpoint) {
