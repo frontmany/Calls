@@ -127,6 +127,9 @@ namespace core
                     if (m_onErrorCallback) {
                         m_onErrorCallback();
                     }
+                    // Resume sending from queue; otherwise one send error permanently stops all sending.
+                    // Transient errors can recover; onErrorCallback already notifies connection-down path.
+                    processNextPacketFromQueue();
                     return;
                 }
 

@@ -127,6 +127,9 @@ namespace server
                     if (m_onErrorCallback) {
                         m_onErrorCallback();
                     }
+                    // Resume sending from queue; otherwise one send error permanently stops all sending
+                    // (pongs stop -> both clients see Reconnecting). Transient errors can recover.
+                    processNextPacketFromQueue();
                     return;
                 }
 

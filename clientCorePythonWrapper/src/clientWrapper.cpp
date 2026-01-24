@@ -1,3 +1,5 @@
+#include <memory>
+
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
@@ -222,7 +224,8 @@ PYBIND11_MODULE(callsClientPy, m) {
         .export_values();
 
     // EventListener interface - methods with error_code now take int instead
-    py::class_<core::EventListener, PyEventListener>(m, "EventListener")
+    // Use std::shared_ptr as holder: Client::start expects std::shared_ptr<EventListener>
+    py::class_<core::EventListener, PyEventListener, std::shared_ptr<core::EventListener>>(m, "EventListener")
         .def(py::init<>())
         .def("onAuthorizationResult", [](core::EventListener& self, int ec_value) {
             self.onAuthorizationResult(std::error_code(ec_value, core::error_category()));

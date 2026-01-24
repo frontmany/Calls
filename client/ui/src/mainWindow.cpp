@@ -40,7 +40,8 @@ const QEvent::Type StartupEvent::StartupEventType = static_cast<QEvent::Type>(QE
 void MainWindow::init() {
     setWindowIcon(QIcon(":/resources/callifornia.ico"));
 
-    m_configManager = new ConfigManager(getConfigFilePath());
+    m_configManager = new ConfigManager(getConfigFilePath()); 
+
     m_configManager->loadConfig();
 
     replaceUpdateApplier();
@@ -88,6 +89,13 @@ void MainWindow::customEvent(QEvent* event) {
     }
 
     if (event->type() == StartupEvent::StartupEventType) {
+
+        LOG_INFO("Config: {}", m_configManager->getConfigPath().toStdString());
+
+        LOG_INFO("Connecting: Core {}:{}, Updater {}:{} (for local server use 127.0.0.1 or localhost in config)",
+            m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(),
+            m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
+
         m_updaterClient->init(std::make_shared<UpdaterEventListener>(m_updateManager, m_updaterNetworkErrorHandler),
             m_configManager->getAppDirectoryPath().toStdString(),
             m_configManager->getTemporaryUpdateDirectoryPath().toStdString(),
@@ -96,11 +104,16 @@ void MainWindow::customEvent(QEvent* event) {
             m_configManager->getIgnoredDirectoriesWhileCollectingForUpdate()
         );
 
-        m_coreClient->start(m_configManager->getServerHost().toStdString(),
+        const bool coreStarted = m_coreClient->start(m_configManager->getServerHost().toStdString(),
             m_configManager->getPort().toStdString(),
             std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_screenSharingManager, m_cameraSharingManager, m_coreNetworkErrorHandler)
         );
-           
+        
+        if (!coreStarted) {
+            LOG_ERROR("Core client failed to start (check server {}:{}, network, and core.log)",
+                m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString());
+        }
+
         m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(),
             m_configManager->getPort().toStdString()
         );
@@ -595,33 +608,29 @@ QString MainWindow::getConfigFilePath() const
 {
     updater::OperationSystemType operationSystemType = resolveOperationSystemType();
     QString applicationDirPath = QCoreApplication::applicationDirPath();
-    
+    QString configNextToApp = QDir(applicationDirPath).filePath("config.json");
+
     QStringList configPaths;
-    
+    configPaths << configNextToApp;  // First priority: next to the application
+
     if (operationSystemType == updater::OperationSystemType::WINDOWS) {
         configPaths << "C:/Users/Public/Callifornia/config.json"
-                    << "C:/Callifornia/config.json"
-                    << QDir(applicationDirPath).filePath("config.json");
+                    << "C:/Callifornia/config.json";
     }
     else if (operationSystemType == updater::OperationSystemType::LINUX) {
         configPaths << "/opt/Callifornia/config.json"
-                    << QDir::homePath() + "/.config/Callifornia/config.json"
-                    << QDir(applicationDirPath).filePath("config.json");
+                    << QDir::homePath() + "/.config/Callifornia/config.json";
     }
     else if (operationSystemType == updater::OperationSystemType::MAC) {
         configPaths << "/Applications/Callifornia/config.json"
-                    << QDir::homePath() + "/Library/Application Support/Callifornia/config.json"
-                    << QDir(applicationDirPath).filePath("config.json");
+                    << QDir::homePath() + "/Library/Application Support/Callifornia/config.json";
     }
-    else {
-        configPaths << QDir(applicationDirPath).filePath("config.json");
-    }
-    
+
     for (const QString& path : configPaths) {
         if (QFile::exists(path)) {
             return path;
         }
     }
-    
-    return QDir(applicationDirPath).filePath("config.json");
+
+    return configNextToApp;
 }
