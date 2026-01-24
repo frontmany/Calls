@@ -4,6 +4,7 @@
 #include "notifications/notification.h"
 #include "notifications/notificationStyleType.h"
 
+#include <QEvent>
 #include <QTimer>
 #include <functional>
 
@@ -16,10 +17,19 @@ NotificationController::NotificationController(QWidget* parent)
     , m_autoHideTimer(nullptr)
 {
     m_currentState.type = NotificationType::ConnectionDown;
+    if (m_parent)
+    {
+        m_parent->installEventFilter(this);
+    }
 }
 
 NotificationController::~NotificationController()
 {
+    if (m_parent)
+    {
+        m_parent->removeEventFilter(this);
+    }
+
     if (m_autoHideTimer)
     {
         m_autoHideTimer->stop();
@@ -433,4 +443,16 @@ void NotificationController::positionNotification()
 
     m_notification->move(x, y);
     m_notification->raise();
+}
+
+bool NotificationController::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_parent && event->type() == QEvent::Resize)
+    {
+        if (m_isShowing && !m_currentState.isOverlay && m_notification)
+        {
+            positionNotification();
+        }
+    }
+    return false;
 }

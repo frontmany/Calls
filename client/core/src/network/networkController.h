@@ -36,6 +36,7 @@ namespace core
         bool send(uint32_t type);
         void setConnectionError();
         void notifyConnectionRestored();
+        void notifyConnectionDown();
 
     private:
         void sendPing();

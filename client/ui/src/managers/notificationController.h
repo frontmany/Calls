@@ -84,6 +84,8 @@ private:
     void updateNotificationContent(const NotificationState& state);
     void positionNotification();
 
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
     QWidget* m_parent;
     QList<NotificationState> m_notificationStack;

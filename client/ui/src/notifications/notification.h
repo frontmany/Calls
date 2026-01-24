@@ -27,6 +27,7 @@ public:
 
 private:
     void applyStyle();
+    void updateMinimumSize();
 
     QWidget* m_mainWidget = nullptr;
     QLabel* m_statusLabel = nullptr;

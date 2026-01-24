@@ -2562,3 +2562,4 @@
 [2026-01-24 01:28:44.935] [info] [calls_client] [thread 2620] Incoming call ended due to connection down: E7D43 -> B6EA8
 [2026-01-24 01:28:44.935] [info] [calls_client] [thread 2620] Outgoing call ended due to connection down: E7D43 -> B6EA8
 [2026-01-24 01:28:44.936] [info] [calls_client] [thread 2620] Connection down with user E7D43
+[2026-01-24 15:04:27.714] [info] [calls_client] [thread 24012] Network controller initialized, server port: 8081

@@ -368,6 +368,11 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
 
     sendConfirmation("server", uid);
 
+    if (m_stateManager.isAuthorized() && crypto::calculateHash(m_stateManager.getMyNickname()) == userNicknameHash) {
+        m_networkController.notifyConnectionDown();
+        return;
+    }
+
     if (m_stateManager.isOutgoingCall()) {
         const auto& outgoingCall = m_stateManager.getOutgoingCall();
         if (crypto::calculateHash(outgoingCall.getNickname()) == userNicknameHash) {

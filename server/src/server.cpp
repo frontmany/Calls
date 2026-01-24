@@ -105,6 +105,16 @@ Server::Server(const std::string& port)
                             m_taskManager.startTask(uid);
                         }
                     }
+
+                    {
+                        auto [uidDown, connectionDownToSelf] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                        m_taskManager.createTask(uidDown, 1500ms, 5,
+                            std::bind(&Server::sendPacketTask, this, connectionDownToSelf, PacketType::CONNECTION_DOWN_WITH_USER, user->getEndpoint()),
+                            std::bind(&Server::onTaskCompleted, this, _1),
+                            std::bind(&Server::onTaskFailed, this, "Connection down notify self task failed", _1)
+                        );
+                        m_taskManager.startTask(uidDown);
+                    }
                 }
             }
             else {

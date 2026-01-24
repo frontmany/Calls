@@ -128,15 +128,10 @@ Notification::Notification(QWidget* parent,
     contentLayout->addWidget(m_statusLabel, 0, Qt::AlignCenter);
     contentLayout->addWidget(m_gifLabel, 0, Qt::AlignCenter);
 
-    QFontMetrics fontMetrics(font);
-    int textWidth = fontMetrics.horizontalAdvance(statusText);
-    int animationWidth = m_isWaitingAnimation ? (contentSpacing + 32) : 0;
-    int minDialogWidth = textWidth + horizontalMargin * 2 + animationWidth;
-    setMinimumWidth(minDialogWidth);
     setMinimumHeight(50 - scale(2));
     setMaximumHeight(60 - scale(2));
 
-    setAnimationEnabled(m_isWaitingAnimation);
+    setAnimationEnabled(m_isWaitingAnimation);  // вызывает updateMinimumSize
     applyStyle();
 }
 
@@ -158,6 +153,7 @@ void Notification::setStatusText(const QString& text)
     if (m_statusLabel)
     {
         m_statusLabel->setText(text);
+        updateMinimumSize();
     }
 }
 
@@ -190,4 +186,23 @@ void Notification::setAnimationEnabled(bool isAnimation)
     {
         m_gifLabel->setVisible(m_isWaitingAnimation);
     }
+
+    updateMinimumSize();
+}
+
+void Notification::updateMinimumSize()
+{
+    if (!m_statusLabel)
+    {
+        return;
+    }
+
+    QFont font("Outfit", scale(14));
+    QFontMetrics fontMetrics(font);
+    int textWidth = fontMetrics.horizontalAdvance(m_statusLabel->text());
+    int horizontalMargin = 20 - scale(2);
+    int contentSpacing = 8 + scale(2);
+    int animationWidth = m_isWaitingAnimation ? (contentSpacing + scale(32)) : 0;
+    int minDialogWidth = textWidth + horizontalMargin * 2 + animationWidth;
+    setMinimumWidth(minDialogWidth);
 }

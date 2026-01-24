@@ -265,5 +265,14 @@ namespace core {
         m_connectionDownNotified = false;
         m_packetReceiver.setConnectionDown(false);
     }
+
+    void NetworkController::notifyConnectionDown() {
+        if (!m_connectionDownNotified.exchange(true)) {
+            m_packetReceiver.setConnectionDown(true);
+            if (m_onConnectionDown) {
+                m_onConnectionDown();
+            }
+        }
+    }
     }
 }
