@@ -110,14 +110,14 @@ void PacketProcessor::onScreen(const unsigned char* data, int length) {
         return;
     }
 
-    std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
+    std::vector<unsigned char> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
     auto& callKey = m_stateManager.getActiveCall().getCallKey();
 
     try {
         crypto::AESDecrypt(callKey,
             data,
             length,
-            decrypted.data(),
+            reinterpret_cast<CryptoPP::byte*>(decrypted.data()),
             decrypted.size());
     }
     catch (const std::exception& e) {
@@ -125,9 +125,7 @@ void PacketProcessor::onScreen(const unsigned char* data, int length) {
         return;
     }
 
-    std::vector<unsigned char> screenData(decrypted.begin(), decrypted.end());
-
-    m_eventListener->onIncomingScreen(screenData);
+    m_eventListener->onIncomingScreen(decrypted);
 }
 
 void PacketProcessor::onCamera(const unsigned char* data, int length) {
@@ -138,14 +136,14 @@ void PacketProcessor::onCamera(const unsigned char* data, int length) {
         return;
     }
 
-    std::vector<CryptoPP::byte> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
+    std::vector<unsigned char> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
     auto& callKey = m_stateManager.getActiveCall().getCallKey();
 
     try {
         crypto::AESDecrypt(callKey,
             data,
             length,
-            decrypted.data(),
+            reinterpret_cast<CryptoPP::byte*>(decrypted.data()),
             decrypted.size());
     }
     catch (const std::exception& e) {
@@ -153,9 +151,7 @@ void PacketProcessor::onCamera(const unsigned char* data, int length) {
         return;
     }
 
-    std::vector<unsigned char> cameraData(decrypted.begin(), decrypted.end());
-
-    m_eventListener->onIncomingCamera(cameraData);
+    m_eventListener->onIncomingCamera(decrypted);
 }
 
 void PacketProcessor::onConfirmation(const nlohmann::json& jsonObject) {

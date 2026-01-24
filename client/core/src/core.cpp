@@ -50,6 +50,10 @@ namespace core
     }
 
     Client::~Client() {
+        m_stopReconnectRetry = true;
+        if (m_reconnectRetryThread.joinable()) {
+            m_reconnectRetryThread.join();
+        }
         reset();
         m_networkController.stop();
     }
@@ -58,6 +62,7 @@ namespace core
         const std::string& port,
         std::shared_ptr<EventListener> eventListener)
     {
+        m_stopReconnectRetry = false;
         m_eventListener = std::move(eventListener);
         m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener);
 
@@ -84,6 +89,10 @@ namespace core
     }
 
     void Client::stop() {
+        m_stopReconnectRetry = true;
+        if (m_reconnectRetryThread.joinable()) {
+            m_reconnectRetryThread.join();
+        }
         reset();
         m_networkController.stop();
     }
@@ -139,9 +148,36 @@ namespace core
         }
 
         m_eventListener->onConnectionDown();
+
+        if (m_stateManager.isAuthorized()) {
+            if (m_reconnectRetryThread.joinable()) {
+                m_reconnectRetryThread.join();
+            }
+            m_stopReconnectRetry = false;
+            m_reconnectRetryThread = std::thread([this]() {
+                while (m_stateManager.isConnectionDown() && m_stateManager.isAuthorized() && !m_stopReconnectRetry.load()) {
+                    if (!m_reconnectInProgress.exchange(true)) {
+                        auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
+                        createAndStartTask(uid, packet, PacketType::RECONNECT,
+                            std::bind(&Client::onReconnectCompleted, this, _1),
+                            std::bind(&Client::onReconnectFailed, this, _1)
+                        );
+                    }
+                    for (int i = 0; i < 10 && !m_stopReconnectRetry.load(); ++i) {
+                        std::this_thread::sleep_for(1s);
+                    }
+                }
+            });
+        }
     }
 
     void Client::onConnectionRestored() {
+        if (!m_stateManager.isConnectionDown()) {
+            return;
+        }
+        if (m_reconnectInProgress.exchange(true)) {
+            return;
+        }
         LOG_INFO("Connection restored");
 
         if (m_stateManager.isAuthorized()) {
@@ -154,6 +190,7 @@ namespace core
         }
         else {
             m_stateManager.setConnectionDown(false);
+            m_reconnectInProgress = false;
             m_eventListener->onConnectionRestoredAuthorizationNeeded();
         }
     }
@@ -163,12 +200,14 @@ namespace core
     }
 
     void Client::onReconnectCompleted(std::optional<nlohmann::json> completionContext) {
+        m_reconnectInProgress = false;
         auto& context = completionContext.value();
 
         m_stateManager.setConnectionDown(false);
 
         bool reconnected = context[RESULT].get<bool>();
         if (reconnected) {
+            m_networkController.notifyConnectionRestored();
             bool activeCall = context[IS_ACTIVE_CALL].get<bool>();
 
             m_eventListener->onConnectionRestored();
@@ -189,12 +228,14 @@ namespace core
             }
         }
         else {
+            m_networkController.notifyConnectionRestored();
             reset();
             m_eventListener->onConnectionRestoredAuthorizationNeeded();
         }
     }
 
     void Client::onReconnectFailed(std::optional<nlohmann::json> failureContext) {
+        m_reconnectInProgress = false;
         LOG_ERROR("Reconnect task failed");
     }
 
@@ -822,12 +863,12 @@ namespace core
 
         try {
             size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
-            std::vector<CryptoPP::byte> cipherData(cipherDataLength);
+            std::vector<unsigned char> cipherData(cipherDataLength);
 
             crypto::AESEncrypt(callKey,
-                reinterpret_cast<const CryptoPP::byte*>(data.data()),
-                data.size(),
-                cipherData.data(),
+                data.data(),
+                static_cast<int>(data.size()),
+                reinterpret_cast<CryptoPP::byte*>(cipherData.data()),
                 cipherDataLength);
 
             m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::SCREEN));
@@ -887,12 +928,12 @@ namespace core
 
         try {
             size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
-            std::vector<CryptoPP::byte> cipherData(cipherDataLength);
+            std::vector<unsigned char> cipherData(cipherDataLength);
 
             crypto::AESEncrypt(callKey,
-                reinterpret_cast<const CryptoPP::byte*>(data.data()),
-                data.size(),
-                cipherData.data(),
+                data.data(),
+                static_cast<int>(data.size()),
+                reinterpret_cast<CryptoPP::byte*>(cipherData.data()),
                 cipherDataLength);
 
             m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::CAMERA));
@@ -910,9 +951,9 @@ namespace core
         const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
 
         size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
-        std::vector<CryptoPP::byte> cipherData(cipherDataLength);
-        crypto::AESEncrypt(callKey, data, length, cipherData.data(), cipherDataLength);
-        
+        std::vector<unsigned char> cipherData(cipherDataLength);
+        crypto::AESEncrypt(callKey, data, length, reinterpret_cast<CryptoPP::byte*>(cipherData.data()), cipherDataLength);
+
         m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
     }
 }

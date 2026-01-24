@@ -85,6 +85,7 @@ namespace server
             m_pendingPackets.clear();
         }
 
+        m_assemblyQueue.clear();
         m_receivedPacketsQueue.clear();
 
         if (m_processingThread.joinable()) {
@@ -168,11 +169,11 @@ namespace server
         }
 
         if (payloadLength == 0) {
-            ReceivedPacket receivedPacket;
-            receivedPacket.data.clear();
-            receivedPacket.type = packetType;
-            receivedPacket.endpoint = m_remoteEndpoint;
-            m_receivedPacketsQueue.push(std::move(receivedPacket));
+            AssemblyJob job;
+            job.chunks.clear();
+            job.type = packetType;
+            job.endpoint = m_remoteEndpoint;
+            m_assemblyQueue.push(std::move(job));
             return;
         }
 
@@ -183,7 +184,7 @@ namespace server
             return;
         }
 
-        std::vector<unsigned char> assembledData;
+        std::vector<std::vector<unsigned char>> chunksToAssemble;
         bool packetComplete = false;
         uint32_t completedType = 0;
 
@@ -238,17 +239,7 @@ namespace server
             if (pendingPacket.receivedChunks == pendingPacket.totalChunks) {
                 packetComplete = true;
                 completedType = pendingPacket.type;
-
-                std::size_t totalSize = 0;
-                for (const auto& chunk : pendingPacket.chunks) {
-                    totalSize += chunk.size();
-                }
-
-                assembledData.reserve(totalSize);
-                for (const auto& chunk : pendingPacket.chunks) {
-                    assembledData.insert(assembledData.end(), chunk.begin(), chunk.end());
-                }
-
+                chunksToAssemble = std::move(pendingPacket.chunks);
                 pendingPackets.erase(packetIt);
                 if (pendingPackets.empty()) {
                     m_pendingPackets.erase(endpointKey);
@@ -260,11 +251,11 @@ namespace server
             return;
         }
 
-        ReceivedPacket receivedPacket;
-        receivedPacket.data = std::move(assembledData);
-        receivedPacket.type = completedType;
-        receivedPacket.endpoint = m_remoteEndpoint;
-        m_receivedPacketsQueue.push(std::move(receivedPacket));
+        AssemblyJob job;
+        job.chunks = std::move(chunksToAssemble);
+        job.type = completedType;
+        job.endpoint = m_remoteEndpoint;
+        m_assemblyQueue.push(std::move(job));
     }
 
     void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
@@ -336,7 +327,25 @@ namespace server
     {
         const auto timeout = std::chrono::milliseconds(100);
 
+        constexpr int maxAssemblyBatch = 64;
         while (m_running.load()) {
+            for (int i = 0; i < maxAssemblyBatch; ++i) {
+                auto jobOpt = m_assemblyQueue.try_pop();
+                if (!jobOpt.has_value()) break;
+                try {
+                    ReceivedPacket packet;
+                    packet.type = jobOpt->type;
+                    packet.endpoint = jobOpt->endpoint;
+                    for (const auto& chunk : jobOpt->chunks) {
+                        packet.data.insert(packet.data.end(), chunk.begin(), chunk.end());
+                    }
+                    m_receivedPacketsQueue.push(std::move(packet));
+                }
+                catch (const std::exception& e) {
+                    LOG_ERROR("Assembly failed: {}", e.what());
+                }
+            }
+
             auto packetOpt = m_receivedPacketsQueue.pop_for(timeout);
             if (!packetOpt.has_value()) {
                 continue;
@@ -346,12 +355,17 @@ namespace server
                 continue;
             }
 
-            const auto& packet = packetOpt.value();
-            if (packet.data.empty()) {
-                m_onPacketReceived(nullptr, 0, packet.type, packet.endpoint);
+            try {
+                const auto& packet = packetOpt.value();
+                if (packet.data.empty()) {
+                    m_onPacketReceived(nullptr, 0, packet.type, packet.endpoint);
+                }
+                else {
+                    m_onPacketReceived(packet.data.data(), static_cast<int>(packet.data.size()), packet.type, packet.endpoint);
+                }
             }
-            else {
-                m_onPacketReceived(packet.data.data(), static_cast<int>(packet.data.size()), packet.type, packet.endpoint);
+            catch (const std::exception& e) {
+                LOG_ERROR("Packet handler error: {}", e.what());
             }
         }
     }

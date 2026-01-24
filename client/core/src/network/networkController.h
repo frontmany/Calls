@@ -35,6 +35,7 @@ namespace core
         bool send(std::vector<unsigned char>&& data, uint32_t type);
         bool send(uint32_t type);
         void setConnectionError();
+        void notifyConnectionRestored();
 
     private:
         void sendPing();

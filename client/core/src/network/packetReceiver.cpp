@@ -85,6 +85,7 @@ namespace core
         }
 
         m_receivedPacketsQueue.clear();
+        m_assemblyQueue.clear();
 
         if (m_processingThread.joinable()) {
             m_processingThread.join();
@@ -175,9 +176,8 @@ namespace core
             return;
         }
 
-        std::vector<unsigned char> assembledData;
         bool packetComplete = false;
-        uint32_t completedType = 0;
+        AssemblyJob jobToPush;
 
         {
             std::unique_lock<std::mutex> lock(m_stateMutex);
@@ -228,30 +228,15 @@ namespace core
 
             if (packet.receivedChunks == packet.totalChunks) {
                 packetComplete = true;
-                completedType = packet.type;
-
-                std::size_t totalSize = 0;
-                for (const auto& chunk : packet.chunks) {
-                    totalSize += chunk.size();
-                }
-
-                assembledData.reserve(totalSize);
-                for (const auto& chunk : packet.chunks) {
-                    assembledData.insert(assembledData.end(), chunk.begin(), chunk.end());
-                }
-
+                jobToPush.chunks = std::move(packet.chunks);
+                jobToPush.type = packet.type;
                 m_pendingPackets.erase(packetIt);
             }
         }
 
-        if (!packetComplete) {
-            return;
+        if (packetComplete) {
+            m_assemblyQueue.push(std::move(jobToPush));
         }
-
-        ReceivedPacket receivedPacket;
-        receivedPacket.data = std::move(assembledData);
-        receivedPacket.type = completedType;
-        m_receivedPacketsQueue.push(std::move(receivedPacket));
     }
 
     void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
@@ -322,8 +307,30 @@ namespace core
     void PacketReceiver::processReceivedPackets()
     {
         const auto timeout = std::chrono::milliseconds(100);
+        constexpr int maxAssemblyBatch = 64;
 
         while (m_running.load()) {
+            for (int i = 0; i < maxAssemblyBatch; ++i) {
+                auto jobOpt = m_assemblyQueue.try_pop();
+                if (!jobOpt.has_value()) break;
+                try {
+                    ReceivedPacket packet;
+                    packet.type = jobOpt->type;
+                    std::size_t totalSize = 0;
+                    for (const auto& chunk : jobOpt->chunks) {
+                        totalSize += chunk.size();
+                    }
+                    packet.data.reserve(totalSize);
+                    for (const auto& chunk : jobOpt->chunks) {
+                        packet.data.insert(packet.data.end(), chunk.begin(), chunk.end());
+                    }
+                    m_receivedPacketsQueue.push(std::move(packet));
+                }
+                catch (const std::exception& e) {
+                    LOG_ERROR("Assembly failed: {}", e.what());
+                }
+            }
+
             auto packetOpt = m_receivedPacketsQueue.pop_for(timeout);
             if (!packetOpt.has_value()) {
                 continue;

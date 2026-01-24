@@ -2,6 +2,7 @@
 #include "utilities/logger.h"
 
 #include <algorithm>
+#include <optional>
 
 namespace server
 {
@@ -75,6 +76,24 @@ namespace server
         }
     }
 
+    namespace
+    {
+        std::optional<asio::ip::udp::endpoint> parseEndpointFromKey(const std::string& endpointKey) {
+            size_t colonPos = endpointKey.find(':');
+            if (colonPos == std::string::npos) return std::nullopt;
+            try {
+                std::string addressStr = endpointKey.substr(0, colonPos);
+                std::string portStr = endpointKey.substr(colonPos + 1);
+                asio::ip::address address = asio::ip::address::from_string(addressStr);
+                unsigned short port = static_cast<unsigned short>(std::stoi(portStr));
+                return asio::ip::udp::endpoint(address, port);
+            }
+            catch (const std::exception&) {
+                return std::nullopt;
+            }
+        }
+    }
+
     void PingController::pingLoop() {
         using namespace std::chrono_literals;
 
@@ -97,39 +116,24 @@ namespace server
                 lastPing = now;
             }
             else if (timeSinceLastPing >= pingGap) {
+                std::vector<std::string> keysToPing;
                 {
                     std::lock_guard<std::mutex> lock(m_endpointsMutex);
+                    keysToPing.reserve(m_endpointsToPing.size());
                     for (const auto& endpointKey : m_endpointsToPing) {
                         auto it = m_pingStates.find(endpointKey);
                         if (it != m_pingStates.end()) {
                             it->second.pingResult = false;
                         }
-                    }
-                }
-
-                std::vector<asio::ip::udp::endpoint> endpointsToPing;
-                {
-                    std::lock_guard<std::mutex> lock(m_endpointsMutex);
-                    for (const auto& endpointKey : m_endpointsToPing) {
-                        size_t colonPos = endpointKey.find(':');
-                        if (colonPos != std::string::npos) {
-                            std::string addressStr = endpointKey.substr(0, colonPos);
-                            std::string portStr = endpointKey.substr(colonPos + 1);
-                            try {
-                                asio::ip::address address = asio::ip::address::from_string(addressStr);
-                                unsigned short port = static_cast<unsigned short>(std::stoi(portStr));
-                                endpointsToPing.push_back(asio::ip::udp::endpoint(address, port));
-                            }
-                            catch (const std::exception& e) {
-                                continue;
-                            }
-                        }
+                        keysToPing.push_back(endpointKey);
                     }
                 }
 
                 if (m_sendPing) {
-                    for (const auto& endpoint : endpointsToPing) {
-                        m_sendPing(endpoint);
+                    for (const auto& key : keysToPing) {
+                        if (auto ep = parseEndpointFromKey(key)) {
+                            m_sendPing(*ep);
+                        }
                     }
                 }
                 lastPing = now;
@@ -142,66 +146,49 @@ namespace server
     void PingController::checkPing() {
         const int MAX_CONSECUTIVE_FAILURES = 2;
 
-        std::unique_lock<std::mutex> lock(m_endpointsMutex);
+        std::vector<std::string> keysToNotifyDown;
+        std::vector<std::string> keysToNotifyRestored;
 
-        std::vector<std::pair<std::string, asio::ip::udp::endpoint>> endpointsToNotifyDown;
-        std::vector<std::pair<std::string, asio::ip::udp::endpoint>> endpointsToNotifyRestored;
+        {
+            std::unique_lock<std::mutex> lock(m_endpointsMutex);
 
-        for (auto& [endpointKey, pingState] : m_pingStates) {
-            if (m_endpointsToPing.find(endpointKey) == m_endpointsToPing.end()) {
-                continue;
-            }
-
-            size_t colonPos = endpointKey.find(':');
-            if (colonPos == std::string::npos) {
-                continue;
-            }
-
-            std::string addressStr = endpointKey.substr(0, colonPos);
-            std::string portStr = endpointKey.substr(colonPos + 1);
-            asio::ip::udp::endpoint endpoint;
-            try {
-                asio::ip::address address = asio::ip::address::from_string(addressStr);
-                unsigned short port = static_cast<unsigned short>(std::stoi(portStr));
-                endpoint = asio::ip::udp::endpoint(address, port);
-            }
-            catch (const std::exception& e) {
-                continue;
-            }
-
-            if (pingState.pingResult.load()) {
-                pingState.consecutiveFailures = 0;
-
-                if (pingState.connectionError.load()) {
-                    endpointsToNotifyRestored.push_back({ endpointKey, endpoint });
-                    pingState.connectionError = false;
+            for (auto& [endpointKey, pingState] : m_pingStates) {
+                if (m_endpointsToPing.find(endpointKey) == m_endpointsToPing.end()) {
+                    continue;
                 }
 
-                pingState.pingResult = false;
-            }
-            else {
-                int failures = pingState.consecutiveFailures.fetch_add(1) + 1;
+                if (pingState.pingResult.load()) {
+                    pingState.consecutiveFailures = 0;
 
-                if (failures >= MAX_CONSECUTIVE_FAILURES) {
-                    if (!pingState.connectionError.load()) {
-                        endpointsToNotifyDown.push_back({ endpointKey, endpoint });
+                    if (pingState.connectionError.load()) {
+                        keysToNotifyRestored.push_back(endpointKey);
+                        pingState.connectionError = false;
                     }
-                    pingState.connectionError = true;
+
+                    pingState.pingResult = false;
+                }
+                else {
+                    int failures = pingState.consecutiveFailures.fetch_add(1) + 1;
+
+                    if (failures >= MAX_CONSECUTIVE_FAILURES) {
+                        if (!pingState.connectionError.load()) {
+                            keysToNotifyDown.push_back(endpointKey);
+                        }
+                        pingState.connectionError = true;
+                    }
                 }
             }
         }
 
-        lock.unlock();
-
-        for (const auto& [endpointKey, endpoint] : endpointsToNotifyDown) {
-            if (m_onConnectionDown) {
-                m_onConnectionDown(endpoint);
+        for (const auto& key : keysToNotifyDown) {
+            if (auto ep = parseEndpointFromKey(key); ep && m_onConnectionDown) {
+                m_onConnectionDown(*ep);
             }
         }
 
-        for (const auto& [endpointKey, endpoint] : endpointsToNotifyRestored) {
-            if (m_onConnectionRestored) {
-                m_onConnectionRestored(endpoint);
+        for (const auto& key : keysToNotifyRestored) {
+            if (auto ep = parseEndpointFromKey(key); ep && m_onConnectionRestored) {
+                m_onConnectionRestored(*ep);
             }
         }
     }

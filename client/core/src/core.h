@@ -155,5 +155,9 @@ namespace core
         std::shared_ptr<EventListener> m_eventListener;
         std::unique_ptr<PacketProcessor> m_packetProcessor;
         UserOperationManager m_operationManager;
+
+        std::atomic<bool> m_reconnectInProgress{false};
+        std::thread m_reconnectRetryThread;
+        std::atomic<bool> m_stopReconnectRetry{false};
     };
 }

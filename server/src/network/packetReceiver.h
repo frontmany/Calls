@@ -35,6 +35,12 @@ namespace server
             asio::ip::udp::endpoint endpoint;
         };
 
+        struct AssemblyJob {
+            std::vector<std::vector<unsigned char>> chunks;
+            uint32_t type = 0;
+            asio::ip::udp::endpoint endpoint;
+        };
+
     public:
         PacketReceiver();
         ~PacketReceiver();
@@ -73,6 +79,7 @@ namespace server
         std::mutex m_stateMutex;
         EndpointPendingMap m_pendingPackets;
         server::utilities::SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
+        server::utilities::SafeQueue<AssemblyJob> m_assemblyQueue;
         std::thread m_processingThread;
         const std::size_t m_headerSize = 18;
         const std::size_t m_maxPendingPackets = 8;

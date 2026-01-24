@@ -260,5 +260,10 @@ namespace core {
             m_pingController->setConnectionError();
         }
     }
+
+    void NetworkController::notifyConnectionRestored() {
+        m_connectionDownNotified = false;
+        m_packetReceiver.setConnectionDown(false);
+    }
     }
 }
