@@ -133,6 +133,11 @@ namespace core
         m_stateManager.setConnectionDown(true);
         m_operationManager.clearAllOperations();
 
+        m_stateManager.setScreenSharing(false);
+        m_stateManager.setCameraSharing(false);
+        m_stateManager.setViewingRemoteScreen(false);
+        m_stateManager.setViewingRemoteCamera(false);
+
         if (m_stateManager.isOutgoingCall()) {
             m_stateManager.clearCallState();
             m_eventListener->onOutgoingCallTimeout(ErrorCode::network_error);
@@ -146,6 +151,10 @@ namespace core
             }
 
             m_stateManager.clearIncomingCalls();
+        }
+
+        if (m_stateManager.isActiveCall()) {
+            m_audioEngine.stopStream();
         }
 
         m_eventListener->onConnectionDown();

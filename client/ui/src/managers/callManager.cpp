@@ -493,11 +493,14 @@ void CallManager::onCallParticipantConnectionDown()
     }
 
     if (m_callWidget) {
+        if (m_callWidget->isFullScreen()) {
+            m_callWidget->exitFullscreen();
+        }
+        m_callWidget->hideEnterFullscreenButton();
         m_callWidget->setCameraButtonRestricted(true);
         m_callWidget->setScreenShareButtonRestricted(true);
         m_callWidget->hideMainScreen();
         m_callWidget->hideAdditionalScreens();
-        m_callWidget->hideEnterFullscreenButton();
     }
 
     if (m_notificationController)
@@ -532,6 +535,10 @@ void CallManager::onLocalConnectionDownInCall()
 {
     if (!m_callWidget) return;
 
+    if (m_callWidget->isFullScreen()) {
+        m_callWidget->exitFullscreen();
+    }
+    m_callWidget->hideEnterFullscreenButton();
     m_callWidget->setCameraButtonActive(false);
     m_callWidget->setScreenShareButtonActive(false);
     m_callWidget->hideMainScreen();

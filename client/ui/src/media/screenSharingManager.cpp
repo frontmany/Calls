@@ -328,3 +328,8 @@ void ScreenSharingManager::hideOperationDialog()
 {
     stopAllOperationTimers();
 }
+
+void ScreenSharingManager::requestFullscreenExit()
+{
+    emit fullscreenExitRequested();
+}

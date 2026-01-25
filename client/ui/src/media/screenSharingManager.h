@@ -28,6 +28,7 @@ public:
 
     void stopLocalScreenCapture();
     void hideOperationDialog();
+    void requestFullscreenExit();
 
 public slots:
     void onScreenShareButtonClicked(bool toggled);

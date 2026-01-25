@@ -69,6 +69,7 @@ void CoreNetworkErrorHandler::onConnectionDown()
         if (m_coreClient && m_coreClient->isActiveCall()) {
             if (m_screenSharingManager) {
                 m_screenSharingManager->stopLocalScreenCapture();
+                m_screenSharingManager->requestFullscreenExit();
             }
 
             if (m_cameraSharingManager) {
