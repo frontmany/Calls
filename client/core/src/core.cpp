@@ -127,6 +127,7 @@ namespace core
         onReceive(data, length, static_cast<PacketType>(type));
     }
 
+
     void Client::onConnectionDown() {
         LOG_ERROR("Connection down");
         m_stateManager.setConnectionDown(true);
