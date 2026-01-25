@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -31,6 +32,8 @@ namespace core
         void setAuthorized(bool value);
         void setConnectionDown(bool value);
         void setCallParticipantConnectionDown(bool value);
+        void setLastReconnectSuccessTime();
+        bool isInReconnectGracePeriod() const;
         void setScreenSharing(bool value);
         void setCameraSharing(bool value);
         void setViewingRemoteScreen(bool value);
@@ -96,5 +99,6 @@ namespace core
         std::string m_myNickname;
         std::string m_myToken;
         std::unordered_map<std::string, IncomingCall> m_incomingCalls;
+        std::chrono::steady_clock::time_point m_lastReconnectSuccessTime{};
     };
 }

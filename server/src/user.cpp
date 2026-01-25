@@ -18,6 +18,12 @@ bool User::isConnectionDown()
 	return m_connectionDown;
 }
 
+void User::setEndpoint(asio::ip::udp::endpoint endpoint)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_endpoint = endpoint;
+}
+
 void User::setConnectionDown(bool value)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);

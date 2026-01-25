@@ -44,6 +44,7 @@ public:
 	std::vector<PendingCallPtr> getIncomingPendingCalls() const;
 
 	void setConnectionDown(bool value);
+	void setEndpoint(asio::ip::udp::endpoint endpoint);
 	void setCall(CallPtr call);
 	void setOutgoingPendingCall(PendingCallPtr pendingCall);
 	void addIncomingPendingCall(PendingCallPtr pendingCall);

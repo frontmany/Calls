@@ -219,6 +219,7 @@ namespace core
         bool reconnected = context[RESULT].get<bool>();
         if (reconnected) {
             LOG_INFO("Connection restored successfully");
+            m_stateManager.setLastReconnectSuccessTime();
 
             bool activeCall = context.contains(IS_ACTIVE_CALL) ? context[IS_ACTIVE_CALL].get<bool>() : false;
 

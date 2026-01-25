@@ -376,6 +376,9 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
     sendConfirmation("server", uid);
 
     if (m_stateManager.isAuthorized() && crypto::calculateHash(m_stateManager.getMyNickname()) == userNicknameHash) {
+        if (m_stateManager.isInReconnectGracePeriod()) {
+            return;
+        }
         m_networkController.notifyConnectionDown();
         return;
     }

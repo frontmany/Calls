@@ -76,6 +76,22 @@ void ClientStateManager::setCallParticipantConnectionDown(bool value)
     m_callStateManager.setCallParticipantConnectionDown(value);
 }
 
+void ClientStateManager::setLastReconnectSuccessTime()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_lastReconnectSuccessTime = std::chrono::steady_clock::now();
+}
+
+bool ClientStateManager::isInReconnectGracePeriod() const
+{
+    using namespace std::chrono_literals;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_lastReconnectSuccessTime == std::chrono::steady_clock::time_point{}) {
+        return false;
+    }
+    return (std::chrono::steady_clock::now() - m_lastReconnectSuccessTime) < 3s;
+}
+
 void ClientStateManager::setScreenSharing(bool value)
 {
     m_screenSharing.store(value);

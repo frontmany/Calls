@@ -340,6 +340,16 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
             reconnectionAllowed = true;
         }
 
+        if (reconnectionAllowed) {
+            asio::ip::udp::endpoint oldEndpoint = user->getEndpoint();
+            if (oldEndpoint != endpointFrom) {
+                m_endpointToUser.erase(oldEndpoint);
+                m_networkController.removePingMonitoring(oldEndpoint);
+                user->setEndpoint(endpointFrom);
+                m_endpointToUser.emplace(endpointFrom, user);
+            }
+        }
+
         std::vector<unsigned char> packet;
         if (reconnectionAllowed)
             packet = PacketFactory::getReconnectionResultPacket(true, uid, senderNicknameHash, token, user->isInCall());
