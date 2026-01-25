@@ -364,6 +364,17 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
         if (user->getToken() == token) {
             user->setConnectionDown(false);
             reconnectionAllowed = true;
+
+            // После WiFi off/on endpoint клиента часто меняется. Обновляем endpoint и
+            // m_endpointToUser, иначе CONNECTION_RESTORED_WITH_USER и пинги уходят на старый адрес.
+            asio::ip::udp::endpoint oldEndpoint = user->getEndpoint();
+            if (oldEndpoint != endpointFrom) {
+                m_networkController.removePingMonitoring(oldEndpoint);
+                user->setEndpoint(endpointFrom);
+                m_endpointToUser.erase(oldEndpoint);
+                m_endpointToUser.emplace(endpointFrom, user);
+                m_networkController.addEndpointForPing(endpointFrom);
+            }
         }
 
         if (reconnectionAllowed) {
@@ -383,7 +394,20 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
             packet = PacketFactory::getReconnectionResultPacket(false, uid, senderNicknameHash, token);
             
         m_networkController.send(packet, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), endpointFrom);
-        
+
+        // Сразу шлём CONNECTION_RESTORED_WITH_USER на endpointFrom (мы только что получили RECONNECT
+        // оттуда). Не полагаемся только на pong: при WiFi off/on pong может прийти с другого
+        // endpoint или после лишних ретраев. Дубликат уйдёт ещё из connection restored (pong) — ок.
+        if (reconnectionAllowed) {
+            auto [uidRestored, packetRestored] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
+            m_taskManager.createTask(uidRestored, 1500ms, 5,
+                std::bind(&Server::sendPacketTask, this, packetRestored, PacketType::CONNECTION_RESTORED_WITH_USER, endpointFrom),
+                std::bind(&Server::onTaskCompleted, this, _1),
+                std::bind(&Server::onTaskFailed, this, "Connection restored notify self task failed", _1)
+            );
+            m_taskManager.startTask(uidRestored);
+        }
+
         if (reconnectionAllowed && user->isInCall()) {
             auto partner = user->getCallPartner();
 

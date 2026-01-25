@@ -40,6 +40,12 @@ void User::setConnectionDown(bool value)
 	}
 }
 
+void User::setEndpoint(asio::ip::udp::endpoint endpoint)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_endpoint = endpoint;
+}
+
 const CryptoPP::RSA::PublicKey& User::getPublicKey() const
 {
 	return m_publicKey;
