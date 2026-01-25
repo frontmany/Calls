@@ -52,6 +52,12 @@ namespace core
         }
     }
 
+    void PingController::resetAfterReconnect() {
+        m_consecutiveFailures = 0;
+        m_pingResult = true;
+        m_connectionError = false;
+    }
+
     void PingController::pingLoop() {
         using namespace std::chrono_literals;
 

@@ -20,6 +20,9 @@ namespace core
         void stop();
         void handlePingSuccess();
         void setConnectionError();
+        /** Reset failure state after successful reconnect. Prevents immediate "connection down by ping"
+            when RECONNECT_RESULT arrives during a period where pings may have been delayed. */
+        void resetAfterReconnect();
 
     private:
         void pingLoop();

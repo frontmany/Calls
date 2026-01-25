@@ -179,7 +179,6 @@ namespace core
         if (m_reconnectInProgress.exchange(true)) {
             return;
         }
-        LOG_INFO("Connection restored");
 
         if (m_stateManager.isAuthorized()) {
             auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
@@ -209,17 +208,18 @@ namespace core
         auto& context = completionContext.value();
 
         m_stateManager.setConnectionDown(false);
+        m_networkController.notifyConnectionRestored();
 
         if (!context.contains(RESULT)) {
             LOG_ERROR("RECONNECT_RESULT missing result field, treating as failed");
-            m_networkController.notifyConnectionRestored();
             reset();
             m_eventListener->onConnectionRestoredAuthorizationNeeded();
             return;
         }
         bool reconnected = context[RESULT].get<bool>();
         if (reconnected) {
-            m_networkController.notifyConnectionRestored();
+            LOG_INFO("Connection restored successfully");
+
             bool activeCall = context.contains(IS_ACTIVE_CALL) ? context[IS_ACTIVE_CALL].get<bool>() : false;
 
             m_eventListener->onConnectionRestored();
@@ -240,7 +240,8 @@ namespace core
             }
         }
         else {
-            m_networkController.notifyConnectionRestored();
+            LOG_INFO("Connection restored but authorization needed again");
+
             reset();
             m_eventListener->onConnectionRestoredAuthorizationNeeded();
         }

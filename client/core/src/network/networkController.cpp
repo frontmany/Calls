@@ -264,6 +264,9 @@ namespace core {
     void NetworkController::notifyConnectionRestored() {
         m_connectionDownNotified = false;
         m_packetReceiver.setConnectionDown(false);
+        if (m_pingController) {
+            m_pingController->resetAfterReconnect();
+        }
     }
 
     void NetworkController::notifyConnectionDown() {
