@@ -68,7 +68,7 @@ void NotificationController::showConnectionRestored(int autoHideMs)
     state.type = NotificationType::ConnectionRestored;
     state.text = "Connection restored";
     state.isWaitingAnimation = false;
-    state.isOverlay = false;
+    state.isOverlay = true;
     state.notificationStyleType = NotificationStyleType::GREEN;
     state.key = std::nullopt;
 
@@ -107,7 +107,7 @@ void NotificationController::showConnectionRestoredWithUser(const QString& statu
     state.type = NotificationType::ConnectionRestoredWithUser;
     state.text = statusText;
     state.isWaitingAnimation = false;
-    state.isOverlay = false;
+    state.isOverlay = true;
     state.notificationStyleType = NotificationStyleType::GREEN;
     state.key = std::nullopt;
 
@@ -254,6 +254,7 @@ void NotificationController::showNotificationState(const NotificationState& stat
                 positionNotification();
             });
         }
+        m_overlay->setBlocking(state.type == NotificationType::ConnectionDown);
         if (!m_overlay->isVisible())
         {
             m_overlay->show();
@@ -342,6 +343,7 @@ void NotificationController::showLastNotification()
                 positionNotification();
             });
         }
+        m_overlay->setBlocking(state.type == NotificationType::ConnectionDown);
         if (!m_overlay->isVisible())
         {
             m_overlay->show();

@@ -9,6 +9,7 @@ class OverlayWidget : public QWidget {
 
 public:
     explicit OverlayWidget(QWidget* parent = nullptr);
+    void setBlocking(bool blocking);
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
@@ -17,6 +18,8 @@ protected:
 
 private:
     void updateGeometryToParent();
+
+    bool m_blocking = true;
 
 signals:
     void geometryChanged();

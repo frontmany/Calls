@@ -424,6 +424,17 @@ void PacketProcessor::onConnectionRestoredWithUser(const nlohmann::json& jsonObj
     sendConfirmation("server", uid);
 
     if (m_stateManager.isActiveCall()) {
+        // We received a packet from the server, so our connection is working. Clear connection-down
+        // state and stop the reconnect loop; otherwise the UI can show "Connection with participant
+        // restored" while "Reconnecting..." keeps spinning.
+        if (m_stateManager.isConnectionDown()) {
+            m_stateManager.setConnectionDown(false);
+            m_networkController.notifyConnectionRestored();
+            m_eventListener->onConnectionRestored();
+        }
+
+        // Reset sharing and viewing state as a safety measure (CONNECTION_DOWN_WITH_USER
+        // should have done this, but it may have been lost). Mirrors onConnectionDownWithUser.
         m_stateManager.setScreenSharing(false);
         m_stateManager.setCameraSharing(false);
         m_stateManager.setViewingRemoteScreen(false);

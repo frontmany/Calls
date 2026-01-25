@@ -15,6 +15,15 @@ OverlayWidget::OverlayWidget(QWidget* parent)
     }
 }
 
+void OverlayWidget::setBlocking(bool blocking)
+{
+    if (m_blocking == blocking)
+        return;
+    m_blocking = blocking;
+    setAttribute(Qt::WA_TransparentForMouseEvents, !blocking);
+    update();
+}
+
 bool OverlayWidget::eventFilter(QObject* obj, QEvent* event) {
     if (obj == parentWidget()) {
         if (event->type() == QEvent::Move ||
@@ -28,6 +37,8 @@ bool OverlayWidget::eventFilter(QObject* obj, QEvent* event) {
 }
 
 void OverlayWidget::paintEvent(QPaintEvent*) {
+    if (!m_blocking)
+        return;
     QPainter painter(this);
     painter.fillRect(rect(), COLOR_SHADOW_STRONG_160);
 }

@@ -80,16 +80,12 @@ namespace core {
             }
 
             std::function<void()> errorHandler = [this]() {
-                if (!m_connectionDownNotified.exchange(true)) {
-                    LOG_WARN("Connection down detected by packet receiver");
-                    m_packetReceiver.setConnectionDown(true);
-                    if (m_onConnectionDown) {
-                        m_onConnectionDown();
-                    }
-                }
                 if (m_pingController) {
                     m_pingController->setConnectionError();
                 }
+                // Do not call onConnectionDown here: a single send/receive error may be transient
+                // (weak network, load). Rely on PingController: after several consecutive missed
+                // pongs we declare down. If the socket is really broken, pings will fail too.
             };
 
             auto pingReceivedHandler = [this](uint32_t pingType) {
@@ -115,7 +111,7 @@ namespace core {
             std::function<void()> connectionDownWrapper = [this]() {
                 if (!m_connectionDownNotified.exchange(true)) {
                     LOG_WARN("Connection down detected by ping timeout");
-                    m_packetReceiver.setConnectionDown(true);
+                    m_packetReceiver.setConnectionDown(true); 
                     if (m_onConnectionDown) {
                         m_onConnectionDown();
                     }

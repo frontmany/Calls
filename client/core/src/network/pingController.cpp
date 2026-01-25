@@ -91,7 +91,9 @@ namespace core
     }
 
     void PingController::checkPing() {
-        const int MAX_CONSECUTIVE_FAILURES = 2;
+        // Need several consecutive failures before declaring "down" to avoid false triggers
+        // on weak networks, high load, or brief packet loss. 4 failed 1s-checks = 4s without pong.
+        const int MAX_CONSECUTIVE_FAILURES = 4;
 
         if (m_pingResult.load()) {
             m_consecutiveFailures = 0;
@@ -110,11 +112,9 @@ namespace core
             int failures = m_consecutiveFailures.fetch_add(1) + 1;
 
             if (failures >= MAX_CONSECUTIVE_FAILURES) {
-                if (!m_connectionError.load()) {
-                    LOG_WARN("Ping failure threshold reached ({}), marking connection down", MAX_CONSECUTIVE_FAILURES);
-                    if (m_onConnectionDown) {
-                        m_onConnectionDown();
-                    }
+                LOG_WARN("Ping failure threshold reached ({}), marking connection down", MAX_CONSECUTIVE_FAILURES);
+                if (m_onConnectionDown) {
+                    m_onConnectionDown();
                 }
                 m_connectionError = true;
             }

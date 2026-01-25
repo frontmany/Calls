@@ -144,7 +144,9 @@ namespace server
     }
 
     void PingController::checkPing() {
-        const int MAX_CONSECUTIVE_FAILURES = 2;
+        // Need several consecutive failures before declaring "down" to avoid false triggers
+        // on weak networks, high load, or brief packet loss. 4 failed 1s-checks = 4s without pong.
+        const int MAX_CONSECUTIVE_FAILURES = 4;
 
         std::vector<std::string> keysToNotifyDown;
         std::vector<std::string> keysToNotifyRestored;

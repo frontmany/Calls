@@ -1,6 +1,7 @@
 #include "packetReceiver.h"
 
 #include <chrono>
+#include <exception>
 #include <system_error>
 #include <string>
 
@@ -118,7 +119,15 @@ namespace core
 
                 if (ec) {
                     if (ec != asio::error::operation_aborted) {
-                        notifyError(ec);
+                        try {
+                            notifyError(ec);
+                        }
+                        catch (const std::exception& e) {
+                            LOG_ERROR("notifyError exception: {}", e.what());
+                        }
+                        catch (...) {
+                            LOG_ERROR("notifyError unknown exception");
+                        }
                     }
 
                     if (m_running.load()) {
@@ -128,7 +137,16 @@ namespace core
                     return;
                 }
 
-                processDatagram(bytesTransferred);
+                try {
+                    processDatagram(bytesTransferred);
+                }
+                catch (const std::exception& e) {
+                    LOG_ERROR("processDatagram error (receive chain continues): {}", e.what());
+                }
+                catch (...) {
+                    LOG_ERROR("processDatagram unknown error (receive chain continues)");
+                }
+
                 doReceive();
             });
     }

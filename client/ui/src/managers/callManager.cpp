@@ -520,6 +520,9 @@ void CallManager::onCallParticipantConnectionRestored()
     if (m_callWidget) {
         m_callWidget->setCameraButtonRestricted(false);
         m_callWidget->setScreenShareButtonRestricted(false);
+        m_callWidget->hideMainScreen();
+        m_callWidget->hideAdditionalScreens();
+        m_callWidget->hideEnterFullscreenButton();
     }
 
     if (m_notificationController)
@@ -543,6 +546,7 @@ void CallManager::onLocalConnectionDownInCall()
     m_callWidget->setScreenShareButtonActive(false);
     m_callWidget->hideMainScreen();
     m_callWidget->hideAdditionalScreens();
+    m_callWidget->hideEnterFullscreenButton();
 }
 
 void CallManager::startOperationTimer(core::UserOperationType operationKey, const QString& dialogText)
