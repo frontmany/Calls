@@ -73,6 +73,13 @@ namespace core {
                 return false;
             }
 
+            // Larger buffer to avoid dropping pongs under heavy voice/screen/camera load
+            const int recvBufSize = 1024 * 1024; // 1 MiB
+            m_socket.set_option(asio::socket_base::receive_buffer_size(recvBufSize), ec);
+            if (ec) {
+                LOG_WARN("Failed to set UDP receive buffer size: {} (using default)", ec.message());
+            }
+
             m_socket.connect(m_serverEndpoint, ec);
             if (ec) {
                 LOG_ERROR("Failed to connect UDP socket to server {}:{} - {}", host, port, ec.message());

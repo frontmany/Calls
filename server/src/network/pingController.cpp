@@ -144,7 +144,9 @@ namespace server
     }
 
     void PingController::checkPing() {
-        const int MAX_CONSECUTIVE_FAILURES = 2;
+        // 4 failed checks (~4 s without pong) to reduce false "connection down" when
+        // the server is briefly busy (voice/screen/camera) or recv buffer is congested
+        const int MAX_CONSECUTIVE_FAILURES = 4;
 
         std::vector<std::string> keysToNotifyDown;
         std::vector<std::string> keysToNotifyRestored;

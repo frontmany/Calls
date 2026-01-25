@@ -91,7 +91,9 @@ namespace core
     }
 
     void PingController::checkPing() {
-        const int MAX_CONSECUTIVE_FAILURES = 2;
+        // 4 failed checks (~4 s without pong) to reduce false "connection down" when
+        // the link is briefly busy (voice/screen/camera) or recv buffer is congested
+        const int MAX_CONSECUTIVE_FAILURES = 4;
 
         if (m_pingResult.load()) {
             m_consecutiveFailures = 0;

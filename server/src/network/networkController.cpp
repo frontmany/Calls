@@ -70,6 +70,13 @@ namespace server {
                 return false;
             }
 
+            // Larger buffer to avoid dropping pongs under heavy voice/screen/camera load
+            const int recvBufSize = 1024 * 1024; // 1 MiB
+            m_socket.set_option(asio::socket_base::receive_buffer_size(recvBufSize), ec);
+            if (ec) {
+                LOG_WARN("Failed to set UDP receive buffer size: {} (using default)", ec.message());
+            }
+
             std::function<void()> errorHandler = [this]() {
                 LOG_ERROR("Packet sender/receiver error on server - send or receive failed");
             };

@@ -17,6 +17,14 @@ namespace
     std::vector<unsigned char> toBytes(const std::string& value) {
         return std::vector<unsigned char>(value.begin(), value.end());
     }
+
+    struct DeferredSend {
+        std::string uid;
+        std::vector<unsigned char> packet;
+        PacketType type;
+        asio::ip::udp::endpoint endpoint;
+        std::string failMessage;
+    };
 } 
 
 Server::Server(const std::string& port)
@@ -24,11 +32,18 @@ Server::Server(const std::string& port)
     m_networkController.init(port,
         [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& endpointFrom) { onReceive(data, size, type, endpointFrom); },
         [this](const asio::ip::udp::endpoint& endpoint) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_endpointToUser.contains(endpoint)) {
-                auto& user = m_endpointToUser.at(endpoint);
-
-                if (user && !user->isConnectionDown()) {
+            try {
+                std::vector<DeferredSend> toSend;
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    if (!m_endpointToUser.contains(endpoint)) {
+                        m_networkController.removePingMonitoring(endpoint);
+                        return;
+                    }
+                    auto& user = m_endpointToUser.at(endpoint);
+                    if (!user || user->isConnectionDown()) {
+                        return;
+                    }
                     const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
                     LOG_INFO("Connection down with user {}", userPrefix);
                     user->setConnectionDown(true);
@@ -37,88 +52,55 @@ Server::Server(const std::string& port)
                     if (user->hasOutgoingPendingCall()) {
                         auto outgoingPendingCall = user->getOutgoingPendingCall();
                         auto receiver = outgoingPendingCall->getReceiver();
-                        
                         if (m_nicknameHashToUser.contains(receiver->getNicknameHash())) {
-                            std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
-                            std::string receiverPrefix = receiver->getNicknameHash().length() >= 5 ? receiver->getNicknameHash().substr(0, 5) : receiver->getNicknameHash();
-                            LOG_INFO("Outgoing call ended due to connection down: {} -> {}", userPrefix, receiverPrefix);
-                            LOG_INFO("Incoming call ended due to connection down: {} -> {}", receiverPrefix, userPrefix);
-
+                            std::string rPrefix = receiver->getNicknameHash().length() >= 5 ? receiver->getNicknameHash().substr(0, 5) : receiver->getNicknameHash();
+                            LOG_INFO("Outgoing call ended due to connection down: {} -> {}", userPrefix, rPrefix);
+                            LOG_INFO("Incoming call ended due to connection down: {} -> {}", rPrefix, userPrefix);
                             if (!receiver->isConnectionDown()) {
-                                auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                                
-                                m_taskManager.createTask(uid, 1500ms, 5,
-                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, receiver->getEndpoint()),
-                                    std::bind(&Server::onTaskCompleted, this, _1),
-                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
-                                );
-                                
-                                m_taskManager.startTask(uid);
+                                auto [uid, pkt] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                                toSend.push_back({uid, std::move(pkt), PacketType::CONNECTION_DOWN_WITH_USER, receiver->getEndpoint(), "Connection down with user task failed"});
                             }
-
                             removeIncomingPendingCall(receiver, outgoingPendingCall);
                         }
-
                         resetOutgoingPendingCall(user);
                     }
 
                     auto incomingCalls = user->getIncomingPendingCalls();
                     for (auto& pendingCall : incomingCalls) {
                         auto initiator = pendingCall->getInitiator();
-                        
                         if (m_nicknameHashToUser.contains(initiator->getNicknameHash())) {
-                            std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
-                            std::string initiatorPrefix = initiator->getNicknameHash().length() >= 5 ? initiator->getNicknameHash().substr(0, 5) : initiator->getNicknameHash();
-                            LOG_INFO("Incoming call ended due to connection down: {} -> {}", initiatorPrefix, userPrefix);
-                            LOG_INFO("Outgoing call ended due to connection down: {} -> {}", initiatorPrefix, userPrefix);
-
+                            std::string iPrefix = initiator->getNicknameHash().length() >= 5 ? initiator->getNicknameHash().substr(0, 5) : initiator->getNicknameHash();
+                            LOG_INFO("Incoming call ended due to connection down: {} -> {}", iPrefix, userPrefix);
+                            LOG_INFO("Outgoing call ended due to connection down: {} -> {}", iPrefix, userPrefix);
                             if (!initiator->isConnectionDown()) {
-                                auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                                
-                                m_taskManager.createTask(uid, 1500ms, 5,
-                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, initiator->getEndpoint()),
-                                    std::bind(&Server::onTaskCompleted, this, _1),
-                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
-                                );
-                                
-                                m_taskManager.startTask(uid);
+                                auto [uid, pkt] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                                toSend.push_back({uid, std::move(pkt), PacketType::CONNECTION_DOWN_WITH_USER, initiator->getEndpoint(), "Connection down with user task failed"});
                             }
-
                             resetOutgoingPendingCall(initiator);
+                            removeIncomingPendingCall(user, pendingCall);
                         }
-
-                        removeIncomingPendingCall(user, pendingCall);
                     }
 
                     if (user->isInCall()) {
                         auto callPartner = user->getCallPartner();
-                        
                         if (callPartner && m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
-                            auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                            
-                            m_taskManager.createTask(uid, 1500ms, 5,
-                                std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, callPartner->getEndpoint()),
-                                std::bind(&Server::onTaskCompleted, this, _1),
-                                std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
-                            );
-                            
-                            m_taskManager.startTask(uid);
+                            auto [uid, pkt] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                            toSend.push_back({uid, std::move(pkt), PacketType::CONNECTION_DOWN_WITH_USER, callPartner->getEndpoint(), "Connection down with user task failed"});
                         }
                     }
 
-                    {
-                        auto [uidDown, connectionDownToSelf] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                        m_taskManager.createTask(uidDown, 1500ms, 5,
-                            std::bind(&Server::sendPacketTask, this, connectionDownToSelf, PacketType::CONNECTION_DOWN_WITH_USER, user->getEndpoint()),
-                            std::bind(&Server::onTaskCompleted, this, _1),
-                            std::bind(&Server::onTaskFailed, this, "Connection down notify self task failed", _1)
-                        );
-                        m_taskManager.startTask(uidDown);
-                    }
+                    auto [uidDown, connectionDownToSelf] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                    toSend.push_back({uidDown, std::move(connectionDownToSelf), PacketType::CONNECTION_DOWN_WITH_USER, user->getEndpoint(), "Connection down notify self task failed"});
                 }
-            }
-            else {
-                m_networkController.removePingMonitoring(endpoint);
+                for (auto& s : toSend) {
+                    m_taskManager.createTask(s.uid, 1500ms, 5,
+                        std::bind(&Server::sendPacketTask, this, s.packet, s.type, s.endpoint),
+                        std::bind(&Server::onTaskCompleted, this, _1),
+                        std::bind(&Server::onTaskFailed, this, s.failMessage, _1));
+                    m_taskManager.startTask(s.uid);
+                }
+            } catch (const std::exception& e) {
+                LOG_ERROR("handleConnectionDown exception: {}", e.what());
             }
         },
         [this](const asio::ip::udp::endpoint& endpoint) {
