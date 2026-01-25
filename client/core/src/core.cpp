@@ -202,14 +202,25 @@ namespace core
 
     void Client::onReconnectCompleted(std::optional<nlohmann::json> completionContext) {
         m_reconnectInProgress = false;
+        if (!completionContext.has_value()) {
+            LOG_ERROR("onReconnectCompleted called with empty completionContext");
+            return;
+        }
         auto& context = completionContext.value();
 
         m_stateManager.setConnectionDown(false);
 
+        if (!context.contains(RESULT)) {
+            LOG_ERROR("RECONNECT_RESULT missing result field, treating as failed");
+            m_networkController.notifyConnectionRestored();
+            reset();
+            m_eventListener->onConnectionRestoredAuthorizationNeeded();
+            return;
+        }
         bool reconnected = context[RESULT].get<bool>();
         if (reconnected) {
             m_networkController.notifyConnectionRestored();
-            bool activeCall = context[IS_ACTIVE_CALL].get<bool>();
+            bool activeCall = context.contains(IS_ACTIVE_CALL) ? context[IS_ACTIVE_CALL].get<bool>() : false;
 
             m_eventListener->onConnectionRestored();
 

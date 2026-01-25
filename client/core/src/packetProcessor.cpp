@@ -173,10 +173,17 @@ void PacketProcessor::onAuthorizationResult(const nlohmann::json& jsonObject)
 
 void PacketProcessor::onReconnectResult(const nlohmann::json& jsonObject)
 {
-    const std::string& uid = jsonObject[UID];
+    if (!jsonObject.contains(UID)) {
+        LOG_WARN("RECONNECT_RESULT packet missing UID, ignoring");
+        return;
+    }
+    std::string uid = jsonObject[UID].get<std::string>();
 
     if (m_taskManager.hasTask(uid)) {
         m_taskManager.completeTask(uid, jsonObject);
+    }
+    else {
+        LOG_WARN("RECONNECT_RESULT for unknown task uid, task may have already timed out");
     }
 }
 

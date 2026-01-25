@@ -374,7 +374,6 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
 
                     m_taskManager.startTask(uid);
                 }
-                
             }
         }
     }
