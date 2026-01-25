@@ -94,6 +94,14 @@ namespace core {
                 }
                 else {
                     m_pingController->handlePingSuccess();
+                    // If we are in connection-down (from CONNECTION_DOWN_WITH_USER or an earlier
+                    // ping failure), a pong proves the link is back. Trigger onConnectionRestored
+                    // so the client sends RECONNECT and can exit; PingController alone may never
+                    // call it when we entered down only via CONNECTION_DOWN_WITH_USER (no
+                    // m_connectionError/hadFailures there).
+                    if (m_connectionDownNotified.load() && m_onConnectionRestored) {
+                        m_onConnectionRestored();
+                    }
                 }
             };
 
