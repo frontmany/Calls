@@ -24,6 +24,18 @@ void User::setEndpoint(asio::ip::udp::endpoint endpoint)
 	m_endpoint = endpoint;
 }
 
+void User::markPacketReceived()
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_lastPacketTime = std::chrono::steady_clock::now();
+}
+
+bool User::hasReceivedPacketSinceConnectionDown() const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	return m_lastPacketTime >= m_connectionDownSince;
+}
+
 void User::setConnectionDown(bool value)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -31,6 +43,7 @@ void User::setConnectionDown(bool value)
 	
 	if (value) {
 		using namespace std::chrono_literals;
+		m_connectionDownSince = std::chrono::steady_clock::now();
 		m_reconnectionTimeoutTimer.start(2min, [this]() {
 			m_onReconnectionTimeout();
 		});

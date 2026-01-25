@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <functional>
@@ -53,9 +54,16 @@ public:
 	void removeIncomingPendingCall(PendingCallPtr pendingCall);
 	void resetAllPendingCalls();
 
-private:
+	void markPacketReceived();
+	/** True if we have received any packet since setConnectionDown(true). Used to avoid
+	    processUserLogout when "connection down" was a false positive (e.g. pongs lost under load). */
+	bool hasReceivedPacketSinceConnectionDown() const;
+
+	private:
 	mutable std::mutex m_mutex;
 	bool m_connectionDown = false;
+	std::chrono::steady_clock::time_point m_lastPacketTime{};
+	std::chrono::steady_clock::time_point m_connectionDownSince{};
 	std::string m_nicknameHash;
 	std::string m_token;
 	std::weak_ptr<Call> m_call;

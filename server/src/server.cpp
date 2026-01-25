@@ -133,7 +133,13 @@ Server::Server(const std::string& port)
 
 void Server::onReceive(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
     PacketType type = static_cast<PacketType>(rawType);
-    
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_endpointToUser.contains(endpointFrom))
+            m_endpointToUser.at(endpointFrom)->markPacketReceived();
+    }
+
     if (type == PacketType::VOICE) {
         handleVoice(data, size, endpointFrom);
         return; 
@@ -253,7 +259,10 @@ void Server::handleAuthorization(const nlohmann::json& jsonObject, const asio::i
                             user = m_nicknameHashToUser.at(nicknameHash);
                         }
                     }
-                    
+                    if (user && user->hasReceivedPacketSinceConnectionDown()) {
+                        user->setConnectionDown(false);
+                        return;
+                    }
                     if (user) {
                         processUserLogout(user);
                     }
