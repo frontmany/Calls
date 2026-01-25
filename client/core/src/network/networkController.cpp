@@ -73,12 +73,12 @@ namespace core {
                 return false;
             }
 
-            // Larger buffer to avoid dropping pongs under heavy voice/screen/camera load
-            const int recvBufSize = 1024 * 1024; // 1 MiB
-            m_socket.set_option(asio::socket_base::receive_buffer_size(recvBufSize), ec);
-            if (ec) {
-                LOG_WARN("Failed to set UDP receive buffer size: {} (using default)", ec.message());
-            }
+            // Request max buffers; kernel clamps to net.core.{r,w}mem_max (Linux) or equivalent
+            const int bufSize = 64 * 1024 * 1024; // 64 MiB — get as much as OS allows
+            m_socket.set_option(asio::socket_base::receive_buffer_size(bufSize), ec);
+            if (ec) LOG_WARN("Failed to set UDP receive buffer: {} (using default)", ec.message());
+            m_socket.set_option(asio::socket_base::send_buffer_size(bufSize), ec);
+            if (ec) LOG_WARN("Failed to set UDP send buffer: {} (using default)", ec.message());
 
             m_socket.connect(m_serverEndpoint, ec);
             if (ec) {
