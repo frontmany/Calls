@@ -96,16 +96,17 @@ namespace core
         const int MAX_CONSECUTIVE_FAILURES = 4;
 
         if (m_pingResult.load()) {
+            bool hadFailures = (m_consecutiveFailures > 0);
             m_consecutiveFailures = 0;
 
+            bool shouldNotify = m_connectionError.load() || hadFailures;
             if (m_connectionError.load()) {
                 LOG_INFO("Ping recovered");
-                if (m_onConnectionRestored) {
-                    m_onConnectionRestored();
-                }
                 m_connectionError = false;
             }
-
+            if (shouldNotify && m_onConnectionRestored) {
+                m_onConnectionRestored();
+            }
             m_pingResult = false;
         }
         else {

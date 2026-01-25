@@ -128,6 +128,7 @@ Server::Server(const std::string& port)
                 if (user) {
                     const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
                     LOG_INFO("Connection restored with user {}", userPrefix);
+                    user->setConnectionDown(false);
                 } else {
                     LOG_INFO("Connection restored with unknown user object");
                 }
