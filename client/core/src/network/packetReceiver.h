@@ -47,7 +47,8 @@ namespace core
         bool init(asio::ip::udp::socket& socket,
             std::function<void(const unsigned char*, int, uint32_t)> onPacketReceived,
             std::function<void()> onErrorCallback,
-            std::function<void(uint32_t)> onPingReceived);
+            std::function<void(uint32_t)> onPingReceived,
+            const asio::ip::udp::endpoint& serverEndpoint);
 
         void start();
         void stop();
@@ -86,6 +87,7 @@ namespace core
         std::function<void()> m_onErrorCallback;
         std::function<void(uint32_t)> m_onPingReceived;
         std::atomic_bool m_connectionDown{false};
+        asio::ip::udp::endpoint m_serverEndpoint;
     };
     }
 }

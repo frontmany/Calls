@@ -22,12 +22,14 @@ namespace core
     bool PacketReceiver::init(asio::ip::udp::socket& socket,
         std::function<void(const unsigned char*, int, uint32_t)> onPacketReceived,
         std::function<void()> onErrorCallback,
-        std::function<void(uint32_t)> onPingReceived)
+        std::function<void(uint32_t)> onPingReceived,
+        const asio::ip::udp::endpoint& serverEndpoint)
     {
         m_socket = std::ref(socket);
         m_onPacketReceived = std::move(onPacketReceived);
         m_onErrorCallback = std::move(onErrorCallback);
         m_onPingReceived = std::move(onPingReceived);
+        m_serverEndpoint = serverEndpoint;
         m_running = false;
         m_remoteEndpoint = asio::ip::udp::endpoint();
 
@@ -155,6 +157,11 @@ namespace core
     {
         if (bytesTransferred < m_headerSize) {
             LOG_WARN("Received datagram too small: {} bytes", bytesTransferred);
+            return;
+        }
+
+        // Socket is not connected; only accept from the server to avoid accepting stray packets.
+        if (m_remoteEndpoint != m_serverEndpoint) {
             return;
         }
 

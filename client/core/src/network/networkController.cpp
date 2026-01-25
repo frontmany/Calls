@@ -73,11 +73,10 @@ namespace core {
                 return false;
             }
 
-            m_socket.connect(m_serverEndpoint, ec);
-            if (ec) {
-                LOG_ERROR("Failed to connect UDP socket to server {}:{} - {}", host, port, ec.message());
-                return false;
-            }
+            // Do not connect() the UDP socket. A connected socket's kernel filter can, after
+            // a network glitch or asymmetric recovery, stop delivering server->client packets
+            // while client->server still works. We use send_to() and receive_from(), and
+            // PacketReceiver validates the source in processDatagram.
 
             std::function<void()> errorHandler = [this]() {
                 if (m_pingController) {
@@ -105,7 +104,7 @@ namespace core {
                 }
             };
 
-            if (!m_packetReceiver.init(m_socket, m_onReceive, errorHandler, pingReceivedHandler)) {
+            if (!m_packetReceiver.init(m_socket, m_onReceive, errorHandler, pingReceivedHandler, m_serverEndpoint)) {
                 LOG_ERROR("Failed to initialize packet receiver");
                 return false;
             }
