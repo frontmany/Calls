@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <mutex>
@@ -47,6 +48,7 @@ namespace core
         void onConfirmation(const nlohmann::json& jsonObject);
         void onAuthorizationResult(const nlohmann::json& jsonObject);
         void onReconnectResult(const nlohmann::json& jsonObject);
+        void setOrphanReconnectSuccessHandler(std::function<void(std::optional<nlohmann::json>)> f);
         void onUserInfoResult(const nlohmann::json& jsonObject);
         void onIncomingCallBegin(const nlohmann::json& jsonObject);
         void onIncomingCallEnded(const nlohmann::json& jsonObject);
@@ -74,6 +76,7 @@ namespace core
         KeyManager& m_keysManager;
         std::shared_ptr<EventListener> m_eventListener;
         std::unordered_map<PacketType, std::function<void(const nlohmann::json&)>> m_packetHandlers;
+        std::function<void(std::optional<nlohmann::json>)> m_onOrphanReconnectSuccess;
     };
 }
 

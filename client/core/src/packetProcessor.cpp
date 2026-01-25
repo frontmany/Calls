@@ -187,6 +187,11 @@ void PacketProcessor::onReconnectResult(const nlohmann::json& jsonObject)
     }
 }
 
+void PacketProcessor::setOrphanReconnectSuccessHandler(std::function<void(std::optional<nlohmann::json>)> f)
+{
+    m_onOrphanReconnectSuccess = std::move(f);
+}
+
 void PacketProcessor::onUserInfoResult(const nlohmann::json& jsonObject)
 {
     const std::string& uid = jsonObject[UID];

@@ -65,6 +65,7 @@ namespace core
         m_stopReconnectRetry = false;
         m_eventListener = std::move(eventListener);
         m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener);
+        m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> j) { onReconnectCompleted(j); });
 
         bool audioInitialized = m_audioEngine.init(std::bind(&Client::onInputVoice, this, _1, _2));
 
