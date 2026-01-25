@@ -425,8 +425,21 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
 
 void PacketProcessor::onConnectionRestoredWithUser(const nlohmann::json& jsonObject) {
     std::string uid = jsonObject[UID];
+    std::string userNicknameHash = jsonObject[NICKNAME_HASH];
 
     sendConfirmation("server", uid);
+
+    // When the restored user is us: server tells us we're restored (e.g. after server's ping saw
+    // pong). Clear connection-down even if not in a call — gives a path out that does not depend
+    // solely on RECONNECT_RESULT, which can be lost on an asymmetric link.
+    if (m_stateManager.isAuthorized() && crypto::calculateHash(m_stateManager.getMyNickname()) == userNicknameHash) {
+        if (m_stateManager.isConnectionDown()) {
+            m_stateManager.setConnectionDown(false);
+            m_networkController.notifyConnectionRestored();
+            m_eventListener->onConnectionRestored();
+        }
+        return;
+    }
 
     if (m_stateManager.isActiveCall()) {
         // We received a packet from the server, so our connection is working. Clear connection-down

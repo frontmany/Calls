@@ -129,6 +129,31 @@ Server::Server(const std::string& port)
                     const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
                     LOG_INFO("Connection restored with user {}", userPrefix);
                     user->setConnectionDown(false);
+
+                    // Tell the restored user (A) they are restored. This gives A a path out of
+                    // connection-down that does not depend solely on RECONNECT_RESULT, which can
+                    // be lost on an asymmetric link; the server already knows A is up from the pong.
+                    auto [uidRestored, packetRestored] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
+                    m_taskManager.createTask(uidRestored, 1500ms, 5,
+                        std::bind(&Server::sendPacketTask, this, packetRestored, PacketType::CONNECTION_RESTORED_WITH_USER, endpoint),
+                        std::bind(&Server::onTaskCompleted, this, _1),
+                        std::bind(&Server::onTaskFailed, this, "Connection restored notify self task failed", _1)
+                    );
+                    m_taskManager.startTask(uidRestored);
+
+                    // If in a call, also notify the partner (B) that A is back.
+                    if (user->isInCall()) {
+                        auto partner = user->getCallPartner();
+                        if (partner && m_nicknameHashToUser.contains(partner->getNicknameHash()) && !partner->isConnectionDown()) {
+                            auto [uidPartner, packetPartner] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
+                            m_taskManager.createTask(uidPartner, 1500ms, 5,
+                                std::bind(&Server::sendPacketTask, this, packetPartner, PacketType::CONNECTION_RESTORED_WITH_USER, partner->getEndpoint()),
+                                std::bind(&Server::onTaskCompleted, this, _1),
+                                std::bind(&Server::onTaskFailed, this, "Connection restored with user task failed", _1)
+                            );
+                            m_taskManager.startTask(uidPartner);
+                        }
+                    }
                 } else {
                     LOG_INFO("Connection restored with unknown user object");
                 }
