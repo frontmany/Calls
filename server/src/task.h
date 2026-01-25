@@ -19,12 +19,13 @@ public:
 		int maxAttempts,
 		std::function<void()>&& attempt,
 		std::function<void(std::optional<nlohmann::json>)>&& onFinishedSuccessfully,
-		std::function<void(std::optional<nlohmann::json>)>&& onFailed)
+		std::function<void(std::optional<nlohmann::json>)>&& onFailed,
+		std::function<void()> onSelfRemove = nullptr)
 		: m_uid(uid),
 		m_period(period),
 		m_timer(std::make_shared<tic::RapidTimer>()),
 		m_state(std::make_shared<State>(maxAttempts, std::move(attempt),
-			std::move(onFinishedSuccessfully), std::move(onFailed)))
+			std::move(onFinishedSuccessfully), std::move(onFailed), std::move(onSelfRemove)))
 	{
 	}
 
@@ -77,11 +78,13 @@ private:
 		explicit State(int maxAttempts,
 			std::function<void()>&& attempt,
 			std::function<void(std::optional<nlohmann::json>)>&& onFinishedSuccessfully,
-			std::function<void(std::optional<nlohmann::json>)>&& onFailed)
+			std::function<void(std::optional<nlohmann::json>)>&& onFailed,
+			std::function<void()> onSelfRemove = nullptr)
 			: maxAttempts(maxAttempts)
 			, attempt(std::move(attempt))
 			, onFinishedSuccessfully(std::move(onFinishedSuccessfully))
 			, onFailed(std::move(onFailed))
+			, onSelfRemove(std::move(onSelfRemove))
 		{
 		}
 
@@ -91,6 +94,7 @@ private:
 		std::function<void()> attempt;
 		std::function<void(std::optional<nlohmann::json>)> onFinishedSuccessfully;
 		std::function<void(std::optional<nlohmann::json>)> onFailed;
+		std::function<void()> onSelfRemove;
 	};
 
 	static void onTimerTick(std::weak_ptr<State> stateWeak,
@@ -112,7 +116,9 @@ private:
 				if (state->onFailed) {
 					state->onFailed(std::nullopt);
 				}
-
+				if (state->onSelfRemove) {
+					state->onSelfRemove();
+				}
 				return;
 			}
 

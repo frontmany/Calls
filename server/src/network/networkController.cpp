@@ -121,7 +121,18 @@ namespace server {
 
         m_packetReceiver.start();
         m_pingController->start();
-        m_context.run();
+
+        try {
+            m_context.run();
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("asio io_context.run() threw; receive/send loop stopped: {}", e.what());
+            throw;
+        }
+        catch (...) {
+            LOG_ERROR("asio io_context.run() threw unknown exception; receive/send loop stopped");
+            throw;
+        }
     }
 
     void NetworkController::stop() {
