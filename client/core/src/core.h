@@ -159,5 +159,7 @@ namespace core
         std::atomic<bool> m_reconnectInProgress{false};
         std::thread m_reconnectRetryThread;
         std::atomic<bool> m_stopReconnectRetry{false};
+        std::mutex m_reconnectMutex;  // Защита доступа к m_currentReconnectTaskUid
+        std::string m_currentReconnectTaskUid;  // UID текущей задачи reconnect для возможности отмены
     };
 }

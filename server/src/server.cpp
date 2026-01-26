@@ -772,172 +772,208 @@ void Server::handleEndCall(const nlohmann::json& jsonObject, const asio::ip::udp
 }
 
 void Server::handleVoice(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
-    UserPtr user;
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_endpointToUser.contains(endpointFrom)) {
-            user = m_endpointToUser.at(endpointFrom);
-        }
-        else {
-            return;
-        }
-    }
-
-    if (user->isInCall()) {
-        auto callPartner = user->getCallPartner();
-
-        if (callPartner) {
+    try {
+        UserPtr user;
+        {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
-                m_networkController.send(data, size, static_cast<uint32_t>(PacketType::VOICE), callPartner->getEndpoint());
+            if (m_endpointToUser.contains(endpointFrom)) {
+                user = m_endpointToUser.at(endpointFrom);
+            }
+            else {
+                return;
             }
         }
+
+        if (user && user->isInCall()) {
+            auto callPartner = user->getCallPartner();
+
+            if (callPartner) {
+                asio::ip::udp::endpoint partnerEndpoint;
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    if (m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
+                        partnerEndpoint = callPartner->getEndpoint();
+                    }
+                    else {
+                        return;
+                    }
+                }
+                m_networkController.send(data, size, static_cast<uint32_t>(PacketType::VOICE), partnerEndpoint);
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error in handleVoice: {}", e.what());
     }
 }
 
 void Server::handleScreen(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
-    UserPtr user;
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_endpointToUser.contains(endpointFrom)) {
-            user = m_endpointToUser.at(endpointFrom);
-        }
-        else {
-            return;
-        }
-    }
-
-    if (user->isInCall()) {
-        auto callPartner = user->getCallPartner();
-
-        if (callPartner) {
+    try {
+        UserPtr user;
+        {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
-                m_networkController.send(data, size, static_cast<uint32_t>(PacketType::SCREEN), callPartner->getEndpoint());
+            if (m_endpointToUser.contains(endpointFrom)) {
+                user = m_endpointToUser.at(endpointFrom);
+            }
+            else {
+                return;
             }
         }
+
+        if (user && user->isInCall()) {
+            auto callPartner = user->getCallPartner();
+
+            if (callPartner) {
+                asio::ip::udp::endpoint partnerEndpoint;
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    if (m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
+                        partnerEndpoint = callPartner->getEndpoint();
+                    }
+                    else {
+                        return;
+                    }
+                }
+                m_networkController.send(data, size, static_cast<uint32_t>(PacketType::SCREEN), partnerEndpoint);
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error in handleScreen: {}", e.what());
     }
 }
 
 void Server::handleCamera(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
-    UserPtr user;
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_endpointToUser.contains(endpointFrom)) {
-            user = m_endpointToUser.at(endpointFrom);
-        }
-        else {
-            return;
-        }
-    }
-
-    if (user->isInCall()) {
-        auto callPartner = user->getCallPartner();
-
-        if (callPartner) {
+    try {
+        UserPtr user;
+        {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
-                m_networkController.send(data, size, static_cast<uint32_t>(PacketType::CAMERA), callPartner->getEndpoint());
+            if (m_endpointToUser.contains(endpointFrom)) {
+                user = m_endpointToUser.at(endpointFrom);
+            }
+            else {
+                return;
             }
         }
+
+        if (user && user->isInCall()) {
+            auto callPartner = user->getCallPartner();
+
+            if (callPartner) {
+                asio::ip::udp::endpoint partnerEndpoint;
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    if (m_nicknameHashToUser.contains(callPartner->getNicknameHash()) && !callPartner->isConnectionDown()) {
+                        partnerEndpoint = callPartner->getEndpoint();
+                    }
+                    else {
+                        return;
+                    }
+                }
+                m_networkController.send(data, size, static_cast<uint32_t>(PacketType::CAMERA), partnerEndpoint);
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("Error in handleCamera: {}", e.what());
     }
 }
 
 void Server::processUserLogout(const UserPtr& user) {
     if (!user) return;
     
-    std::string nicknameHash = user->getNicknameHash();
-    std::string nicknameHashPrefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
-    LOG_INFO("User logout: {}", nicknameHashPrefix);
-    
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (!m_nicknameHashToUser.contains(nicknameHash)) return;
+    try {
+        std::string nicknameHash = user->getNicknameHash();
+        std::string nicknameHashPrefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
+        LOG_INFO("User logout: {}", nicknameHashPrefix);
+        
+        std::vector<DeferredSend> toSend;
+        asio::ip::udp::endpoint userEndpoint;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (!m_nicknameHashToUser.contains(nicknameHash)) return;
 
-    if (user->isInCall()) {
-        UserPtr callPartner = user->getCallPartner();
+            if (user->isInCall()) {
+                UserPtr callPartner = user->getCallPartner();
 
-        if (callPartner && m_nicknameHashToUser.contains(callPartner->getNicknameHash())) {
-            std::string callPartnerPrefix = callPartner->getNicknameHash().length() >= 5 ? callPartner->getNicknameHash().substr(0, 5) : callPartner->getNicknameHash();
-            LOG_INFO("Call ended due to logout: {} ended call with {}", nicknameHashPrefix, callPartnerPrefix);
+                if (callPartner && m_nicknameHashToUser.contains(callPartner->getNicknameHash())) {
+                    std::string callPartnerPrefix = callPartner->getNicknameHash().length() >= 5 ? callPartner->getNicknameHash().substr(0, 5) : callPartner->getNicknameHash();
+                    LOG_INFO("Call ended due to logout: {} ended call with {}", nicknameHashPrefix, callPartnerPrefix);
 
-            if (!callPartner->isConnectionDown()) {
-                auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, callPartner->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
-                );
+                    auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
+                    toSend.push_back({uid, std::move(packet), PacketType::USER_LOGOUT, callPartner->getEndpoint(), "User logout task failed"});
 
-                m_taskManager.startTask(uid);
+                    callPartner->resetCall();
+                }
+
+                if (auto call = user->getCall(); call)
+                    m_calls.erase(call);
+
+                user->resetCall();
             }
 
-            callPartner->resetCall();
-        }
+            if (user->hasOutgoingPendingCall()) {
+                auto outgoingPendingCall = user->getOutgoingPendingCall();
+                auto pendingCallPartner = user->getOutgoingPendingCallPartner();
 
-        if (auto call = user->getCall(); call)
-            m_calls.erase(call);
+                if (pendingCallPartner && m_nicknameHashToUser.contains(pendingCallPartner->getNicknameHash())) {
+                    std::string pendingCallPartnerPrefix = pendingCallPartner->getNicknameHash().length() >= 5 ? pendingCallPartner->getNicknameHash().substr(0, 5) : pendingCallPartner->getNicknameHash();
+                    LOG_INFO("Outgoing call ended due to logout: {} -> {}", nicknameHashPrefix, pendingCallPartnerPrefix);
+                    LOG_INFO("Incoming call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
 
-        user->resetCall();
-    }
+                    auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
+                    toSend.push_back({uid, std::move(packet), PacketType::USER_LOGOUT, pendingCallPartner->getEndpoint(), "User logout task failed"});
 
-    if (user->hasOutgoingPendingCall()) {
-        auto outgoingPendingCall = user->getOutgoingPendingCall();
-        auto pendingCallPartner = user->getOutgoingPendingCallPartner();
+                    removeIncomingPendingCall(pendingCallPartner, outgoingPendingCall);
+                }
 
-        if (pendingCallPartner && m_nicknameHashToUser.contains(pendingCallPartner->getNicknameHash())) {
-            std::string pendingCallPartnerPrefix = pendingCallPartner->getNicknameHash().length() >= 5 ? pendingCallPartner->getNicknameHash().substr(0, 5) : pendingCallPartner->getNicknameHash();
-            LOG_INFO("Outgoing call ended due to logout: {} -> {}", nicknameHashPrefix, pendingCallPartnerPrefix);
-            LOG_INFO("Incoming call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
-
-            if (!pendingCallPartner->isConnectionDown()) {
-                auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, pendingCallPartner->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
-                );
-
-                m_taskManager.startTask(uid);
+                resetOutgoingPendingCall(user);
             }
 
-            removeIncomingPendingCall(pendingCallPartner, outgoingPendingCall);
-        }
+            auto incomingCalls = user->getIncomingPendingCalls();
+            for (auto& pendingCall : incomingCalls) {
+                auto pendingCallPartner = pendingCall->getInitiator();
 
-        resetOutgoingPendingCall(user);
-    }
+                if (pendingCallPartner && m_nicknameHashToUser.contains(pendingCallPartner->getNicknameHash())) {
+                    std::string pendingCallPartnerPrefix = pendingCallPartner->getNicknameHash().length() >= 5 ? pendingCallPartner->getNicknameHash().substr(0, 5) : pendingCallPartner->getNicknameHash();
+                    LOG_INFO("Incoming call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
+                    LOG_INFO("Outgoing call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
 
-    auto incomingCalls = user->getIncomingPendingCalls();
-    for (auto& pendingCall : incomingCalls) {
-        auto pendingCallPartner = pendingCall->getInitiator();
+                    auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
+                    toSend.push_back({uid, std::move(packet), PacketType::USER_LOGOUT, pendingCallPartner->getEndpoint(), "User logout task failed"});
 
-        if (pendingCallPartner && m_nicknameHashToUser.contains(pendingCallPartner->getNicknameHash())) {
-            std::string pendingCallPartnerPrefix = pendingCallPartner->getNicknameHash().length() >= 5 ? pendingCallPartner->getNicknameHash().substr(0, 5) : pendingCallPartner->getNicknameHash();
-            LOG_INFO("Incoming call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
-            LOG_INFO("Outgoing call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
+                    resetOutgoingPendingCall(pendingCallPartner);
+                }
 
-            if (!pendingCallPartner->isConnectionDown()) {
-                auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, pendingCallPartner->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
-                );
-
-                m_taskManager.startTask(uid);
+                removeIncomingPendingCall(user, pendingCall);
             }
+            user->resetAllPendingCalls();
 
-            resetOutgoingPendingCall(pendingCallPartner);
+            clearPendingActionsForUser(user->getNicknameHash());
+
+            userEndpoint = user->getEndpoint();
+            m_networkController.removePingMonitoring(userEndpoint);
+            m_endpointToUser.erase(userEndpoint);
+            m_nicknameHashToUser.erase(nicknameHash);
         }
 
-        removeIncomingPendingCall(user, pendingCall);
+        // Notify the user being logged out so their client can clear the call; best-effort (e.g. reconnection timeout)
+        {
+            auto [uidSelf, packetSelf] = PacketFactory::getUserLogoutPacket(nicknameHash);
+            toSend.push_back({uidSelf, std::move(packetSelf), PacketType::USER_LOGOUT, userEndpoint, "User logout self-notify task failed"});
+        }
+
+        for (auto& s : toSend) {
+            m_taskManager.createTask(s.uid, 1500ms, 5,
+                std::bind(&Server::sendPacketTask, this, s.packet, s.type, s.endpoint),
+                std::bind(&Server::onTaskCompleted, this, _1),
+                std::bind(&Server::onTaskFailed, this, s.failMessage, _1));
+            m_taskManager.startTask(s.uid);
+        }
     }
-    user->resetAllPendingCalls();
-
-    clearPendingActionsForUser(user->getNicknameHash());
-
-    m_networkController.removePingMonitoring(user->getEndpoint());
-    m_endpointToUser.erase(user->getEndpoint());
-    m_nicknameHashToUser.erase(user->getNicknameHash());
+    catch (const std::exception& e) {
+        LOG_ERROR("processUserLogout exception: {}", e.what());
+    }
 }
 
 bool Server::resetOutgoingPendingCall(const UserPtr& user) {

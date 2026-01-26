@@ -166,8 +166,20 @@ namespace core
             m_stopReconnectRetry = false;
             m_reconnectRetryThread = std::thread([this]() {
                 while (m_stateManager.isConnectionDown() && m_stateManager.isAuthorized() && !m_stopReconnectRetry.load()) {
+                    // Отменяем предыдущую задачу reconnect, если она еще выполняется
+                    {
+                        std::lock_guard<std::mutex> lock(m_reconnectMutex);
+                        if (!m_currentReconnectTaskUid.empty() && m_taskManager.hasTask(m_currentReconnectTaskUid)) {
+                            m_taskManager.cancelTask(m_currentReconnectTaskUid);
+                        }
+                    }
+
                     if (!m_reconnectInProgress.exchange(true)) {
                         auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
+                        {
+                            std::lock_guard<std::mutex> lock(m_reconnectMutex);
+                            m_currentReconnectTaskUid = uid;
+                        }
                         createAndStartTask(uid, packet, PacketType::RECONNECT,
                             std::bind(&Client::onReconnectCompleted, this, _1),
                             std::bind(&Client::onReconnectFailed, this, _1)
@@ -185,12 +197,22 @@ namespace core
         if (!m_stateManager.isConnectionDown()) {
             return;
         }
-        if (m_reconnectInProgress.exchange(true)) {
-            return;
+
+        // Отменяем предыдущую задачу reconnect, если она еще выполняется
+        {
+            std::lock_guard<std::mutex> lock(m_reconnectMutex);
+            if (!m_currentReconnectTaskUid.empty() && m_taskManager.hasTask(m_currentReconnectTaskUid)) {
+                m_taskManager.cancelTask(m_currentReconnectTaskUid);
+            }
         }
 
         if (m_stateManager.isAuthorized()) {
             auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
+            {
+                std::lock_guard<std::mutex> lock(m_reconnectMutex);
+                m_currentReconnectTaskUid = uid;
+            }
+            m_reconnectInProgress = true;
 
             createAndStartTask(uid, packet, PacketType::RECONNECT,
                 std::bind(&Client::onReconnectCompleted, this, _1),
@@ -200,6 +222,10 @@ namespace core
         else {
             m_stateManager.setConnectionDown(false);
             m_reconnectInProgress = false;
+            {
+                std::lock_guard<std::mutex> lock(m_reconnectMutex);
+                m_currentReconnectTaskUid.clear();
+            }
             m_eventListener->onConnectionRestoredAuthorizationNeeded();
         }
     }
@@ -210,6 +236,10 @@ namespace core
 
     void Client::onReconnectCompleted(std::optional<nlohmann::json> completionContext) {
         m_reconnectInProgress = false;
+        {
+            std::lock_guard<std::mutex> lock(m_reconnectMutex);
+            m_currentReconnectTaskUid.clear();
+        }
         if (!completionContext.has_value()) {
             LOG_ERROR("onReconnectCompleted called with empty completionContext");
             return;
@@ -259,6 +289,10 @@ namespace core
 
     void Client::onReconnectFailed(std::optional<nlohmann::json> failureContext) {
         m_reconnectInProgress = false;
+        {
+            std::lock_guard<std::mutex> lock(m_reconnectMutex);
+            m_currentReconnectTaskUid.clear();
+        }
         LOG_ERROR("Reconnect task failed");
     }
 

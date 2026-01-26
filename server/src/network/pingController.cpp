@@ -184,13 +184,23 @@ namespace server
 
         for (const auto& key : keysToNotifyDown) {
             if (auto ep = parseEndpointFromKey(key); ep && m_onConnectionDown) {
-                m_onConnectionDown(*ep);
+                try {
+                    m_onConnectionDown(*ep);
+                }
+                catch (const std::exception& e) {
+                    LOG_ERROR("Exception in onConnectionDown callback: {}", e.what());
+                }
             }
         }
 
         for (const auto& key : keysToNotifyRestored) {
             if (auto ep = parseEndpointFromKey(key); ep && m_onConnectionRestored) {
-                m_onConnectionRestored(*ep);
+                try {
+                    m_onConnectionRestored(*ep);
+                }
+                catch (const std::exception& e) {
+                    LOG_ERROR("Exception in onConnectionRestored callback: {}", e.what());
+                }
             }
         }
     }
