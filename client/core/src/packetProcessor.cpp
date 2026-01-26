@@ -183,7 +183,22 @@ void PacketProcessor::onReconnectResult(const nlohmann::json& jsonObject)
         m_taskManager.completeTask(uid, jsonObject);
     }
     else {
-        LOG_WARN("RECONNECT_RESULT for unknown task uid, task may have already timed out");
+        // Задача уже завершилась по таймауту, но пакет пришел с задержкой
+        // Это может произойти во время звонка, когда сеть перегружена трафиком
+        // Создаем временную задачу и сразу завершаем ее, чтобы обработать пакет
+        // Это позволит использовать существующую логику onReconnectCompleted в Client
+        LOG_WARN("RECONNECT_RESULT for unknown task uid (task timed out), creating temporary task to process late packet");
+        
+        if (m_stateManager.isConnectionDown() && m_stateManager.isAuthorized()) {
+            // Создаем временную задачу с минимальными параметрами и сразу завершаем ее
+            m_taskManager.createTask(uid, 1ms, 1,
+                []() {}, // Пустая попытка, так как пакет уже получен
+                [](std::optional<nlohmann::json> ctx) {}, // Обработчик будет вызван в Client::onReconnectCompleted
+                [](std::optional<nlohmann::json> ctx) {}
+            );
+            // Сразу завершаем задачу с полученным контекстом
+            m_taskManager.completeTask(uid, jsonObject);
+        }
     }
 }
 

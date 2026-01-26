@@ -341,13 +341,21 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
             }
         }
 
+        // Отправляем RECONNECT_RESULT через TaskManager с повторными попытками для гарантии доставки
+        // Особенно важно во время звонка, когда много трафика и пакеты могут теряться
         std::vector<unsigned char> packet;
         if (reconnectionAllowed)
             packet = PacketFactory::getReconnectionResultPacket(true, uid, senderNicknameHash, token, user->isInCall());
         else
             packet = PacketFactory::getReconnectionResultPacket(false, uid, senderNicknameHash, token);
-            
-        m_networkController.send(packet, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), endpointFrom);
+        
+        // Используем TaskManager для гарантированной доставки RECONNECT_RESULT
+        m_taskManager.createTask(uid, 1500ms, 5,
+            std::bind(&Server::sendPacketTask, this, packet, PacketType::RECONNECT_RESULT, endpointFrom),
+            std::bind(&Server::onTaskCompleted, this, _1),
+            std::bind(&Server::onTaskFailed, this, "Reconnect result task failed", _1)
+        );
+        m_taskManager.startTask(uid);
         
         if (reconnectionAllowed && user->isInCall()) {
             auto partner = user->getCallPartner();
@@ -379,8 +387,14 @@ void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::u
         }
     }
     else {
+        // Пользователь не найден - отправляем отрицательный результат также через TaskManager
         auto packet = PacketFactory::getReconnectionResultPacket(false, uid, senderNicknameHash, token);
-        m_networkController.send(packet, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), endpointFrom);
+        m_taskManager.createTask(uid, 1500ms, 5,
+            std::bind(&Server::sendPacketTask, this, packet, PacketType::RECONNECT_RESULT, endpointFrom),
+            std::bind(&Server::onTaskCompleted, this, _1),
+            std::bind(&Server::onTaskFailed, this, "Reconnect result task failed", _1)
+        );
+        m_taskManager.startTask(uid);
     }
 }
 

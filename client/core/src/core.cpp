@@ -180,10 +180,14 @@ namespace core
                             std::lock_guard<std::mutex> lock(m_reconnectMutex);
                             m_currentReconnectTaskUid = uid;
                         }
-                        createAndStartTask(uid, packet, PacketType::RECONNECT,
+                        // Увеличиваем количество попыток для reconnect, особенно важно во время звонка
+                        // когда сеть может быть перегружена трафиком voice/screen/camera
+                        m_taskManager.createTask(uid, 1500ms, 5,
+                            std::bind(&Client::sendPacket, this, packet, PacketType::RECONNECT),
                             std::bind(&Client::onReconnectCompleted, this, _1),
                             std::bind(&Client::onReconnectFailed, this, _1)
                         );
+                        m_taskManager.startTask(uid);
                     }
                     for (int i = 0; i < 10 && !m_stopReconnectRetry.load(); ++i) {
                         std::this_thread::sleep_for(1s);
@@ -214,10 +218,14 @@ namespace core
             }
             m_reconnectInProgress = true;
 
-            createAndStartTask(uid, packet, PacketType::RECONNECT,
+            // Увеличиваем количество попыток для reconnect, особенно важно во время звонка
+            // когда сеть может быть перегружена трафиком voice/screen/camera
+            m_taskManager.createTask(uid, 1500ms, 5,
+                std::bind(&Client::sendPacket, this, packet, PacketType::RECONNECT),
                 std::bind(&Client::onReconnectCompleted, this, _1),
                 std::bind(&Client::onReconnectFailed, this, _1)
             );
+            m_taskManager.startTask(uid);
         }
         else {
             m_stateManager.setConnectionDown(false);
