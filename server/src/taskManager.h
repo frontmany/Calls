@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+#include <vector>
 
 using namespace server::utilities;
 
@@ -25,14 +26,18 @@ public:
 		std::function<void(std::optional<nlohmann::json>)>&& onFailed)
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
-
-		Task task = Task(uid, period, maxAttempts, std::move(attempt), std::move(onFinishedSuccessfully), std::move(onFailed));
+		processPendingErasesLocked();
+		auto wrappedFailed = [onFailed = std::move(onFailed), this, uid](std::optional<nlohmann::json> ctx) {
+			if (onFailed) onFailed(ctx);
+			{ std::lock_guard<std::mutex> lock(m_mutex); m_pendingErases.push_back(uid); }
+		};
+		Task task = Task(uid, period, maxAttempts, std::move(attempt), std::move(onFinishedSuccessfully), std::move(wrappedFailed));
 		m_tasks.emplace(uid, std::move(task));
 	}
 
 	void startTask(const std::string& uid) {
 		std::lock_guard<std::mutex> lock(m_mutex);
-
+		processPendingErasesLocked();
 		if (m_tasks.contains(uid)) {
 			auto& task = m_tasks.at(uid);
 			task.start();
@@ -41,34 +46,38 @@ public:
 
 	void completeTask(const std::string& uid, std::optional<nlohmann::json> completionContext = std::nullopt) {
 		std::lock_guard<std::mutex> lock(m_mutex);
-			
+		processPendingErasesLocked();
 		if (m_tasks.contains(uid)) {
 			auto& task = m_tasks.at(uid);
 			task.complete(completionContext);
+			m_tasks.erase(uid);
 		}
 	}
 
 	void failTask(const std::string& uid, std::optional<nlohmann::json> failureContext = std::nullopt) {
 		std::lock_guard<std::mutex> lock(m_mutex);
-
+		processPendingErasesLocked();
 		if (m_tasks.contains(uid)) {
 			auto& task = m_tasks.at(uid);
 			task.fail(failureContext);
+			m_tasks.erase(uid);
 		}
 	}
 
 	void cancelTask(const std::string& uid) {
 		std::lock_guard<std::mutex> lock(m_mutex);
-
+		processPendingErasesLocked();
 		if (m_tasks.contains(uid)) {
 			auto& task = m_tasks.at(uid);
 			task.cancel();
+			m_tasks.erase(uid);
 		}
 	}
 
 	void cancelAllTasks() {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_tasks.clear();
+		m_pendingErases.clear();
 	}
 
 	bool hasTask(const std::string& uid) const {
@@ -77,9 +86,13 @@ public:
 	}
 
 private:
-		
+	void processPendingErasesLocked() {
+		for (const auto& u : m_pendingErases)
+			m_tasks.erase(u);
+		m_pendingErases.clear();
+	}
 
-private:
 	mutable std::mutex m_mutex;
 	std::unordered_map<std::string, Task<Rep, Period>> m_tasks;
+	std::vector<std::string> m_pendingErases;
 };
