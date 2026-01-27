@@ -22,6 +22,7 @@
 #include "network/networkController.h"
 #include "audio/audioEngine.h"
 #include "userOperationManager.h"
+#include "services/MediaEncryptionService.h"
 #include "json.hpp"
 
 namespace core
@@ -155,6 +156,7 @@ namespace core
         std::shared_ptr<EventListener> m_eventListener;
         std::unique_ptr<PacketProcessor> m_packetProcessor;
         UserOperationManager m_operationManager;
+        core::services::MediaEncryptionService m_mediaEncryptionService;
 
         std::atomic<bool> m_reconnectInProgress{false};
         std::thread m_reconnectRetryThread;

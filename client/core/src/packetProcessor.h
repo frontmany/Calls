@@ -10,6 +10,7 @@
 #include "taskManager.h"
 #include "packetType.h"
 #include "clientStateManager.h"
+#include "services/IMediaEncryptionService.h"
 #include "json.hpp"
 
 namespace core
@@ -38,7 +39,8 @@ namespace core
             TaskManager<long long, std::milli>& taskManager,
             core::network::NetworkController& networkController,
             core::audio::AudioEngine& audioEngine,
-            std::shared_ptr<EventListener> eventListener
+            std::shared_ptr<EventListener> eventListener,
+            core::services::IMediaEncryptionService& mediaEncryptionService
         );
 
         void processPacket(const unsigned char* data, int length, PacketType type);
@@ -75,6 +77,7 @@ namespace core
         TaskManager<long long, std::milli>& m_taskManager;
         KeyManager& m_keysManager;
         std::shared_ptr<EventListener> m_eventListener;
+        core::services::IMediaEncryptionService& m_mediaEncryptionService;
         std::unordered_map<PacketType, std::function<void(const nlohmann::json&)>> m_packetHandlers;
         std::function<void(std::optional<nlohmann::json>)> m_onOrphanReconnectSuccess;
     };

@@ -103,19 +103,6 @@ namespace server
                 return m_pendingCalls.find(pendingCall) != m_pendingCalls.end();
             }
 
-            // Получить прямой доступ (для обратной совместимости)
-            std::unordered_set<std::shared_ptr<Call>>& getCalls() {
-                return m_calls;
-            }
-
-            std::unordered_set<std::shared_ptr<PendingCall>>& getPendingCalls() {
-                return m_pendingCalls;
-            }
-
-            std::mutex& getMutex() {
-                return m_mutex;
-            }
-
         private:
             mutable std::mutex m_mutex;
             std::unordered_set<std::shared_ptr<Call>> m_calls;

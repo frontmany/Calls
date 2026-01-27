@@ -64,7 +64,7 @@ namespace core
     {
         m_stopReconnectRetry = false;
         m_eventListener = std::move(eventListener);
-        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener);
+        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener, m_mediaEncryptionService);
         m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> j) { onReconnectCompleted(j); });
 
         bool audioInitialized = m_audioEngine.init(std::bind(&Client::onInputVoice, this, _1, _2));
@@ -885,23 +885,18 @@ namespace core
 
         const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
 
-        try {
-            size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
-            std::vector<unsigned char> cipherData(cipherDataLength);
+        auto cipherData = m_mediaEncryptionService.encryptMedia(
+            data.data(),
+            static_cast<int>(data.size()),
+            callKey);
 
-            crypto::AESEncrypt(callKey,
-                data.data(),
-                static_cast<int>(data.size()),
-                reinterpret_cast<CryptoPP::byte*>(cipherData.data()),
-                cipherDataLength);
-
-            m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::SCREEN));
-            return {};
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("Screen sending error");
+        if (cipherData.empty()) {
+            LOG_ERROR("Screen sending error: encryption failed");
             return make_error_code(ErrorCode::encryption_error);
         }
+
+        m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::SCREEN));
+        return {};
     }
 
     std::error_code Client::startCameraSharing() {
@@ -950,23 +945,18 @@ namespace core
 
         const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
 
-        try {
-            size_t cipherDataLength = data.size() + CryptoPP::AES::BLOCKSIZE;
-            std::vector<unsigned char> cipherData(cipherDataLength);
+        auto cipherData = m_mediaEncryptionService.encryptMedia(
+            data.data(),
+            static_cast<int>(data.size()),
+            callKey);
 
-            crypto::AESEncrypt(callKey,
-                data.data(),
-                static_cast<int>(data.size()),
-                reinterpret_cast<CryptoPP::byte*>(cipherData.data()),
-                cipherDataLength);
-
-            m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::CAMERA));
-            return {};
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("Camera sending error");
+        if (cipherData.empty()) {
+            LOG_ERROR("Camera sending error: encryption failed");
             return make_error_code(ErrorCode::encryption_error);
         }
+
+        m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::CAMERA));
+        return {};
     }
 
     void Client::onInputVoice(const unsigned char* data, int length) {
@@ -974,10 +964,9 @@ namespace core
 
         const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
 
-        size_t cipherDataLength = static_cast<size_t>(length) + CryptoPP::AES::BLOCKSIZE;
-        std::vector<unsigned char> cipherData(cipherDataLength);
-        crypto::AESEncrypt(callKey, data, length, reinterpret_cast<CryptoPP::byte*>(cipherData.data()), cipherDataLength);
-
-        m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
+        auto cipherData = m_mediaEncryptionService.encryptMedia(data, length, callKey);
+        if (!cipherData.empty()) {
+            m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
+        }
     }
 }

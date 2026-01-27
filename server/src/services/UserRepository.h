@@ -83,19 +83,6 @@ namespace server
                 }
             }
 
-            // Получить прямой доступ к мапам (для обратной совместимости во время рефакторинга)
-            std::unordered_map<asio::ip::udp::endpoint, UserPtr>& getEndpointToUser() {
-                return m_endpointToUser;
-            }
-
-            std::unordered_map<std::string, UserPtr>& getNicknameHashToUser() {
-                return m_nicknameHashToUser;
-            }
-
-            std::mutex& getMutex() {
-                return m_mutex;
-            }
-
         private:
             mutable std::mutex m_mutex;
             std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;

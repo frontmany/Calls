@@ -21,13 +21,15 @@ PacketProcessor::PacketProcessor(ClientStateManager& stateManager,
     TaskManager<long long, std::milli>& taskManager,
     core::network::NetworkController& networkController,
     core::audio::AudioEngine& audioEngine,
-    std::shared_ptr<EventListener> eventListener)
+    std::shared_ptr<EventListener> eventListener,
+    core::services::IMediaEncryptionService& mediaEncryptionService)
     : m_stateManager(stateManager),
     m_keysManager(keyManager),
     m_taskManager(taskManager),
     m_networkController(networkController),
     m_audioEngine(audioEngine),
-    m_eventListener(eventListener)
+    m_eventListener(eventListener),
+    m_mediaEncryptionService(mediaEncryptionService)
 {
     m_packetHandlers.emplace(PacketType::CONFIRMATION, [this](const nlohmann::json& json) {onConfirmation(json); });
     m_packetHandlers.emplace(PacketType::AUTHORIZATION_RESULT, [this](const nlohmann::json& json) {onAuthorizationResult(json); });
@@ -91,67 +93,35 @@ void PacketProcessor::sendConfirmation(const std::string& userNicknameHash, cons
 
 void PacketProcessor::onVoice(const unsigned char* data, int length) {
     if (m_stateManager.isActiveCall() && m_audioEngine.isStream()) {
-        size_t decryptedLength = static_cast<size_t>(length) - CryptoPP::AES::BLOCKSIZE;
-        std::vector<CryptoPP::byte> decryptedData(decryptedLength);
+        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
+        auto decryptedData = m_mediaEncryptionService.decryptMedia(data, length, callKey);
 
-        crypto::AESDecrypt(m_stateManager.getActiveCall().getCallKey(), data, length,
-            decryptedData.data(), decryptedData.size()
-        );
-
-        m_audioEngine.playAudio(decryptedData.data(), static_cast<int>(decryptedLength));
+        if (!decryptedData.empty()) {
+            m_audioEngine.playAudio(decryptedData.data(), static_cast<int>(decryptedData.size()));
+        }
     }
 }
 
 void PacketProcessor::onScreen(const unsigned char* data, int length) {
     if (!m_stateManager.isActiveCall() || !m_stateManager.isViewingRemoteScreen() || !data || length <= 0) return;
 
-    if (length <= CryptoPP::AES::BLOCKSIZE) {
-        LOG_WARN("Screen frame too small to decrypt: {} bytes", length);
-        return;
-    }
+    const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
+    auto decrypted = m_mediaEncryptionService.decryptMedia(data, length, callKey);
 
-    std::vector<unsigned char> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
-    auto& callKey = m_stateManager.getActiveCall().getCallKey();
-
-    try {
-        crypto::AESDecrypt(callKey,
-            data,
-            length,
-            reinterpret_cast<CryptoPP::byte*>(decrypted.data()),
-            decrypted.size());
+    if (!decrypted.empty()) {
+        m_eventListener->onIncomingScreen(decrypted);
     }
-    catch (const std::exception& e) {
-        LOG_ERROR("Failed to decrypt screen frame: {}", e.what());
-        return;
-    }
-
-    m_eventListener->onIncomingScreen(decrypted);
 }
 
 void PacketProcessor::onCamera(const unsigned char* data, int length) {
     if (!m_stateManager.isActiveCall() || !m_stateManager.isViewingRemoteCamera() || !data || length <= 0) return;
 
-    if (length <= CryptoPP::AES::BLOCKSIZE) {
-        LOG_WARN("Camera frame too small to decrypt: {} bytes", length);
-        return;
-    }
+    const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
+    auto decrypted = m_mediaEncryptionService.decryptMedia(data, length, callKey);
 
-    std::vector<unsigned char> decrypted(static_cast<std::size_t>(length) - CryptoPP::AES::BLOCKSIZE);
-    auto& callKey = m_stateManager.getActiveCall().getCallKey();
-
-    try {
-        crypto::AESDecrypt(callKey,
-            data,
-            length,
-            reinterpret_cast<CryptoPP::byte*>(decrypted.data()),
-            decrypted.size());
+    if (!decrypted.empty()) {
+        m_eventListener->onIncomingCamera(decrypted);
     }
-    catch (const std::exception& e) {
-        LOG_ERROR("Failed to decrypt camera frame: {}", e.what());
-        return;
-    }
-
-    m_eventListener->onIncomingCamera(decrypted);
 }
 
 void PacketProcessor::onConfirmation(const nlohmann::json& jsonObject) {
