@@ -4,11 +4,14 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>
+#include <QMouseEvent>
+#include <QCoreApplication>
 
 Screen::Screen(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
+    setMouseTracking(true);
 }
 
 void Screen::setPixmap(const QPixmap& pixmap)
@@ -125,4 +128,22 @@ void Screen::paintEvent(QPaintEvent* event)
 
         painter.drawPixmap(targetRect, scaledPixmap, sourceRect);
     }
+}
+
+void Screen::mouseMoveEvent(QMouseEvent* event)
+{
+    // Передаем событие родительскому виджету для обработки показа кнопок
+    if (parentWidget()) {
+        QPoint parentPos = mapToParent(event->pos());
+        QMouseEvent parentEvent(
+            event->type(),
+            parentPos,
+            event->globalPosition(),
+            event->button(),
+            event->buttons(),
+            event->modifiers()
+        );
+        QCoreApplication::sendEvent(parentWidget(), &parentEvent);
+    }
+    QWidget::mouseMoveEvent(event);
 }

@@ -212,14 +212,16 @@ namespace core
         if (m_authorizationService) {
             m_authorizationService->onLogoutCompleted(completionContext);
         }
-        reset();
+        // Reset вызывается после того, как UI обработает событие onLogoutCompleted
+        // Это гарантирует, что состояние не изменится до закрытия приложения
     }
 
     void Client::onLogoutFailed(std::optional<nlohmann::json> failureContext) {
         if (m_authorizationService) {
             m_authorizationService->onLogoutFailed(failureContext);
         }
-        reset();
+        // Reset вызывается после того, как UI обработает событие onLogoutCompleted
+        // Это гарантирует, что состояние не изменится до закрытия приложения
     }
 
     void Client::onRequestUserInfoCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {

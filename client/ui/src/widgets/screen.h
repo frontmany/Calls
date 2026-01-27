@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include <QPixmap>
+#include <QMouseEvent>
 
 class Screen : public QWidget
 {
@@ -22,6 +23,7 @@ protected:
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
     void paintEvent(QPaintEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
     QPixmap m_pixmap;

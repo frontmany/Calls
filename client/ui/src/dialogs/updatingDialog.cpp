@@ -56,17 +56,23 @@ QString StyleUpdatingDialog::exitButtonStyle(int radius, int paddingH, int paddi
         "   border: none;"
         "}"
         "QPushButton:hover {"
-        "   background-color: %6;"
-        "   color: %7;"
+        "   background-color: rgba(%6, %7, %8, %9);"
+        "   color: %10;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: %8;"
+        "   background-color: rgba(%11, %12, %13, %14);"
         "}"
     ).arg(COLOR_TEXT_PLACEHOLDER.name())
      .arg(radius).arg(paddingV).arg(paddingH).arg(fontSize)
-     .arg(COLOR_SHADOW_SUBTLE_8.name())
+     .arg(COLOR_SHADOW_SUBTLE_8.red())
+     .arg(COLOR_SHADOW_SUBTLE_8.green())
+     .arg(COLOR_SHADOW_SUBTLE_8.blue())
+     .arg(COLOR_SHADOW_SUBTLE_8.alpha())
      .arg(COLOR_TEXT_NEUTRAL_100.name())
-     .arg(COLOR_SHADOW_SUBTLE_15.name());
+     .arg(COLOR_SHADOW_SUBTLE_15.red())
+     .arg(COLOR_SHADOW_SUBTLE_15.green())
+     .arg(COLOR_SHADOW_SUBTLE_15.blue())
+     .arg(COLOR_SHADOW_SUBTLE_15.alpha());
 }
 
 UpdatingDialog::UpdatingDialog(QWidget* parent)

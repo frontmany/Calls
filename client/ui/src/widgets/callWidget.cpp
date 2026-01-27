@@ -251,6 +251,7 @@ void CallWidget::setupUI() {
     m_mainScreen->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     m_mainScreen->setMinimumSize(scale(100), scale(100));
     m_mainScreen->hide();
+    m_mainScreen->setMouseTracking(true);
     applyStandardSize();
 
     m_additionalScreensContainer = new QWidget(this);
