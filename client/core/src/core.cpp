@@ -50,9 +50,8 @@ namespace core
     }
 
     Client::~Client() {
-        m_stopReconnectRetry = true;
-        if (m_reconnectRetryThread.joinable()) {
-            m_reconnectRetryThread.join();
+        if (m_authorizationService) {
+            m_authorizationService->stopReconnectRetry();
         }
         reset();
         m_networkController.stop();
@@ -62,8 +61,16 @@ namespace core
         const std::string& port,
         std::shared_ptr<EventListener> eventListener)
     {
-        m_stopReconnectRetry = false;
         m_eventListener = std::move(eventListener);
+        m_authorizationService = std::make_unique<core::services::AuthorizationService>(
+            m_stateManager, m_keyManager, m_operationManager, m_taskManager,
+            m_networkController, m_eventListener);
+        m_callService = std::make_unique<core::services::CallService>(
+            m_stateManager, m_keyManager, m_operationManager, m_taskManager,
+            m_networkController, m_audioEngine, m_eventListener);
+        m_mediaSharingService = std::make_unique<core::services::MediaSharingService>(
+            m_stateManager, m_operationManager, m_taskManager,
+            m_networkController, m_mediaEncryptionService, m_eventListener);
         m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener, m_mediaEncryptionService);
         m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> j) { onReconnectCompleted(j); });
 
@@ -90,9 +97,8 @@ namespace core
     }
 
     void Client::stop() {
-        m_stopReconnectRetry = true;
-        if (m_reconnectRetryThread.joinable()) {
-            m_reconnectRetryThread.join();
+        if (m_authorizationService) {
+            m_authorizationService->stopReconnectRetry();
         }
         reset();
         m_networkController.stop();
@@ -108,22 +114,6 @@ namespace core
             m_audioEngine.stopStream();
     }
 
-    void Client::createAndStartTask(
-        const std::string& uid,
-        const std::vector<unsigned char>& packet,
-        PacketType packetType,
-        std::function<void(std::optional<nlohmann::json>)> onCompletion,
-        std::function<void(std::optional<nlohmann::json>)> onFailure)
-    {
-        m_taskManager.createTask(uid, 1500ms, 3,
-            std::bind(&Client::sendPacket, this, packet, packetType),
-            std::move(onCompletion),
-            std::move(onFailure)
-        );
-
-        m_taskManager.startTask(uid);
-    }
-
     void Client::onNetworkReceive(const unsigned char* data, int length, uint32_t type) {
         onReceive(data, length, static_cast<PacketType>(type));
     }
@@ -131,9 +121,7 @@ namespace core
 
     void Client::onConnectionDown() {
         LOG_ERROR("Connection down");
-        m_stateManager.setConnectionDown(true);
-        m_operationManager.clearAllOperations();
-
+        
         m_stateManager.setScreenSharing(false);
         m_stateManager.setCameraSharing(false);
         m_stateManager.setViewingRemoteScreen(false);
@@ -160,48 +148,15 @@ namespace core
 
         m_eventListener->onConnectionDown();
 
-        if (m_stateManager.isAuthorized()) {
-            if (m_reconnectRetryThread.joinable()) {
-                m_reconnectRetryThread.join();
-            }
-            m_stopReconnectRetry = false;
-            m_reconnectRetryThread = std::thread([this]() {
-                while (m_stateManager.isConnectionDown() && m_stateManager.isAuthorized() && !m_stopReconnectRetry.load()) {
-                    if (!m_reconnectInProgress.exchange(true)) {
-                        auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
-                        createAndStartTask(uid, packet, PacketType::RECONNECT,
-                            std::bind(&Client::onReconnectCompleted, this, _1),
-                            std::bind(&Client::onReconnectFailed, this, _1)
-                        );
-                    }
-                    for (int i = 0; i < 10 && !m_stopReconnectRetry.load(); ++i) {
-                        std::this_thread::sleep_for(1s);
-                    }
-                }
-            });
+        if (m_authorizationService) {
+            m_authorizationService->onConnectionDown();
+            m_authorizationService->startReconnectRetry();
         }
     }
 
     void Client::onConnectionRestored() {
-        if (!m_stateManager.isConnectionDown()) {
-            return;
-        }
-        if (m_reconnectInProgress.exchange(true)) {
-            return;
-        }
-
-        if (m_stateManager.isAuthorized()) {
-            auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
-
-            createAndStartTask(uid, packet, PacketType::RECONNECT,
-                std::bind(&Client::onReconnectCompleted, this, _1),
-                std::bind(&Client::onReconnectFailed, this, _1)
-            );
-        }
-        else {
-            m_stateManager.setConnectionDown(false);
-            m_reconnectInProgress = false;
-            m_eventListener->onConnectionRestoredAuthorizationNeeded();
+        if (m_authorizationService) {
+            m_authorizationService->onConnectionRestored();
         }
     }
 
@@ -210,328 +165,229 @@ namespace core
     }
 
     void Client::onReconnectCompleted(std::optional<nlohmann::json> completionContext) {
-        m_reconnectInProgress = false;
-        if (!completionContext.has_value()) {
-            LOG_ERROR("onReconnectCompleted called with empty completionContext");
-            return;
+        if (m_authorizationService) {
+            m_authorizationService->onReconnectCompleted(completionContext);
         }
-        auto& context = completionContext.value();
-
-        m_stateManager.setConnectionDown(false);
-        m_networkController.notifyConnectionRestored();
-
-        if (!context.contains(RESULT)) {
-            LOG_ERROR("RECONNECT_RESULT missing result field, treating as failed");
-            reset();
-            m_eventListener->onConnectionRestoredAuthorizationNeeded();
-            return;
-        }
-        bool reconnected = context[RESULT].get<bool>();
-        if (reconnected) {
-            LOG_INFO("Connection restored successfully");
-            m_stateManager.setLastReconnectSuccessTime();
-
-            bool activeCall = context.contains(IS_ACTIVE_CALL) ? context[IS_ACTIVE_CALL].get<bool>() : false;
-
-            m_eventListener->onConnectionRestored();
-
-            if (!activeCall) {
-                bool hadActiveCall = m_stateManager.isActiveCall();
-                
-                m_stateManager.setScreenSharing(false);
-                m_stateManager.setCameraSharing(false);
-                m_stateManager.setViewingRemoteScreen(false);
-                m_stateManager.setViewingRemoteCamera(false);
-                m_stateManager.clearCallState();
-                m_audioEngine.stopStream();
-
-                if (hadActiveCall) {
-                    m_eventListener->onCallEndedByRemote({});
+        // Если переподключение не удалось, нужно сбросить состояние
+        if (completionContext.has_value()) {
+            auto& context = completionContext.value();
+            if (context.contains(RESULT) && !context[RESULT].get<bool>()) {
+                reset();
+            }
+            else if (!context.contains(RESULT)) {
+                reset();
+            }
+            else {
+                bool activeCall = context.contains(IS_ACTIVE_CALL) ? context[IS_ACTIVE_CALL].get<bool>() : false;
+                if (!activeCall && m_stateManager.isActiveCall()) {
+                    m_audioEngine.stopStream();
                 }
             }
         }
         else {
-            LOG_INFO("Connection restored but authorization needed again");
-
+            // Если completionContext пустой, сбросить состояние
             reset();
-            m_eventListener->onConnectionRestoredAuthorizationNeeded();
         }
     }
 
     void Client::onReconnectFailed(std::optional<nlohmann::json> failureContext) {
-        m_reconnectInProgress = false;
-        LOG_ERROR("Reconnect task failed");
+        if (m_authorizationService) {
+            m_authorizationService->onReconnectFailed(failureContext);
+        }
     }
 
     void Client::onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
-
-        if (completionContext.has_value()) {
-            auto& context = completionContext.value();
-
-            bool successfullyAuthorized = context[RESULT].get<bool>();
-
-            if (successfullyAuthorized) {
-                std::string token = context[TOKEN];
-
-                m_stateManager.setMyNickname(nickname);
-                m_stateManager.setMyToken(token);
-                m_stateManager.setAuthorized(true);
-                m_eventListener->onAuthorizationResult({});
-            }
-            else {
-                m_eventListener->onAuthorizationResult(ErrorCode::taken_nickname);
-            }
+        if (m_authorizationService) {
+            m_authorizationService->onAuthorizeCompleted(nickname, completionContext);
         }
     }
 
     void Client::onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
-
-        if (!m_stateManager.isConnectionDown()) {
-            LOG_ERROR("Authorization task failed");
-            m_eventListener->onAuthorizationResult(ErrorCode::network_error);
+        if (m_authorizationService) {
+            m_authorizationService->onAuthorizeFailed(nickname, failureContext);
         }
     }
 
     void Client::onLogoutCompleted(std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
+        if (m_authorizationService) {
+            m_authorizationService->onLogoutCompleted(completionContext);
+        }
         reset();
-        m_eventListener->onLogoutCompleted();
     }
 
     void Client::onLogoutFailed(std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
-        LOG_ERROR("Logout task failed");
-
+        if (m_authorizationService) {
+            m_authorizationService->onLogoutFailed(failureContext);
+        }
         reset();
-        m_eventListener->onLogoutCompleted();
     }
 
     void Client::onRequestUserInfoCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
-        if (completionContext.has_value()) {
-            auto& context = completionContext.value();
-
-            bool userInfoFound = context[RESULT].get<bool>();
-
-            if (userInfoFound) {
-                const std::string& userPublicKeyString = context[PUBLIC_KEY];
-                auto userPublicKey = crypto::deserializePublicKey(userPublicKeyString);
-
-                CryptoPP::SecByteBlock callKey;
-                crypto::generateAESKey(callKey);
-
-                auto [uid, packet] = PacketFactory::getStartOutgoingCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), userPublicKey, callKey);
-
-                createAndStartTask(uid, packet, PacketType::CALLING_BEGIN,
-                    std::bind(&Client::onStartOutgoingCallCompleted, this, userNickname, _1),
-                    std::bind(&Client::onStartOutgoingCallFailed, this, userNickname, _1)
-                );
-            }
-            else {
-                m_operationManager.removeOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
-                m_eventListener->onStartOutgoingCallResult(ErrorCode::unexisting_user);
-            }
+        if (m_callService) {
+            m_callService->onRequestUserInfoCompleted(userNickname, completionContext);
         }
     }
 
     void Client::onRequestUserInfoFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
-        LOG_ERROR("Request user info task failed");
-        m_eventListener->onStartOutgoingCallResult(ErrorCode::network_error);
+        if (m_callService) {
+            m_callService->onRequestUserInfoFailed(userNickname, failureContext);
+        }
     }
 
     void Client::onStartOutgoingCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
-
-        m_stateManager.setOutgoingCall(userNickname, 32s, std::bind(&Client::onOutgoingCallTimeout, this));
-
-        m_eventListener->onStartOutgoingCallResult({});
+        if (m_callService) {
+            m_callService->onStartOutgoingCallCompleted(userNickname, completionContext);
+        }
     }
 
     void Client::onStartOutgoingCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
-        LOG_ERROR("Start outgoing call task failed");
-        m_eventListener->onStartOutgoingCallResult(ErrorCode::network_error);
+        if (m_callService) {
+            m_callService->onStartOutgoingCallFailed(userNickname, failureContext);
+        }
     }
 
     void Client::onOutgoingCallTimeout() {
-        m_stateManager.clearCallState();
-        m_eventListener->onOutgoingCallTimeout({});
+        if (m_callService) {
+            m_callService->onOutgoingCallTimeout();
+        }
     }
 
     void Client::onStopOutgoingCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::STOP_OUTGOING_CALL, nickname);
-        m_eventListener->onStopOutgoingCallResult({});
+        if (m_callService) {
+            m_callService->onStopOutgoingCallCompleted(nickname, completionContext);
+        }
     }
 
     void Client::onStopOutgoingCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::STOP_OUTGOING_CALL, nickname);
-        LOG_ERROR("Stop outgoing call task failed");
-        m_eventListener->onStopOutgoingCallResult(ErrorCode::network_error);
+        if (m_callService) {
+            m_callService->onStopOutgoingCallFailed(nickname, failureContext);
+        }
     }
 
     void Client::onDeclineIncomingCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext) {
-        m_stateManager.removeIncomingCall(nickname);
+        if (m_callService) {
+            m_callService->onDeclineIncomingCallCompleted(nickname, completionContext);
+        }
     }
 
     void Client::onDeclineIncomingCallFailed(std::optional<nlohmann::json> failureContext) {
-        LOG_ERROR("Decline incoming call task failed (as part of accept call operation)");
+        if (m_callService) {
+            m_callService->onDeclineIncomingCallFailed(failureContext);
+        }
     }
 
     void Client::onAcceptCallStopOutgoingCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
-        auto& incomingCalls = m_stateManager.getIncomingCalls();
-        auto& incomingCall = incomingCalls.at(userNickname);
-        auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
-
-        createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
-            std::bind(&Client::onAcceptCallCompleted, this, userNickname, _1),
-            std::bind(&Client::onAcceptCallFailed, this, userNickname, _1)
-        );
+        if (m_callService) {
+            m_callService->onAcceptCallStopOutgoingCompleted(userNickname, completionContext);
+        }
     }
 
     void Client::onAcceptCallStopOutgoingFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
-        LOG_ERROR("Stop outgoing call task failed (as part of accept call operation)");
-        m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
+        if (m_callService) {
+            m_callService->onAcceptCallStopOutgoingFailed(userNickname, failureContext);
+        }
     }
 
     void Client::onAcceptCallEndActiveCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
-        m_stateManager.setScreenSharing(false);
-        m_stateManager.setCameraSharing(false);
-        m_stateManager.setViewingRemoteScreen(false);
-        m_stateManager.setViewingRemoteCamera(false);
-        m_stateManager.clearCallState();
-        m_audioEngine.stopStream();
-
-        auto& incomingCalls = m_stateManager.getIncomingCalls();
-        auto& incomingCall = incomingCalls.at(userNickname);
-        auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
-
-        createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
-            std::bind(&Client::onAcceptCallCompleted, this, userNickname, _1),
-            std::bind(&Client::onAcceptCallFailedAfterEndCall, this, userNickname, _1)
-        );
+        if (m_callService) {
+            m_callService->onAcceptCallEndActiveCompleted(userNickname, completionContext);
+        }
     }
 
     void Client::onAcceptCallEndActiveFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
-        LOG_ERROR("End active call task failed (as part of accept new call operation)");
-        m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
+        if (m_callService) {
+            m_callService->onAcceptCallEndActiveFailed(userNickname, failureContext);
+        }
     }
 
     void Client::onAcceptCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
-
-        auto& incomingCalls = m_stateManager.getIncomingCalls();
-        auto& incomingCall = incomingCalls.at(userNickname);
-        m_stateManager.setActiveCall(incomingCall.getNickname(), incomingCall.getPublicKey(), incomingCall.getCallKey());
-        m_stateManager.removeIncomingCall(userNickname);
-
-        m_audioEngine.startStream();
-        m_eventListener->onAcceptCallResult({}, userNickname);
+        if (m_callService) {
+            m_callService->onAcceptCallCompleted(userNickname, completionContext);
+        }
     }
 
     void Client::onAcceptCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
-        LOG_ERROR("Accept call task failed");
-        m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
+        if (m_callService) {
+            m_callService->onAcceptCallFailed(userNickname, failureContext);
+        }
     }
 
     void Client::onAcceptCallFailedAfterEndCall(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
-        LOG_ERROR("Accept call task failed");
-        m_eventListener->onEndCallResult({});
-        m_eventListener->onAcceptCallResult(ErrorCode::network_error, userNickname);
+        if (m_callService) {
+            m_callService->onAcceptCallFailedAfterEndCall(userNickname, failureContext);
+        }
     }
 
     void Client::onDeclineCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::DECLINE_CALL, userNickname);
-
-        m_stateManager.removeIncomingCall(userNickname);
-
-        m_eventListener->onDeclineCallResult({}, userNickname);
+        if (m_callService) {
+            m_callService->onDeclineCallCompleted(userNickname, completionContext);
+        }
     }
 
     void Client::onDeclineCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::DECLINE_CALL, userNickname);
-        LOG_ERROR("Decline incoming call task failed");
-        m_eventListener->onDeclineCallResult(make_error_code(ErrorCode::network_error), userNickname);
+        if (m_callService) {
+            m_callService->onDeclineCallFailed(userNickname, failureContext);
+        }
     }
 
     void Client::onEndCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext) {
-        m_operationManager.removeOperation(UserOperationType::END_CALL, nickname);
-
-        m_stateManager.setScreenSharing(false);
-        m_stateManager.setCameraSharing(false);
-        m_stateManager.setViewingRemoteScreen(false);
-        m_stateManager.setViewingRemoteCamera(false);
-        m_stateManager.clearCallState();
-        m_audioEngine.stopStream();
-
-        m_eventListener->onEndCallResult({});
+        if (m_callService) {
+            m_callService->onEndCallCompleted(nickname, completionContext);
+        }
     }
 
     void Client::onEndCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext) {
-        m_operationManager.removeOperation(UserOperationType::END_CALL, nickname);
-        LOG_ERROR("Stop outgoing call task failed");
-        m_eventListener->onEndCallResult(ErrorCode::network_error);
+        if (m_callService) {
+            m_callService->onEndCallFailed(nickname, failureContext);
+        }
     }
 
     void Client::onStartScreenSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
-        m_stateManager.setScreenSharing(true);
-        m_eventListener->onStartScreenSharingResult({});
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStartScreenSharingCompleted(completionContext);
+        }
     }
 
     void Client::onStartScreenSharingFailed(std::optional<nlohmann::json> failureContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
-        LOG_ERROR("Start screen sharing task failed");
-        m_eventListener->onStartScreenSharingResult(ErrorCode::network_error);
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStartScreenSharingFailed(failureContext);
+        }
     }
 
     void Client::onStopScreenSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
-        m_stateManager.setScreenSharing(false);
-        m_eventListener->onStopScreenSharingResult({});
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStopScreenSharingCompleted(completionContext);
+        }
     }
 
     void Client::onStopScreenSharingFailed(std::optional<nlohmann::json> failureContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
-        LOG_ERROR("Stop screen sharing task failed");
-        m_eventListener->onStopScreenSharingResult(ErrorCode::network_error);
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStopScreenSharingFailed(failureContext);
+        }
     }
 
     void Client::onStartCameraSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
-        m_stateManager.setCameraSharing(true);
-        m_eventListener->onStartCameraSharingResult({});
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStartCameraSharingCompleted(completionContext);
+        }
     }
 
     void Client::onStartCameraSharingFailed(std::optional<nlohmann::json> failureContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
-        LOG_ERROR("Start camera sharing task failed");
-        m_eventListener->onStartCameraSharingResult(ErrorCode::network_error);
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStartCameraSharingFailed(failureContext);
+        }
     }
 
     void Client::onStopCameraSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
-        m_stateManager.setCameraSharing(false);
-        m_eventListener->onStopCameraSharingResult({});
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStopCameraSharingCompleted(completionContext);
+        }
     }
 
     void Client::onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext) {
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
-        LOG_ERROR("Stop camera sharing task failed");
-        m_eventListener->onStopCameraSharingResult(ErrorCode::network_error);
+        if (m_mediaSharingService) {
+            m_mediaSharingService->onStopCameraSharingFailed(failureContext);
+        }
     }
 
     void Client::onReceive(const unsigned char* data, int length, PacketType type) {
@@ -652,311 +508,72 @@ namespace core
     }
 
     std::error_code Client::authorize(const std::string& nickname) {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (m_stateManager.isAuthorized()) return make_error_code(ErrorCode::already_authorized);
-        if (m_operationManager.isOperation(UserOperationType::AUTHORIZE, nickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        if (!m_keyManager.isKeys()) {
-            if (m_keyManager.isGeneratingKeys()) {
-            }
-            else {
-                m_keyManager.generateKeys();
-            }
-        }
-
-        m_keyManager.awaitKeysGeneration();
-
-        m_operationManager.addOperation(UserOperationType::AUTHORIZE, nickname);
-
-        auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey());
-
-        createAndStartTask(uid, packet, PacketType::AUTHORIZATION,
-            std::bind(&Client::onAuthorizeCompleted, this, nickname, _1),
-            std::bind(&Client::onAuthorizeFailed, this, nickname, _1)
-        );
-
-        return {};
+        return m_authorizationService->authorize(nickname);
     }
 
     std::error_code Client::logout() {
-        if (isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (m_operationManager.isOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname())) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
-
-        auto [uid, packet] = PacketFactory::getLogoutPacket(m_stateManager.getMyNickname());
-
-        createAndStartTask(uid, packet, PacketType::LOGOUT,
-            std::bind(&Client::onLogoutCompleted, this, _1),
-            std::bind(&Client::onLogoutFailed, this, _1)
-        );
-
-        return {};
+        return m_authorizationService->logout();
     }
 
     std::error_code Client::startOutgoingCall(const std::string& userNickname) {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (m_stateManager.isActiveCall()) return make_error_code(ErrorCode::active_call_exists);
-        if (m_operationManager.isOperation(UserOperationType::START_OUTGOING_CALL, userNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        auto& icomingCalls = m_stateManager.getIncomingCalls();
-
+        // Проверяем, есть ли уже входящий звонок от этого пользователя
+        auto& incomingCalls = m_stateManager.getIncomingCalls();
         bool acceptExistingCall = false;
-        for (auto& [nickname, incomingCall] : icomingCalls) {
+        for (auto& [nickname, incomingCall] : incomingCalls) {
             if (nickname == userNickname) {
                 acceptExistingCall = true;
+                break;
             }
         }
 
         if (acceptExistingCall) {
-            acceptCall(userNickname);
+            // Если есть входящий звонок, принимаем его
+            return acceptCall(userNickname);
         }
         else {
-            m_operationManager.addOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
-
-            auto [uid, packet] = PacketFactory::getRequestUserInfoPacket(m_stateManager.getMyNickname(), userNickname);
-
-            createAndStartTask(uid, packet, PacketType::GET_USER_INFO,
-                std::bind(&Client::onRequestUserInfoCompleted, this, userNickname, _1),
-                std::bind(&Client::onRequestUserInfoFailed, this, userNickname, _1)
-            );
+            // Иначе начинаем исходящий звонок через сервис
+            return m_callService->startOutgoingCall(userNickname);
         }
-
-        return {};
     }
 
     std::error_code Client::stopOutgoingCall() {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isOutgoingCall()) return make_error_code(ErrorCode::no_outgoing_call);
-        const std::string& nickname = m_stateManager.getOutgoingCall().getNickname();
-        if (m_operationManager.isOperation(UserOperationType::STOP_OUTGOING_CALL, nickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::STOP_OUTGOING_CALL, nickname);
-
-        auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), nickname);
-
-        createAndStartTask(uid, packet, PacketType::CALLING_END,
-            std::bind(&Client::onStopOutgoingCallCompleted, this, nickname, _1),
-            std::bind(&Client::onStopOutgoingCallFailed, this, nickname, _1)
-        );
-
-        return {};
+        return m_callService->stopOutgoingCall();
     }
 
     std::error_code Client::acceptCall(const std::string& userNickname) {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isIncomingCalls()) return make_error_code(ErrorCode::no_incoming_call);
-        if (m_operationManager.isOperation(UserOperationType::ACCEPT_CALL, userNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        auto& incomingCalls = m_stateManager.getIncomingCalls();
-        if (!incomingCalls.contains(userNickname)) return make_error_code(ErrorCode::no_incoming_call);
-
-        m_operationManager.addOperation(UserOperationType::ACCEPT_CALL, userNickname);
-
-        for (auto& [nickname, incomingCallData] : incomingCalls) {
-            if (nickname != userNickname) {
-                auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), nickname);
-
-                createAndStartTask(uid, packet, PacketType::CALL_DECLINE,
-                    std::bind(&Client::onDeclineIncomingCallCompleted, this, nickname, _1),
-                    std::bind(&Client::onDeclineIncomingCallFailed, this, _1)
-                );
-            }
-        }
-
-        if (m_stateManager.isOutgoingCall()) {
-            auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), m_stateManager.getOutgoingCall().getNickname());
-
-            createAndStartTask(uid, packet, PacketType::CALLING_END,
-                std::bind(&Client::onAcceptCallStopOutgoingCompleted, this, userNickname, _1),
-                std::bind(&Client::onAcceptCallStopOutgoingFailed, this, userNickname, _1)
-            );
-        }
-        else if (m_stateManager.isActiveCall()) {
-            auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), m_stateManager.getActiveCall().getNickname());
-
-            createAndStartTask(uid, packet, PacketType::CALL_END,
-                std::bind(&Client::onAcceptCallEndActiveCompleted, this, userNickname, _1),
-                std::bind(&Client::onAcceptCallEndActiveFailed, this, userNickname, _1)
-            );
-        }
-        else {
-            auto& incomingCalls = m_stateManager.getIncomingCalls();
-            auto& incomingCall = incomingCalls.at(userNickname);
-            auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
-
-            createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
-                std::bind(&Client::onAcceptCallCompleted, this, userNickname, _1),
-                std::bind(&Client::onAcceptCallFailed, this, userNickname, _1)
-            );
-        }
-
-        return {};
+        return m_callService->acceptCall(userNickname);
     } 
 
     std::error_code Client::declineCall(const std::string& userNickname) {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isIncomingCalls()) return make_error_code(ErrorCode::no_incoming_call);
-        if (m_operationManager.isOperation(UserOperationType::DECLINE_CALL, userNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        auto& incomingCalls = m_stateManager.getIncomingCalls();
-        if (!incomingCalls.contains(userNickname)) return make_error_code(ErrorCode::no_incoming_call);
-
-        m_operationManager.addOperation(UserOperationType::DECLINE_CALL, userNickname);
-
-        auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), userNickname);
-
-        createAndStartTask(uid, packet, PacketType::CALL_DECLINE,
-            std::bind(&Client::onDeclineCallCompleted, this, userNickname, _1),
-            std::bind(&Client::onDeclineCallFailed, this, userNickname, _1)
-        );
-
-        return {};
+        return m_callService->declineCall(userNickname);
     }
 
     std::error_code Client::endCall() {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        const std::string& nickname = m_stateManager.getActiveCall().getNickname();
-        if (m_operationManager.isOperation(UserOperationType::END_CALL, nickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::END_CALL, nickname);
-
-        auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), nickname);
-
-        createAndStartTask(uid, packet, PacketType::CALL_END,
-            std::bind(&Client::onEndCallCompleted, this, nickname, _1),
-            std::bind(&Client::onEndCallFailed, this, nickname, _1)
-        );
-
-        return {};
+        return m_callService->endCall();
     }
 
     std::error_code Client::startScreenSharing() {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (m_stateManager.isScreenSharing()) return make_error_code(ErrorCode::screen_sharing_already_active);
-        if (m_stateManager.isViewingRemoteScreen()) return make_error_code(ErrorCode::viewing_remote_screen);
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        if (m_operationManager.isOperation(UserOperationType::START_SCREEN_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
-        auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
-
-        createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_BEGIN,
-            std::bind(&Client::onStartScreenSharingCompleted, this, _1),
-            std::bind(&Client::onStartScreenSharingFailed, this, _1)
-        );
-
-        return {};
+        return m_mediaSharingService->startScreenSharing();
     }
 
     std::error_code Client::stopScreenSharing() {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (!m_stateManager.isScreenSharing()) return make_error_code(ErrorCode::screen_sharing_not_active);
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        if (m_operationManager.isOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
-        auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
-
-        createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_END,
-            std::bind(&Client::onStopScreenSharingCompleted, this, _1),
-            std::bind(&Client::onStopScreenSharingFailed, this, _1)
-        );
-
-        return {};
+        return m_mediaSharingService->stopScreenSharing();
     }
 
     std::error_code Client::sendScreen(const std::vector<unsigned char>& data) {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (!m_stateManager.isScreenSharing()) return make_error_code(ErrorCode::screen_sharing_not_active);
-
-        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
-
-        auto cipherData = m_mediaEncryptionService.encryptMedia(
-            data.data(),
-            static_cast<int>(data.size()),
-            callKey);
-
-        if (cipherData.empty()) {
-            LOG_ERROR("Screen sending error: encryption failed");
-            return make_error_code(ErrorCode::encryption_error);
-        }
-
-        m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::SCREEN));
-        return {};
+        return m_mediaSharingService->sendScreen(data);
     }
 
     std::error_code Client::startCameraSharing() {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (m_stateManager.isCameraSharing()) return make_error_code(ErrorCode::camera_sharing_already_active);
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        if (m_operationManager.isOperation(UserOperationType::START_CAMERA_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
-        auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
-
-        createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_BEGIN,
-            std::bind(&Client::onStartCameraSharingCompleted, this, _1),
-            std::bind(&Client::onStartCameraSharingFailed, this, _1)
-        );
-
-        return {};
+        return m_mediaSharingService->startCameraSharing();
     }
 
     std::error_code Client::stopCameraSharing() {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (!m_stateManager.isCameraSharing()) return make_error_code(ErrorCode::camera_sharing_not_active);
-        const std::string& friendNickname = m_stateManager.getActiveCall().getNickname();
-        if (m_operationManager.isOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname)) return make_error_code(ErrorCode::operation_in_progress);
-
-        m_operationManager.addOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
-        auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
-
-        createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_END,
-            std::bind(&Client::onStopCameraSharingCompleted, this, _1),
-            std::bind(&Client::onStopCameraSharingFailed, this, _1)
-        );
-
-        return {};
+        return m_mediaSharingService->stopCameraSharing();
     }
 
     std::error_code Client::sendCamera(const std::vector<unsigned char>& data) {
-        if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
-        if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        if (!m_stateManager.isActiveCall()) return make_error_code(ErrorCode::no_active_call);
-        if (!m_stateManager.isCameraSharing()) return make_error_code(ErrorCode::camera_sharing_not_active);
-
-        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
-
-        auto cipherData = m_mediaEncryptionService.encryptMedia(
-            data.data(),
-            static_cast<int>(data.size()),
-            callKey);
-
-        if (cipherData.empty()) {
-            LOG_ERROR("Camera sending error: encryption failed");
-            return make_error_code(ErrorCode::encryption_error);
-        }
-
-        m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::CAMERA));
-        return {};
+        return m_mediaSharingService->sendCamera(data);
     }
 
     void Client::onInputVoice(const unsigned char* data, int length) {

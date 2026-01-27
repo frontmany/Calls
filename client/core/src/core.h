@@ -23,6 +23,9 @@
 #include "audio/audioEngine.h"
 #include "userOperationManager.h"
 #include "services/MediaEncryptionService.h"
+#include "services/CallService.h"
+#include "services/AuthorizationService.h"
+#include "services/MediaSharingService.h"
 #include "json.hpp"
 
 namespace core
@@ -93,13 +96,6 @@ namespace core
 
         void sendPacket(const std::vector<unsigned char>& packet, PacketType packetType);
 
-        void createAndStartTask(
-            const std::string& uid,
-            const std::vector<unsigned char>& packet,
-            PacketType packetType,
-            std::function<void(std::optional<nlohmann::json>)> onCompletion,
-            std::function<void(std::optional<nlohmann::json>)> onFailure);
-
         void onReconnectCompleted(std::optional<nlohmann::json> completionContext);
         void onReconnectFailed(std::optional<nlohmann::json> failureContext);
 
@@ -157,9 +153,8 @@ namespace core
         std::unique_ptr<PacketProcessor> m_packetProcessor;
         UserOperationManager m_operationManager;
         core::services::MediaEncryptionService m_mediaEncryptionService;
-
-        std::atomic<bool> m_reconnectInProgress{false};
-        std::thread m_reconnectRetryThread;
-        std::atomic<bool> m_stopReconnectRetry{false};
+        std::unique_ptr<core::services::CallService> m_callService;
+        std::unique_ptr<core::services::AuthorizationService> m_authorizationService;
+        std::unique_ptr<core::services::MediaSharingService> m_mediaSharingService;
     };
 }
