@@ -17,6 +17,13 @@
 #include "taskManager.h"
 #include "packetType.h"
 #include "confirmationKey.h"
+#include "services/IUserRepository.h"
+#include "services/ICallManager.h"
+#include "services/IPacketSender.h"
+#include "services/UserRepository.h"
+#include "services/CallManager.h"
+#include "services/NetworkPacketSender.h"
+#include "services/MediaRelayService.h"
 
 #include "json.hpp"
 
@@ -62,14 +69,16 @@ namespace server
 
 	private:
 		mutable std::mutex m_mutex;
-		std::unordered_map<asio::ip::udp::endpoint, UserPtr> m_endpointToUser;
-		std::unordered_map<std::string, UserPtr> m_nicknameHashToUser;
-
-		std::unordered_set<std::shared_ptr<Call>> m_calls;
-		std::unordered_set<std::shared_ptr<PendingCall>> m_pendingCalls;
-	
+		
+		// Инфраструктура
 		server::network::NetworkController m_networkController;
 		TaskManager<long long, std::milli> m_taskManager;
+		
+		// Сервисы (порядок важен для инициализации)
+		server::services::UserRepository m_userRepository;
+		server::services::CallManager m_callManager;
+		server::services::NetworkPacketSender m_packetSender;
+		server::services::MediaRelayService m_mediaRelayService;
 
 		std::unordered_map<PacketType, std::function<void(const nlohmann::json&, const asio::ip::udp::endpoint&)>> m_packetHandlers;
 		std::unordered_map<ConfirmationKey, std::function<void()>> m_pendingActions;
