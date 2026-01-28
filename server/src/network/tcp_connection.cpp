@@ -1,6 +1,7 @@
 #include "tcp_connection.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
+#include "utilities/errorCodeForLog.h"
 
 #include <random>
 #include <cstdint>
@@ -38,7 +39,7 @@ namespace server
             std::error_code ec;
             m_socket.set_option(asio::ip::tcp::socket::keep_alive(true), ec);
             if (ec)
-                LOG_WARN("[TCP] Failed to enable keepalive: {}", ec.message());
+                LOG_WARN("[TCP] Failed to enable keepalive: {}", server::utilities::errorCodeForLog(ec));
 
             std::random_device rd;
             std::mt19937_64 gen(rd());
@@ -61,7 +62,7 @@ namespace server
                     std::error_code ec;
                     m_socket.close(ec);
                     if (ec)
-                        LOG_ERROR("[TCP] Socket close error: {}", ec.message());
+                        LOG_ERROR("[TCP] Socket close error: {}", server::utilities::errorCodeForLog(ec));
                 }
             });
         }
@@ -78,7 +79,7 @@ namespace server
                     if (ec) {
                         if (ec == asio::error::operation_aborted)
                             return;
-                        LOG_ERROR("[TCP] Handshake write error: {}", ec.message());
+                        LOG_ERROR("[TCP] Handshake write error: {}", server::utilities::errorCodeForLog(ec));
                         m_onDisconnected(shared_from_this());
                         return;
                     }
@@ -93,7 +94,7 @@ namespace server
                     if (ec) {
                         if (ec == asio::error::operation_aborted)
                             return;
-                        LOG_ERROR("[TCP] Handshake read error: {}", ec.message());
+                        LOG_ERROR("[TCP] Handshake read error: {}", server::utilities::errorCodeForLog(ec));
                         m_onDisconnected(shared_from_this());
                         return;
                     }
@@ -108,7 +109,7 @@ namespace server
                             if (ec2) {
                                 if (ec2 == asio::error::operation_aborted)
                                     return;
-                                LOG_ERROR("[TCP] Handshake confirmation write error: {}", ec2.message());
+                                LOG_ERROR("[TCP] Handshake confirmation write error: {}", server::utilities::errorCodeForLog(ec2));
                                 m_onDisconnected(shared_from_this());
                                 return;
                             }

@@ -1,8 +1,8 @@
 #include "packetsSender.h"
 #include "filesSender.h"
 #include "packet.h"
-
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 using namespace serverUpdater;
 
@@ -38,7 +38,7 @@ void PacketsSender::writeHeader() {
 			[this, packet](std::error_code ec, std::size_t length) {
 				if (ec)
 				{
-					LOG_ERROR("Packet header write error: {}", ec.message());
+					LOG_ERROR("Packet header write error: {}", utilities::errorCodeForLog(ec));
 					m_onError();
 				}
 				else
@@ -65,7 +65,7 @@ void PacketsSender::writeBody(const Packet* packet) {
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) 
 			{
-				LOG_ERROR("Packet body write error: {}", ec.message());
+				LOG_ERROR("Packet body write error: {}", utilities::errorCodeForLog(ec));
 				m_onError();
 			}
 			else 

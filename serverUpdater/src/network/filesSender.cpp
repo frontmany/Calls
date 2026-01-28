@@ -1,6 +1,7 @@
 #include "filesSender.h"
 #include "packetsSender.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace serverUpdater
 {
@@ -51,7 +52,7 @@ void FilesSender::sendFileChunk() {
 			[this](std::error_code ec, std::size_t bytesSent) {
 				if (ec) 
 				{
-					LOG_ERROR("Error sending file chunk: {}", ec.message());
+					LOG_ERROR("Error sending file chunk: {}", utilities::errorCodeForLog(ec));
 					m_onError();
 				}
 				else {

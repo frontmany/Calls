@@ -3,6 +3,7 @@
 #include "network/tcp/packetsSender.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
+#include "utilities/errorCodeForLog.h"
 
 #include <array>
 #include <chrono>
@@ -65,7 +66,7 @@ void ControlController::runConnect(const std::string& host, uint16_t portNumber)
     auto onConnected = [this](std::error_code errorCode, const asio::ip::tcp::endpoint&) {
         if (errorCode) {
             if (errorCode != asio::error::operation_aborted)
-                LOG_ERROR("Control connect failed: {}", errorCode.message());
+                LOG_ERROR("Control connect failed: {}", core::utilities::errorCodeForLog(errorCode));
             m_connecting = false;
             if (m_onConnectionDown) m_onConnectionDown();
             return;
@@ -73,7 +74,7 @@ void ControlController::runConnect(const std::string& host, uint16_t portNumber)
         std::error_code optionError;
         m_socket.set_option(asio::ip::tcp::socket::keep_alive(true), optionError);
         if (optionError)
-            LOG_WARN("Control keepalive failed: {}", optionError.message());
+            LOG_WARN("Control keepalive failed: {}", core::utilities::errorCodeForLog(optionError));
         readHandshake();
     };
 
@@ -90,7 +91,7 @@ void ControlController::runConnect(const std::string& host, uint16_t portNumber)
         [this, host, portNumber, onConnected = std::move(onConnected)](
             std::error_code resolveError, asio::ip::tcp::resolver::results_type results) mutable {
             if (resolveError) {
-                LOG_ERROR("Control resolve {}:{} failed: {}", host, portNumber, resolveError.message());
+                LOG_ERROR("Control resolve {}:{} failed: {}", host, portNumber, core::utilities::errorCodeForLog(resolveError));
                 m_connecting = false;
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
@@ -104,7 +105,7 @@ void ControlController::readHandshake() {
         [this](std::error_code errorCode, std::size_t) {
             if (errorCode) {
                 if (errorCode != asio::error::operation_aborted)
-                    LOG_ERROR("Control handshake read error: {}", errorCode.message());
+                    LOG_ERROR("Control handshake read error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_connecting = false;
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
@@ -120,7 +121,7 @@ void ControlController::writeHandshake() {
         [this](std::error_code errorCode, std::size_t) {
             if (errorCode) {
                 if (errorCode != asio::error::operation_aborted)
-                    LOG_ERROR("Control handshake write error: {}", errorCode.message());
+                    LOG_ERROR("Control handshake write error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_connecting = false;
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
@@ -134,7 +135,7 @@ void ControlController::readHandshakeConfirmation() {
         [this](std::error_code errorCode, std::size_t) {
             if (errorCode) {
                 if (errorCode != asio::error::operation_aborted)
-                    LOG_ERROR("Control handshake confirmation read error: {}", errorCode.message());
+                    LOG_ERROR("Control handshake confirmation read error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_connecting = false;
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
@@ -205,7 +206,7 @@ void ControlController::disconnect() {
             std::error_code errorCode;
             m_socket.close(errorCode);
             if (errorCode)
-                LOG_ERROR("Control socket close error: {}", errorCode.message());
+                LOG_ERROR("Control socket close error: {}", core::utilities::errorCodeForLog(errorCode));
         }
     });
 

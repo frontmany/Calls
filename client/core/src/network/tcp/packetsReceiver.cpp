@@ -1,5 +1,6 @@
 #include "network/tcp/packetsReceiver.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace core::network::tcp {
 
@@ -27,7 +28,7 @@ void PacketsReceiver::readHeader() {
             if (errorCode) {
                 if (errorCode == asio::error::operation_aborted)
                     return;
-                LOG_ERROR("Control read header error: {} - disconnecting", errorCode.message());
+                LOG_ERROR("Control read header error: {} - disconnecting", core::utilities::errorCodeForLog(errorCode));
                 m_onDisconnect();
                 return;
             }
@@ -49,7 +50,7 @@ void PacketsReceiver::readBody() {
             if (errorCode) {
                 if (errorCode == asio::error::operation_aborted)
                     return;
-                LOG_ERROR("Control read body error: {} - disconnecting", errorCode.message());
+                LOG_ERROR("Control read body error: {} - disconnecting", core::utilities::errorCodeForLog(errorCode));
                 m_onDisconnect();
                 return;
             }

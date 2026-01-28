@@ -6,6 +6,7 @@
 #include "connection.h"
 #include "utilities/safeQueue.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 using namespace std::chrono_literals;
 using namespace serverUpdater;
@@ -53,7 +54,7 @@ void NetworkController::waitForClientConnections() {
             createConnection(std::move(socket));
         }
         else {
-            LOG_ERROR("[SERVER] Connection error: {}", ec.message());
+            LOG_ERROR("[SERVER] Connection error: {}", utilities::errorCodeForLog(ec));
         }
 
         waitForClientConnections();

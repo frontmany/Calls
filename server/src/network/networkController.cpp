@@ -1,5 +1,6 @@
 #include "networkController.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 #include "packet.h"
 
 #include <utility>
@@ -31,7 +32,7 @@ namespace server
                 asio::ip::udp::resolver resolver(m_context);
                 auto endpoints = resolver.resolve(asio::ip::udp::v4(), "0.0.0.0", port, ec);
                 if (ec) {
-                    LOG_ERROR("Failed to resolve 0.0.0.0:{} - {}", port, ec.message());
+                    LOG_ERROR("Failed to resolve 0.0.0.0:{} - {}", port, server::utilities::errorCodeForLog(ec));
                     return false;
                 }
                 if (endpoints.empty()) {
@@ -46,17 +47,17 @@ namespace server
                 }
                 m_socket.open(asio::ip::udp::v4(), ec);
                 if (ec) {
-                    LOG_ERROR("Failed to open UDP socket: {}", ec.message());
+                    LOG_ERROR("Failed to open UDP socket: {}", server::utilities::errorCodeForLog(ec));
                     return false;
                 }
                 m_socket.set_option(asio::socket_base::reuse_address(true), ec);
                 if (ec) {
-                    LOG_ERROR("Failed to set reuse_address on UDP socket: {}", ec.message());
+                    LOG_ERROR("Failed to set reuse_address on UDP socket: {}", server::utilities::errorCodeForLog(ec));
                     return false;
                 }
                 m_socket.bind(m_serverEndpoint, ec);
                 if (ec) {
-                    LOG_ERROR("Failed to bind UDP socket: {}", ec.message());
+                    LOG_ERROR("Failed to bind UDP socket: {}", server::utilities::errorCodeForLog(ec));
                     return false;
                 }
 

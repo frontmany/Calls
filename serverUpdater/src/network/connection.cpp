@@ -4,6 +4,7 @@
 
 #include "utilities/logger.h"
 #include "utilities/utilities.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace serverUpdater
 {
@@ -25,7 +26,7 @@ Connection::Connection(
 	std::error_code ec;
 	m_socket.set_option(asio::ip::tcp::socket::keep_alive(true), ec);
 	if (ec) {
-		LOG_WARN("Failed to enable keepalive: {}", ec.message());
+		LOG_WARN("Failed to enable keepalive: {}", utilities::errorCodeForLog(ec));
 	}
 
 	std::random_device rd;
@@ -69,7 +70,7 @@ void Connection::close() {
 
                     m_socket.close(ec);
                     if (ec) {
-                        LOG_ERROR("Socket close error: {}", ec.message());
+                        LOG_ERROR("Socket close error: {}", utilities::errorCodeForLog(ec));
                     }
 					else {
 						LOG_DEBUG("Connection closed successfully");
@@ -86,7 +87,7 @@ void Connection::writeHandshake() {
 	asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				LOG_ERROR("Handshake write error: {}", ec.message());
+				LOG_ERROR("Handshake write error: {}", utilities::errorCodeForLog(ec));
 				m_onDisconnected(shared_from_this());
 			}
 		});
@@ -96,7 +97,7 @@ void Connection::readHandshake() {
 	asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
 		[this](std::error_code ec, std::size_t length) {
 			if (ec) {
-				LOG_ERROR("Handshake read error: {}", ec.message());
+				LOG_ERROR("Handshake read error: {}", utilities::errorCodeForLog(ec));
 				m_onDisconnected(shared_from_this());
 			}
 			else {
@@ -105,7 +106,7 @@ void Connection::readHandshake() {
 					asio::async_write(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
 						[this](std::error_code ec, std::size_t length) {
 							if (ec) {
-								LOG_ERROR("Handshake confirmation write error: {}", ec.message());
+								LOG_ERROR("Handshake confirmation write error: {}", utilities::errorCodeForLog(ec));
 								m_onDisconnected(shared_from_this());
 							}
 						});

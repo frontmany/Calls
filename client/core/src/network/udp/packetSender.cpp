@@ -1,5 +1,6 @@
 #include "network/udp/packetSender.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 #include <algorithm>
 
@@ -100,7 +101,7 @@ void PacketSender::sendNextDatagram() {
     socket.async_send_to(asio::buffer(datagram), m_serverEndpoint,
         [this](std::error_code errorCode, std::size_t bytesTransferred) {
             if (errorCode) {
-                LOG_ERROR("Media failed to send datagram chunk: {}", errorCode.message());
+                LOG_ERROR("Media failed to send datagram chunk: {}", core::utilities::errorCodeForLog(errorCode));
                 m_isSending = false;
                 if (m_onErrorCallback)
                     m_onErrorCallback();

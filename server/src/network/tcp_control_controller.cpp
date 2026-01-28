@@ -1,5 +1,6 @@
 #include "tcp_control_controller.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 #include <chrono>
 
@@ -57,7 +58,7 @@ namespace server
             m_acceptor.async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
                 if (ec) {
                     if (ec != asio::error::operation_aborted)
-                        LOG_ERROR("[TCP] Accept error: {}", ec.message());
+                        LOG_ERROR("[TCP] Accept error: {}", server::utilities::errorCodeForLog(ec));
                     if (m_running.load())
                         waitForClients();
                     return;

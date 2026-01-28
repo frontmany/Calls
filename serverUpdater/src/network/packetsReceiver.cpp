@@ -1,6 +1,6 @@
 #include "packetsReceiver.h"
-
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 using namespace serverUpdater;
 
@@ -28,7 +28,7 @@ void PacketsReceiver::readHeader() {
 					return;
 				}
 				// All other errors, including connection_reset, indicate client disconnect
-				LOG_DEBUG("[SERVER] Connection error detected in readHeader: {} - disconnecting client", ec.message());
+				LOG_DEBUG("[SERVER] Connection error detected in readHeader: {} - disconnecting client", utilities::errorCodeForLog(ec));
 				m_onDisconnect();
 			}
 			else { 
@@ -54,7 +54,7 @@ void PacketsReceiver::readBody() {
 					return;
 				}
 				// All other errors, including connection_reset, indicate client disconnect
-				LOG_DEBUG("[SERVER] Connection error detected in readBody: {} - disconnecting client", ec.message());
+				LOG_DEBUG("[SERVER] Connection error detected in readBody: {} - disconnecting client", utilities::errorCodeForLog(ec));
 				m_onDisconnect();
 			}
 			else {

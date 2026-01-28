@@ -1,5 +1,6 @@
 #include "network/tcp/packetsSender.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace core::network::tcp {
 
@@ -28,7 +29,7 @@ void PacketsSender::writeHeader() {
         [this, packet](std::error_code errorCode, std::size_t) {
             if (errorCode) {
                 if (errorCode != asio::error::operation_aborted)
-                    LOG_ERROR("Control write header error: {}", errorCode.message());
+                    LOG_ERROR("Control write header error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_onError();
                 return;
             }
@@ -47,7 +48,7 @@ void PacketsSender::writeBody(const Packet* packet) {
         [this](std::error_code errorCode, std::size_t) {
             if (errorCode) {
                 if (errorCode != asio::error::operation_aborted)
-                    LOG_ERROR("Control write body error: {}", errorCode.message());
+                    LOG_ERROR("Control write body error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_onError();
                 return;
             }

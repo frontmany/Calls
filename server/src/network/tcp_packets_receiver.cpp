@@ -1,5 +1,6 @@
 #include "tcp_packets_receiver.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace server
 {
@@ -29,7 +30,7 @@ namespace server
                     if (ec) {
                         if (ec == asio::error::operation_aborted)
                             return;
-                        LOG_DEBUG("[TCP] Read header error: {} - disconnecting", ec.message());
+                        LOG_DEBUG("[TCP] Read header error: {} - disconnecting", server::utilities::errorCodeForLog(ec));
                         m_onDisconnect();
                         return;
                     }
@@ -50,7 +51,7 @@ namespace server
                     if (ec) {
                         if (ec == asio::error::operation_aborted)
                             return;
-                        LOG_DEBUG("[TCP] Read body error: {} - disconnecting", ec.message());
+                        LOG_DEBUG("[TCP] Read body error: {} - disconnecting", server::utilities::errorCodeForLog(ec));
                         m_onDisconnect();
                         return;
                     }

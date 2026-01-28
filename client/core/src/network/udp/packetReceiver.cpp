@@ -1,5 +1,6 @@
 #include "network/udp/packetReceiver.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 #include <chrono>
 #include <exception>
@@ -69,7 +70,7 @@ void PacketReceiver::stop() {
             std::error_code errorCode;
             socket.cancel(errorCode);
             if (errorCode && errorCode != asio::error::operation_aborted) {
-                LOG_WARN("Failed to cancel media receiver socket: {}", errorCode.message());
+                LOG_WARN("Failed to cancel media receiver socket: {}", core::utilities::errorCodeForLog(errorCode));
             }
         }
     }
@@ -322,7 +323,7 @@ void PacketReceiver::notifyError(const std::error_code& errorCode) {
     if (errorCode == asio::error::operation_aborted)
         return;
     if (!m_connectionDown.load())
-        LOG_ERROR("Media packet receiver error: {}", errorCode.message());
+        LOG_ERROR("Media packet receiver error: {}", core::utilities::errorCodeForLog(errorCode));
     if (m_onErrorCallback)
         m_onErrorCallback();
 }

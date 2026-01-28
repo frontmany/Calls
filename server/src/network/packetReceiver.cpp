@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace server
 {
@@ -76,7 +77,7 @@ namespace server
                 std::error_code ec;
                 socket.cancel(ec);
                 if (ec && ec != asio::error::operation_aborted) {
-                    LOG_WARN("Failed to cancel receiver socket: {}", ec.message());
+                    LOG_WARN("Failed to cancel receiver socket: {}", server::utilities::errorCodeForLog(ec));
                 }
             }
         }
@@ -415,7 +416,7 @@ namespace server
             return;
         }
 
-        LOG_ERROR("Packet receiver error: {} (code: {})", ec.message(), ec.value());
+        LOG_ERROR("Packet receiver error: {} (code: {})", server::utilities::errorCodeForLog(ec), ec.value());
         if (m_onErrorCallback) {
             m_onErrorCallback();
         }

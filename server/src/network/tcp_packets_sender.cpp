@@ -1,5 +1,6 @@
 #include "tcp_packets_sender.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace server
 {
@@ -30,7 +31,7 @@ namespace server
                 [this, p](std::error_code ec, std::size_t) {
                     if (ec) {
                         if (ec != asio::error::operation_aborted)
-                            LOG_ERROR("[TCP] Write header error: {}", ec.message());
+                            LOG_ERROR("[TCP] Write header error: {}", server::utilities::errorCodeForLog(ec));
                         m_onError();
                         return;
                     }
@@ -48,7 +49,7 @@ namespace server
                 [this](std::error_code ec, std::size_t) {
                     if (ec) {
                         if (ec != asio::error::operation_aborted)
-                            LOG_ERROR("[TCP] Write body error: {}", ec.message());
+                            LOG_ERROR("[TCP] Write body error: {}", server::utilities::errorCodeForLog(ec));
                         m_onError();
                         return;
                     }

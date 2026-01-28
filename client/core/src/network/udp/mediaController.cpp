@@ -1,5 +1,6 @@
 #include "network/udp/mediaController.h"
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 #include <thread>
 #include <utility>
@@ -34,7 +35,7 @@ bool MediaController::initialize(const std::string& host,
         asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), host, port, errorCode);
 
         if (errorCode) {
-            LOG_ERROR("Media failed to resolve {}:{} - {}", host, port, errorCode.message());
+            LOG_ERROR("Media failed to resolve {}:{} - {}", host, port, core::utilities::errorCodeForLog(errorCode));
             return false;
         }
         if (endpoints.empty()) {
@@ -51,19 +52,19 @@ bool MediaController::initialize(const std::string& host,
 
         m_socket.open(asio::ip::udp::v4(), errorCode);
         if (errorCode) {
-            LOG_ERROR("Media failed to open socket: {}", errorCode.message());
+            LOG_ERROR("Media failed to open socket: {}", core::utilities::errorCodeForLog(errorCode));
             return false;
         }
 
         m_socket.set_option(asio::socket_base::reuse_address(true), errorCode);
         if (errorCode) {
-            LOG_ERROR("Media failed to set reuse_address on socket: {}", errorCode.message());
+            LOG_ERROR("Media failed to set reuse_address on socket: {}", core::utilities::errorCodeForLog(errorCode));
             return false;
         }
 
         m_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0), errorCode);
         if (errorCode) {
-            LOG_ERROR("Media failed to bind socket: {}", errorCode.message());
+            LOG_ERROR("Media failed to bind socket: {}", core::utilities::errorCodeForLog(errorCode));
             return false;
         }
 
@@ -111,10 +112,10 @@ void MediaController::stop() {
     if (m_socket.is_open()) {
         m_socket.cancel(errorCode);
         if (errorCode)
-            LOG_WARN("Media failed to cancel socket operations: {}", errorCode.message());
+            LOG_WARN("Media failed to cancel socket operations: {}", core::utilities::errorCodeForLog(errorCode));
         m_socket.close(errorCode);
         if (errorCode)
-            LOG_WARN("Media failed to close socket: {}", errorCode.message());
+            LOG_WARN("Media failed to close socket: {}", core::utilities::errorCodeForLog(errorCode));
     }
 
     m_workGuard.reset();

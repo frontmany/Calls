@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "utilities/logger.h"
+#include "utilities/errorCodeForLog.h"
 
 namespace server
 {
@@ -122,7 +123,7 @@ namespace server
             m_currentEndpoint,
             [this](std::error_code ec, std::size_t bytesTransferred) {
                 if (ec) {
-                    LOG_ERROR("Failed to send datagram chunk: {}", ec.message());
+                    LOG_ERROR("Failed to send datagram chunk: {}", server::utilities::errorCodeForLog(ec));
                     m_isSending = false;
                     if (m_onErrorCallback) {
                         m_onErrorCallback();
