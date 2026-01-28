@@ -8,7 +8,6 @@
 #include "core.h"
 #include "eventListener.h"
 #include "errorCode.h"
-#include "network/networkController.h"
 
 namespace py = pybind11;
 

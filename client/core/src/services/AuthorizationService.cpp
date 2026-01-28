@@ -17,20 +17,20 @@ namespace core
             KeyManager& keyManager,
             UserOperationManager& operationManager,
             PendingRequests& pendingRequests,
-            core::network::NetworkController& networkController,
-            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+            core::network::udp::MediaController& mediaController,
+            std::unique_ptr<core::network::tcp::ControlController>& controlController,
             std::shared_ptr<EventListener> eventListener,
             std::string host,
-            std::string tcpPort)
+            std::string controlPort)
             : m_stateManager(stateManager)
             , m_keyManager(keyManager)
             , m_operationManager(operationManager)
             , m_pendingRequests(pendingRequests)
-            , m_networkController(networkController)
-            , m_tcpControl(tcpControl)
+            , m_mediaController(mediaController)
+            , m_controlController(controlController)
             , m_eventListener(eventListener)
             , m_host(std::move(host))
-            , m_tcpPort(std::move(tcpPort))
+            , m_controlPort(std::move(controlPort))
         {
         }
 
@@ -43,10 +43,10 @@ namespace core
             std::function<void(std::optional<nlohmann::json>)> onFail,
             const std::string& uid)
         {
-            if (!m_tcpControl || !m_tcpControl->isConnected())
+            if (!m_controlController || !m_controlController->isConnected())
                 return false;
             m_pendingRequests.add(uid, std::move(onComplete), std::move(onFail));
-            if (!m_tcpControl->send(type, body.data(), body.size())) {
+            if (!m_controlController->send(type, body.data(), body.size())) {
                 m_pendingRequests.fail(uid, std::nullopt);
                 return false;
             }
@@ -76,8 +76,8 @@ namespace core
             m_keyManager.awaitKeysGeneration();
 
             m_operationManager.addOperation(UserOperationType::AUTHORIZE, nickname);
-            uint16_t udpPort = m_networkController.getLocalUdpPort();
-            auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey(), udpPort);
+            uint16_t mediaPort = m_mediaController.getLocalMediaPort();
+            auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey(), mediaPort);
 
             if (!sendControl(static_cast<uint32_t>(PacketType::AUTHORIZATION), packet,
                     std::bind(&AuthorizationService::onAuthorizeCompleted, this, nickname, _1),
@@ -113,19 +113,19 @@ namespace core
             if (m_reconnectInProgress.exchange(true)) return;
 
             if (m_stateManager.isAuthorized()) {
-                m_tcpControl->disconnect();
-                m_tcpControl->connect(m_host, m_tcpPort);
+                m_controlController->disconnect();
+                m_controlController->connect(m_host, m_controlPort);
                 for (int i = 0; i < 30; ++i) {
                     std::this_thread::sleep_for(200ms);
-                    if (m_tcpControl->isConnected())
+                    if (m_controlController->isConnected())
                         break;
                 }
-                if (!m_tcpControl->isConnected()) {
+                if (!m_controlController->isConnected()) {
                     m_reconnectInProgress = false;
                     return;
                 }
-                uint16_t udpPort = m_networkController.getLocalUdpPort();
-                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken(), udpPort);
+                uint16_t mediaPort = m_mediaController.getLocalMediaPort();
+                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken(), mediaPort);
                 sendControl(static_cast<uint32_t>(PacketType::RECONNECT), packet,
                     std::bind(&AuthorizationService::onReconnectCompleted, this, _1),
                     std::bind(&AuthorizationService::onReconnectFailed, this, _1),
@@ -160,17 +160,17 @@ namespace core
                 m_retryThreadRunning = true;
                 while (m_stateManager.isConnectionDown() && !m_stopReconnectRetry.load()) {
                     if (!m_reconnectInProgress.exchange(true)) {
-                        m_tcpControl->disconnect();
-                        m_tcpControl->connect(m_host, m_tcpPort);
+                        m_controlController->disconnect();
+                        m_controlController->connect(m_host, m_controlPort);
                         for (int i = 0; i < 30; ++i) {
                             std::this_thread::sleep_for(200ms);
-                            if (m_tcpControl->isConnected()) break;
+                            if (m_controlController->isConnected()) break;
                         }
-                        if (m_tcpControl->isConnected()) {
+                        if (m_controlController->isConnected()) {
                             if (!m_stateManager.isAuthorized()) {
                                 LOG_INFO("Reconnect: connected, not authorized -> need to authorize");
                                 m_stateManager.setConnectionDown(false);
-                                m_networkController.notifyConnectionRestored();
+                                m_mediaController.notifyConnectionRestored();
                                 m_reconnectInProgress = false;
                                 m_stateManager.setAuthorized(false);
                                 m_stateManager.clearMyNickname();
@@ -178,8 +178,8 @@ namespace core
                                 m_eventListener->onConnectionRestoredAuthorizationNeeded();
                                 break;
                             }
-                            uint16_t udpPort = m_networkController.getLocalUdpPort();
-                            auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken(), udpPort);
+                            uint16_t mediaPort = m_mediaController.getLocalMediaPort();
+                            auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken(), mediaPort);
                             LOG_INFO("Reconnect: sending RECONNECT, waiting for result");
                             sendControl(static_cast<uint32_t>(PacketType::RECONNECT), packet,
                                 std::bind(&AuthorizationService::onReconnectCompleted, this, _1),
@@ -258,7 +258,7 @@ namespace core
             }
             auto& context = completionContext.value();
             m_stateManager.setConnectionDown(false);
-            m_networkController.notifyConnectionRestored();
+            m_mediaController.notifyConnectionRestored();
 
             if (!context.contains(RESULT)) {
                 m_stateManager.setAuthorized(false);

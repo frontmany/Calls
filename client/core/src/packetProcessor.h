@@ -11,12 +11,12 @@
 #include "packetType.h"
 #include "clientStateManager.h"
 #include "services/IMediaEncryptionService.h"
-#include "network/tcp_control_client.h"
+#include "network/tcp/controlController.h"
 #include "json.hpp"
 #include <memory>
 
 namespace core { namespace audio { class AudioEngine; } }
-namespace core { namespace network { class NetworkController; } }
+namespace core { namespace network { namespace udp { class MediaController; } } }
 
 namespace core
 {
@@ -29,8 +29,8 @@ namespace core
         PacketProcessor(ClientStateManager& stateManager,
             KeyManager& keysManager,
             PendingRequests& pendingRequests,
-            core::network::NetworkController& networkController,
-            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+            core::network::udp::MediaController& mediaController,
+            std::unique_ptr<core::network::tcp::ControlController>& controlController,
             core::audio::AudioEngine& audioEngine,
             std::shared_ptr<EventListener> eventListener,
             core::services::IMediaEncryptionService& mediaEncryptionService);
@@ -58,11 +58,11 @@ namespace core
 
     private:
         mutable std::mutex m_mutex;
-        core::network::NetworkController& m_networkController;
+        core::network::udp::MediaController& m_mediaController;
         core::audio::AudioEngine& m_audioEngine;
         ClientStateManager& m_stateManager;
         PendingRequests& m_pendingRequests;
-        std::unique_ptr<core::network::TcpControlClient>& m_tcpControl;
+        std::unique_ptr<core::network::tcp::ControlController>& m_controlController;
         KeyManager& m_keysManager;
         std::shared_ptr<EventListener> m_eventListener;
         core::services::IMediaEncryptionService& m_mediaEncryptionService;

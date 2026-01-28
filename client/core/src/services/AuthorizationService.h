@@ -9,8 +9,8 @@
 #include "packetType.h"
 #include "errorCode.h"
 #include "eventListener.h"
-#include "network/networkController.h"
-#include "network/tcp_control_client.h"
+#include "network/tcp/controlController.h"
+#include "network/udp/mediaController.h"
 #include "json.hpp"
 #include <functional>
 #include <memory>
@@ -28,11 +28,11 @@ namespace core
                 KeyManager& keyManager,
                 UserOperationManager& operationManager,
                 PendingRequests& pendingRequests,
-                core::network::NetworkController& networkController,
-                std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+                core::network::udp::MediaController& mediaController,
+                std::unique_ptr<core::network::tcp::ControlController>& controlController,
                 std::shared_ptr<EventListener> eventListener,
                 std::string host,
-                std::string tcpPort
+                std::string controlPort
             );
 
             ~AuthorizationService();
@@ -69,11 +69,11 @@ namespace core
             KeyManager& m_keyManager;
             UserOperationManager& m_operationManager;
             PendingRequests& m_pendingRequests;
-            core::network::NetworkController& m_networkController;
-            std::unique_ptr<core::network::TcpControlClient>& m_tcpControl;
+            core::network::udp::MediaController& m_mediaController;
+            std::unique_ptr<core::network::tcp::ControlController>& m_controlController;
             std::shared_ptr<EventListener> m_eventListener;
             std::string m_host;
-            std::string m_tcpPort;
+            std::string m_controlPort;
 
             std::atomic<bool> m_reconnectInProgress{false};
             std::thread m_reconnectRetryThread;

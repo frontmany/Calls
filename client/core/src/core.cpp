@@ -54,31 +54,31 @@ namespace core
             m_authorizationService->stopReconnectRetry();
         }
         reset();
-        if (m_tcpControl)
-            m_tcpControl->disconnect();
-        m_networkController.stop();
+        if (m_controlController)
+            m_controlController->disconnect();
+        m_mediaController.stop();
     }
 
     bool Client::start(const std::string& host,
-        const std::string& tcpPort,
-        const std::string& udpPort,
+        const std::string& controlPort,
+        const std::string& mediaPort,
         std::shared_ptr<EventListener> eventListener)
     {
         m_eventListener = std::move(eventListener);
 
         bool audioInitialized = m_audioEngine.init(std::bind(&Client::onInputVoice, this, _1, _2));
 
-        bool udpInitialized = m_networkController.init(host, udpPort,
-            [this](const unsigned char* d, int len, uint32_t type) {
-                auto t = static_cast<PacketType>(type);
-                if (t == PacketType::VOICE || t == PacketType::SCREEN || t == PacketType::CAMERA)
-                    onReceive(d, len, t);
+        bool mediaInitialized = m_mediaController.initialize(host, mediaPort,
+            [this](const unsigned char* data, int length, uint32_t type) {
+                auto packetType = static_cast<PacketType>(type);
+                if (packetType == PacketType::VOICE || packetType == PacketType::SCREEN || packetType == PacketType::CAMERA)
+                    onReceive(data, length, packetType);
             },
             std::bind(&Client::onConnectionDown, this),
             std::bind(&Client::onConnectionRestored, this)
         );
 
-        m_tcpControl = std::make_unique<core::network::TcpControlClient>(
+        m_controlController = std::make_unique<core::network::tcp::ControlController>(
             [this](uint32_t type, const unsigned char* data, size_t size) {
                 if (m_packetProcessor)
                     m_packetProcessor->processPacket(data, static_cast<int>(size), static_cast<PacketType>(type));
@@ -87,26 +87,26 @@ namespace core
 
         m_authorizationService = std::make_unique<core::services::AuthorizationService>(
             m_stateManager, m_keyManager, m_operationManager, m_pendingRequests,
-            m_networkController, m_tcpControl, m_eventListener, host, tcpPort);
+            m_mediaController, m_controlController, m_eventListener, host, controlPort);
         m_callService = std::make_unique<core::services::CallService>(
             m_stateManager, m_keyManager, m_operationManager, m_pendingRequests,
-            m_networkController, m_tcpControl, m_audioEngine, m_eventListener);
+            m_mediaController, m_controlController, m_audioEngine, m_eventListener);
         m_mediaSharingService = std::make_unique<core::services::MediaSharingService>(
             m_stateManager, m_operationManager, m_pendingRequests,
-            m_networkController, m_tcpControl, m_mediaEncryptionService, m_eventListener);
-        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_pendingRequests, m_networkController, m_tcpControl, m_audioEngine, m_eventListener, m_mediaEncryptionService);
-        m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> j) { onReconnectCompleted(j); });
+            m_mediaController, m_controlController, m_mediaEncryptionService, m_eventListener);
+        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_pendingRequests, m_mediaController, m_controlController, m_audioEngine, m_eventListener, m_mediaEncryptionService);
+        m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> completionContext) { onReconnectCompleted(completionContext); });
 
-        m_tcpControl->connect(host, tcpPort);
+        m_controlController->connect(host, controlPort);
         m_keyManager.generateKeys();
 
-        if (udpInitialized && !m_networkController.isRunning())
-            m_networkController.start();
+        if (mediaInitialized && !m_mediaController.isRunning())
+            m_mediaController.start();
 
-        if (audioInitialized && udpInitialized) {
+        if (audioInitialized && mediaInitialized) {
             return true;
         }
-        LOG_ERROR("Calls client initialization failed - audio: {}, udp: {}", audioInitialized, udpInitialized);
+        LOG_ERROR("Calls client initialization failed - audio: {}, media: {}", audioInitialized, mediaInitialized);
         return false;
     }
 
@@ -115,9 +115,9 @@ namespace core
             m_authorizationService->stopReconnectRetry();
         }
         reset();
-        if (m_tcpControl)
-            m_tcpControl->disconnect();
-        m_networkController.stop();
+        if (m_controlController)
+            m_controlController->disconnect();
+        m_mediaController.stop();
     }
 
     void Client::reset() {
@@ -599,7 +599,7 @@ namespace core
 
         auto cipherData = m_mediaEncryptionService.encryptMedia(data, length, callKey);
         if (!cipherData.empty()) {
-            m_networkController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
+            m_mediaController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
         }
     }
 }

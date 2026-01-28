@@ -19,8 +19,8 @@
 #include "eventListener.h"
 #include "clientStateManager.h"
 #include "packetProcessor.h"
-#include "network/networkController.h"
-#include "network/tcp_control_client.h"
+#include "network/tcp/controlController.h"
+#include "network/udp/mediaController.h"
 #include "audio/audioEngine.h"
 #include "userOperationManager.h"
 #include "services/MediaEncryptionService.h"
@@ -41,7 +41,7 @@ namespace core
         Client();
         ~Client();
 
-        bool start(const std::string& host, const std::string& tcpPort, const std::string& udpPort, std::shared_ptr<EventListener> eventListener);
+        bool start(const std::string& host, const std::string& controlPort, const std::string& mediaPort, std::shared_ptr<EventListener> eventListener);
         void stop();
 
         void refreshAudioDevices();
@@ -146,8 +146,8 @@ namespace core
         PendingRequests m_pendingRequests;
         ClientStateManager m_stateManager;
         KeyManager m_keyManager;
-        core::network::NetworkController m_networkController;
-        std::unique_ptr<core::network::TcpControlClient> m_tcpControl;
+        core::network::udp::MediaController m_mediaController;
+        std::unique_ptr<core::network::tcp::ControlController> m_controlController;
         core::audio::AudioEngine m_audioEngine;
         std::shared_ptr<EventListener> m_eventListener;
         std::unique_ptr<PacketProcessor> m_packetProcessor;

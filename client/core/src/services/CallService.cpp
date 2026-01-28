@@ -17,16 +17,16 @@ namespace core
             KeyManager& keyManager,
             UserOperationManager& operationManager,
             PendingRequests& pendingRequests,
-            core::network::NetworkController& networkController,
-            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+            core::network::udp::MediaController& mediaController,
+            std::unique_ptr<core::network::tcp::ControlController>& controlController,
             core::audio::AudioEngine& audioEngine,
             std::shared_ptr<EventListener> eventListener)
             : m_stateManager(stateManager)
             , m_keyManager(keyManager)
             , m_operationManager(operationManager)
             , m_pendingRequests(pendingRequests)
-            , m_networkController(networkController)
-            , m_tcpControl(tcpControl)
+            , m_mediaController(mediaController)
+            , m_controlController(controlController)
             , m_audioEngine(audioEngine)
             , m_eventListener(eventListener)
         {
@@ -37,9 +37,9 @@ namespace core
             std::function<void(std::optional<nlohmann::json>)> onFail,
             const std::string& uid)
         {
-            if (!m_tcpControl || !m_tcpControl->isConnected()) return false;
+            if (!m_controlController || !m_controlController->isConnected()) return false;
             m_pendingRequests.add(uid, std::move(onComplete), std::move(onFail));
-            if (!m_tcpControl->send(type, body.data(), body.size())) {
+            if (!m_controlController->send(type, body.data(), body.size())) {
                 m_pendingRequests.fail(uid, std::nullopt);
                 return false;
             }

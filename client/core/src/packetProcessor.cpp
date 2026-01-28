@@ -4,7 +4,7 @@
 #include "packetFactory.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
-#include "network/networkController.h"
+#include "network/udp/mediaController.h"
 #include "audio/audioEngine.h"
 
 #include "clientStateManager.h"
@@ -19,16 +19,16 @@ using namespace std::chrono_literals;
 PacketProcessor::PacketProcessor(ClientStateManager& stateManager,
     KeyManager& keyManager,
     PendingRequests& pendingRequests,
-    core::network::NetworkController& networkController,
-    std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+    core::network::udp::MediaController& mediaController,
+    std::unique_ptr<core::network::tcp::ControlController>& controlController,
     core::audio::AudioEngine& audioEngine,
     std::shared_ptr<EventListener> eventListener,
     core::services::IMediaEncryptionService& mediaEncryptionService)
     : m_stateManager(stateManager),
     m_keysManager(keyManager),
     m_pendingRequests(pendingRequests),
-    m_networkController(networkController),
-    m_tcpControl(tcpControl),
+    m_mediaController(mediaController),
+    m_controlController(controlController),
     m_audioEngine(audioEngine),
     m_eventListener(eventListener),
     m_mediaEncryptionService(mediaEncryptionService)
@@ -304,7 +304,7 @@ void PacketProcessor::onConnectionDownWithUser(const nlohmann::json& jsonObject)
         if (m_stateManager.isInReconnectGracePeriod()) {
             return;
         }
-        m_networkController.notifyConnectionDown();
+        m_mediaController.notifyConnectionDown();
         return;
     }
 
@@ -352,7 +352,7 @@ void PacketProcessor::onConnectionRestoredWithUser(const nlohmann::json& jsonObj
     if (m_stateManager.isAuthorized() && crypto::calculateHash(m_stateManager.getMyNickname()) == userNicknameHash) {
         if (m_stateManager.isConnectionDown()) {
             m_stateManager.setConnectionDown(false);
-            m_networkController.notifyConnectionRestored();
+            m_mediaController.notifyConnectionRestored();
             m_eventListener->onConnectionRestored();
         }
         return;
@@ -364,7 +364,7 @@ void PacketProcessor::onConnectionRestoredWithUser(const nlohmann::json& jsonObj
         // restored" while "Reconnecting..." keeps spinning.
         if (m_stateManager.isConnectionDown()) {
             m_stateManager.setConnectionDown(false);
-            m_networkController.notifyConnectionRestored();
+            m_mediaController.notifyConnectionRestored();
             m_eventListener->onConnectionRestored();
         }
 

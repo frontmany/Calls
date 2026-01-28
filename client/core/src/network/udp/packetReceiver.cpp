@@ -1,0 +1,330 @@
+#include "network/udp/packetReceiver.h"
+#include "utilities/logger.h"
+
+#include <chrono>
+#include <exception>
+#include <string>
+#include <system_error>
+
+namespace core::network::udp {
+
+PacketReceiver::PacketReceiver()
+    : m_running(false)
+{
+}
+
+PacketReceiver::~PacketReceiver() {
+    stop();
+}
+
+bool PacketReceiver::initialize(asio::ip::udp::socket& socket,
+    std::function<void(const unsigned char*, int, uint32_t)> onPacketReceived,
+    std::function<void()> onErrorCallback,
+    std::function<void(uint32_t)> onPingReceived,
+    const asio::ip::udp::endpoint& serverEndpoint)
+{
+    m_socket = std::ref(socket);
+    m_onPacketReceived = std::move(onPacketReceived);
+    m_onErrorCallback = std::move(onErrorCallback);
+    m_onPingReceived = std::move(onPingReceived);
+    m_serverEndpoint = serverEndpoint;
+    m_running = false;
+    m_remoteEndpoint = asio::ip::udp::endpoint();
+
+    {
+        std::lock_guard<std::mutex> lock(m_stateMutex);
+        m_pendingPackets.clear();
+    }
+
+    if (!m_socket.has_value() || !m_socket->get().is_open()) {
+        LOG_ERROR("Media packet receiver initialize called with closed socket");
+        return false;
+    }
+
+    return true;
+}
+
+void PacketReceiver::start() {
+    if (!m_socket.has_value() || !m_socket->get().is_open()) {
+        LOG_ERROR("Media packet receiver cannot start without a valid socket");
+        return;
+    }
+
+    if (m_running.exchange(true)) {
+        return;
+    }
+
+    m_processingThread = std::thread([this]() { processReceivedPackets(); });
+    doReceive();
+}
+
+void PacketReceiver::stop() {
+    if (!m_running.exchange(false)) {
+        return;
+    }
+
+    if (m_socket.has_value()) {
+        auto& socket = m_socket->get();
+        if (socket.is_open()) {
+            std::error_code errorCode;
+            socket.cancel(errorCode);
+            if (errorCode && errorCode != asio::error::operation_aborted) {
+                LOG_WARN("Failed to cancel media receiver socket: {}", errorCode.message());
+            }
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_stateMutex);
+        m_pendingPackets.clear();
+    }
+
+    m_receivedPacketsQueue.clear();
+    m_assemblyQueue.clear();
+
+    if (m_processingThread.joinable()) {
+        m_processingThread.join();
+    }
+}
+
+bool PacketReceiver::isRunning() const {
+    return m_running.load();
+}
+
+void PacketReceiver::doReceive() {
+    if (!m_socket.has_value())
+        return;
+    auto& socket = m_socket->get();
+    if (!socket.is_open())
+        return;
+
+    socket.async_receive_from(asio::buffer(m_buffer), m_remoteEndpoint,
+        [this](const std::error_code& errorCode, std::size_t bytesTransferred) {
+            if (!m_running.load())
+                return;
+            if (errorCode) {
+                if (errorCode != asio::error::operation_aborted) {
+                    try {
+                        notifyError(errorCode);
+                    }
+                    catch (const std::exception& exception) {
+                        LOG_ERROR("Media receiver notifyError exception: {}", exception.what());
+                    }
+                    catch (...) {
+                        LOG_ERROR("Media receiver notifyError unknown exception");
+                    }
+                }
+                if (m_running.load())
+                    doReceive();
+                return;
+            }
+            try {
+                processDatagram(bytesTransferred);
+            }
+            catch (const std::exception& exception) {
+                LOG_ERROR("Media processDatagram error (receive chain continues): {}", exception.what());
+            }
+            catch (...) {
+                LOG_ERROR("Media processDatagram unknown error (receive chain continues)");
+            }
+            doReceive();
+        });
+}
+
+void PacketReceiver::processDatagram(std::size_t bytesTransferred) {
+    if (bytesTransferred < m_headerSize) {
+        LOG_WARN("Received media datagram too small: {} bytes", bytesTransferred);
+        return;
+    }
+    if (m_remoteEndpoint != m_serverEndpoint)
+        return;
+
+    const unsigned char* data = m_buffer.data();
+    const uint64_t packetId = readUint64(data);
+    const uint16_t chunkIndex = readUint16(data + 8);
+    const uint16_t totalChunks = readUint16(data + 10);
+    const uint16_t payloadLength = readUint16(data + 12);
+    const uint32_t packetType = readUint32(data + 14);
+
+    const std::size_t actualPayload = bytesTransferred - m_headerSize;
+    if (payloadLength > actualPayload) {
+        LOG_WARN("Media payload length mismatch: declared {}, available {}", payloadLength, actualPayload);
+        return;
+    }
+
+    if (packetType == 0 || packetType == 1) {
+        if (m_onPingReceived)
+            m_onPingReceived(packetType);
+        return;
+    }
+
+    if (payloadLength == 0) {
+        ReceivedPacket receivedPacket;
+        receivedPacket.data.clear();
+        receivedPacket.type = packetType;
+        m_receivedPacketsQueue.push(std::move(receivedPacket));
+        return;
+    }
+
+    const unsigned char* payload = data + m_headerSize;
+    const std::size_t payloadSize = payloadLength;
+    if (payload == nullptr || payloadSize == 0)
+        return;
+
+    bool packetComplete = false;
+    AssemblyJob jobToPush;
+
+    {
+        std::unique_lock<std::mutex> lock(m_stateMutex);
+        if (totalChunks == 0) {
+            LOG_WARN("Received media chunk with zero chunk count for packet {}", packetId);
+            return;
+        }
+        const auto now = std::chrono::steady_clock::now();
+        pruneExpiredPackets(m_pendingPackets, now);
+
+        auto packetIt = m_pendingPackets.find(packetId);
+        if (packetIt == m_pendingPackets.end()) {
+            if (m_pendingPackets.size() >= m_maxPendingPackets)
+                evictOldestPacket(m_pendingPackets);
+            packetIt = m_pendingPackets.emplace(packetId, PendingPacket{}).first;
+            initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
+        }
+        else if (packetIt->second.totalChunks != totalChunks) {
+            LOG_WARN("Media total chunks mismatch for packet {}: expected {}, got {}",
+                packetId, packetIt->second.totalChunks, totalChunks);
+            initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
+        }
+        else if (packetIt->second.type != packetType) {
+            LOG_WARN("Media packet type mismatch for packet {}: expected {}, got {}",
+                packetId, static_cast<uint32_t>(packetIt->second.type), static_cast<uint32_t>(packetType));
+            initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
+        }
+
+        auto& packet = packetIt->second;
+        packet.lastUpdated = now;
+
+        if (chunkIndex >= packet.chunks.size()) {
+            LOG_WARN("Media chunk index {} out of range for packet {} ({})", chunkIndex, packetId, packet.chunks.size());
+            return;
+        }
+        if (packet.chunks[chunkIndex].empty()) {
+            packet.chunks[chunkIndex] = std::vector<unsigned char>(payload, payload + payloadSize);
+            packet.receivedChunks++;
+        }
+        if (packet.receivedChunks == packet.totalChunks) {
+            packetComplete = true;
+            jobToPush.chunks = std::move(packet.chunks);
+            jobToPush.type = packet.type;
+            m_pendingPackets.erase(packetIt);
+        }
+    }
+
+    if (packetComplete)
+        m_assemblyQueue.push(std::move(jobToPush));
+}
+
+void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
+    std::chrono::steady_clock::time_point now)
+{
+    packet = PendingPacket{};
+    packet.packetId = packetId;
+    packet.totalChunks = totalChunks;
+    packet.chunks.resize(totalChunks);
+    packet.receivedChunks = 0;
+    packet.type = packetType;
+    packet.lastUpdated = now;
+}
+
+void PacketReceiver::pruneExpiredPackets(PendingPacketMap& packets, std::chrono::steady_clock::time_point now) {
+    for (auto it = packets.begin(); it != packets.end(); ) {
+        if (now - it->second.lastUpdated > m_pendingPacketTimeout)
+            it = packets.erase(it);
+        else
+            ++it;
+    }
+}
+
+void PacketReceiver::evictOldestPacket(PendingPacketMap& packets) {
+    if (packets.empty())
+        return;
+    auto oldestIt = packets.begin();
+    for (auto it = packets.begin(); it != packets.end(); ++it) {
+        if (it->second.lastUpdated < oldestIt->second.lastUpdated)
+            oldestIt = it;
+    }
+    if (oldestIt != packets.end())
+        packets.erase(oldestIt);
+}
+
+uint16_t PacketReceiver::readUint16(const unsigned char* data) {
+    return static_cast<uint16_t>((static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]));
+}
+
+uint32_t PacketReceiver::readUint32(const unsigned char* data) {
+    uint32_t value = 0;
+    for (int i = 0; i < 4; ++i)
+        value = static_cast<uint32_t>((value << 8) | data[i]);
+    return value;
+}
+
+uint64_t PacketReceiver::readUint64(const unsigned char* data) {
+    uint64_t value = 0;
+    for (int i = 0; i < 8; ++i)
+        value = (value << 8) | data[i];
+    return value;
+}
+
+void PacketReceiver::processReceivedPackets() {
+    const auto timeout = std::chrono::milliseconds(100);
+    constexpr int maxAssemblyBatch = 64;
+
+    while (m_running.load()) {
+        for (int i = 0; i < maxAssemblyBatch; ++i) {
+            auto jobOptional = m_assemblyQueue.try_pop();
+            if (!jobOptional.has_value())
+                break;
+            try {
+                ReceivedPacket receivedPacket;
+                receivedPacket.type = jobOptional->type;
+                std::size_t totalSize = 0;
+                for (const auto& chunk : jobOptional->chunks)
+                    totalSize += chunk.size();
+                receivedPacket.data.reserve(totalSize);
+                for (const auto& chunk : jobOptional->chunks)
+                    receivedPacket.data.insert(receivedPacket.data.end(), chunk.begin(), chunk.end());
+                m_receivedPacketsQueue.push(std::move(receivedPacket));
+            }
+            catch (const std::exception& exception) {
+                LOG_ERROR("Media assembly failed: {}", exception.what());
+            }
+        }
+
+        auto packetOptional = m_receivedPacketsQueue.pop_for(timeout);
+        if (!packetOptional.has_value())
+            continue;
+        if (!m_onPacketReceived)
+            continue;
+
+        const auto& received = packetOptional.value();
+        if (received.data.empty())
+            m_onPacketReceived(nullptr, 0, received.type);
+        else
+            m_onPacketReceived(received.data.data(), static_cast<int>(received.data.size()), received.type);
+    }
+}
+
+void PacketReceiver::setConnectionDown(bool isDown) {
+    m_connectionDown = isDown;
+}
+
+void PacketReceiver::notifyError(const std::error_code& errorCode) {
+    if (errorCode == asio::error::operation_aborted)
+        return;
+    if (!m_connectionDown.load())
+        LOG_ERROR("Media packet receiver error: {}", errorCode.message());
+    if (m_onErrorCallback)
+        m_onErrorCallback();
+}
+
+}
