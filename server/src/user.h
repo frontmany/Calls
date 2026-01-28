@@ -9,9 +9,11 @@
 #include "utilities/crypto.h"
 #include "ticTimer.h"
 #include "asio.hpp"
+#include "network/tcp_connection.h"
 
 namespace server
 {
+
     class Call;
     class PendingCall;
     class User;
@@ -45,6 +47,9 @@ public:
 
 	void setConnectionDown(bool value);
 	void setEndpoint(asio::ip::udp::endpoint endpoint);
+	void setTcpConnection(std::shared_ptr<network::TcpConnection> conn);
+	std::shared_ptr<network::TcpConnection> getTcpConnection() const;
+	void clearTcpConnection();
 	void setCall(CallPtr call);
 	void setOutgoingPendingCall(PendingCallPtr pendingCall);
 	void addIncomingPendingCall(PendingCallPtr pendingCall);
@@ -63,6 +68,7 @@ private:
 	std::vector<std::weak_ptr<PendingCall>> m_incomingPendingCalls;
 	CryptoPP::RSA::PublicKey m_publicKey;
 	asio::ip::udp::endpoint m_endpoint;
+	std::weak_ptr<network::TcpConnection> m_tcpConnection;
 
 	std::function<void()> m_onReconnectionTimeout;
 	tic::SingleShotTimer m_reconnectionTimeoutTimer;

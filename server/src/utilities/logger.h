@@ -32,14 +32,14 @@ namespace server
                 console_sink->set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] %v%$");
 
                 auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                    "logs/calls_client.log",
+                    "logs/server.log",
                     1024 * 1024 * 10,
                     3
                 );
                 file_sink->set_level(spdlog::level::trace);
                 file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread %t] %v");
 
-                logger = std::make_shared<spdlog::logger>("calls_client",
+                logger = std::make_shared<spdlog::logger>("server",
                     spdlog::sinks_init_list{ console_sink, file_sink });
 
                 logger->set_level(spdlog::level::trace);

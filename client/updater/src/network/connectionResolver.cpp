@@ -1,6 +1,8 @@
 #include "network/connectionResolver.h"
 #include "../utilities/utilities.h"
 
+#include <array>
+
 namespace updater
 {
 	namespace network
@@ -19,23 +21,31 @@ namespace updater
 			m_onHandshakeComplete = std::move(onHandshakeComplete);
 			m_onError = std::move(onError);
 
+			auto onConnected = [this](std::error_code ec, const asio::ip::tcp::endpoint&) {
+				if (ec) {
+					if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
+						m_onError();
+					}
+				}
+				else {
+					readHandshake();
+				}
+			};
+
+			std::error_code ec;
+			asio::ip::address addr = asio::ip::make_address(host, ec);
+			if (!ec) {
+				std::array<asio::ip::tcp::endpoint, 1> eps = { asio::ip::tcp::endpoint(addr, port) };
+				asio::async_connect(m_socket, eps, std::move(onConnected));
+				return;
+			}
+
 			try {
 				asio::ip::tcp::resolver resolver(m_context);
-				const asio::ip::tcp::resolver::results_type& serverEndpoint = resolver.resolve(host, std::to_string(port));
-
-				asio::async_connect(m_socket, serverEndpoint,
-					[this](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
-						if (ec) {
-							if (ec != asio::error::connection_reset && ec != asio::error::operation_aborted) {
-								m_onError();
-							}
-						}
-						else {
-							readHandshake();
-						}
-					});
+				asio::ip::tcp::resolver::results_type results = resolver.resolve(host, std::to_string(port));
+				asio::async_connect(m_socket, results, std::move(onConnected));
 			}
-			catch (std::exception& e) {
+			catch (const std::exception&) {
 				m_onError();
 			}
 		}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include "rsa.h" 
 #include "hex.h" 
@@ -31,6 +32,7 @@ namespace server
 
         std::string calculateHash(const std::string& text);
         std::string generateUID();
+        uint64_t scramble(uint64_t inputNumber);
         }
     }
 }

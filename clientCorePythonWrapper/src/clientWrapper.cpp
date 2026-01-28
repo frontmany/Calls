@@ -287,7 +287,7 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def(py::init<>())
         .def("init", &core::Client::start,
             "Initialize calls client",
-            py::arg("host"), py::arg("port"), py::arg("event_listener"))
+            py::arg("host"), py::arg("tcp_port"), py::arg("udp_port"), py::arg("event_listener"))
         .def("refresh_audio_devices", &core::Client::refreshAudioDevices,
             "Refresh audio devices")
         .def("mute_microphone", &core::Client::muteMicrophone,

@@ -4,975 +4,647 @@
 #include "utilities/crypto.h"
 #include "utilities/logger.h"
 #include "pendingCall.h"
+#include "network/tcp_packet.h"
 
-using namespace std::chrono_literals;
-using namespace std::placeholders;
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <string>
+
 using namespace server;
 using namespace server::utilities;
 
-namespace server
-{
 namespace
 {
-    std::vector<unsigned char> toBytes(const std::string& value) {
-        return std::vector<unsigned char>(value.begin(), value.end());
+    std::vector<unsigned char> toBytes(const std::string& s) {
+        return std::vector<unsigned char>(s.begin(), s.end());
     }
-} 
+}
 
-Server::Server(const std::string& port)
-    : m_packetSender(m_networkController)
-    , m_mediaRelayService(m_userRepository, m_callManager, m_packetSender)
+namespace server
 {
-    m_networkController.init(port,
-        [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& endpointFrom) { onReceive(data, size, type, endpointFrom); },
-        [this](const asio::ip::udp::endpoint& endpoint) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            auto user = m_userRepository.findUserByEndpoint(endpoint);
-            if (user) {
-                if (!user->isConnectionDown()) {
-                    const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
-                    LOG_INFO("Connection down with user {}", userPrefix);
-                    user->setConnectionDown(true);
-                    clearPendingActionsForUser(user->getNicknameHash());
-
-                    if (user->hasOutgoingPendingCall()) {
-                        auto outgoingPendingCall = user->getOutgoingPendingCall();
-                        auto receiver = outgoingPendingCall->getReceiver();
-                        
-                        if (m_userRepository.containsUser(receiver->getNicknameHash())) {
-                            std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
-                            std::string receiverPrefix = receiver->getNicknameHash().length() >= 5 ? receiver->getNicknameHash().substr(0, 5) : receiver->getNicknameHash();
-                            LOG_INFO("Outgoing call ended due to connection down: {} -> {}", userPrefix, receiverPrefix);
-                            LOG_INFO("Incoming call ended due to connection down: {} -> {}", receiverPrefix, userPrefix);
-
-                            auto receiverInRepo = m_userRepository.findUserByNickname(receiver->getNicknameHash());
-                            if (receiverInRepo && !receiverInRepo->isConnectionDown()) {
-                                auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                                
-                                m_taskManager.createTask(uid, 1500ms, 5,
-                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, receiverInRepo->getEndpoint()),
-                                    std::bind(&Server::onTaskCompleted, this, _1),
-                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
-                                );
-                                
-                                m_taskManager.startTask(uid);
-                            }
-
-                            if (receiverInRepo) {
-                                removeIncomingPendingCall(receiverInRepo, outgoingPendingCall);
-                            }
-                        }
-
-                        resetOutgoingPendingCall(user);
-                    }
-
-                    auto incomingCalls = user->getIncomingPendingCalls();
-                    for (auto& pendingCall : incomingCalls) {
-                        auto initiator = pendingCall->getInitiator();
-                        
-                        if (m_userRepository.containsUser(initiator->getNicknameHash())) {
-                            std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
-                            std::string initiatorPrefix = initiator->getNicknameHash().length() >= 5 ? initiator->getNicknameHash().substr(0, 5) : initiator->getNicknameHash();
-                            LOG_INFO("Incoming call ended due to connection down: {} -> {}", initiatorPrefix, userPrefix);
-                            LOG_INFO("Outgoing call ended due to connection down: {} -> {}", initiatorPrefix, userPrefix);
-
-                            auto initiatorInRepo = m_userRepository.findUserByNickname(initiator->getNicknameHash());
-                            if (initiatorInRepo && !initiatorInRepo->isConnectionDown()) {
-                                auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                                
-                                m_taskManager.createTask(uid, 1500ms, 5,
-                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, initiatorInRepo->getEndpoint()),
-                                    std::bind(&Server::onTaskCompleted, this, _1),
-                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
-                                );
-                                
-                                m_taskManager.startTask(uid);
-                            }
-
-                            if (initiatorInRepo) {
-                                resetOutgoingPendingCall(initiatorInRepo);
-                            }
-                        }
-
-                        removeIncomingPendingCall(user, pendingCall);
-                    }
-
-                    if (user->isInCall()) {
-                        auto callPartner = m_callManager.getCallPartner(user->getNicknameHash());
-                        if (callPartner && m_userRepository.containsUser(callPartner->getNicknameHash())) {
-                            auto callPartnerInRepo = m_userRepository.findUserByNickname(callPartner->getNicknameHash());
-                            if (callPartnerInRepo && !callPartnerInRepo->isConnectionDown()) {
-                                auto [uid, connectionDownPacket] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                                
-                                m_taskManager.createTask(uid, 1500ms, 5,
-                                    std::bind(&Server::sendPacketTask, this, connectionDownPacket, PacketType::CONNECTION_DOWN_WITH_USER, callPartnerInRepo->getEndpoint()),
-                                    std::bind(&Server::onTaskCompleted, this, _1),
-                                    std::bind(&Server::onTaskFailed, this, "Connection down with user task failed", _1)
-                                );
-                                
-                                m_taskManager.startTask(uid);
-                            }
-                        }
-                    }
-
-                    {
-                        auto [uidDown, connectionDownToSelf] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
-                        m_taskManager.createTask(uidDown, 1500ms, 5,
-                            std::bind(&Server::sendPacketTask, this, connectionDownToSelf, PacketType::CONNECTION_DOWN_WITH_USER, user->getEndpoint()),
-                            std::bind(&Server::onTaskCompleted, this, _1),
-                            std::bind(&Server::onTaskFailed, this, "Connection down notify self task failed", _1)
-                        );
-                        m_taskManager.startTask(uidDown);
-                    }
-                }
-            }
-            else {
-                m_networkController.removePingMonitoring(endpoint);
-            }
-        },
-        [this](const asio::ip::udp::endpoint& endpoint) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            auto user = m_userRepository.findUserByEndpoint(endpoint);
-            if (user) {
-                const std::string userPrefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
-                LOG_INFO("Connection restored with user {}", userPrefix);
-                user->setConnectionDown(false);
-
-                // Tell the restored user (A) they are restored. This gives A a path out of
-                // connection-down that does not depend solely on RECONNECT_RESULT, which can
-                // be lost on an asymmetric link; the server already knows A is up from the pong.
-                auto [uidRestored, packetRestored] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
-                m_taskManager.createTask(uidRestored, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packetRestored, PacketType::CONNECTION_RESTORED_WITH_USER, endpoint),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "Connection restored notify self task failed", _1)
-                );
-                m_taskManager.startTask(uidRestored);
-
-                // If in a call, also notify the partner (B) that A is back.
-                if (user->isInCall()) {
-                    auto partner = m_callManager.getCallPartner(user->getNicknameHash());
-                    if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
-                        auto partnerInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
-                        if (partnerInRepo && !partnerInRepo->isConnectionDown()) {
-                            auto [uidPartner, packetPartner] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
-                            m_taskManager.createTask(uidPartner, 1500ms, 5,
-                                std::bind(&Server::sendPacketTask, this, packetPartner, PacketType::CONNECTION_RESTORED_WITH_USER, partnerInRepo->getEndpoint()),
-                                std::bind(&Server::onTaskCompleted, this, _1),
-                                std::bind(&Server::onTaskFailed, this, "Connection restored with user task failed", _1)
-                            );
-                            m_taskManager.startTask(uidPartner);
-                        }
-                    }
-                }
-            } else {
-                LOG_INFO("Connection restored from endpoint {}:{}", endpoint.address().to_string(), endpoint.port());
-            }
-        }
-    );
-
-    m_packetHandlers.emplace(PacketType::AUTHORIZATION, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleAuthorization(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::LOGOUT, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleLogout(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::RECONNECT, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleReconnect(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::GET_USER_INFO, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleGetFriendInfo(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::CONFIRMATION, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleConfirmation(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::CALLING_BEGIN, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleStartOutgoingCall(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::CALLING_END, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleStopOutgoingCall(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::CALL_ACCEPT, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleAcceptCall(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::CALL_DECLINE, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleDeclineCall(json, endpoint);});
-    m_packetHandlers.emplace(PacketType::CALL_END, [this](const nlohmann::json& json, const asio::ip::udp::endpoint& endpoint) {handleEndCall(json, endpoint);});
-}
-
-void Server::onReceive(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
-    PacketType type = static_cast<PacketType>(rawType);
-    
-    // Отметить получение пакета для пользователя (для ping monitoring)
-    // Note: ping monitoring is handled by NetworkController
-    
-    if (type == PacketType::VOICE) {
-        handleVoice(data, size, endpointFrom);
-        return; 
-    }
-    else if (type == PacketType::SCREEN) {
-        handleScreen(data, size, endpointFrom);
-        return;
-    }
-    else if (type == PacketType::CAMERA) {
-        handleCamera(data, size, endpointFrom);
-        return;
-    }
-
-    try {
-        std::string jsonStr = std::string(reinterpret_cast<const char*>(data), size);
-        nlohmann::json jsonObject = nlohmann::json::parse(jsonStr);
-
-        std::function<void(const nlohmann::json&, const asio::ip::udp::endpoint&)> handler;
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_packetHandlers.contains(type)) {
-                handler = m_packetHandlers[type];
-            }
-        }
-
-        if (handler) {
-            handler(jsonObject, endpointFrom);
-        }
-        else {
-            redirect(jsonObject, type);
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error processing packet type {}: {}", static_cast<int>(type), e.what());
-    }
-}
-
-void Server::run() {
-    m_networkController.run();
-}
-
-void Server::stop() {
-    
+    Server::Server(const std::string& tcpPort, const std::string& udpPort)
+        : m_tcpPort(tcpPort)
+        , m_udpPort(udpPort)
+        , m_packetSender(m_networkController)
+        , m_mediaRelayService(m_userRepository, m_callManager, m_packetSender)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_taskManager.cancelAllTasks();
-    }
-    
-    m_networkController.stop();
-    
-}
-
-void Server::redirect(const nlohmann::json& jsonObject, PacketType type) {
-    const std::string& receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-
-    auto user = m_userRepository.findUserByNickname(receiverNicknameHash);
-    if (user) {
-        auto packet = toBytes(jsonObject.dump());
-        m_packetSender.send(packet, static_cast<uint32_t>(type), user->getEndpoint());
-    }
-}
-
-void Server::handleConfirmation(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    redirect(jsonObject, PacketType::CONFIRMATION);
-    
-    std::string uid = jsonObject[UID].get<std::string>();
-    std::string receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-
-    m_taskManager.completeTask(uid);
-
-    std::function<void()> actionToExecute;
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-        if (sender) {
-            ConfirmationKey key = ConfirmationKey(uid, sender->getNicknameHash(), sender->getToken());
-
-            if (m_pendingActions.contains(key)) {
-                actionToExecute = m_pendingActions.at(key);
-                removePendingAction(key);
-            }
-        }
-    }
-
-    if (actionToExecute) {
-        actionToExecute();
-    }
-}
-
-void Server::handleAuthorization(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string nicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-        CryptoPP::RSA::PublicKey publicKey = crypto::deserializePublicKey(jsonObject[PUBLIC_KEY]);
-        
-        bool authorized = false;
-        std::string token = "";
-        
-        if (m_userRepository.containsUser(nicknameHash)) {
-            std::string nicknameHashPrefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
-            LOG_WARN("Authorization failed - nickname already taken: {}", nicknameHashPrefix);
-        }
-        else {
-            token = crypto::generateUID();
-
-            UserPtr user = std::make_shared<User>(nicknameHash, token, publicKey, endpointFrom,
-                [this, nicknameHash]() {
-                    auto user = m_userRepository.findUserByNickname(nicknameHash);
-                    if (user) {
-                        processUserLogout(user);
-                    }
-                }
-            );
-
-            m_userRepository.addUser(user);
-            authorized = true;
-            
-            std::string nicknameHashPrefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
-            LOG_INFO("User authorized: {}", nicknameHashPrefix);
-        }
-
-        std::vector<unsigned char> packet;
-        if (authorized)
-            packet = PacketFactory::getAuthorizationResultPacket(true, uid, nicknameHash, token);
-        else
-            packet = PacketFactory::getAuthorizationResultPacket(false, uid, nicknameHash);
-
-        m_packetSender.send(packet, static_cast<uint32_t>(PacketType::AUTHORIZATION_RESULT), endpointFrom);
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in authorization packet: {}", e.what());
-    }
-}
-
-void Server::handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-
-        auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-        m_packetSender.send(packet, static_cast<uint32_t>(PacketType::CONFIRMATION), endpointFrom);
-
-        auto user = m_userRepository.findUserByNickname(senderNicknameHash);
-        if (user) {
-            processUserLogout(user);
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error during logout: {}", e.what());
-    }
-}
-
-void Server::handleReconnect(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    std::string uid = jsonObject[UID].get<std::string>();
-    std::string token = jsonObject[TOKEN].get<std::string>();
-    std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-
-    auto user = m_userRepository.findUserByNickname(senderNicknameHash);
-    if (!user) {
-        // Пользователь не найден - отправляем отрицательный результат
-        auto packet = PacketFactory::getReconnectionResultPacket(false, uid, senderNicknameHash, token);
-        m_taskManager.createTask(uid, 1500ms, 5,
-            std::bind(&Server::sendPacketTask, this, packet, PacketType::RECONNECT_RESULT, endpointFrom),
-            std::bind(&Server::onTaskCompleted, this, _1),
-            std::bind(&Server::onTaskFailed, this, "Reconnect result task failed", _1)
-        );
-        m_taskManager.startTask(uid);
-        return;
-    }
-
-    bool reconnectionAllowed = false;
-    if (user->getToken() == token) {
-        user->setConnectionDown(false);
-        reconnectionAllowed = true;
-
-        // После WiFi off/on endpoint клиента часто меняется. Обновляем endpoint
-        asio::ip::udp::endpoint oldEndpoint = user->getEndpoint();
-        if (oldEndpoint != endpointFrom) {
-            m_networkController.removePingMonitoring(oldEndpoint);
-            m_userRepository.updateUserEndpoint(senderNicknameHash, endpointFrom);
-            m_networkController.addEndpointForPing(endpointFrom);
-        }
-    }
-
-    std::vector<unsigned char> packet;
-    if (reconnectionAllowed)
-        packet = PacketFactory::getReconnectionResultPacket(true, uid, senderNicknameHash, token, user->isInCall());
-    else
-        packet = PacketFactory::getReconnectionResultPacket(false, uid, senderNicknameHash, token);
-        
-    // Используем TaskManager для гарантированной доставки RECONNECT_RESULT
-    m_taskManager.createTask(uid, 1500ms, 5,
-        std::bind(&Server::sendPacketTask, this, packet, PacketType::RECONNECT_RESULT, endpointFrom),
-        std::bind(&Server::onTaskCompleted, this, _1),
-        std::bind(&Server::onTaskFailed, this, "Reconnect result task failed", _1)
-    );
-    m_taskManager.startTask(uid);
-
-        // Сразу шлём CONNECTION_RESTORED_WITH_USER на endpointFrom (мы только что получили RECONNECT
-        // оттуда). Не полагаемся только на pong: при WiFi off/on pong может прийти с другого
-        // endpoint или после лишних ретраев. Дубликат уйдёт ещё из connection restored (pong) — ок.
-        if (reconnectionAllowed) {
-            auto [uidRestored, packetRestored] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
-            m_taskManager.createTask(uidRestored, 1500ms, 5,
-                std::bind(&Server::sendPacketTask, this, packetRestored, PacketType::CONNECTION_RESTORED_WITH_USER, endpointFrom),
-                std::bind(&Server::onTaskCompleted, this, _1),
-                std::bind(&Server::onTaskFailed, this, "Connection restored notify self task failed", _1)
-            );
-            m_taskManager.startTask(uidRestored);
-        }
-
-    // Сразу шлём CONNECTION_RESTORED_WITH_USER на endpointFrom (мы только что получили RECONNECT
-    // оттуда). Не полагаемся только на pong: при WiFi off/on pong может прийти с другого
-    // endpoint или после лишних ретраев. Дубликат уйдёт ещё из connection restored (pong) — ок.
-    if (reconnectionAllowed) {
-        auto [uidRestored, packetRestored] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
-        m_taskManager.createTask(uidRestored, 1500ms, 5,
-            std::bind(&Server::sendPacketTask, this, packetRestored, PacketType::CONNECTION_RESTORED_WITH_USER, endpointFrom),
-            std::bind(&Server::onTaskCompleted, this, _1),
-            std::bind(&Server::onTaskFailed, this, "Connection restored notify self task failed", _1)
-        );
-        m_taskManager.startTask(uidRestored);
-    }
-
-    if (reconnectionAllowed && user->isInCall()) {
-        auto partner = m_callManager.getCallPartner(user->getNicknameHash());
-        if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
-            auto partnerInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
-            if (!partnerInRepo->isConnectionDown()) {
-                auto [uid, connectionRestoredWithUserPacket] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
-
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, connectionRestoredWithUserPacket, PacketType::CONNECTION_RESTORED_WITH_USER, partnerInRepo->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "Connection restored with user task failed", _1)
-                );
-
-                m_taskManager.startTask(uid);
-            }
-            else {
-                auto [uid, connectionDownWithUserPacket] = PacketFactory::getConnectionDownWithUserPacket(partner->getNicknameHash());
-
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, connectionDownWithUserPacket, PacketType::CONNECTION_DOWN_WITH_USER, user->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "Connection restored with user task failed", _1)
-                );
-
-                m_taskManager.startTask(uid);
-            }
-        }
-    }
-}
-
-void Server::handleGetFriendInfo(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID];
-        std::string nicknameHash = jsonObject[NICKNAME_HASH];
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
-
-        auto requestedUser = m_userRepository.findUserByNickname(nicknameHash);
-        if (requestedUser && m_userRepository.containsUser(senderNicknameHash)) {
-            auto packet = PacketFactory::getUserInfoResultPacket(true, uid, requestedUser->getNicknameHash(), requestedUser->getPublicKey());
-            m_packetSender.send(packet, static_cast<uint32_t>(PacketType::GET_USER_INFO_RESULT), endpointFrom);
-        }
-        else {
-            auto packet = PacketFactory::getUserInfoResultPacket(false, uid, nicknameHash);
-            m_packetSender.send(packet, static_cast<uint32_t>(PacketType::GET_USER_INFO_RESULT), endpointFrom);
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in get friend info packet: {}", e.what());
-    }
-}
-
-void Server::handleStartOutgoingCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-
-        auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-        if (receiver) {
-            ConfirmationKey key(uid, receiver->getNicknameHash(), receiver->getToken());
-
-            addPendingAction(key, [this, receiverNicknameHash, senderNicknameHash]() {
-                    auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-                    auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-
-                    if (receiver && sender) {
-                        std::shared_ptr<PendingCall> pendingCall = std::make_shared<PendingCall>(sender, receiver,
-                            [this, receiver, sender]() {
-                                auto outgoingPendingCall = sender->getOutgoingPendingCall();
-                                if (outgoingPendingCall && outgoingPendingCall->getReceiver()->getNicknameHash() == receiver->getNicknameHash()) {
-                                    resetOutgoingPendingCall(sender);
-                                    removeIncomingPendingCall(receiver, outgoingPendingCall);
-                                }
-                            }
-                        );
-
-                        m_callManager.addPendingCall(pendingCall);
-                        sender->setOutgoingPendingCall(pendingCall);
-                        receiver->addIncomingPendingCall(pendingCall);
-
-                        std::string senderPrefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                        std::string receiverPrefix = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                        LOG_INFO("Call initiated from {} to {}", senderPrefix, receiverPrefix);
-                    }
-                }
-            );
-
-            if (!receiver->isConnectionDown()) {
-                m_packetSender.send(toBytes(jsonObject.dump()),
-                    static_cast<uint32_t>(PacketType::CALLING_BEGIN),
-                    receiver->getEndpoint()
-                );
-            }
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in start outgoing call packet: {}", e.what());
-    }
-}
-
-void Server::handleStopOutgoingCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-
-        auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-        if (receiver) {
-
-            ConfirmationKey key(uid, receiver->getNicknameHash(), receiver->getToken());
-
-            addPendingAction(key, [this, receiverNicknameHash, senderNicknameHash]() {
-                std::lock_guard<std::mutex> lock(m_mutex);
-
-                auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-                auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-
-                if (receiver && sender) {
-                    auto outgoingPendingCall = sender->getOutgoingPendingCall();
-                    if (outgoingPendingCall && outgoingPendingCall->getReceiver()->getNicknameHash() == receiverNicknameHash) {
-                        resetOutgoingPendingCall(sender);
-                        removeIncomingPendingCall(receiver, outgoingPendingCall);
-
-                        std::string senderPrefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                        std::string receiverPrefix = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                        LOG_INFO("Calling stopped: {} -> {}", senderPrefix, receiverPrefix);
-                    }
-                }
+        m_networkController.init(udpPort,
+            [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& ep) {
+                onReceiveUdp(data, size, type, ep);
             });
 
-            if (receiver->isConnectionDown()) {
-                auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-
-                m_packetSender.send(packet,
-                    static_cast<uint32_t>(PacketType::CONFIRMATION),
-                    endpointFrom
-                );
-            }
-            else {
-                m_packetSender.send(toBytes(jsonObject.dump()),
-                    static_cast<uint32_t>(PacketType::CALLING_END),
-                    receiver->getEndpoint()
-                );
-            }
-        }
-        else {
-            auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-
-            m_packetSender.send(packet,
-                static_cast<uint32_t>(PacketType::CONFIRMATION),
-                endpointFrom
-            );
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in stop calling packet: {}", e.what());
-    }
-}
-
-void Server::handleAcceptCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-        std::string receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-
-        auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-        if (receiver) {
-
-            ConfirmationKey key(uid, receiver->getNicknameHash(), receiver->getToken());
-
-            addPendingAction(key, [this, receiverNicknameHash, senderNicknameHash]() {
-                std::lock_guard<std::mutex> lock(m_mutex);
-
-                auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-                auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-
-                if (receiver && sender) {
-                    auto foundPendingCall = receiver->getOutgoingPendingCall();
-
-                    if (foundPendingCall && foundPendingCall->getReceiver()->getNicknameHash() == senderNicknameHash) {
-                        resetOutgoingPendingCall(receiver);
-                        removeIncomingPendingCall(sender, foundPendingCall);
-
-                        auto call = m_callManager.createCall(receiver, sender);
-                        receiver->setCall(call);
-                        sender->setCall(call);
-
-                        auto declineIncomingPendingCalls = [this](const UserPtr& busyUser) {
-                            if (!busyUser) {
-                                return;
-                            }
-
-                            auto incomingCalls = busyUser->getIncomingPendingCalls();
-                            for (const auto& pendingCall : incomingCalls) {
-                                auto initiator = pendingCall->getInitiator();
-                                if (!initiator) {
-                                    removeIncomingPendingCall(busyUser, pendingCall);
-                                    continue;
-                                }
-
-                                resetOutgoingPendingCall(initiator);
-                                removeIncomingPendingCall(busyUser, pendingCall);
-
-                                if (m_userRepository.containsUser(initiator->getNicknameHash())) {
-                                    auto initiatorInRepo = m_userRepository.findUserByNickname(initiator->getNicknameHash());
-                                    if (initiatorInRepo && !initiatorInRepo->isConnectionDown()) {
-                                        auto [uid, declinePacket] = PacketFactory::getCallDeclinedPacket(busyUser->getNicknameHash(), initiator->getNicknameHash());
-                                        m_taskManager.createTask(uid, 1500ms, 3,
-                                            std::bind(&Server::sendPacketTask, this, declinePacket, PacketType::CALL_DECLINE, initiatorInRepo->getEndpoint()),
-                                            std::bind(&Server::onTaskCompleted, this, _1),
-                                            std::bind(&Server::onTaskFailed, this, "Call decline notification task failed", _1)
-                                        );
-                                        m_taskManager.startTask(uid);
-                                    }
-                                }
-                            }
-                        };
-
-                        declineIncomingPendingCalls(receiver);
-                        declineIncomingPendingCalls(sender);
-
-                        std::string senderPrefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                        std::string receiverPrefix = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                        LOG_INFO("Call accepted: {} -> {}", receiverPrefix, senderPrefix);
-                    }
-                }
-            });
-
-            if (!receiver->isConnectionDown()) {
-                m_packetSender.send(toBytes(jsonObject.dump()),
-                    static_cast<uint32_t>(PacketType::CALL_ACCEPT),
-                    receiver->getEndpoint()
-                );
-            }
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in call accepted packet: {}", e.what());
-    }
-}
-
-void Server::handleDeclineCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-
-        std::unique_lock<std::mutex> lock(m_mutex);
-
-        auto onConfirmationReceived = [this, receiverNicknameHash, senderNicknameHash]() {
-            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-
-            if (receiver && sender) {
-                PendingCallPtr foundPendingCall = nullptr;
-                auto incomingCalls = receiver->getIncomingPendingCalls();
-                for (auto& pendingCall : incomingCalls) {
-                    if (pendingCall->getInitiator()->getNicknameHash() == senderNicknameHash) {
-                        foundPendingCall = pendingCall;
-                        break;
-                    }
-                }
-
-                if (foundPendingCall) {
-                    resetOutgoingPendingCall(sender);
-                    removeIncomingPendingCall(receiver, foundPendingCall);
-
-                    std::string senderPrefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                    std::string receiverPrefix = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                    LOG_INFO("Call declined: {} -> {}", senderPrefix, receiverPrefix);
-                }
-            }
-        };
-
-        auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-        if (receiver) {
-            if (receiver->isConnectionDown()) {
-                lock.unlock();
-                onConfirmationReceived();
-                lock.lock();
-
-                auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-
-                m_packetSender.send(packet,
-                    static_cast<uint32_t>(PacketType::CONFIRMATION),
-                    endpointFrom
-                );
-            }
-            else {
-                ConfirmationKey key(uid, receiver->getNicknameHash(), receiver->getToken());
-                addPendingAction(key, onConfirmationReceived);
-
-                m_packetSender.send(
-                    toBytes(jsonObject.dump()),
-                    static_cast<uint32_t>(PacketType::CALL_DECLINE),
-                    receiver->getEndpoint()
-                );
-            }
-        }
-        else {
-            lock.unlock();
-            onConfirmationReceived();
-            lock.lock();
-
-            auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-
-            m_packetSender.send(packet,
-                static_cast<uint32_t>(PacketType::CONFIRMATION),
-                endpointFrom
-            );
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in call declined packet: {}", e.what());
-    }
-}
-
-void Server::handleEndCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom) {
-    try {
-        std::string uid = jsonObject[UID].get<std::string>();
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
-        std::string receiverNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH].get<std::string>();
-
-        auto onConfirmationReceived = [this, receiverNicknameHash, senderNicknameHash]() {
-            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-
-            if (receiver && sender && sender->isInCall() && receiver->isInCall()) {
-                std::string senderPrefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                std::string receiverPrefix = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                LOG_INFO("Call ended: {} ended call with {}", senderPrefix, receiverPrefix);
-
-                auto call = sender->getCall();
-                if (call) {
-                    m_callManager.endCall(sender->getNicknameHash(), receiver->getNicknameHash());
-                }
-                sender->resetCall();
-                receiver->resetCall();
-            }
-        };
-
-        auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
-        if (receiver) {
-            if (receiver->isConnectionDown()) {
-                onConfirmationReceived();
-
-                auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-
-                m_packetSender.send(packet,
-                    static_cast<uint32_t>(PacketType::CONFIRMATION),
-                    endpointFrom
-                );
-            }
-            else {
-                ConfirmationKey key(uid, receiver->getNicknameHash(), receiver->getToken());
-
-                addPendingAction(key, onConfirmationReceived);
-
-                m_packetSender.send(toBytes(jsonObject.dump()),
-                    static_cast<uint32_t>(PacketType::CALL_END),
-                    receiver->getEndpoint()
-                );
-            }
-        }
-        else {
-            onConfirmationReceived();
-
-            auto packet = PacketFactory::getConfirmationPacket(uid, senderNicknameHash);
-
-            m_packetSender.send(packet,
-                static_cast<uint32_t>(PacketType::CONFIRMATION),
-                endpointFrom
-            );
-        }
-    }
-    catch (const std::exception& e) {
-        LOG_ERROR("Error in end call packet: {}", e.what());
-    }
-}
-
-void Server::handleVoice(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
-    m_mediaRelayService.relayMedia(data, size, PacketType::VOICE, endpointFrom);
-}
-
-void Server::handleScreen(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
-    m_mediaRelayService.relayMedia(data, size, PacketType::SCREEN, endpointFrom);
-}
-
-void Server::handleCamera(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom) {
-    m_mediaRelayService.relayMedia(data, size, PacketType::CAMERA, endpointFrom);
-}
-
-void Server::processUserLogout(const UserPtr& user) {
-    if (!user) return;
-    
-    std::string nicknameHash = user->getNicknameHash();
-    std::string nicknameHashPrefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
-    LOG_INFO("User logout: {}", nicknameHashPrefix);
-    
-    if (!m_userRepository.containsUser(nicknameHash)) return;
-
-    if (user->isInCall()) {
-        auto callPartner = m_callManager.getCallPartner(user->getNicknameHash());
-
-        if (callPartner && m_userRepository.containsUser(callPartner->getNicknameHash())) {
-            auto callPartnerInRepo = m_userRepository.findUserByNickname(callPartner->getNicknameHash());
-            std::string callPartnerPrefix = callPartnerInRepo->getNicknameHash().length() >= 5 ? callPartnerInRepo->getNicknameHash().substr(0, 5) : callPartnerInRepo->getNicknameHash();
-            LOG_INFO("Call ended due to logout: {} ended call with {}", nicknameHashPrefix, callPartnerPrefix);
-
-            if (!callPartnerInRepo->isConnectionDown()) {
-                auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, callPartnerInRepo->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
-                );
-
-                m_taskManager.startTask(uid);
-            }
-
-            callPartnerInRepo->resetCall();
-        }
-
-        if (auto call = user->getCall(); call) {
-            auto partner = m_callManager.getCallPartner(user->getNicknameHash());
-            if (partner) {
-                m_callManager.endCall(user->getNicknameHash(), partner->getNicknameHash());
-            }
-        }
-
-        user->resetCall();
+        uint16_t tcpPortNum = static_cast<uint16_t>(std::stoul(tcpPort));
+        m_tcpController = std::make_unique<network::TcpControlController>(
+            tcpPortNum,
+            [this](network::OwnedTcpPacket&& p) { onTcpControlPacket(std::move(p)); },
+            [this](network::TcpConnectionPtr conn) { onTcpDisconnect(conn); });
     }
 
-    if (user->hasOutgoingPendingCall()) {
-        auto outgoingPendingCall = user->getOutgoingPendingCall();
-        auto pendingCallPartner = user->getOutgoingPendingCallPartner();
-
-        if (pendingCallPartner && m_userRepository.containsUser(pendingCallPartner->getNicknameHash())) {
-            auto pendingCallPartnerInRepo = m_userRepository.findUserByNickname(pendingCallPartner->getNicknameHash());
-            std::string pendingCallPartnerPrefix = pendingCallPartnerInRepo->getNicknameHash().length() >= 5 ? pendingCallPartnerInRepo->getNicknameHash().substr(0, 5) : pendingCallPartnerInRepo->getNicknameHash();
-            LOG_INFO("Outgoing call ended due to logout: {} -> {}", nicknameHashPrefix, pendingCallPartnerPrefix);
-            LOG_INFO("Incoming call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
-
-            if (!pendingCallPartnerInRepo->isConnectionDown()) {
-                auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, pendingCallPartnerInRepo->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
-                );
-
-                m_taskManager.startTask(uid);
-            }
-
-            removeIncomingPendingCall(pendingCallPartnerInRepo, outgoingPendingCall);
-        }
-
-        resetOutgoingPendingCall(user);
+    void Server::run() {
+        m_udpThread = std::thread([this]() { m_networkController.run(); });
+        if (m_tcpController)
+            m_tcpController->start();
+        if (m_udpThread.joinable())
+            m_udpThread.join();
     }
 
-    auto incomingCalls = user->getIncomingPendingCalls();
-    for (auto& pendingCall : incomingCalls) {
-        auto pendingCallPartner = pendingCall->getInitiator();
+    void Server::stop() {
+        if (m_tcpController)
+            m_tcpController->stop();
+        m_networkController.stop();
+        if (m_udpThread.joinable())
+            m_udpThread.join();
+    }
 
-        if (pendingCallPartner && m_userRepository.containsUser(pendingCallPartner->getNicknameHash())) {
-            auto pendingCallPartnerInRepo = m_userRepository.findUserByNickname(pendingCallPartner->getNicknameHash());
-            std::string pendingCallPartnerPrefix = pendingCallPartnerInRepo->getNicknameHash().length() >= 5 ? pendingCallPartnerInRepo->getNicknameHash().substr(0, 5) : pendingCallPartnerInRepo->getNicknameHash();
-            LOG_INFO("Incoming call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
-            LOG_INFO("Outgoing call ended due to logout: {} -> {}", pendingCallPartnerPrefix, nicknameHashPrefix);
+    void Server::onReceiveUdp(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
+        PacketType type = static_cast<PacketType>(rawType);
+        if (type == PacketType::VOICE) {
+            handleVoice(data, size, endpointFrom);
+            return;
+        }
+        if (type == PacketType::SCREEN) {
+            handleScreen(data, size, endpointFrom);
+            return;
+        }
+        if (type == PacketType::CAMERA) {
+            handleCamera(data, size, endpointFrom);
+            return;
+        }
+    }
 
-            if (!pendingCallPartnerInRepo->isConnectionDown()) {
-                auto [uid, packet] = PacketFactory::getUserLogoutPacket(user->getNicknameHash());
-                m_taskManager.createTask(uid, 1500ms, 5,
-                    std::bind(&Server::sendPacketTask, this, packet, PacketType::USER_LOGOUT, pendingCallPartnerInRepo->getEndpoint()),
-                    std::bind(&Server::onTaskCompleted, this, _1),
-                    std::bind(&Server::onTaskFailed, this, "User logout task failed", _1)
-                );
+    void Server::onTcpControlPacket(network::OwnedTcpPacket&& owned) {
+        network::TcpConnectionPtr conn = owned.connection;
+        network::TcpPacket& p = owned.packet;
+        uint32_t rawType = p.type;
 
-                m_taskManager.startTask(uid);
-            }
-
-            resetOutgoingPendingCall(pendingCallPartnerInRepo);
+        if (p.body.empty()) {
+            LOG_WARN("[TCP] Control packet type {} has empty body", rawType);
+            return;
         }
 
-        removeIncomingPendingCall(user, pendingCall);
+        std::string jsonStr(p.body.begin(), p.body.end());
+        nlohmann::json json;
+        try {
+            json = nlohmann::json::parse(jsonStr);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("[TCP] Invalid JSON in control packet type {}: {}", rawType, e.what());
+            return;
+        }
+
+        PacketType type = static_cast<PacketType>(rawType);
+        switch (type) {
+            case PacketType::AUTHORIZATION:
+                handleAuthorizationTcp(json, conn);
+                break;
+            case PacketType::RECONNECT:
+                handleReconnectTcp(json, conn);
+                break;
+            case PacketType::LOGOUT:
+                handleLogoutTcp(json, conn);
+                break;
+            case PacketType::GET_USER_INFO:
+                handleGetFriendInfoTcp(json, conn);
+                break;
+            case PacketType::CALLING_BEGIN:
+                handleStartOutgoingCallTcp(json, conn);
+                break;
+            case PacketType::CALLING_END:
+                handleStopOutgoingCallTcp(json, conn);
+                break;
+            case PacketType::CALL_ACCEPT:
+                handleAcceptCallTcp(json, conn);
+                break;
+            case PacketType::CALL_DECLINE:
+                handleDeclineCallTcp(json, conn);
+                break;
+            case PacketType::CALL_END:
+                handleEndCallTcp(json, conn);
+                break;
+            case PacketType::SCREEN_SHARING_BEGIN:
+            case PacketType::SCREEN_SHARING_END:
+            case PacketType::CAMERA_SHARING_BEGIN:
+            case PacketType::CAMERA_SHARING_END:
+                handleRedirectTcp(json, type, conn);
+                break;
+            default:
+                LOG_WARN("[TCP] Unknown control packet type {}", rawType);
+        }
     }
-    user->resetAllPendingCalls();
 
-    clearPendingActionsForUser(user->getNicknameHash());
+    void Server::onTcpDisconnect(network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = m_connToUser.find(conn);
+        if (it == m_connToUser.end()) {
+            LOG_DEBUG("[TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)");
+            return;
+        }
+        UserPtr user = std::move(it->second);
+        m_connToUser.erase(it);
+        std::string prefix = user->getNicknameHash().length() >= 5 ? user->getNicknameHash().substr(0, 5) : user->getNicknameHash();
+        LOG_INFO("[TCP] Connection down with user {}", prefix);
+        user->setConnectionDown(true);
+        user->clearTcpConnection();
+        processConnectionDown(user);
+    }
 
-    m_networkController.removePingMonitoring(user->getEndpoint());
-    m_userRepository.removeUser(nicknameHash);
-}
+    void Server::sendTcp(network::TcpConnectionPtr conn, uint32_t type, const std::vector<unsigned char>& body) {
+        if (!conn) return;
+        network::TcpPacket packet;
+        packet.type = type;
+        packet.body = body;
+        conn->sendPacket(packet);
+    }
 
-bool Server::resetOutgoingPendingCall(const UserPtr& user) {
-    if (user->hasOutgoingPendingCall()) {
-        auto pendingCall = user->getOutgoingPendingCall();
+    void Server::sendTcpToUser(const std::string& receiverNicknameHash, uint32_t type, const std::string& jsonBody) {
+        auto user = m_userRepository.findUserByNickname(receiverNicknameHash);
+        if (!user) return;
+        auto conn = user->getTcpConnection();
+        if (!conn) return;
+        sendTcp(conn, type, toBytes(jsonBody));
+    }
 
-        if (m_callManager.hasPendingCall(pendingCall)) 
-            m_callManager.removePendingCall(pendingCall);
-        
-        user->resetOutgoingPendingCall();
-
+    bool Server::sendTcpToUserIfConnected(const std::string& receiverNicknameHash, uint32_t type, const std::vector<unsigned char>& body) {
+        auto user = m_userRepository.findUserByNickname(receiverNicknameHash);
+        if (!user || user->isConnectionDown()) return false;
+        auto conn = user->getTcpConnection();
+        if (!conn) return false;
+        sendTcp(conn, type, body);
         return true;
     }
 
-    return false;
-}
+    void Server::handleAuthorizationTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string uid = json[UID].get<std::string>();
+            std::string nicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            CryptoPP::RSA::PublicKey publicKey = crypto::deserializePublicKey(json[PUBLIC_KEY]);
 
-void Server::removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall) {
-    if (user->hasIncomingPendingCall(pendingCall)) {
+            uint16_t udpPort = 0;
+            if (json.contains(UDP_PORT) && json[UDP_PORT].is_number_unsigned())
+                udpPort = static_cast<uint16_t>(json[UDP_PORT].get<uint32_t>());
+
+            asio::ip::udp::endpoint udpEndpoint;
+            if (udpPort != 0) {
+                auto tcpEp = conn->remoteEndpoint();
+                if (!tcpEp.address().is_unspecified())
+                    udpEndpoint = asio::ip::udp::endpoint(tcpEp.address(), udpPort);
+            }
+
+            bool authorized = false;
+            std::string token;
+
+            if (m_userRepository.containsUser(nicknameHash)) {
+                std::string prefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
+                LOG_WARN("Authorization failed - nickname already taken: {}", prefix);
+            }
+            else {
+                token = crypto::generateUID();
+                UserPtr user = std::make_shared<User>(nicknameHash, token, publicKey, udpEndpoint,
+                    [this, nicknameHash]() {
+                        std::lock_guard<std::mutex> lock(m_mutex);
+                        auto u = m_userRepository.findUserByNickname(nicknameHash);
+                        if (u) processUserLogout(u);
+                    });
+                user->setTcpConnection(conn);
+                m_userRepository.addUser(user);
+                m_connToUser[conn] = user;
+                authorized = true;
+                std::string prefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
+                LOG_INFO("User authorized: {}", prefix);
+            }
+
+            std::vector<unsigned char> packet;
+            if (authorized)
+                packet = PacketFactory::getAuthorizationResultPacket(true, uid, nicknameHash, token);
+            else
+                packet = PacketFactory::getAuthorizationResultPacket(false, uid, nicknameHash);
+            sendTcp(conn, static_cast<uint32_t>(PacketType::AUTHORIZATION_RESULT), packet);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Authorization error: {}", e.what());
+        }
+    }
+
+    void Server::handleReconnectTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string uid = json[UID].get<std::string>();
+            std::string token = json[TOKEN].get<std::string>();
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            std::string prefix = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+
+            uint16_t udpPort = 0;
+            if (json.contains(UDP_PORT) && json[UDP_PORT].is_number_unsigned())
+                udpPort = static_cast<uint16_t>(json[UDP_PORT].get<uint32_t>());
+
+            auto user = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!user) {
+                LOG_INFO("[TCP] Reconnect: user {} not found (logged out or never authorized)", prefix);
+                auto packet = PacketFactory::getReconnectionResultPacket(false, uid, senderNicknameHash, token);
+                sendTcp(conn, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), packet);
+                return;
+            }
+
+            bool allowed = (user->getToken() == token);
+            if (!allowed)
+                LOG_WARN("[TCP] Reconnect: token mismatch for user {}", prefix);
+            if (allowed) {
+                auto oldConn = user->getTcpConnection();
+                if (oldConn)
+                    m_connToUser.erase(oldConn);
+                user->setConnectionDown(false);
+                user->setTcpConnection(conn);
+                m_connToUser[conn] = user;
+                if (udpPort != 0) {
+                    auto tcpEp = conn->remoteEndpoint();
+                    if (!tcpEp.address().is_unspecified()) {
+                        asio::ip::udp::endpoint udpEp(tcpEp.address(), udpPort);
+                        m_userRepository.updateUserEndpoint(senderNicknameHash, udpEp);
+                    }
+                }
+            }
+
+            std::vector<unsigned char> packet = PacketFactory::getReconnectionResultPacket(
+                allowed, uid, senderNicknameHash, token, allowed && user->isInCall());
+            sendTcp(conn, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), packet);
+
+            if (allowed) {
+                LOG_INFO("[TCP] Reconnect OK: user {}", prefix);
+                auto [_, restoredPacket] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
+                sendTcp(conn, static_cast<uint32_t>(PacketType::CONNECTION_RESTORED_WITH_USER), restoredPacket);
+            }
+
+            if (allowed && user->isInCall()) {
+                auto partner = m_callManager.getCallPartner(user->getNicknameHash());
+                if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
+                    auto partnerInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
+                    if (!partnerInRepo->isConnectionDown()) {
+                        auto [_, partnerPacket] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
+                        sendTcpToUserIfConnected(partner->getNicknameHash(),
+                            static_cast<uint32_t>(PacketType::CONNECTION_RESTORED_WITH_USER), partnerPacket);
+                    }
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Reconnect error: {}", e.what());
+        }
+    }
+
+    void Server::handleLogoutTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto user = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (user)
+                processUserLogout(user);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Logout error: {}", e.what());
+        }
+    }
+
+    void Server::handleGetFriendInfoTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string uid = json[UID].get<std::string>();
+            std::string nicknameHash = json[NICKNAME_HASH].get<std::string>();
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+
+            auto requested = m_userRepository.findUserByNickname(nicknameHash);
+            bool senderExists = m_userRepository.containsUser(senderNicknameHash);
+            std::vector<unsigned char> packet;
+            if (requested && senderExists)
+                packet = PacketFactory::getUserInfoResultPacket(true, uid, requested->getNicknameHash(), requested->getPublicKey());
+            else
+                packet = PacketFactory::getUserInfoResultPacket(false, uid, nicknameHash);
+            sendTcp(conn, static_cast<uint32_t>(PacketType::GET_USER_INFO_RESULT), packet);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Get user info error: {}", e.what());
+        }
+    }
+
+    void Server::handleStartOutgoingCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string uid = json[UID].get<std::string>();
+            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!receiver || !sender) return;
+            if (sender->getTcpConnection() != conn) return;
+
+            std::string jsonStr = json.dump();
+            std::vector<unsigned char> body = toBytes(jsonStr);
+            if (sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALLING_BEGIN), body)) {
+                auto pending = std::make_shared<PendingCall>(sender, receiver, [this, receiver, sender]() {
+                    auto out = sender->getOutgoingPendingCall();
+                    if (out && out->getReceiver()->getNicknameHash() == receiver->getNicknameHash()) {
+                        resetOutgoingPendingCall(sender);
+                        removeIncomingPendingCall(receiver, out);
+                    }
+                });
+                m_callManager.addPendingCall(pending);
+                sender->setOutgoingPendingCall(pending);
+                receiver->addIncomingPendingCall(pending);
+                std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                LOG_INFO("Call initiated from {} to {}", sp, rp);
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Start outgoing call error: {}", e.what());
+        }
+    }
+
+    void Server::handleStopOutgoingCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn) return;
+
+            std::vector<unsigned char> body = toBytes(json.dump());
+            if (receiver && !receiver->isConnectionDown())
+                sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALLING_END), body);
+
+            if (receiver && sender) {
+                auto out = sender->getOutgoingPendingCall();
+                if (out && out->getReceiver()->getNicknameHash() == receiverNicknameHash) {
+                    resetOutgoingPendingCall(sender);
+                    removeIncomingPendingCall(receiver, out);
+                    std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                    std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                    LOG_INFO("Calling stopped: {} -> {}", sp, rp);
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Stop outgoing call error: {}", e.what());
+        }
+    }
+
+    void Server::handleAcceptCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
+
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!receiver || !sender || receiver->getTcpConnection() != conn) return;
+
+            auto incoming = receiver->getIncomingPendingCalls();
+            PendingCallPtr found;
+            for (auto& pc : incoming) {
+                if (pc->getInitiator()->getNicknameHash() == senderNicknameHash) {
+                    found = pc;
+                    break;
+                }
+            }
+            if (!found) return;
+
+            std::vector<unsigned char> body = toBytes(json.dump());
+            sendTcpToUserIfConnected(senderNicknameHash, static_cast<uint32_t>(PacketType::CALL_ACCEPT), body);
+
+            resetOutgoingPendingCall(receiver);
+            removeIncomingPendingCall(sender, found);
+            auto call = m_callManager.createCall(receiver, sender);
+            receiver->setCall(call);
+            sender->setCall(call);
+
+            auto declineOthers = [this](const UserPtr& busy) {
+                if (!busy) return;
+                for (auto& pc : busy->getIncomingPendingCalls()) {
+                    auto initiator = pc->getInitiator();
+                    if (!initiator) continue;
+                    resetOutgoingPendingCall(initiator);
+                    removeIncomingPendingCall(busy, pc);
+                    auto [_, decl] = PacketFactory::getCallDeclinedPacket(busy->getNicknameHash(), initiator->getNicknameHash());
+                    sendTcpToUserIfConnected(initiator->getNicknameHash(), static_cast<uint32_t>(PacketType::CALL_DECLINE), decl);
+                }
+            };
+            declineOthers(receiver);
+            declineOthers(sender);
+
+            std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+            std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+            LOG_INFO("Call accepted: {} -> {}", rp, sp);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Accept call error: {}", e.what());
+        }
+    }
+
+    void Server::handleDeclineCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn) return;
+
+            std::vector<unsigned char> body = toBytes(json.dump());
+            if (receiver && !receiver->isConnectionDown())
+                sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_DECLINE), body);
+
+            if (receiver) {
+                auto incoming = receiver->getIncomingPendingCalls();
+                for (auto& pc : incoming) {
+                    if (pc->getInitiator()->getNicknameHash() == senderNicknameHash) {
+                        resetOutgoingPendingCall(sender);
+                        removeIncomingPendingCall(receiver, pc);
+                        std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                        std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                        LOG_INFO("Call declined: {} -> {}", sp, rp);
+                        break;
+                    }
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Decline call error: {}", e.what());
+        }
+    }
+
+    void Server::handleEndCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
+
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn) return;
+
+            std::vector<unsigned char> body = toBytes(json.dump());
+            if (receiver && !receiver->isConnectionDown())
+                sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_END), body);
+
+            if (receiver && sender && sender->isInCall() && receiver->isInCall()) {
+                std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                LOG_INFO("Call ended: {} ended call with {}", sp, rp);
+                m_callManager.endCall(sender->getNicknameHash(), receiver->getNicknameHash());
+                sender->resetCall();
+                receiver->resetCall();
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("End call error: {}", e.what());
+        }
+    }
+
+    void Server::handleRedirectTcp(const nlohmann::json& json, PacketType type, network::TcpConnectionPtr) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!json.contains(RECEIVER_NICKNAME_HASH)) return;
+        std::string receiver = json[RECEIVER_NICKNAME_HASH].get<std::string>();
+        sendTcpToUser(receiver, static_cast<uint32_t>(type), json.dump());
+    }
+
+    void Server::handleVoice(const unsigned char* data, int size, const asio::ip::udp::endpoint& ep) {
+        m_mediaRelayService.relayMedia(data, size, PacketType::VOICE, ep);
+    }
+
+    void Server::handleScreen(const unsigned char* data, int size, const asio::ip::udp::endpoint& ep) {
+        m_mediaRelayService.relayMedia(data, size, PacketType::SCREEN, ep);
+    }
+
+    void Server::handleCamera(const unsigned char* data, int size, const asio::ip::udp::endpoint& ep) {
+        m_mediaRelayService.relayMedia(data, size, PacketType::CAMERA, ep);
+    }
+
+    void Server::processConnectionDown(const UserPtr& user) {
+        if (user->hasOutgoingPendingCall()) {
+            auto out = user->getOutgoingPendingCall();
+            auto receiver = out->getReceiver();
+            if (m_userRepository.containsUser(receiver->getNicknameHash())) {
+                auto rec = m_userRepository.findUserByNickname(receiver->getNicknameHash());
+                if (rec && !rec->isConnectionDown()) {
+                    auto [_, p] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                    sendTcpToUserIfConnected(receiver->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), p);
+                }
+                if (rec) removeIncomingPendingCall(rec, out);
+            }
+            resetOutgoingPendingCall(user);
+        }
+
+        auto incomingCopy = user->getIncomingPendingCalls();
+        for (auto& pc : incomingCopy) {
+            auto initiator = pc->getInitiator();
+            if (m_userRepository.containsUser(initiator->getNicknameHash())) {
+                auto init = m_userRepository.findUserByNickname(initiator->getNicknameHash());
+                if (init && !init->isConnectionDown()) {
+                    auto [_, p] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                    sendTcpToUserIfConnected(initiator->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), p);
+                }
+                if (init) resetOutgoingPendingCall(init);
+            }
+            removeIncomingPendingCall(user, pc);
+        }
+
+        if (user->isInCall()) {
+            auto partner = m_callManager.getCallPartner(user->getNicknameHash());
+            if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
+                auto pInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
+                if (pInRepo && !pInRepo->isConnectionDown()) {
+                    auto [_, p] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                    sendTcpToUserIfConnected(partner->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), p);
+                }
+                if (pInRepo) pInRepo->resetCall();
+            }
+            if (partner)
+                m_callManager.endCall(user->getNicknameHash(), partner->getNicknameHash());
+            user->resetCall();
+        }
+    }
+
+    void Server::processUserLogout(const UserPtr& user) {
+        if (!user || !m_userRepository.containsUser(user->getNicknameHash())) return;
+        std::string nicknameHash = user->getNicknameHash();
+        std::string prefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
+        LOG_INFO("User logout: {}", prefix);
+
+        auto conn = user->getTcpConnection();
+        if (conn)
+            m_connToUser.erase(conn);
+
+        if (user->isInCall()) {
+            auto partner = m_callManager.getCallPartner(nicknameHash);
+            if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
+                auto partnerInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
+                if (partnerInRepo) {
+                    std::string pp = partnerInRepo->getNicknameHash().length() >= 5 ? partnerInRepo->getNicknameHash().substr(0, 5) : partnerInRepo->getNicknameHash();
+                    LOG_INFO("Call ended due to logout: {} ended call with {}", prefix, pp);
+                    if (!partnerInRepo->isConnectionDown()) {
+                        auto [_, p] = PacketFactory::getUserLogoutPacket(nicknameHash);
+                        sendTcpToUserIfConnected(partner->getNicknameHash(), static_cast<uint32_t>(PacketType::USER_LOGOUT), p);
+                    }
+                    partnerInRepo->resetCall();
+                }
+                m_callManager.endCall(nicknameHash, partner->getNicknameHash());
+            }
+            user->resetCall();
+        }
+
+        if (user->hasOutgoingPendingCall()) {
+            auto out = user->getOutgoingPendingCall();
+            auto pendingPartner = user->getOutgoingPendingCallPartner();
+            if (pendingPartner && m_userRepository.containsUser(pendingPartner->getNicknameHash())) {
+                auto pp = m_userRepository.findUserByNickname(pendingPartner->getNicknameHash());
+                std::string ppPrefix = pp->getNicknameHash().length() >= 5 ? pp->getNicknameHash().substr(0, 5) : pp->getNicknameHash();
+                LOG_INFO("Outgoing/Incoming call ended due to logout: {} <-> {}", prefix, ppPrefix);
+                if (!pp->isConnectionDown()) {
+                    auto [_, p] = PacketFactory::getUserLogoutPacket(nicknameHash);
+                    sendTcpToUserIfConnected(pendingPartner->getNicknameHash(), static_cast<uint32_t>(PacketType::USER_LOGOUT), p);
+                }
+                removeIncomingPendingCall(pp, out);
+            }
+            resetOutgoingPendingCall(user);
+        }
+
+        auto incomingCopy = user->getIncomingPendingCalls();
+        for (auto& pc : incomingCopy) {
+            auto initiator = pc->getInitiator();
+            if (initiator && m_userRepository.containsUser(initiator->getNicknameHash())) {
+                auto init = m_userRepository.findUserByNickname(initiator->getNicknameHash());
+                std::string ip = init->getNicknameHash().length() >= 5 ? init->getNicknameHash().substr(0, 5) : init->getNicknameHash();
+                LOG_INFO("Incoming/Outgoing call ended due to logout: {} <-> {}", ip, prefix);
+                if (!init->isConnectionDown()) {
+                    auto [_, p] = PacketFactory::getUserLogoutPacket(nicknameHash);
+                    sendTcpToUserIfConnected(initiator->getNicknameHash(), static_cast<uint32_t>(PacketType::USER_LOGOUT), p);
+                }
+                resetOutgoingPendingCall(init);
+            }
+            removeIncomingPendingCall(user, pc);
+        }
+        user->resetAllPendingCalls();
+        m_userRepository.removeUser(nicknameHash);
+    }
+
+    bool Server::resetOutgoingPendingCall(const UserPtr& user) {
+        if (!user->hasOutgoingPendingCall()) return false;
+        auto pc = user->getOutgoingPendingCall();
+        if (m_callManager.hasPendingCall(pc))
+            m_callManager.removePendingCall(pc);
+        user->resetOutgoingPendingCall();
+        return true;
+    }
+
+    void Server::removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall) {
+        if (!user->hasIncomingPendingCall(pendingCall)) return;
         if (m_callManager.hasPendingCall(pendingCall))
             m_callManager.removePendingCall(pendingCall);
-        
         user->removeIncomingPendingCall(pendingCall);
     }
 }
-
-void Server::addPendingAction(const ConfirmationKey& key, std::function<void()> action)
-{
-    if (!m_pendingActions.contains(key)) {
-        m_pendingActions.emplace(key, std::move(action));
-        m_nicknameHashToConfirmationKeys[key.nicknameHash].insert(key);
-    }
-}
-
-void Server::removePendingAction(const ConfirmationKey& key)
-{
-    if (m_pendingActions.contains(key)) {
-        m_pendingActions.erase(key);
-        auto it = m_nicknameHashToConfirmationKeys.find(key.nicknameHash);
-        if (it != m_nicknameHashToConfirmationKeys.end()) {
-            it->second.erase(key);
-            if (it->second.empty()) {
-                m_nicknameHashToConfirmationKeys.erase(it);
-            }
-        }
-    }
-}
-
-void Server::clearPendingActionsForUser(const std::string& nicknameHash)
-{
-    auto it = m_nicknameHashToConfirmationKeys.find(nicknameHash);
-    if (it != m_nicknameHashToConfirmationKeys.end()) {
-        for (const auto& key : it->second) {
-            m_pendingActions.erase(key);
-        }
-        m_nicknameHashToConfirmationKeys.erase(it);
-    }
-}
-
-void Server::sendPacketTask(const std::vector<unsigned char>& packet, PacketType type, const asio::ip::udp::endpoint& endpoint) {
-    m_packetSender.send(packet, static_cast<uint32_t>(type), endpoint);
-}
-
-void Server::onTaskCompleted(std::optional<nlohmann::json> completionContext) {
-}
-
-void Server::onTaskFailed(const std::string& message, std::optional<nlohmann::json> failureContext) {
-    LOG_ERROR(message);
-}
-} // namespace server

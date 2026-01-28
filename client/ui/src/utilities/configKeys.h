@@ -7,7 +7,9 @@ namespace ConfigKeys
     const QString VERSION = "version";
     const QString UPDATER_HOST = "updaterHost";
     const QString SERVER_HOST = "serverHost";
-    const QString PORT = "port";
+    const QString MAIN_SERVER_TCP_PORT = "mainServerTCPPort";
+    const QString MAIN_SERVER_UDP_PORT = "mainServerUDPPort";
+    const QString UPDATER_SERVER_TCP_PORT = "updaterServerTCPPort";
     const QString MULTI_INSTANCE = "multiInstance";
     const QString INPUT_VOLUME = "inputVolume";
     const QString OUTPUT_VOLUME = "outputVolume";

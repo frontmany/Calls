@@ -24,6 +24,24 @@ void User::setEndpoint(asio::ip::udp::endpoint endpoint)
 	m_endpoint = endpoint;
 }
 
+void User::setTcpConnection(std::shared_ptr<network::TcpConnection> conn)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_tcpConnection = std::move(conn);
+}
+
+std::shared_ptr<network::TcpConnection> User::getTcpConnection() const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	return m_tcpConnection.lock();
+}
+
+void User::clearTcpConnection()
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_tcpConnection.reset();
+}
+
 void User::setConnectionDown(bool value)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);

@@ -13,35 +13,33 @@ namespace core
         MediaSharingService::MediaSharingService(
             ClientStateManager& stateManager,
             UserOperationManager& operationManager,
-            TaskManager<long long, std::milli>& taskManager,
+            PendingRequests& pendingRequests,
             core::network::NetworkController& networkController,
+            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
             IMediaEncryptionService& mediaEncryptionService,
             std::shared_ptr<EventListener> eventListener)
             : m_stateManager(stateManager)
             , m_operationManager(operationManager)
-            , m_taskManager(taskManager)
+            , m_pendingRequests(pendingRequests)
             , m_networkController(networkController)
+            , m_tcpControl(tcpControl)
             , m_mediaEncryptionService(mediaEncryptionService)
             , m_eventListener(eventListener)
         {
         }
 
-        void MediaSharingService::createAndStartTask(
-            const std::string& uid,
-            const std::vector<unsigned char>& packet,
-            PacketType packetType,
-            std::function<void(std::optional<nlohmann::json>)> onCompletion,
-            std::function<void(std::optional<nlohmann::json>)> onFailure)
+        bool MediaSharingService::sendControl(uint32_t type, const std::vector<unsigned char>& body,
+            std::function<void(std::optional<nlohmann::json>)> onComplete,
+            std::function<void(std::optional<nlohmann::json>)> onFail,
+            const std::string& uid)
         {
-            m_taskManager.createTask(uid, 1500ms, 3,
-                [this, packet, packetType]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(packetType));
-                },
-                std::move(onCompletion),
-                std::move(onFailure)
-            );
-
-            m_taskManager.startTask(uid);
+            if (!m_tcpControl || !m_tcpControl->isConnected()) return false;
+            m_pendingRequests.add(uid, std::move(onComplete), std::move(onFail));
+            if (!m_tcpControl->send(type, body.data(), body.size())) {
+                m_pendingRequests.fail(uid, std::nullopt);
+                return false;
+            }
+            return true;
         }
 
         std::error_code MediaSharingService::startScreenSharing() {
@@ -56,11 +54,12 @@ namespace core
             m_operationManager.addOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_BEGIN,
-                std::bind(&MediaSharingService::onStartScreenSharingCompleted, this, _1),
-                std::bind(&MediaSharingService::onStartScreenSharingFailed, this, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN), packet,
+                    std::bind(&MediaSharingService::onStartScreenSharingCompleted, this, _1),
+                    std::bind(&MediaSharingService::onStartScreenSharingFailed, this, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -75,11 +74,12 @@ namespace core
             m_operationManager.addOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            createAndStartTask(uid, packet, PacketType::SCREEN_SHARING_END,
-                std::bind(&MediaSharingService::onStopScreenSharingCompleted, this, _1),
-                std::bind(&MediaSharingService::onStopScreenSharingFailed, this, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::SCREEN_SHARING_END), packet,
+                    std::bind(&MediaSharingService::onStopScreenSharingCompleted, this, _1),
+                    std::bind(&MediaSharingService::onStopScreenSharingFailed, this, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -116,11 +116,12 @@ namespace core
             m_operationManager.addOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_BEGIN,
-                std::bind(&MediaSharingService::onStartCameraSharingCompleted, this, _1),
-                std::bind(&MediaSharingService::onStartCameraSharingFailed, this, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), packet,
+                    std::bind(&MediaSharingService::onStartCameraSharingCompleted, this, _1),
+                    std::bind(&MediaSharingService::onStartCameraSharingFailed, this, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -135,11 +136,12 @@ namespace core
             m_operationManager.addOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            createAndStartTask(uid, packet, PacketType::CAMERA_SHARING_END,
-                std::bind(&MediaSharingService::onStopCameraSharingCompleted, this, _1),
-                std::bind(&MediaSharingService::onStopCameraSharingFailed, this, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), packet,
+                    std::bind(&MediaSharingService::onStopCameraSharingCompleted, this, _1),
+                    std::bind(&MediaSharingService::onStopCameraSharingFailed, this, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 

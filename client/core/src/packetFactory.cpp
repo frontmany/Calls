@@ -37,10 +37,11 @@ namespace core
 
     // packets for server
 
-    std::pair<std::string, std::vector<unsigned char>> PacketFactory::getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey) {
+    std::pair<std::string, std::vector<unsigned char>> PacketFactory::getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, uint16_t udpPort) {
         std::string uid = crypto::generateUID();
         nlohmann::json jsonObject = createBasePacket(uid, myNickname);
         jsonObject[PUBLIC_KEY] = crypto::serializePublicKey(myPublicKey);
+        jsonObject[UDP_PORT] = udpPort;
         return std::make_pair(uid, toBytes(jsonObject.dump()));
     }
 
@@ -48,10 +49,11 @@ namespace core
         return createPacketWithUid(myNickname);
     }
 
-    std::pair<std::string, std::vector<unsigned char>> PacketFactory::getReconnectPacket(const std::string& myNickname, const std::string& myToken) {
+    std::pair<std::string, std::vector<unsigned char>> PacketFactory::getReconnectPacket(const std::string& myNickname, const std::string& myToken, uint16_t udpPort) {
         std::string uid = crypto::generateUID();
         nlohmann::json jsonObject = createBasePacket(uid, myNickname);
         jsonObject[TOKEN] = myToken;
+        jsonObject[UDP_PORT] = udpPort;
         return std::make_pair(uid, toBytes(jsonObject.dump()));
     }
 

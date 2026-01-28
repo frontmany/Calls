@@ -7,47 +7,38 @@
 #include <vector>
 #include <mutex>
 
-#include "taskManager.h"
+#include "pendingRequests.h"
 #include "packetType.h"
 #include "clientStateManager.h"
 #include "services/IMediaEncryptionService.h"
+#include "network/tcp_control_client.h"
 #include "json.hpp"
+#include <memory>
+
+namespace core { namespace audio { class AudioEngine; } }
+namespace core { namespace network { class NetworkController; } }
 
 namespace core
 {
-    namespace audio
-    {
-        class AudioEngine;
-    }
-}
-
-namespace core
-{
-    namespace network
-    {
-        class NetworkController;
-    }
     class ClientStateManager;
     class KeyManager;
-
     class EventListener;
 
     class PacketProcessor {
     public:
-        PacketProcessor(ClientStateManager& stateManager, 
+        PacketProcessor(ClientStateManager& stateManager,
             KeyManager& keysManager,
-            TaskManager<long long, std::milli>& taskManager,
+            PendingRequests& pendingRequests,
             core::network::NetworkController& networkController,
+            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
             core::audio::AudioEngine& audioEngine,
             std::shared_ptr<EventListener> eventListener,
-            core::services::IMediaEncryptionService& mediaEncryptionService
-        );
+            core::services::IMediaEncryptionService& mediaEncryptionService);
 
         void processPacket(const unsigned char* data, int length, PacketType type);
         void onVoice(const unsigned char* data, int length);
         void onScreen(const unsigned char* data, int length);
         void onCamera(const unsigned char* data, int length);
-        void onConfirmation(const nlohmann::json& jsonObject);
         void onAuthorizationResult(const nlohmann::json& jsonObject);
         void onReconnectResult(const nlohmann::json& jsonObject);
         void setOrphanReconnectSuccessHandler(std::function<void(std::optional<nlohmann::json>)> f);
@@ -65,16 +56,13 @@ namespace core
         void onConnectionRestoredWithUser(const nlohmann::json& jsonObject);
         void onUserLogout(const nlohmann::json& jsonObject);
 
-
-    private:
-        void sendConfirmation(const std::string& userNickname, const std::string& uid);
-
     private:
         mutable std::mutex m_mutex;
         core::network::NetworkController& m_networkController;
         core::audio::AudioEngine& m_audioEngine;
         ClientStateManager& m_stateManager;
-        TaskManager<long long, std::milli>& m_taskManager;
+        PendingRequests& m_pendingRequests;
+        std::unique_ptr<core::network::TcpControlClient>& m_tcpControl;
         KeyManager& m_keysManager;
         std::shared_ptr<EventListener> m_eventListener;
         core::services::IMediaEncryptionService& m_mediaEncryptionService;

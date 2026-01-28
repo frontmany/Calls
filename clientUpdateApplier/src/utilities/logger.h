@@ -36,7 +36,7 @@ namespace updateApplier::utilities::log
                 console_sink->set_level(spdlog::level::debug);
                 console_sink->set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] %v%$");
 
-                std::filesystem::path log_path = std::filesystem::path(get_log_directory()) / "update_applier.log";
+                std::filesystem::path log_path = std::filesystem::path(get_log_directory()) / "updateApplier.log";
                 if (!log_path.parent_path().empty()) {
                     std::filesystem::create_directories(log_path.parent_path());
                 }

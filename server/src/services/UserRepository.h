@@ -6,6 +6,7 @@
 #include <string>
 #include "IUserRepository.h"
 #include "user.h"
+#include "network/tcp_connection.h"
 #include "asio.hpp"
 
 namespace server
@@ -32,6 +33,16 @@ namespace server
                 auto it = m_endpointToUser.find(endpoint);
                 if (it != m_endpointToUser.end()) {
                     return it->second;
+                }
+                return nullptr;
+            }
+
+            UserPtr findUserByTcpConnection(network::TcpConnectionPtr conn) override {
+                if (!conn) return nullptr;
+                std::lock_guard<std::mutex> lock(m_mutex);
+                for (const auto& [_, user] : m_nicknameHashToUser) {
+                    if (user->getTcpConnection() == conn)
+                        return user;
                 }
                 return nullptr;
             }

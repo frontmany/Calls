@@ -31,6 +31,7 @@ namespace core
 
         std::string calculateHash(const std::string& text);
         std::string generateUID();
+        uint64_t scramble(uint64_t inputNumber);
         }
     }
 }

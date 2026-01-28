@@ -3,6 +3,7 @@
 namespace server
 {
     static constexpr const char* UID = "UID";
+static constexpr const char* UDP_PORT = "udpPort";
 static constexpr const char* RESULT = "result";
 static constexpr const char* TOKEN = "token";
 static constexpr const char* SENDER_ENCRYPTED_NICKNAME = "sender_encrypted_nickname";

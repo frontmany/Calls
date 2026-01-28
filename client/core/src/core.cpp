@@ -54,46 +54,60 @@ namespace core
             m_authorizationService->stopReconnectRetry();
         }
         reset();
+        if (m_tcpControl)
+            m_tcpControl->disconnect();
         m_networkController.stop();
     }
 
     bool Client::start(const std::string& host,
-        const std::string& port,
+        const std::string& tcpPort,
+        const std::string& udpPort,
         std::shared_ptr<EventListener> eventListener)
     {
         m_eventListener = std::move(eventListener);
-        m_authorizationService = std::make_unique<core::services::AuthorizationService>(
-            m_stateManager, m_keyManager, m_operationManager, m_taskManager,
-            m_networkController, m_eventListener);
-        m_callService = std::make_unique<core::services::CallService>(
-            m_stateManager, m_keyManager, m_operationManager, m_taskManager,
-            m_networkController, m_audioEngine, m_eventListener);
-        m_mediaSharingService = std::make_unique<core::services::MediaSharingService>(
-            m_stateManager, m_operationManager, m_taskManager,
-            m_networkController, m_mediaEncryptionService, m_eventListener);
-        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_taskManager, m_networkController, m_audioEngine, m_eventListener, m_mediaEncryptionService);
-        m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> j) { onReconnectCompleted(j); });
 
         bool audioInitialized = m_audioEngine.init(std::bind(&Client::onInputVoice, this, _1, _2));
 
-        bool networkInitialized = m_networkController.init(host, port,
-            std::bind(&Client::onNetworkReceive, this, _1, _2, _3),
+        bool udpInitialized = m_networkController.init(host, udpPort,
+            [this](const unsigned char* d, int len, uint32_t type) {
+                auto t = static_cast<PacketType>(type);
+                if (t == PacketType::VOICE || t == PacketType::SCREEN || t == PacketType::CAMERA)
+                    onReceive(d, len, t);
+            },
             std::bind(&Client::onConnectionDown, this),
             std::bind(&Client::onConnectionRestored, this)
         );
 
+        m_tcpControl = std::make_unique<core::network::TcpControlClient>(
+            [this](uint32_t type, const unsigned char* data, size_t size) {
+                if (m_packetProcessor)
+                    m_packetProcessor->processPacket(data, static_cast<int>(size), static_cast<PacketType>(type));
+            },
+            [this]() { onConnectionDown(); });
+
+        m_authorizationService = std::make_unique<core::services::AuthorizationService>(
+            m_stateManager, m_keyManager, m_operationManager, m_pendingRequests,
+            m_networkController, m_tcpControl, m_eventListener, host, tcpPort);
+        m_callService = std::make_unique<core::services::CallService>(
+            m_stateManager, m_keyManager, m_operationManager, m_pendingRequests,
+            m_networkController, m_tcpControl, m_audioEngine, m_eventListener);
+        m_mediaSharingService = std::make_unique<core::services::MediaSharingService>(
+            m_stateManager, m_operationManager, m_pendingRequests,
+            m_networkController, m_tcpControl, m_mediaEncryptionService, m_eventListener);
+        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_pendingRequests, m_networkController, m_tcpControl, m_audioEngine, m_eventListener, m_mediaEncryptionService);
+        m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> j) { onReconnectCompleted(j); });
+
+        m_tcpControl->connect(host, tcpPort);
         m_keyManager.generateKeys();
 
-        if (!m_networkController.isRunning())
+        if (udpInitialized && !m_networkController.isRunning())
             m_networkController.start();
 
-        if (audioInitialized && networkInitialized) {
+        if (audioInitialized && udpInitialized) {
             return true;
         }
-        else {
-            LOG_ERROR("Calls client initialization failed - audio: {}, network: {}", audioInitialized, networkInitialized);
-            return false;
-        }
+        LOG_ERROR("Calls client initialization failed - audio: {}, udp: {}", audioInitialized, udpInitialized);
+        return false;
     }
 
     void Client::stop() {
@@ -101,13 +115,15 @@ namespace core
             m_authorizationService->stopReconnectRetry();
         }
         reset();
+        if (m_tcpControl)
+            m_tcpControl->disconnect();
         m_networkController.stop();
     }
 
     void Client::reset() {
         m_stateManager.reset();
         m_keyManager.resetKeys();
-        m_taskManager.cancelAllTasks();
+        m_pendingRequests.failAll(std::nullopt);
         m_operationManager.clearAllOperations();
 
         if (m_audioEngine.isStream())
@@ -115,13 +131,16 @@ namespace core
     }
 
     void Client::onNetworkReceive(const unsigned char* data, int length, uint32_t type) {
-        onReceive(data, length, static_cast<PacketType>(type));
+        (void)data;
+        (void)length;
+        (void)type;
     }
 
 
     void Client::onConnectionDown() {
         LOG_ERROR("Connection down");
-        
+        m_pendingRequests.failAll(std::nullopt);
+
         m_stateManager.setScreenSharing(false);
         m_stateManager.setCameraSharing(false);
         m_stateManager.setViewingRemoteScreen(false);
@@ -150,7 +169,6 @@ namespace core
 
         if (m_authorizationService) {
             m_authorizationService->onConnectionDown();
-            m_authorizationService->startReconnectRetry();
         }
     }
 
@@ -158,10 +176,6 @@ namespace core
         if (m_authorizationService) {
             m_authorizationService->onConnectionRestored();
         }
-    }
-
-    void Client::sendPacket(const std::vector<unsigned char>& packet, PacketType packetType) {
-        m_networkController.send(packet, static_cast<uint32_t>(packetType));
     }
 
     void Client::onReconnectCompleted(std::optional<nlohmann::json> completionContext) {

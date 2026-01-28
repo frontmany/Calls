@@ -4,12 +4,13 @@
 #include "clientStateManager.h"
 #include "keyManager.h"
 #include "userOperationManager.h"
-#include "taskManager.h"
+#include "pendingRequests.h"
 #include "packetFactory.h"
 #include "packetType.h"
 #include "errorCode.h"
 #include "eventListener.h"
 #include "network/networkController.h"
+#include "network/tcp_control_client.h"
 #include "json.hpp"
 #include <functional>
 #include <memory>
@@ -20,16 +21,18 @@ namespace core
 {
     namespace services
     {
-        // Сервис для управления авторизацией и переподключением
         class AuthorizationService : public IAuthorizationService {
         public:
             AuthorizationService(
                 ClientStateManager& stateManager,
                 KeyManager& keyManager,
                 UserOperationManager& operationManager,
-                TaskManager<long long, std::milli>& taskManager,
+                PendingRequests& pendingRequests,
                 core::network::NetworkController& networkController,
-                std::shared_ptr<EventListener> eventListener
+                std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+                std::shared_ptr<EventListener> eventListener,
+                std::string host,
+                std::string tcpPort
             );
 
             ~AuthorizationService();
@@ -38,7 +41,6 @@ namespace core
             std::error_code logout() override;
             void handleReconnect() override;
 
-            // Callbacks для обработки результатов операций
             void onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
             void onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
             void onLogoutCompleted(std::optional<nlohmann::json> completionContext);
@@ -46,31 +48,32 @@ namespace core
             void onReconnectCompleted(std::optional<nlohmann::json> completionContext);
             void onReconnectFailed(std::optional<nlohmann::json> failureContext);
 
-            // Методы для управления переподключением
             void startReconnectRetry();
             void stopReconnectRetry();
             void onConnectionDown();
             void onConnectionRestored();
 
         private:
-            void createAndStartTask(
-                const std::string& uid,
-                const std::vector<unsigned char>& packet,
-                PacketType packetType,
-                std::function<void(std::optional<nlohmann::json>)> onCompletion,
-                std::function<void(std::optional<nlohmann::json>)> onFailure);
+            bool sendControl(uint32_t type, const std::vector<unsigned char>& body,
+                std::function<void(std::optional<nlohmann::json>)> onComplete,
+                std::function<void(std::optional<nlohmann::json>)> onFail,
+                const std::string& uid);
 
         private:
             ClientStateManager& m_stateManager;
             KeyManager& m_keyManager;
             UserOperationManager& m_operationManager;
-            TaskManager<long long, std::milli>& m_taskManager;
+            PendingRequests& m_pendingRequests;
             core::network::NetworkController& m_networkController;
+            std::unique_ptr<core::network::TcpControlClient>& m_tcpControl;
             std::shared_ptr<EventListener> m_eventListener;
+            std::string m_host;
+            std::string m_tcpPort;
 
             std::atomic<bool> m_reconnectInProgress{false};
             std::thread m_reconnectRetryThread;
             std::atomic<bool> m_stopReconnectRetry{false};
+            std::atomic<bool> m_retryThreadRunning{false};
         };
     }
 }

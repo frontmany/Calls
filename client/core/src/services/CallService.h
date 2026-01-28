@@ -4,12 +4,13 @@
 #include "clientStateManager.h"
 #include "keyManager.h"
 #include "userOperationManager.h"
-#include "taskManager.h"
+#include "pendingRequests.h"
 #include "packetFactory.h"
 #include "packetType.h"
 #include "errorCode.h"
 #include "eventListener.h"
 #include "network/networkController.h"
+#include "network/tcp_control_client.h"
 #include "audio/audioEngine.h"
 #include "json.hpp"
 #include <functional>
@@ -20,15 +21,15 @@ namespace core
 {
     namespace services
     {
-        // Сервис для управления звонками
         class CallService : public ICallService {
         public:
             CallService(
                 ClientStateManager& stateManager,
                 KeyManager& keyManager,
                 UserOperationManager& operationManager,
-                TaskManager<long long, std::milli>& taskManager,
+                PendingRequests& pendingRequests,
                 core::network::NetworkController& networkController,
+                std::unique_ptr<core::network::TcpControlClient>& tcpControl,
                 core::audio::AudioEngine& audioEngine,
                 std::shared_ptr<EventListener> eventListener
             );
@@ -62,19 +63,18 @@ namespace core
             void onEndCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
 
         private:
-            void createAndStartTask(
-                const std::string& uid,
-                const std::vector<unsigned char>& packet,
-                PacketType packetType,
-                std::function<void(std::optional<nlohmann::json>)> onCompletion,
-                std::function<void(std::optional<nlohmann::json>)> onFailure);
+            bool sendControl(uint32_t type, const std::vector<unsigned char>& body,
+                std::function<void(std::optional<nlohmann::json>)> onComplete,
+                std::function<void(std::optional<nlohmann::json>)> onFail,
+                const std::string& uid);
 
         private:
             ClientStateManager& m_stateManager;
             KeyManager& m_keyManager;
             UserOperationManager& m_operationManager;
-            TaskManager<long long, std::milli>& m_taskManager;
+            PendingRequests& m_pendingRequests;
             core::network::NetworkController& m_networkController;
+            std::unique_ptr<core::network::TcpControlClient>& m_tcpControl;
             core::audio::AudioEngine& m_audioEngine;
             std::shared_ptr<EventListener> m_eventListener;
         };

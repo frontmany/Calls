@@ -16,36 +16,34 @@ namespace core
             ClientStateManager& stateManager,
             KeyManager& keyManager,
             UserOperationManager& operationManager,
-            TaskManager<long long, std::milli>& taskManager,
+            PendingRequests& pendingRequests,
             core::network::NetworkController& networkController,
+            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
             core::audio::AudioEngine& audioEngine,
             std::shared_ptr<EventListener> eventListener)
             : m_stateManager(stateManager)
             , m_keyManager(keyManager)
             , m_operationManager(operationManager)
-            , m_taskManager(taskManager)
+            , m_pendingRequests(pendingRequests)
             , m_networkController(networkController)
+            , m_tcpControl(tcpControl)
             , m_audioEngine(audioEngine)
             , m_eventListener(eventListener)
         {
         }
 
-        void CallService::createAndStartTask(
-            const std::string& uid,
-            const std::vector<unsigned char>& packet,
-            PacketType packetType,
-            std::function<void(std::optional<nlohmann::json>)> onCompletion,
-            std::function<void(std::optional<nlohmann::json>)> onFailure)
+        bool CallService::sendControl(uint32_t type, const std::vector<unsigned char>& body,
+            std::function<void(std::optional<nlohmann::json>)> onComplete,
+            std::function<void(std::optional<nlohmann::json>)> onFail,
+            const std::string& uid)
         {
-            m_taskManager.createTask(uid, 1500ms, 3,
-                [this, packet, packetType]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(packetType));
-                },
-                std::move(onCompletion),
-                std::move(onFailure)
-            );
-
-            m_taskManager.startTask(uid);
+            if (!m_tcpControl || !m_tcpControl->isConnected()) return false;
+            m_pendingRequests.add(uid, std::move(onComplete), std::move(onFail));
+            if (!m_tcpControl->send(type, body.data(), body.size())) {
+                m_pendingRequests.fail(uid, std::nullopt);
+                return false;
+            }
+            return true;
         }
 
         std::error_code CallService::startOutgoingCall(const std::string& userNickname) {
@@ -58,11 +56,12 @@ namespace core
 
             auto [uid, packet] = PacketFactory::getRequestUserInfoPacket(m_stateManager.getMyNickname(), userNickname);
 
-            createAndStartTask(uid, packet, PacketType::GET_USER_INFO,
-                std::bind(&CallService::onRequestUserInfoCompleted, this, userNickname, _1),
-                std::bind(&CallService::onRequestUserInfoFailed, this, userNickname, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::GET_USER_INFO), packet,
+                    std::bind(&CallService::onRequestUserInfoCompleted, this, userNickname, _1),
+                    std::bind(&CallService::onRequestUserInfoFailed, this, userNickname, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -77,11 +76,12 @@ namespace core
 
             auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), nickname);
 
-            createAndStartTask(uid, packet, PacketType::CALLING_END,
-                std::bind(&CallService::onStopOutgoingCallCompleted, this, nickname, _1),
-                std::bind(&CallService::onStopOutgoingCallFailed, this, nickname, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::CALLING_END), packet,
+                    std::bind(&CallService::onStopOutgoingCallCompleted, this, nickname, _1),
+                    std::bind(&CallService::onStopOutgoingCallFailed, this, nickname, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::STOP_OUTGOING_CALL, nickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -96,48 +96,44 @@ namespace core
 
             m_operationManager.addOperation(UserOperationType::ACCEPT_CALL, userNickname);
 
-            // Отклонить все остальные входящие звонки
             for (auto& [nickname, incomingCallData] : incomingCalls) {
                 if (nickname != userNickname) {
                     auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), nickname);
-
-                    createAndStartTask(uid, packet, PacketType::CALL_DECLINE,
+                    sendControl(static_cast<uint32_t>(PacketType::CALL_DECLINE), packet,
                         std::bind(&CallService::onDeclineIncomingCallCompleted, this, nickname, _1),
-                        std::bind(&CallService::onDeclineIncomingCallFailed, this, _1)
-                    );
+                        std::bind(&CallService::onDeclineIncomingCallFailed, this, _1), uid);
                 }
             }
 
-            // Если есть исходящий звонок, сначала остановить его
             if (m_stateManager.isOutgoingCall()) {
                 auto [uid, packet] = PacketFactory::getStopOutgoingCallPacket(m_stateManager.getMyNickname(), m_stateManager.getOutgoingCall().getNickname());
-
-                createAndStartTask(uid, packet, PacketType::CALLING_END,
-                    std::bind(&CallService::onAcceptCallStopOutgoingCompleted, this, userNickname, _1),
-                    std::bind(&CallService::onAcceptCallStopOutgoingFailed, this, userNickname, _1)
-                );
+                if (!sendControl(static_cast<uint32_t>(PacketType::CALLING_END), packet,
+                        std::bind(&CallService::onAcceptCallStopOutgoingCompleted, this, userNickname, _1),
+                        std::bind(&CallService::onAcceptCallStopOutgoingFailed, this, userNickname, _1), uid)) {
+                    m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
+                    return make_error_code(ErrorCode::connection_down);
+                }
             }
-            // Если есть активный звонок, сначала завершить его
             else if (m_stateManager.isActiveCall()) {
                 auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), m_stateManager.getActiveCall().getNickname());
-
-                createAndStartTask(uid, packet, PacketType::CALL_END,
-                    std::bind(&CallService::onAcceptCallEndActiveCompleted, this, userNickname, _1),
-                    std::bind(&CallService::onAcceptCallEndActiveFailed, this, userNickname, _1)
-                );
+                if (!sendControl(static_cast<uint32_t>(PacketType::CALL_END), packet,
+                        std::bind(&CallService::onAcceptCallEndActiveCompleted, this, userNickname, _1),
+                        std::bind(&CallService::onAcceptCallEndActiveFailed, this, userNickname, _1), uid)) {
+                    m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
+                    return make_error_code(ErrorCode::connection_down);
+                }
             }
-            // Иначе сразу принять звонок
             else {
-                auto& incomingCalls = m_stateManager.getIncomingCalls();
-                auto& incomingCall = incomingCalls.at(userNickname);
+                auto& inc = m_stateManager.getIncomingCalls();
+                auto& incomingCall = inc.at(userNickname);
                 auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
-
-                createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
-                    std::bind(&CallService::onAcceptCallCompleted, this, userNickname, _1),
-                    std::bind(&CallService::onAcceptCallFailed, this, userNickname, _1)
-                );
+                if (!sendControl(static_cast<uint32_t>(PacketType::CALL_ACCEPT), packet,
+                        std::bind(&CallService::onAcceptCallCompleted, this, userNickname, _1),
+                        std::bind(&CallService::onAcceptCallFailed, this, userNickname, _1), uid)) {
+                    m_operationManager.removeOperation(UserOperationType::ACCEPT_CALL, userNickname);
+                    return make_error_code(ErrorCode::connection_down);
+                }
             }
-
             return {};
         }
 
@@ -154,11 +150,12 @@ namespace core
 
             auto [uid, packet] = PacketFactory::getDeclineCallPacket(m_stateManager.getMyNickname(), userNickname);
 
-            createAndStartTask(uid, packet, PacketType::CALL_DECLINE,
-                std::bind(&CallService::onDeclineCallCompleted, this, userNickname, _1),
-                std::bind(&CallService::onDeclineCallFailed, this, userNickname, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::CALL_DECLINE), packet,
+                    std::bind(&CallService::onDeclineCallCompleted, this, userNickname, _1),
+                    std::bind(&CallService::onDeclineCallFailed, this, userNickname, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::DECLINE_CALL, userNickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -173,11 +170,12 @@ namespace core
 
             auto [uid, packet] = PacketFactory::getEndCallPacket(m_stateManager.getMyNickname(), nickname);
 
-            createAndStartTask(uid, packet, PacketType::CALL_END,
-                std::bind(&CallService::onEndCallCompleted, this, nickname, _1),
-                std::bind(&CallService::onEndCallFailed, this, nickname, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::CALL_END), packet,
+                    std::bind(&CallService::onEndCallCompleted, this, nickname, _1),
+                    std::bind(&CallService::onEndCallFailed, this, nickname, _1), uid)) {
+                m_operationManager.removeOperation(UserOperationType::END_CALL, nickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -196,10 +194,9 @@ namespace core
 
                     auto [uid, packet] = PacketFactory::getStartOutgoingCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), userPublicKey, callKey);
 
-                    createAndStartTask(uid, packet, PacketType::CALLING_BEGIN,
+                    sendControl(static_cast<uint32_t>(PacketType::CALLING_BEGIN), packet,
                         std::bind(&CallService::onStartOutgoingCallCompleted, this, userNickname, _1),
-                        std::bind(&CallService::onStartOutgoingCallFailed, this, userNickname, _1)
-                    );
+                        std::bind(&CallService::onStartOutgoingCallFailed, this, userNickname, _1), uid);
                 }
                 else {
                     m_operationManager.removeOperation(UserOperationType::START_OUTGOING_CALL, userNickname);
@@ -259,10 +256,9 @@ namespace core
             auto& incomingCall = incomingCalls.at(userNickname);
             auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
 
-            createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
+            sendControl(static_cast<uint32_t>(PacketType::CALL_ACCEPT), packet,
                 std::bind(&CallService::onAcceptCallCompleted, this, userNickname, _1),
-                std::bind(&CallService::onAcceptCallFailed, this, userNickname, _1)
-            );
+                std::bind(&CallService::onAcceptCallFailed, this, userNickname, _1), uid);
         }
 
         void CallService::onAcceptCallStopOutgoingFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {
@@ -283,10 +279,9 @@ namespace core
             auto& incomingCall = incomingCalls.at(userNickname);
             auto [uid, packet] = PacketFactory::getAcceptCallPacket(m_stateManager.getMyNickname(), userNickname, m_keyManager.getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
 
-            createAndStartTask(uid, packet, PacketType::CALL_ACCEPT,
+            sendControl(static_cast<uint32_t>(PacketType::CALL_ACCEPT), packet,
                 std::bind(&CallService::onAcceptCallCompleted, this, userNickname, _1),
-                std::bind(&CallService::onAcceptCallFailedAfterEndCall, this, userNickname, _1)
-            );
+                std::bind(&CallService::onAcceptCallFailedAfterEndCall, this, userNickname, _1), uid);
         }
 
         void CallService::onAcceptCallEndActiveFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext) {

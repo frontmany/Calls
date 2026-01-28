@@ -36,7 +36,7 @@ namespace updater::utilities::log
                 console_sink->set_level(spdlog::level::debug);
                 console_sink->set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] %v%$");
 
-                std::filesystem::path log_path = std::filesystem::path(get_log_directory()) / "calls_client.log";
+                std::filesystem::path log_path = std::filesystem::path(get_log_directory()) / "updater.log";
                 if (!log_path.parent_path().empty()) {
                     std::filesystem::create_directories(log_path.parent_path());
                 }
@@ -49,7 +49,7 @@ namespace updater::utilities::log
                 file_sink->set_level(spdlog::level::trace);
                 file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread %t] %v");
 
-                logger = std::make_shared<spdlog::logger>("calls_client",
+                logger = std::make_shared<spdlog::logger>("updater",
                     spdlog::sinks_init_list{ console_sink, file_sink });
 
                 logger->set_level(spdlog::level::trace);

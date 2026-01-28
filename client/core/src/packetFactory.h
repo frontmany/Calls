@@ -11,9 +11,9 @@ namespace core {
         PacketFactory() = default;
 
         // packets for server
-        static std::pair<std::string, std::vector<unsigned char>> getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey);
+        static std::pair<std::string, std::vector<unsigned char>> getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, uint16_t udpPort);
         static std::pair<std::string, std::vector<unsigned char>> getLogoutPacket(const std::string& myNickname);
-        static std::pair<std::string, std::vector<unsigned char>> getReconnectPacket(const std::string& myNickname, const std::string& myToken);
+        static std::pair<std::string, std::vector<unsigned char>> getReconnectPacket(const std::string& myNickname, const std::string& myToken, uint16_t udpPort);
         static std::pair<std::string, std::vector<unsigned char>> getRequestUserInfoPacket(const std::string& myNickname, const std::string& userNickname);
 
         // packets for other user

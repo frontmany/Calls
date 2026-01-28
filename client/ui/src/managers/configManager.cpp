@@ -41,7 +41,9 @@ void ConfigManager::loadConfig() {
             m_outputVolume = getOutputVolumeFromConfig();
             m_inputVolume = getInputVolumeFromConfig();
             m_isMultiInstanceAllowed = isMultiInstanceAllowedFromConfig();
-            m_port = getPortFromConfig();
+            m_mainServerTcpPort = getMainServerTcpPortFromConfig();
+            m_mainServerUdpPort = getMainServerUdpPortFromConfig();
+            m_updaterServerTcpPort = getUpdaterServerTcpPortFromConfig();
             m_serverHost = getServerHostFromConfig();
             m_firstLaunch = isFirstLaunchFromConfig();
             m_appDirectory = getAppDirectoryFromConfig();
@@ -73,7 +75,9 @@ void ConfigManager::saveConfig() {
         configObject[ConfigKeys::VERSION] = m_version;
         configObject[ConfigKeys::UPDATER_HOST] = m_updaterHost;
         configObject[ConfigKeys::SERVER_HOST] = m_serverHost;
-        configObject[ConfigKeys::PORT] = m_port;
+        configObject[ConfigKeys::MAIN_SERVER_TCP_PORT] = m_mainServerTcpPort;
+        configObject[ConfigKeys::MAIN_SERVER_UDP_PORT] = m_mainServerUdpPort;
+        configObject[ConfigKeys::UPDATER_SERVER_TCP_PORT] = m_updaterServerTcpPort;
         configObject[ConfigKeys::MULTI_INSTANCE] = m_isMultiInstanceAllowed ? "1" : "0";
         configObject[ConfigKeys::INPUT_VOLUME] = m_inputVolume;
         configObject[ConfigKeys::OUTPUT_VOLUME] = m_outputVolume;
@@ -129,7 +133,9 @@ void ConfigManager::setDefaultValues() {
     m_isCameraActive = false;
     m_outputVolume = DEFAULT_VOLUME;
     m_inputVolume = DEFAULT_VOLUME;
-    m_port = DEFAULT_PORT;
+    m_mainServerTcpPort = DEFAULT_MAIN_SERVER_TCP_PORT;
+    m_mainServerUdpPort = DEFAULT_MAIN_SERVER_UDP_PORT;
+    m_updaterServerTcpPort = DEFAULT_UPDATER_SERVER_TCP_PORT;
     m_serverHost = DEFAULT_SERVER_HOST;
     m_updaterHost = DEFAULT_UPDATER_HOST;
     m_firstLaunch = true;
@@ -192,8 +198,16 @@ bool ConfigManager::isMultiInstanceAllowed() const {
     return m_isMultiInstanceAllowed;
 }
 
-const QString& ConfigManager::getPort() const {
-    return m_port;
+const QString& ConfigManager::getMainServerTcpPort() const {
+    return m_mainServerTcpPort;
+}
+
+const QString& ConfigManager::getMainServerUdpPort() const {
+    return m_mainServerUdpPort;
+}
+
+const QString& ConfigManager::getUpdaterServerTcpPort() const {
+    return m_updaterServerTcpPort;
 }
 
 const QString& ConfigManager::getVersion() const {
@@ -398,35 +412,46 @@ QString ConfigManager::getServerHostFromConfig() {
     return host;
 }
 
-QString ConfigManager::getPortFromConfig() {
+QString ConfigManager::getMainServerTcpPortFromConfig() {
     QFile file(m_configPath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return m_port;
-    }
-
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return DEFAULT_MAIN_SERVER_TCP_PORT;
     QByteArray jsonData = file.readAll();
     file.close();
-
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+        return DEFAULT_MAIN_SERVER_TCP_PORT;
+    QString p = doc.object()[ConfigKeys::MAIN_SERVER_TCP_PORT].toString();
+    return p.isEmpty() ? DEFAULT_MAIN_SERVER_TCP_PORT : p;
+}
 
-    if (parseError.error != QJsonParseError::NoError) {
-        return m_port;
-    }
+QString ConfigManager::getMainServerUdpPortFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return DEFAULT_MAIN_SERVER_UDP_PORT;
+    QByteArray jsonData = file.readAll();
+    file.close();
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+        return DEFAULT_MAIN_SERVER_UDP_PORT;
+    QString p = doc.object()[ConfigKeys::MAIN_SERVER_UDP_PORT].toString();
+    return p.isEmpty() ? DEFAULT_MAIN_SERVER_UDP_PORT : p;
+}
 
-    if (!doc.isObject()) {
-        return m_port;
-    }
-
-    QJsonObject jsonObj = doc.object();
-    QString port = jsonObj[ConfigKeys::PORT].toString();
-
-    if (port.isEmpty()) {
-    }
-    else {
-    }
-
-    return port;
+QString ConfigManager::getUpdaterServerTcpPortFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return DEFAULT_UPDATER_SERVER_TCP_PORT;
+    QByteArray jsonData = file.readAll();
+    file.close();
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+        return DEFAULT_UPDATER_SERVER_TCP_PORT;
+    QString p = doc.object()[ConfigKeys::UPDATER_SERVER_TCP_PORT].toString();
+    return p.isEmpty() ? DEFAULT_UPDATER_SERVER_TCP_PORT : p;
 }
 
 bool ConfigManager::isMultiInstanceAllowedFromConfig() {

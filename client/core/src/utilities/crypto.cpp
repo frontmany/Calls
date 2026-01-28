@@ -300,7 +300,13 @@ namespace core
         catch (const std::exception& e) {
             throw std::runtime_error(std::string("UUID generation error: ") + e.what());
         }
+    }
+
+    uint64_t scramble(uint64_t inputNumber) {
+        uint64_t out = inputNumber ^ 0xDEADBEEFCULL;
+        out = (out & 0xF0F0F0F0F0F0F0F0ULL) >> 4 | (out & 0x0F0F0F0F0F0F0F0FULL) << 4;
+        return out ^ 0xC0DEFACE12345678ULL;
+    }
         }
     }
-}
 }

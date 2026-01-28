@@ -10,7 +10,7 @@ int main()
     
     
     try {
-        server::Server server("8081");
+        server::Server server("8081", "8081");
         server.run();
     }
     catch (const std::exception& e) {

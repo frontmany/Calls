@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include "user.h"
+#include "network/tcp_connection.h"
 #include "asio.hpp"
 
 namespace server
@@ -19,6 +20,9 @@ namespace server
 
             // Найти пользователя по endpoint
             virtual UserPtr findUserByEndpoint(const asio::ip::udp::endpoint& endpoint) = 0;
+
+            // Найти пользователя по TCP-соединению (для контрольного канала)
+            virtual UserPtr findUserByTcpConnection(network::TcpConnectionPtr conn) = 0;
 
             // Добавить пользователя
             virtual void addUser(UserPtr user) = 0;

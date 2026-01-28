@@ -92,9 +92,12 @@ void MainWindow::customEvent(QEvent* event) {
 
         LOG_INFO("Config: {}", m_configManager->getConfigPath().toStdString());
 
-        LOG_INFO("Connecting: Core {}:{}, Updater {}:{} (for local server use 127.0.0.1 or localhost in config)",
-            m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString(),
-            m_configManager->getUpdaterHost().toStdString(), m_configManager->getPort().toStdString());
+        LOG_INFO("Connecting: Core {} TCP {} UDP {}, Updater {}:{}",
+            m_configManager->getServerHost().toStdString(),
+            m_configManager->getMainServerTcpPort().toStdString(),
+            m_configManager->getMainServerUdpPort().toStdString(),
+            m_configManager->getUpdaterHost().toStdString(),
+            m_configManager->getUpdaterServerTcpPort().toStdString());
 
         m_updaterClient->init(std::make_shared<UpdaterEventListener>(m_updateManager, m_updaterNetworkErrorHandler),
             m_configManager->getAppDirectoryPath().toStdString(),
@@ -104,18 +107,22 @@ void MainWindow::customEvent(QEvent* event) {
             m_configManager->getIgnoredDirectoriesWhileCollectingForUpdate()
         );
 
-        const bool coreStarted = m_coreClient->start(m_configManager->getServerHost().toStdString(),
-            m_configManager->getPort().toStdString(),
+        const bool coreStarted = m_coreClient->start(
+            m_configManager->getServerHost().toStdString(),
+            m_configManager->getMainServerTcpPort().toStdString(),
+            m_configManager->getMainServerUdpPort().toStdString(),
             std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_screenSharingManager, m_cameraSharingManager, m_coreNetworkErrorHandler)
         );
-        
+
         if (!coreStarted) {
-            LOG_ERROR("Core client failed to start (check server {}:{}, network, and core.log)",
-                m_configManager->getServerHost().toStdString(), m_configManager->getPort().toStdString());
+            LOG_ERROR("Core client failed to start (check server {} TCP {} UDP {}, network, and core.log)",
+                m_configManager->getServerHost().toStdString(),
+                m_configManager->getMainServerTcpPort().toStdString(),
+                m_configManager->getMainServerUdpPort().toStdString());
         }
 
         m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(),
-            m_configManager->getPort().toStdString()
+            m_configManager->getUpdaterServerTcpPort().toStdString()
         );
     }
 

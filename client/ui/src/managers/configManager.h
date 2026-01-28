@@ -23,7 +23,9 @@ public:
     int getInputVolume() const; // mic
     const QString& getConfigPath();
     const QString& getVersion() const;
-    const QString& getPort() const;
+    const QString& getMainServerTcpPort() const;
+    const QString& getMainServerUdpPort() const;
+    const QString& getUpdaterServerTcpPort() const;
     const QString& getServerHost() const;
     const QString& getUpdaterHost() const;
     const QString& getLogDirectoryPath() const;
@@ -51,7 +53,9 @@ private:
     int getOutputVolumeFromConfig();
     int getInputVolumeFromConfig();
     bool isMultiInstanceAllowedFromConfig();
-    QString getPortFromConfig();
+    QString getMainServerTcpPortFromConfig();
+    QString getMainServerUdpPortFromConfig();
+    QString getUpdaterServerTcpPortFromConfig();
     QString getServerHostFromConfig();
     QString getUpdaterHostFromConfig();
     QString getApplicationVersionFromConfig();
@@ -76,7 +80,9 @@ private:
     bool m_isMultiInstanceAllowed;
     int m_outputVolume;
     int m_inputVolume;
-    QString m_port;
+    QString m_mainServerTcpPort;
+    QString m_mainServerUdpPort;
+    QString m_updaterServerTcpPort;
     QString m_serverHost;
     QString m_updaterHost;
     QString m_version;

@@ -1,10 +1,8 @@
-#pragma once 
+#pragma once
 
 #include <unordered_map>
-#include <unordered_set>
 #include <memory>
 #include <vector>
-#include <iostream>
 #include <chrono>
 #include <thread>
 #include <mutex>
@@ -14,9 +12,8 @@
 #include "call.h"
 #include "pendingCall.h"
 #include "network/networkController.h"
-#include "taskManager.h"
+#include "network/tcp_control_controller.h"
 #include "packetType.h"
-#include "confirmationKey.h"
 #include "services/IUserRepository.h"
 #include "services/ICallManager.h"
 #include "services/IPacketSender.h"
@@ -24,64 +21,58 @@
 #include "services/CallManager.h"
 #include "services/NetworkPacketSender.h"
 #include "services/MediaRelayService.h"
-
 #include "json.hpp"
 
 namespace server
 {
-	class Server {
-	public:
-		Server(const std::string& port);
-		void run(); 
-		void stop(); 
+    class Server {
+    public:
+        Server(const std::string& tcpPort, const std::string& udpPort);
+        void run();
+        void stop();
 
-	private:
-		void onReceive(const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& endpointFrom);
+    private:
+        void onReceiveUdp(const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& endpointFrom);
+        void onTcpControlPacket(network::OwnedTcpPacket&& owned);
+        void onTcpDisconnect(network::TcpConnectionPtr conn);
 
-		void handleConfirmation(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleAuthorization(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleLogout(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleReconnect(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleGetFriendInfo(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-	
-		void handleStartOutgoingCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleStopOutgoingCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleAcceptCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleDeclineCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
-		void handleEndCall(const nlohmann::json& jsonObject, const asio::ip::udp::endpoint& endpointFrom);
+        void sendTcp(network::TcpConnectionPtr conn, uint32_t type, const std::vector<unsigned char>& body);
+        void sendTcpToUser(const std::string& receiverNicknameHash, uint32_t type, const std::string& jsonBody);
+        bool sendTcpToUserIfConnected(const std::string& receiverNicknameHash, uint32_t type, const std::vector<unsigned char>& body);
 
-		void handleScreen(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
-		void handleCamera(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
-		void handleVoice(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
-		void redirect(const nlohmann::json& jsonObject, PacketType type);
-	
-		void processUserLogout(const UserPtr& user);
-		bool resetOutgoingPendingCall(const UserPtr& user);
-		void removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall);
+        void handleAuthorizationTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleReconnectTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleLogoutTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleGetFriendInfoTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleStartOutgoingCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleStopOutgoingCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleAcceptCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleDeclineCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleEndCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn);
+        void handleRedirectTcp(const nlohmann::json& json, PacketType type, network::TcpConnectionPtr conn);
 
-		void addPendingAction(const ConfirmationKey& key, std::function<void()> action);
-		void removePendingAction(const ConfirmationKey& key);
-		void clearPendingActionsForUser(const std::string& nicknameHash);
+        void handleScreen(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
+        void handleCamera(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
+        void handleVoice(const unsigned char* data, int size, const asio::ip::udp::endpoint& endpointFrom);
 
-		void sendPacketTask(const std::vector<unsigned char>& packet, PacketType type, const asio::ip::udp::endpoint& endpoint);
-		void onTaskCompleted(std::optional<nlohmann::json> completionContext);
-		void onTaskFailed(const std::string& message, std::optional<nlohmann::json> failureContext);
+        void processUserLogout(const UserPtr& user);
+        bool resetOutgoingPendingCall(const UserPtr& user);
+        void removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall);
+        void processConnectionDown(const UserPtr& user);
 
-	private:
-		mutable std::mutex m_mutex;
-		
-		// Инфраструктура
-		server::network::NetworkController m_networkController;
-		TaskManager<long long, std::milli> m_taskManager;
-		
-		// Сервисы (порядок важен для инициализации)
-		server::services::UserRepository m_userRepository;
-		server::services::CallManager m_callManager;
-		server::services::NetworkPacketSender m_packetSender;
-		server::services::MediaRelayService m_mediaRelayService;
+    private:
+        mutable std::mutex m_mutex;
+        std::string m_tcpPort;
+        std::string m_udpPort;
+        server::network::NetworkController m_networkController;
+        std::unique_ptr<server::network::TcpControlController> m_tcpController;
+        std::thread m_udpThread;
 
-		std::unordered_map<PacketType, std::function<void(const nlohmann::json&, const asio::ip::udp::endpoint&)>> m_packetHandlers;
-		std::unordered_map<ConfirmationKey, std::function<void()>> m_pendingActions;
-		std::unordered_map<std::string, std::unordered_set<ConfirmationKey>> m_nicknameHashToConfirmationKeys;
-	};
+        server::services::UserRepository m_userRepository;
+        server::services::CallManager m_callManager;
+        server::services::NetworkPacketSender m_packetSender;
+        server::services::MediaRelayService m_mediaRelayService;
+
+        std::unordered_map<network::TcpConnectionPtr, UserPtr> m_connToUser;
+    };
 }

@@ -1,5 +1,4 @@
 #include "networkController.h"
-#include "pingController.h"
 
 #include <thread>
 #include <utility>
@@ -23,7 +22,7 @@ namespace core {
     }
 
     bool NetworkController::init(const std::string& host,
-        const std::string& port,
+        const std::string& udpPort,
         std::function<void(const unsigned char*, int, uint32_t)> onReceive,
         std::function<void()> onConnectionDown,
         std::function<void()> onConnectionRestored)
@@ -36,15 +35,15 @@ namespace core {
             std::error_code ec;
 
             asio::ip::udp::resolver resolver(m_context);
-            asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), host, port, ec);
+            asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), host, udpPort, ec);
 
             if (ec) {
-                LOG_ERROR("Failed to resolve {}:{} - {}", host, port, ec.message());
+                LOG_ERROR("Failed to resolve {}:{} - {}", host, udpPort, ec.message());
                 return false;
             }
 
             if (endpoints.empty()) {
-                LOG_ERROR("No endpoints found for {}:{}", host, port);
+                LOG_ERROR("No endpoints found for {}:{}", host, udpPort);
                 return false;
             }
 
@@ -73,35 +72,17 @@ namespace core {
                 return false;
             }
 
-            // Do not connect() the UDP socket. A connected socket's kernel filter can, after
-            // a network glitch or asymmetric recovery, stop delivering server->client packets
-            // while client->server still works. We use send_to() and receive_from(), and
-            // PacketReceiver validates the source in processDatagram.
+            ec.clear();
+            auto localEp = m_socket.local_endpoint(ec);
+            if (!ec)
+                m_localUdpPort = static_cast<uint16_t>(localEp.port());
 
-            std::function<void()> errorHandler = [this]() {
-                if (m_pingController) {
-                    m_pingController->setConnectionError();
-                }
-                // Do not call onConnectionDown here: a single send/receive error may be transient
-                // (weak network, load). Rely on PingController: after several consecutive missed
-                // pongs we declare down. If the socket is really broken, pings will fail too.
+            std::function<void()> errorHandler = []() {
+                // UDP errors no longer drive connection-down; TCP disconnect does.
             };
 
-            auto pingReceivedHandler = [this](uint32_t pingType) {
-                if (pingType == 0) {
-                    sendPingResponse();
-                }
-                else {
-                    m_pingController->handlePingSuccess();
-                    // If we are in connection-down (from CONNECTION_DOWN_WITH_USER or an earlier
-                    // ping failure), a pong proves the link is back. Trigger onConnectionRestored
-                    // so the client sends RECONNECT and can exit; PingController alone may never
-                    // call it when we entered down only via CONNECTION_DOWN_WITH_USER (no
-                    // m_connectionError/hadFailures there).
-                    if (m_connectionDownNotified.load() && m_onConnectionRestored) {
-                        m_onConnectionRestored();
-                    }
-                }
+            auto pingReceivedHandler = [](uint32_t) {
+                // Ping/pong removed; UDP is media-only. Ignore legacy types 0/1.
             };
 
             if (!m_packetReceiver.init(m_socket, m_onReceive, errorHandler, pingReceivedHandler, m_serverEndpoint)) {
@@ -111,32 +92,7 @@ namespace core {
 
             m_packetSender.init(m_socket, m_serverEndpoint, errorHandler);
 
-            auto sendPingCallback = [this]() {
-                sendPing();
-            };
-
-            std::function<void()> connectionDownWrapper = [this]() {
-                if (!m_connectionDownNotified.exchange(true)) {
-                    LOG_WARN("Connection down detected by ping timeout");
-                    m_packetReceiver.setConnectionDown(true); 
-                    if (m_onConnectionDown) {
-                        m_onConnectionDown();
-                    }
-                }
-            };
-
-            std::function<void()> connectionRestoredWrapper = [this]() {
-                m_connectionDownNotified = false;
-                m_packetReceiver.setConnectionDown(false);
-                LOG_INFO("Connection restored by ping");
-                if (m_onConnectionRestored) {
-                    m_onConnectionRestored();
-                }
-            };
-
-            m_pingController = std::make_unique<PingController>(sendPingCallback, connectionDownWrapper, connectionRestoredWrapper);
-
-            LOG_INFO("Network controller initialized, server: {}:{}", host, port);
+            LOG_INFO("UDP controller initialized, server: {}:{}, local port {}", host, udpPort, m_localUdpPort);
             return true;
         }
         catch (const std::exception& e) {
@@ -151,9 +107,8 @@ namespace core {
             return;
         }
 
-        m_asioThread = std::thread([this]() {m_context.run(); });
+        m_asioThread = std::thread([this]() { m_context.run(); });
         m_packetReceiver.start();
-        m_pingController->start();
     }
 
     void NetworkController::stop() {
@@ -185,10 +140,6 @@ namespace core {
             m_asioThread.join();
         }
 
-        if (m_pingController) {
-            m_pingController->stop();
-        }
-
         m_context.restart();
     }
 
@@ -196,9 +147,13 @@ namespace core {
         return m_running.load();
     }
 
+    uint16_t NetworkController::getLocalUdpPort() const {
+        return m_localUdpPort;
+    }
+
     bool NetworkController::send(const std::vector<unsigned char>& data, uint32_t type) {
         if (type == 0 || type == 1) {
-            LOG_ERROR("Packet types 0 and 1 are reserved for ping");
+            LOG_ERROR("Packet types 0 and 1 are reserved");
             return false;
         }
 
@@ -212,7 +167,7 @@ namespace core {
 
     bool NetworkController::send(std::vector<unsigned char>&& data, uint32_t type) {
         if (type == 0 || type == 1) {
-            LOG_ERROR("Packet types 0 and 1 are reserved for ping");
+            LOG_ERROR("Packet types 0 and 1 are reserved");
             return false;
         }
 
@@ -224,52 +179,13 @@ namespace core {
         return true;
     }
 
-    bool NetworkController::send(uint32_t type) {
-        if (type == 0 || type == 1) {
-            LOG_ERROR("Packet types 0 and 1 are reserved for ping");
-            return false;
-        }
-
-        Packet packet;
-        packet.id = generateId();
-        packet.type = type;
-        packet.data.clear();
-        m_packetSender.send(packet);
-        return true;
-    }
-
-    void NetworkController::sendPing() {
-        Packet packet;
-        packet.id = generateId();
-        packet.type = 0;
-        packet.data.clear();
-        m_packetSender.send(packet);
-    }
-
     uint64_t NetworkController::generateId() {
         return m_nextPacketId.fetch_add(1U, std::memory_order_relaxed);
-    }
-
-    void NetworkController::sendPingResponse() {
-        Packet packet;
-        packet.id = generateId();
-        packet.type = 1;
-        packet.data.clear();
-        m_packetSender.send(packet);
-    }
-
-    void NetworkController::setConnectionError() {
-        if (m_pingController) {
-            m_pingController->setConnectionError();
-        }
     }
 
     void NetworkController::notifyConnectionRestored() {
         m_connectionDownNotified = false;
         m_packetReceiver.setConnectionDown(false);
-        if (m_pingController) {
-            m_pingController->resetAfterReconnect();
-        }
     }
 
     void NetworkController::notifyConnectionDown() {

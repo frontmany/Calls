@@ -17,7 +17,7 @@ int main()
     LOG_INFO("=== Server Updater Starting ===");
     
     try {
-        serverUpdater::ServerUpdater server(8081, serverUpdater::versionsDirectory);
+        serverUpdater::ServerUpdater server(8082, serverUpdater::versionsDirectory);
         server.start();
     }
     catch (const std::exception& e) {

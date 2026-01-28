@@ -19,6 +19,10 @@ file(GLOB SOURCES "src/*.cpp" "src/*.h")
 pybind11_add_module(callsClientPy ${SOURCES})
 
 if(WIN32)
+    target_compile_definitions(callsClientPy PRIVATE _WIN32_WINNT=0x0601)
+endif()
+
+if(WIN32)
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
 else()
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")

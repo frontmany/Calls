@@ -2,6 +2,7 @@
 #include "jsonType.h"
 #include "utilities/logger.h"
 #include <chrono>
+#include <thread>
 
 using namespace core::utilities;
 using namespace std::chrono_literals;
@@ -15,15 +16,21 @@ namespace core
             ClientStateManager& stateManager,
             KeyManager& keyManager,
             UserOperationManager& operationManager,
-            TaskManager<long long, std::milli>& taskManager,
+            PendingRequests& pendingRequests,
             core::network::NetworkController& networkController,
-            std::shared_ptr<EventListener> eventListener)
+            std::unique_ptr<core::network::TcpControlClient>& tcpControl,
+            std::shared_ptr<EventListener> eventListener,
+            std::string host,
+            std::string tcpPort)
             : m_stateManager(stateManager)
             , m_keyManager(keyManager)
             , m_operationManager(operationManager)
-            , m_taskManager(taskManager)
+            , m_pendingRequests(pendingRequests)
             , m_networkController(networkController)
+            , m_tcpControl(tcpControl)
             , m_eventListener(eventListener)
+            , m_host(std::move(host))
+            , m_tcpPort(std::move(tcpPort))
         {
         }
 
@@ -31,22 +38,19 @@ namespace core
             stopReconnectRetry();
         }
 
-        void AuthorizationService::createAndStartTask(
-            const std::string& uid,
-            const std::vector<unsigned char>& packet,
-            PacketType packetType,
-            std::function<void(std::optional<nlohmann::json>)> onCompletion,
-            std::function<void(std::optional<nlohmann::json>)> onFailure)
+        bool AuthorizationService::sendControl(uint32_t type, const std::vector<unsigned char>& body,
+            std::function<void(std::optional<nlohmann::json>)> onComplete,
+            std::function<void(std::optional<nlohmann::json>)> onFail,
+            const std::string& uid)
         {
-            m_taskManager.createTask(uid, 1500ms, 3,
-                [this, packet, packetType]() {
-                    m_networkController.send(packet, static_cast<uint32_t>(packetType));
-                },
-                std::move(onCompletion),
-                std::move(onFailure)
-            );
-
-            m_taskManager.startTask(uid);
+            if (!m_tcpControl || !m_tcpControl->isConnected())
+                return false;
+            m_pendingRequests.add(uid, std::move(onComplete), std::move(onFail));
+            if (!m_tcpControl->send(type, body.data(), body.size())) {
+                m_pendingRequests.fail(uid, std::nullopt);
+                return false;
+            }
+            return true;
         }
 
         std::error_code AuthorizationService::authorize(const std::string& nickname) {
@@ -55,25 +59,22 @@ namespace core
             if (m_operationManager.isOperation(UserOperationType::AUTHORIZE, nickname)) return make_error_code(ErrorCode::operation_in_progress);
 
             if (!m_keyManager.isKeys()) {
-                if (m_keyManager.isGeneratingKeys()) {
-                    // Ключи уже генерируются, ждем
-                }
-                else {
-                    m_keyManager.generateKeys();
-                }
+                if (m_keyManager.isGeneratingKeys()) { }
+                else { m_keyManager.generateKeys(); }
             }
-
             m_keyManager.awaitKeysGeneration();
 
             m_operationManager.addOperation(UserOperationType::AUTHORIZE, nickname);
+            uint16_t udpPort = m_networkController.getLocalUdpPort();
+            auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey(), udpPort);
 
-            auto [uid, packet] = PacketFactory::getAuthorizationPacket(nickname, m_keyManager.getMyPublicKey());
-
-            createAndStartTask(uid, packet, PacketType::AUTHORIZATION,
-                std::bind(&AuthorizationService::onAuthorizeCompleted, this, nickname, _1),
-                std::bind(&AuthorizationService::onAuthorizeFailed, this, nickname, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::AUTHORIZATION), packet,
+                    std::bind(&AuthorizationService::onAuthorizeCompleted, this, nickname, _1),
+                    std::bind(&AuthorizationService::onAuthorizeFailed, this, nickname, _1),
+                    uid)) {
+                m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
@@ -83,73 +84,120 @@ namespace core
             if (m_operationManager.isOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname())) return make_error_code(ErrorCode::operation_in_progress);
 
             m_operationManager.addOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
-
             auto [uid, packet] = PacketFactory::getLogoutPacket(m_stateManager.getMyNickname());
 
-            createAndStartTask(uid, packet, PacketType::LOGOUT,
-                std::bind(&AuthorizationService::onLogoutCompleted, this, _1),
-                std::bind(&AuthorizationService::onLogoutFailed, this, _1)
-            );
-
+            if (!sendControl(static_cast<uint32_t>(PacketType::LOGOUT), packet,
+                    std::bind(&AuthorizationService::onLogoutCompleted, this, _1),
+                    std::bind(&AuthorizationService::onLogoutFailed, this, _1),
+                    uid)) {
+                m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
+                m_eventListener->onLogoutCompleted();
+                return make_error_code(ErrorCode::connection_down);
+            }
             return {};
         }
 
         void AuthorizationService::handleReconnect() {
-            if (!m_stateManager.isConnectionDown()) {
-                return;
-            }
-            if (m_reconnectInProgress.exchange(true)) {
-                return;
-            }
+            if (!m_stateManager.isConnectionDown()) return;
+            if (m_reconnectInProgress.exchange(true)) return;
 
             if (m_stateManager.isAuthorized()) {
-                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
-
-                createAndStartTask(uid, packet, PacketType::RECONNECT,
+                m_tcpControl->disconnect();
+                m_tcpControl->connect(m_host, m_tcpPort);
+                for (int i = 0; i < 30; ++i) {
+                    std::this_thread::sleep_for(200ms);
+                    if (m_tcpControl->isConnected())
+                        break;
+                }
+                if (!m_tcpControl->isConnected()) {
+                    m_reconnectInProgress = false;
+                    return;
+                }
+                uint16_t udpPort = m_networkController.getLocalUdpPort();
+                auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken(), udpPort);
+                sendControl(static_cast<uint32_t>(PacketType::RECONNECT), packet,
                     std::bind(&AuthorizationService::onReconnectCompleted, this, _1),
-                    std::bind(&AuthorizationService::onReconnectFailed, this, _1)
-                );
+                    std::bind(&AuthorizationService::onReconnectFailed, this, _1),
+                    uid);
             }
             else {
                 m_stateManager.setConnectionDown(false);
                 m_reconnectInProgress = false;
+                m_stateManager.setAuthorized(false);
+                m_stateManager.clearMyNickname();
+                m_stateManager.clearMyToken();
                 m_eventListener->onConnectionRestoredAuthorizationNeeded();
             }
         }
 
         void AuthorizationService::startReconnectRetry() {
-            if (m_stateManager.isAuthorized() && m_stateManager.isConnectionDown()) {
-                if (m_reconnectRetryThread.joinable()) {
-                    m_reconnectRetryThread.join();
-                }
-                m_stopReconnectRetry = false;
-                m_reconnectRetryThread = std::thread([this]() {
-                    while (m_stateManager.isConnectionDown() && m_stateManager.isAuthorized() && !m_stopReconnectRetry.load()) {
-                        if (!m_reconnectInProgress.exchange(true)) {
-                            auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken());
-                            createAndStartTask(uid, packet, PacketType::RECONNECT,
-                                std::bind(&AuthorizationService::onReconnectCompleted, this, _1),
-                                std::bind(&AuthorizationService::onReconnectFailed, this, _1)
-                            );
+            if (!m_stateManager.isConnectionDown()) {
+                LOG_DEBUG("Reconnect retry skipped: connectionDown={}", m_stateManager.isConnectionDown());
+                return;
+            }
+            if (m_retryThreadRunning.load()) {
+                LOG_DEBUG("Reconnect retry already running, skipping");
+                return;
+            }
+            if (m_reconnectRetryThread.joinable()) {
+                m_reconnectRetryThread.join();
+            }
+
+            m_stopReconnectRetry = false;
+            LOG_INFO("Reconnect retry started (authorized={})", m_stateManager.isAuthorized());
+            m_reconnectRetryThread = std::thread([this]() {
+                m_retryThreadRunning = true;
+                while (m_stateManager.isConnectionDown() && !m_stopReconnectRetry.load()) {
+                    if (!m_reconnectInProgress.exchange(true)) {
+                        m_tcpControl->disconnect();
+                        m_tcpControl->connect(m_host, m_tcpPort);
+                        for (int i = 0; i < 30; ++i) {
+                            std::this_thread::sleep_for(200ms);
+                            if (m_tcpControl->isConnected()) break;
                         }
-                        for (int i = 0; i < 10 && !m_stopReconnectRetry.load(); ++i) {
-                            std::this_thread::sleep_for(1s);
+                        if (m_tcpControl->isConnected()) {
+                            if (!m_stateManager.isAuthorized()) {
+                                LOG_INFO("Reconnect: connected, not authorized -> need to authorize");
+                                m_stateManager.setConnectionDown(false);
+                                m_networkController.notifyConnectionRestored();
+                                m_reconnectInProgress = false;
+                                m_stateManager.setAuthorized(false);
+                                m_stateManager.clearMyNickname();
+                                m_stateManager.clearMyToken();
+                                m_eventListener->onConnectionRestoredAuthorizationNeeded();
+                                break;
+                            }
+                            uint16_t udpPort = m_networkController.getLocalUdpPort();
+                            auto [uid, packet] = PacketFactory::getReconnectPacket(m_stateManager.getMyNickname(), m_stateManager.getMyToken(), udpPort);
+                            LOG_INFO("Reconnect: sending RECONNECT, waiting for result");
+                            sendControl(static_cast<uint32_t>(PacketType::RECONNECT), packet,
+                                std::bind(&AuthorizationService::onReconnectCompleted, this, _1),
+                                std::bind(&AuthorizationService::onReconnectFailed, this, _1),
+                                uid);
+                        }
+                        else {
+                            LOG_WARN("Reconnect: connect failed, will retry");
+                            m_reconnectInProgress = false;
                         }
                     }
-                });
-            }
+                    for (int i = 0; i < 10 && !m_stopReconnectRetry.load(); ++i)
+                        std::this_thread::sleep_for(1s);
+                    m_reconnectInProgress = false;
+                }
+                m_retryThreadRunning = false;
+            });
         }
 
         void AuthorizationService::stopReconnectRetry() {
             m_stopReconnectRetry = true;
-            if (m_reconnectRetryThread.joinable()) {
+            if (m_reconnectRetryThread.joinable())
                 m_reconnectRetryThread.join();
-            }
         }
 
         void AuthorizationService::onConnectionDown() {
             m_stateManager.setConnectionDown(true);
             m_operationManager.clearAllOperations();
+
             startReconnectRetry();
         }
 
@@ -159,99 +207,83 @@ namespace core
 
         void AuthorizationService::onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext) {
             m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
-
             if (completionContext.has_value()) {
                 auto& context = completionContext.value();
-
-                bool successfullyAuthorized = context[RESULT].get<bool>();
-
-                if (successfullyAuthorized) {
-                    std::string token = context[TOKEN];
-
+                bool ok = context[RESULT].get<bool>();
+                if (ok) {
                     m_stateManager.setMyNickname(nickname);
-                    m_stateManager.setMyToken(token);
+                    m_stateManager.setMyToken(context[TOKEN].get<std::string>());
                     m_stateManager.setAuthorized(true);
                     m_eventListener->onAuthorizationResult({});
                 }
-                else {
+                else
                     m_eventListener->onAuthorizationResult(ErrorCode::taken_nickname);
-                }
             }
         }
 
-        void AuthorizationService::onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext) {
+        void AuthorizationService::onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json>) {
             m_operationManager.removeOperation(UserOperationType::AUTHORIZE, nickname);
-
             if (!m_stateManager.isConnectionDown()) {
-                LOG_ERROR("Authorization task failed");
+                LOG_ERROR("Authorization failed");
                 m_eventListener->onAuthorizationResult(ErrorCode::network_error);
             }
         }
 
-        void AuthorizationService::onLogoutCompleted(std::optional<nlohmann::json> completionContext) {
+        void AuthorizationService::onLogoutCompleted(std::optional<nlohmann::json>) {
             m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
-            // Reset будет вызван из Client
             m_eventListener->onLogoutCompleted();
         }
 
-        void AuthorizationService::onLogoutFailed(std::optional<nlohmann::json> failureContext) {
+        void AuthorizationService::onLogoutFailed(std::optional<nlohmann::json>) {
             m_operationManager.removeOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
-            LOG_ERROR("Logout task failed");
-            // Reset будет вызван из Client
             m_eventListener->onLogoutCompleted();
         }
 
         void AuthorizationService::onReconnectCompleted(std::optional<nlohmann::json> completionContext) {
             m_reconnectInProgress = false;
             if (!completionContext.has_value()) {
-                LOG_ERROR("onReconnectCompleted called with empty completionContext");
+                LOG_ERROR("onReconnectCompleted empty");
                 return;
             }
             auto& context = completionContext.value();
-
             m_stateManager.setConnectionDown(false);
             m_networkController.notifyConnectionRestored();
 
             if (!context.contains(RESULT)) {
-                LOG_ERROR("RECONNECT_RESULT missing result field, treating as failed");
-                // Reset будет вызван из Client
+                m_stateManager.setAuthorized(false);
+                m_stateManager.clearMyNickname();
+                m_stateManager.clearMyToken();
                 m_eventListener->onConnectionRestoredAuthorizationNeeded();
                 return;
             }
-            bool reconnected = context[RESULT].get<bool>();
-            if (reconnected) {
-                LOG_INFO("Connection restored successfully");
+            bool ok = context[RESULT].get<bool>();
+            if (ok) {
+                LOG_INFO("Reconnect OK");
                 m_stateManager.setLastReconnectSuccessTime();
-
-                bool activeCall = context.contains(IS_ACTIVE_CALL) ? context[IS_ACTIVE_CALL].get<bool>() : false;
-
+                bool activeCall = context.contains(IS_ACTIVE_CALL) && context[IS_ACTIVE_CALL].get<bool>();
                 m_eventListener->onConnectionRestored();
-
                 if (!activeCall) {
-                    bool hadActiveCall = m_stateManager.isActiveCall();
-                    
+                    bool had = m_stateManager.isActiveCall();
                     m_stateManager.setScreenSharing(false);
                     m_stateManager.setCameraSharing(false);
                     m_stateManager.setViewingRemoteScreen(false);
                     m_stateManager.setViewingRemoteCamera(false);
                     m_stateManager.clearCallState();
-                    // AudioEngine будет остановлен из Client
-
-                    if (hadActiveCall) {
+                    if (had)
                         m_eventListener->onCallEndedByRemote({});
-                    }
                 }
             }
             else {
-                LOG_INFO("Connection restored but authorization needed again");
-                // Reset будет вызван из Client
+                m_stateManager.setAuthorized(false);
+                m_stateManager.clearMyNickname();
+                m_stateManager.clearMyToken();
                 m_eventListener->onConnectionRestoredAuthorizationNeeded();
             }
         }
 
-        void AuthorizationService::onReconnectFailed(std::optional<nlohmann::json> failureContext) {
+        void AuthorizationService::onReconnectFailed(std::optional<nlohmann::json>) {
             m_reconnectInProgress = false;
-            LOG_ERROR("Reconnect task failed");
+            LOG_ERROR("Reconnect failed");
         }
     }
 }

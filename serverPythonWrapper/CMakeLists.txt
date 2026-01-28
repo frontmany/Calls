@@ -26,6 +26,13 @@ list(FILTER SERVER_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 pybind11_add_module(callsServerPy ${SOURCES} ${SERVER_SOURCES})
 
 if(WIN32)
+    target_compile_definitions(callsServerPy PRIVATE
+        _WIN32_WINNT=0x0601
+        ASIO_STANDALONE
+    )
+endif()
+
+if(WIN32)
     set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
 else()

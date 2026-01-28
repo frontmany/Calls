@@ -14,12 +14,13 @@
 
 #include "keyManager.h"
 #include "errorCode.h"
-#include "taskManager.h"
+#include "pendingRequests.h"
 #include "packetType.h"
 #include "eventListener.h"
 #include "clientStateManager.h"
 #include "packetProcessor.h"
 #include "network/networkController.h"
+#include "network/tcp_control_client.h"
 #include "audio/audioEngine.h"
 #include "userOperationManager.h"
 #include "services/MediaEncryptionService.h"
@@ -40,7 +41,7 @@ namespace core
         Client();
         ~Client();
 
-        bool start(const std::string& host, const std::string& port, std::shared_ptr<EventListener> eventListener);
+        bool start(const std::string& host, const std::string& tcpPort, const std::string& udpPort, std::shared_ptr<EventListener> eventListener);
         void stop();
 
         void refreshAudioDevices();
@@ -94,8 +95,6 @@ namespace core
         void onConnectionDown();
         void onConnectionRestored();
 
-        void sendPacket(const std::vector<unsigned char>& packet, PacketType packetType);
-
         void onReconnectCompleted(std::optional<nlohmann::json> completionContext);
         void onReconnectFailed(std::optional<nlohmann::json> failureContext);
 
@@ -144,10 +143,11 @@ namespace core
         void onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext);
 
     private:
-        TaskManager<long long, std::milli> m_taskManager;
+        PendingRequests m_pendingRequests;
         ClientStateManager m_stateManager;
         KeyManager m_keyManager;
         core::network::NetworkController m_networkController;
+        std::unique_ptr<core::network::TcpControlClient> m_tcpControl;
         core::audio::AudioEngine m_audioEngine;
         std::shared_ptr<EventListener> m_eventListener;
         std::unique_ptr<PacketProcessor> m_packetProcessor;
