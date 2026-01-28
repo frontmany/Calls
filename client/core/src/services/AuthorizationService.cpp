@@ -53,6 +53,17 @@ namespace core
             return true;
         }
 
+        bool AuthorizationService::sendControlFireAndForget(uint32_t type, const std::vector<unsigned char>& body,
+            std::function<void(std::optional<nlohmann::json>)> onComplete,
+            std::function<void(std::optional<nlohmann::json>)> onFail,
+            const std::string& uid)
+        {
+            if (!sendControl(type, body, std::move(onComplete), std::move(onFail), uid))
+                return false;
+            m_pendingRequests.complete(uid, std::nullopt);
+            return true;
+        }
+
         std::error_code AuthorizationService::authorize(const std::string& nickname) {
             if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
             if (m_stateManager.isAuthorized()) return make_error_code(ErrorCode::already_authorized);
@@ -86,7 +97,7 @@ namespace core
             m_operationManager.addOperation(UserOperationType::LOGOUT, m_stateManager.getMyNickname());
             auto [uid, packet] = PacketFactory::getLogoutPacket(m_stateManager.getMyNickname());
 
-            if (!sendControl(static_cast<uint32_t>(PacketType::LOGOUT), packet,
+            if (!sendControlFireAndForget(static_cast<uint32_t>(PacketType::LOGOUT), packet,
                     std::bind(&AuthorizationService::onLogoutCompleted, this, _1),
                     std::bind(&AuthorizationService::onLogoutFailed, this, _1),
                     uid)) {
@@ -180,7 +191,7 @@ namespace core
                             m_reconnectInProgress = false;
                         }
                     }
-                    for (int i = 0; i < 10 && !m_stopReconnectRetry.load(); ++i)
+                    for (int i = 0; i < 4 && !m_stopReconnectRetry.load(); ++i)
                         std::this_thread::sleep_for(1s);
                     m_reconnectInProgress = false;
                 }

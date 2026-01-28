@@ -42,6 +42,17 @@ namespace core
             return true;
         }
 
+        bool MediaSharingService::sendControlFireAndForget(uint32_t type, const std::vector<unsigned char>& body,
+            std::function<void(std::optional<nlohmann::json>)> onComplete,
+            std::function<void(std::optional<nlohmann::json>)> onFail,
+            const std::string& uid)
+        {
+            if (!sendControl(type, body, std::move(onComplete), std::move(onFail), uid))
+                return false;
+            m_pendingRequests.complete(uid, std::nullopt);
+            return true;
+        }
+
         std::error_code MediaSharingService::startScreenSharing() {
             if (m_stateManager.isConnectionDown()) return make_error_code(ErrorCode::connection_down);
             if (!m_stateManager.isAuthorized()) return make_error_code(ErrorCode::not_authorized);
@@ -54,7 +65,7 @@ namespace core
             m_operationManager.addOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStartScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            if (!sendControl(static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN), packet,
+            if (!sendControlFireAndForget(static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN), packet,
                     std::bind(&MediaSharingService::onStartScreenSharingCompleted, this, _1),
                     std::bind(&MediaSharingService::onStartScreenSharingFailed, this, _1), uid)) {
                 m_operationManager.removeOperation(UserOperationType::START_SCREEN_SHARING, friendNickname);
@@ -74,7 +85,7 @@ namespace core
             m_operationManager.addOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStopScreenSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            if (!sendControl(static_cast<uint32_t>(PacketType::SCREEN_SHARING_END), packet,
+            if (!sendControlFireAndForget(static_cast<uint32_t>(PacketType::SCREEN_SHARING_END), packet,
                     std::bind(&MediaSharingService::onStopScreenSharingCompleted, this, _1),
                     std::bind(&MediaSharingService::onStopScreenSharingFailed, this, _1), uid)) {
                 m_operationManager.removeOperation(UserOperationType::STOP_SCREEN_SHARING, friendNickname);
@@ -116,7 +127,7 @@ namespace core
             m_operationManager.addOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStartCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            if (!sendControl(static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), packet,
+            if (!sendControlFireAndForget(static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), packet,
                     std::bind(&MediaSharingService::onStartCameraSharingCompleted, this, _1),
                     std::bind(&MediaSharingService::onStartCameraSharingFailed, this, _1), uid)) {
                 m_operationManager.removeOperation(UserOperationType::START_CAMERA_SHARING, friendNickname);
@@ -136,7 +147,7 @@ namespace core
             m_operationManager.addOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);
             auto [uid, packet] = PacketFactory::getStopCameraSharingPacket(m_stateManager.getMyNickname(), friendNickname);
 
-            if (!sendControl(static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), packet,
+            if (!sendControlFireAndForget(static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), packet,
                     std::bind(&MediaSharingService::onStopCameraSharingCompleted, this, _1),
                     std::bind(&MediaSharingService::onStopCameraSharingFailed, this, _1), uid)) {
                 m_operationManager.removeOperation(UserOperationType::STOP_CAMERA_SHARING, friendNickname);

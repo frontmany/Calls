@@ -68,6 +68,11 @@ namespace core
                 std::function<void(std::optional<nlohmann::json>)> onFail,
                 const std::string& uid);
 
+            bool sendControlFireAndForget(uint32_t type, const std::vector<unsigned char>& body,
+                std::function<void(std::optional<nlohmann::json>)> onComplete,
+                std::function<void(std::optional<nlohmann::json>)> onFail,
+                const std::string& uid);
+
         private:
             ClientStateManager& m_stateManager;
             KeyManager& m_keyManager;

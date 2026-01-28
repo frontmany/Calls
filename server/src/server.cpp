@@ -398,14 +398,14 @@ namespace server
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
             std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
 
-            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
             auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
-            if (!receiver || !sender || receiver->getTcpConnection() != conn) return;
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
+            if (!sender || !receiver || sender->getTcpConnection() != conn) return;
 
-            auto incoming = receiver->getIncomingPendingCalls();
+            auto incoming = sender->getIncomingPendingCalls();
             PendingCallPtr found;
             for (auto& pc : incoming) {
-                if (pc->getInitiator()->getNicknameHash() == senderNicknameHash) {
+                if (pc->getInitiator()->getNicknameHash() == receiverNicknameHash) {
                     found = pc;
                     break;
                 }
@@ -413,7 +413,7 @@ namespace server
             if (!found) return;
 
             std::vector<unsigned char> body = toBytes(json.dump());
-            sendTcpToUserIfConnected(senderNicknameHash, static_cast<uint32_t>(PacketType::CALL_ACCEPT), body);
+            sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_ACCEPT), body);
 
             resetOutgoingPendingCall(receiver);
             removeIncomingPendingCall(sender, found);
