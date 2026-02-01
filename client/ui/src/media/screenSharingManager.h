@@ -16,12 +16,14 @@ class DialogsController;
 class CallWidget;
 class CameraCaptureController;
 class NotificationController;
+class AV1Decoder;
 
 class ScreenSharingManager : public QObject {
     Q_OBJECT
 
 public:
     explicit ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent = nullptr);
+    ~ScreenSharingManager();
     
     void setWidgets(CallWidget* callWidget);
     void setNotificationController(NotificationController* notificationController);
@@ -61,4 +63,5 @@ private:
     CameraCaptureController* m_cameraCaptureController = nullptr;
     QMap<core::UserOperationType, QTimer*> m_operationTimers;
     QMap<core::UserOperationType, QString> m_pendingOperationTexts;
+    AV1Decoder* m_av1Decoder = nullptr;
 };

@@ -45,7 +45,7 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${PROJECT_NAME} PUBLIC
         "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
         "${OPUS_DIR}/$<CONFIG>/opus.lib"
         "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
@@ -55,7 +55,7 @@ if(WIN32)
         uuid
     )
 else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${PROJECT_NAME} PUBLIC
         "${PORTAUDIO_DIR}/libportaudio.a"
         "${OPUS_DIR}/libopus.a"
         "${CRYPTOPP_DIR}/libcryptopp.a"

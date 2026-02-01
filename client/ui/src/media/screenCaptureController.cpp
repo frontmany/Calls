@@ -92,8 +92,7 @@ void ScreenCaptureController::captureScreen()
         
         m_frameProcessor->drawCursorOnPixmap(screenshot, globalCursorPos, screenGeometry);
 
-        if (m_pendingFrames >= m_maxQueuedFrames)
-        {
+        if (m_pendingFrames >= m_maxQueuedFrames) {
             return;
         }
 

@@ -77,8 +77,12 @@ endif()
 
 if(WIN32)
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
+    set(DAV1D_DIR "${ROOT_DIR}/vendor/dav1d/build/src")
+    set(SVTAV1_DIR "${ROOT_DIR}/vendor/SVT-AV1/Bin/$<CONFIG>")
 else()
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
+    set(DAV1D_DIR "${ROOT_DIR}/vendor/dav1d")
+    set(SVTAV1_DIR "${ROOT_DIR}/vendor/SVT-AV1")
 endif()
 
 if(WIN32)
@@ -90,9 +94,15 @@ if(WIN32)
         calliforniaUpdater
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
     )
+    target_link_directories(${PROJECT_NAME} PRIVATE
+        "${DAV1D_DIR}"
+        "${SVTAV1_DIR}"
+    )
 else()
     target_link_directories(${PROJECT_NAME} PRIVATE
         "${SPDLOG_DIR}"
+        "${DAV1D_DIR}"
+        "${SVTAV1_DIR}"
     )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calliforniaCore calliforniaUpdater libspdlog.a)
@@ -110,4 +120,21 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${ROOT_DIR}/vendor/spdlog/include
     ${ROOT_DIR}/vendor/ticTimer
     ${ROOT_DIR}/vendor/CrashCatch/include
+    ${ROOT_DIR}/vendor/SVT-AV1/Source/Lib/Codec
+    ${ROOT_DIR}/vendor/SVT-AV1/Source/API
+    ${ROOT_DIR}/vendor/dav1d/include
     )
+
+if(WIN32)
+    # Windows: link against .lib files
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        SvtAv1Enc
+        dav1d
+    )
+else()
+    # Linux: link against shared libraries
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        SvtAv1Enc
+        dav1d
+    )
+endif()

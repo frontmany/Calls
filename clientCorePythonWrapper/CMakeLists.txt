@@ -22,27 +22,44 @@ if(WIN32)
     target_compile_definitions(callsClientPy PRIVATE _WIN32_WINNT=0x0601)
 endif()
 
-if(WIN32)
+set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
+set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
+
+if (WIN32) 
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
 else()
+    set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp")
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
 endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
+    "${PORTAUDIO_DIR}"
+    "${OPUS_DIR}"
+    "${CRYPTOPP_DIR}"
     "${SPDLOG_DIR}"
 )
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
+        "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
+        "${OPUS_DIR}/$<CONFIG>/opus.lib"
+        "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
+        ole32 
+        winmm 
+        uuid
+        calliforniaCore
     )
 else()
     target_link_libraries(${PROJECT_NAME} PRIVATE
+        "${PORTAUDIO_DIR}/libportaudio.a"
+        "${OPUS_DIR}/libopus.a"
+        "${CRYPTOPP_DIR}/libcryptopp.a"
         libspdlog.a
+        calliforniaCore
     )
 endif()
-
-target_link_libraries(callsClientPy PRIVATE calliforniaCore)
 
 target_include_directories(callsClientPy PRIVATE
     ${ROOT_DIR}/client/core/src

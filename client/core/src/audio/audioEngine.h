@@ -11,6 +11,7 @@
 
 #include "encoder.h"
 #include "decoder.h"
+#include "deviceInfo.h"
 #include "audioPacket.h"
 
 #include <portaudio.h>
@@ -19,41 +20,19 @@ namespace core
 {
     namespace audio 
     {
-    struct DeviceInfo {
-        int deviceIndex;
-        std::string name;
-        int maxInputChannels;
-        int maxOutputChannels;
-        double defaultLowInputLatency;
-        double defaultLowOutputLatency;
-        double defaultHighInputLatency;
-        double defaultHighOutputLatency;
-        double defaultSampleRate;
-        bool isDefaultInput;
-        bool isDefaultOutput;
-    };
-
     class AudioEngine {
     public:
-        enum InitializationStatus {
-            NO_OUTPUT_DEVICE,
-            NO_INPUT_DEVICE,
-            OTHER_ERROR,
-            INITIALIZED
-        };
-
         AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> returnInputEncodedAudioCallback, Encoder::Config encoderConfig = Encoder::Config(), Decoder::Config decoderConfig = Decoder::Config());
         AudioEngine();
         ~AudioEngine();
 
-        InitializationStatus init(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
+        bool init(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
         void refreshAudioDevices();
         bool initialized() const;
         bool isStream() const;
         bool startStream();
         bool stopStream();
         void playAudio(const unsigned char* data, int length);
-        std::string getLastError() const;
         void muteMicrophone(bool isMute);
         void muteSpeaker(bool isMute);
         bool isSpeakerMuted() const;
@@ -81,7 +60,7 @@ namespace core
         int getCurrentOutputDevice() const;
 
     private:
-        AudioEngine::InitializationStatus init();
+        bool init();
         float softClip(float x);
         void processInputAudio(const float* input, unsigned long frameCount);
         void processOutputAudio(float* output, unsigned long frameCount);

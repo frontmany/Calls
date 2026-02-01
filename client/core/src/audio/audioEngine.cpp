@@ -39,10 +39,10 @@ namespace core {
         }
     }
 
-    AudioEngine::InitializationStatus AudioEngine::init() {
+    bool AudioEngine::init() {
         m_lastError = Pa_Initialize();
         if (m_lastError != paNoError) {
-            return OTHER_ERROR;
+            return false;
         }
 
         PaStreamParameters inputParameters, outputParameters;
@@ -53,7 +53,7 @@ namespace core {
             inputParameters.device = m_inputDeviceIndex.has_value() ? m_inputDeviceIndex.value() : Pa_GetDefaultInputDevice();
             if (inputParameters.device == paNoDevice) {
                 Pa_Terminate();
-                return NO_INPUT_DEVICE;
+                return false;
             }
 
             inputParameters.channelCount = m_inputChannels;
@@ -66,7 +66,7 @@ namespace core {
             outputParameters.device = m_outputDeviceIndex.has_value() ? m_outputDeviceIndex.value() : Pa_GetDefaultOutputDevice();
             if (outputParameters.device == paNoDevice) {
                 Pa_Terminate();
-                return NO_OUTPUT_DEVICE;
+                return false;
             }
 
             outputParameters.channelCount = m_outputChannels;
@@ -84,19 +84,19 @@ namespace core {
 
         if (m_lastError != paNoError) {
             Pa_Terminate();
-            return OTHER_ERROR;
+            return false;
         }
 
         m_isInitialized = true;
-        return INITIALIZED;
+        return true;
     }
 
-    AudioEngine::InitializationStatus AudioEngine::init(std::function<void(const unsigned char* data, int length)> encodedInputCallback) {
+    bool AudioEngine::init(std::function<void(const unsigned char* data, int length)> encodedInputCallback) {
         m_encodedInputCallback = encodedInputCallback;
 
         m_lastError = Pa_Initialize();
         if (m_lastError != paNoError) {
-            return OTHER_ERROR;
+            return false;
         }
 
         PaStreamParameters inputParameters, outputParameters;
@@ -107,7 +107,7 @@ namespace core {
             inputParameters.device = m_inputDeviceIndex.has_value() ? m_inputDeviceIndex.value() : Pa_GetDefaultInputDevice();
             if (inputParameters.device == paNoDevice) {
                 Pa_Terminate();
-                return NO_INPUT_DEVICE;
+                return false;
             }
 
             inputParameters.channelCount = m_inputChannels;
@@ -120,7 +120,7 @@ namespace core {
             outputParameters.device = m_outputDeviceIndex.has_value() ? m_outputDeviceIndex.value() : Pa_GetDefaultOutputDevice();
             if (outputParameters.device == paNoDevice) {
                 Pa_Terminate();
-                return NO_OUTPUT_DEVICE;
+                return false;
             }
 
             outputParameters.channelCount = m_outputChannels;
@@ -138,11 +138,11 @@ namespace core {
 
         if (m_lastError != paNoError) {
             Pa_Terminate();
-            return OTHER_ERROR;
+            return false;
         }
 
         m_isInitialized = true;
-        return INITIALIZED;
+        return true;
     }
 
     void AudioEngine::refreshAudioDevices() {
@@ -292,7 +292,7 @@ namespace core {
         std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 
         if (!m_isInitialized) {
-            if (init() != INITIALIZED) {
+            if (!init()) {
                 return false;
             }
         }
@@ -306,7 +306,7 @@ namespace core {
             Pa_CloseStream(m_stream);
             m_stream = nullptr;
 
-            if (init() == INITIALIZED) {
+            if (!init()) {
                 m_lastError = Pa_StartStream(m_stream);
                 if (m_lastError != paNoError) {
                     return false;
@@ -334,10 +334,6 @@ namespace core {
 
         m_isStream = false;
         return m_lastError == paNoError;
-    }
-
-    std::string AudioEngine::getLastError() const {
-        return Pa_GetErrorText(m_lastError);
     }
 
 
@@ -624,8 +620,7 @@ namespace core {
         }
 
         if (wasInitialized) {
-            InitializationStatus status = init();
-            if (status != INITIALIZED) {
+            if (!init()) {
                 m_inputDeviceIndex = std::nullopt;
                 return false;
             }
@@ -685,8 +680,7 @@ namespace core {
         }
 
         if (wasInitialized) {
-            InitializationStatus status = init();
-            if (status != INITIALIZED) {
+            if (!init()) {
                 m_outputDeviceIndex = std::nullopt;
                 return false;
             }

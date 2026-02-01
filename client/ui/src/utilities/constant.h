@@ -23,7 +23,7 @@ constexpr int ERROR_MESSAGE_DURATION_MS = 2500;            // Default error mess
 constexpr int UPDATE_APPLIER_DELAY_MS = 600;               // Delay before launching update applier
 constexpr int BLUR_ANIMATION_DURATION_MS = 1200;           // Blur animation duration
 constexpr int UI_ANIMATION_DURATION_MS = 200;              // Standard UI animation duration
-constexpr int SCREEN_CAPTURE_INTERVAL_MS = 72;             // Screen capture frame interval (~14 FPS)
+constexpr int SCREEN_CAPTURE_INTERVAL_MS = 50;             // Screen capture frame interval (~14 FPS)
 
 // Incoming call constants
 constexpr int DEFAULT_INCOMING_CALL_SECONDS = 32;          // Default incoming call timeout
@@ -52,3 +52,16 @@ constexpr const char* DELETION_LIST_FILE_NAME = "remove.json"; // Update deletio
 // Update ignored directories
 constexpr const char* IGNORED_DIRECTORY_LOGS = "logs";     // Logs directory name
 constexpr const char* IGNORED_DIRECTORY_CRASHES = "crashes"; // Crashes directory name
+
+// ============================================================================
+// AV1 Encoding Constants
+// ============================================================================
+
+// AV1 encoding parameters
+constexpr int AV1_PRESET = 13;                           // SVT-AV1 preset (7-13 for real-time, higher = faster)
+constexpr int AV1_CRF = 32;                               // Quality (0-63, lower = better quality)
+constexpr int AV1_KEYINT = 60;                            // Keyframe interval in frames (~3 seconds at 10 FPS)
+constexpr int AV1_TARGET_WIDTH = 1920;                    // Target width for encoding
+constexpr int AV1_TARGET_HEIGHT = 1080;                   // Target height for encoding
+constexpr double AV1_FPS = 20.0;                          // Frames per second (50ms interval)
+ 

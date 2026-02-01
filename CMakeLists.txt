@@ -4,6 +4,8 @@ project(Calls VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 set(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 option(FETCH_DEPENDENCIES "Set to TRUE if need to fetch dependencies" FALSE)

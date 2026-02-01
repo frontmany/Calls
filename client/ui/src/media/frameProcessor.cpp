@@ -1,4 +1,7 @@
 #include "frameProcessor.h"
+#include "media/av1Encoder.h"
+#include "utilities/constant.h"
+#include "utilities/logger.h"
 
 #include <QVideoFrame>
 #include <QImage>
@@ -14,7 +17,28 @@
 
 FrameProcessor::FrameProcessor(QObject* parent)
     : QObject(parent)
+    , m_av1Encoder(nullptr)
 {
+    LOG_INFO("FrameProcessor: Initializing AV1 encoder...");
+    m_av1Encoder = new AV1Encoder();
+    if (!m_av1Encoder->initialize(
+        AV1_TARGET_WIDTH, AV1_TARGET_HEIGHT,
+        AV1_PRESET, AV1_CRF, AV1_KEYINT, AV1_FPS)) {
+        // AV1 initialization failed - this should not happen in production
+        LOG_ERROR("FrameProcessor: AV1 encoder initialization FAILED!");
+        delete m_av1Encoder;
+        m_av1Encoder = nullptr;
+    } else {
+        LOG_INFO("FrameProcessor: AV1 encoder initialized successfully");
+    }
+}
+
+FrameProcessor::~FrameProcessor()
+{
+    if (m_av1Encoder) {
+        delete m_av1Encoder;
+        m_av1Encoder = nullptr;
+    }
 }
 
 void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
@@ -45,7 +69,14 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
             if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0)
             {
                 QSize targetSize = QSize(1920, 1080);
-                std::vector<unsigned char> imageData = pixmapToBytes(croppedPixmap, targetSize);
+                std::vector<unsigned char> imageData;
+                
+                if (m_av1Encoder && m_av1Encoder->isInitialized()) {
+                    imageData = pixmapToAV1(croppedPixmap, targetSize);
+                } else {
+                    // AV1 encoder not available - cannot process frame
+                    return;
+                }
 
                 emit frameProcessed(croppedPixmap, imageData);
             }
@@ -69,7 +100,15 @@ void FrameProcessor::processPixmap(const QPixmap& pixmap)
         if (pixmap.width() > 0 && pixmap.height() > 0)
         {
             QSize targetSize = QSize(1920, 1080);
-            std::vector<unsigned char> imageData = pixmapToBytes(pixmap, targetSize);
+            std::vector<unsigned char> imageData;
+            
+            if (m_av1Encoder && m_av1Encoder->isInitialized()) {
+                imageData = pixmapToAV1(pixmap, targetSize);
+            } else {
+                // AV1 encoder not available - cannot process frame
+                return;
+            }
+            
             emit frameProcessed(pixmap, imageData);
         }
     }
@@ -144,24 +183,54 @@ QPixmap FrameProcessor::cropToHorizontal(const QPixmap& pixmap)
     }
 }
 
-std::vector<unsigned char> FrameProcessor::pixmapToBytes(const QPixmap& pixmap, QSize targetSize)
+std::vector<unsigned char> FrameProcessor::pixmapToAV1(const QPixmap& pixmap, QSize targetSize)
 {
+    if (!m_av1Encoder || !m_av1Encoder->isInitialized()) {
+        // AV1 encoder not available - return empty data
+        return {};
+    }
+    
     QImage image = pixmap.toImage();
-
+    
     if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32)
     {
         image = image.convertToFormat(QImage::Format_RGB32);
     }
-
+    
     QImage scaledImage = image.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    
+    // Convert to RGB888 for AV1 encoding
+    QImage rgbImage = scaledImage.convertToFormat(QImage::Format_RGB888);
+    
+    LOG_DEBUG("FrameProcessor: About to encode frame - size: {}x{}, bytes: {}", 
+              rgbImage.width(), rgbImage.height(), rgbImage.sizeInBytes());
+    
+    // Check if encoder is ready
+    if (!m_av1Encoder) {
+        LOG_ERROR("FrameProcessor: AV1 encoder is null!");
+        return {};
+    }
+    
+    // Encode to AV1
+    LOG_DEBUG("FrameProcessor: Calling AV1 encoder...");
+    std::vector<unsigned char> av1Data = m_av1Encoder->encode(rgbImage);
+    LOG_DEBUG("FrameProcessor: AV1 encoding completed, result size: {}", av1Data.size());
+    
+    std::stringstream ss;
+    ss << "AV1 encoded: " << av1Data.size() << " bytes | "
+        << std::fixed << std::setprecision(2)
+        << (av1Data.size() / 1024.0) << " KB | "
+        << (av1Data.size() / (1024.0 * 1024.0)) << " MB";
 
-    QByteArray byteArray;
-    QBuffer buffer(&byteArray);
-    buffer.open(QIODevice::WriteOnly);
+    LOG_INFO("{}", ss.str());
 
-    scaledImage.save(&buffer, "JPG", 72);
-
-    return std::vector<unsigned char>(byteArray.begin(), byteArray.end());
+    if (av1Data.empty()) {
+        // AV1 encoding failed - return empty data
+        return {};
+    }
+    
+    // Return raw AV1 data (no format version byte needed)
+    return av1Data;
 }
 
 void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos, const QRect& screenGeometry)

@@ -24,7 +24,7 @@ namespace core
         class AuthorizationService : public IAuthorizationService {
         public:
             AuthorizationService(
-                ClientStateManager& stateManager,
+                ClientStateManager& stateManager, 
                 KeyManager& keyManager,
                 UserOperationManager& operationManager,
                 PendingRequests& pendingRequests,

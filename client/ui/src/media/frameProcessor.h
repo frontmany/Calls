@@ -7,12 +7,15 @@
 #include <QVideoFrame>
 #include <QSize>
 
+class AV1Encoder;
+
 class FrameProcessor : public QObject
 {
     Q_OBJECT
 
 public:
     explicit FrameProcessor(QObject* parent = nullptr);
+    ~FrameProcessor();
 
 public slots:
     void processVideoFrame(const QVideoFrame& frame);
@@ -28,6 +31,8 @@ signals:
 private:
     QPixmap videoFrameToPixmap(const QVideoFrame& frame);
     QPixmap cropToHorizontal(const QPixmap& pixmap);
-    std::vector<unsigned char> pixmapToBytes(const QPixmap& pixmap, QSize targetSize);
+    std::vector<unsigned char> pixmapToAV1(const QPixmap& pixmap, QSize targetSize);
+    
+    AV1Encoder* m_av1Encoder;
 };
 
