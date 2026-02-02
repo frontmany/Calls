@@ -1,5 +1,6 @@
 #include "cameraSharingManager.h"
 #include "media/cameraCaptureController.h"
+#include "media/h264Decoder.h"
 #include "managers/dialogsController.h"
 #include "managers/notificationController.h"
 #include "widgets/callWidget.h"
@@ -15,6 +16,16 @@ CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client,
     , m_cameraCaptureController(cameraController)
     , m_dialogsController(dialogsController)
 {
+    m_h264Decoder = new H264Decoder();
+    m_h264Decoder->initialize();
+}
+
+CameraSharingManager::~CameraSharingManager()
+{
+    if (m_h264Decoder) {
+        delete m_h264Decoder;
+        m_h264Decoder = nullptr;
+    }
 }
 
 void CameraSharingManager::setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget)
@@ -226,25 +237,36 @@ void CameraSharingManager::onIncomingCamera(const std::vector<unsigned char>& da
     if (!m_callWidget || data.empty() || !m_coreClient || !m_coreClient->isViewingRemoteCamera()) return;
 
     QPixmap frame;
-    const auto* raw = reinterpret_cast<const uchar*>(data.data());
 
-    if (frame.loadFromData(raw, static_cast<int>(data.size()), "JPG")) {
-        bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
+    if (m_h264Decoder && m_h264Decoder->isInitialized()) {
+        QImage decodedImage = m_h264Decoder->decode(data);
+        if (!decodedImage.isNull()) {
+            frame = QPixmap::fromImage(decodedImage);
+        }
+    }
 
-        if (shouldBeInAdditionalScreen) {
-            if (!m_isRemoteCameraInAdditionalScreen) {
-                m_callWidget->hideMainScreen();
-                m_isRemoteCameraInAdditionalScreen = true;
-            }
-            m_callWidget->showFrameInAdditionalScreen(frame, m_coreClient->getNicknameInCallWith());
+    if (frame.isNull()) {
+        const auto* raw = reinterpret_cast<const uchar*>(data.data());
+        frame.loadFromData(raw, static_cast<int>(data.size()), "JPG");
+    }
+
+    if (frame.isNull()) return;
+
+    bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
+
+    if (shouldBeInAdditionalScreen) {
+        if (!m_isRemoteCameraInAdditionalScreen) {
+            m_callWidget->hideMainScreen();
+            m_isRemoteCameraInAdditionalScreen = true;
         }
-        else {
-            if (m_isRemoteCameraInAdditionalScreen) {
-                m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
-                m_isRemoteCameraInAdditionalScreen = false;
-            }
-            m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::CropToFit);
+        m_callWidget->showFrameInAdditionalScreen(frame, m_coreClient->getNicknameInCallWith());
+    }
+    else {
+        if (m_isRemoteCameraInAdditionalScreen) {
+            m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
+            m_isRemoteCameraInAdditionalScreen = false;
         }
+        m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::CropToFit);
     }
 }
 

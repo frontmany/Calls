@@ -54,14 +54,44 @@ constexpr const char* IGNORED_DIRECTORY_LOGS = "logs";     // Logs directory nam
 constexpr const char* IGNORED_DIRECTORY_CRASHES = "crashes"; // Crashes directory name
 
 // ============================================================================
-// AV1 Encoding Constants
+// H.264 encoding parameters
 // ============================================================================
 
-// AV1 encoding parameters
-constexpr int AV1_PRESET = 13;                           // SVT-AV1 preset (7-13 for real-time, higher = faster)
-constexpr int AV1_CRF = 32;                               // Quality (0-63, lower = better quality)
-constexpr int AV1_KEYINT = 60;                            // Keyframe interval in frames (~3 seconds at 10 FPS)
-constexpr int AV1_TARGET_WIDTH = 1920;                    // Target width for encoding
-constexpr int AV1_TARGET_HEIGHT = 1080;                   // Target height for encoding
-constexpr double AV1_FPS = 20.0;                          // Frames per second (50ms interval)
- 
+// H.264 Bitrate presets (for 1080p@30fps)
+constexpr int H264_BITRATE_HIGH = 4000000;                   // 4 Mbps - high quality
+constexpr int H264_BITRATE_MEDIUM = 2000000;                // 2 Mbps - medium quality  
+constexpr int H264_BITRATE_LOW = 1000000;                   // 1 Mbps - low quality
+
+// Special presets for camera and screen
+constexpr int H264_BITRATE_CAMERA = 2500000;                // 2.5 Mbps - camera optimized
+constexpr int H264_BITRATE_SCREEN = 1500000;                // 1.5 Mbps - screen optimized
+
+// H.264 encoding parameters
+constexpr int H264_TARGET_WIDTH = 1920;                     // Target width for encoding
+constexpr int H264_TARGET_HEIGHT = 1080;                    // Target height for encoding
+constexpr int H264_FPS = 30;                               // Frames per second
+constexpr int H264_KEYINT = 30;                            // Keyframe interval in frames (1 second at 30 FPS)
+
+// H.264 Quality presets
+constexpr int H264_QUALITY_MAX_QP_BEST = 30;                // Best quality (lower QP)
+constexpr int H264_QUALITY_MAX_QP_BALANCED = 38;             // Balanced quality/speed
+constexpr int H264_QUALITY_MAX_QP_FAST = 46;                // Fast encoding (higher QP)
+
+constexpr int H264_QUALITY_MIN_QP_BEST = 18;                // Best quality min QP
+constexpr int H264_QUALITY_MIN_QP_BALANCED = 20;             // Balanced min QP
+constexpr int H264_QUALITY_MIN_QP_FAST = 24;                 // Fast min QP
+
+// Special QP presets for camera and screen
+constexpr int H264_QUALITY_MAX_QP_CAMERA = 34;               // Camera optimized (less pixelation)
+constexpr int H264_QUALITY_MIN_QP_CAMERA = 19;               // Camera optimized min QP
+
+constexpr int H264_QUALITY_MAX_QP_SCREEN = 40;               // Screen optimized (faster)
+constexpr int H264_QUALITY_MIN_QP_SCREEN = 22;               // Screen optimized min QP
+
+// H.264 Performance modes
+constexpr int H264_THREADS_BEST = 1;                        // Best quality (1 thread)
+constexpr int H264_THREADS_BALANCED = 2;                     // Balanced (2 threads)
+constexpr int H264_THREADS_FAST = 4;                        // Fast (4+ threads)
+
+constexpr int H264_ENTROPY_BEST = 1;                         // CABAC (better compression)
+constexpr int H264_ENTROPY_FAST = 0;                         // CAVLC (faster)

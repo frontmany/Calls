@@ -77,12 +77,10 @@ endif()
 
 if(WIN32)
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
-    set(DAV1D_DIR "${ROOT_DIR}/vendor/dav1d/build/src")
-    set(SVTAV1_DIR "${ROOT_DIR}/vendor/SVT-AV1/Bin/$<CONFIG>")
+    set(OPENH264_DIR "${ROOT_DIR}/vendor/openh264/builddir")
 else()
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
-    set(DAV1D_DIR "${ROOT_DIR}/vendor/dav1d")
-    set(SVTAV1_DIR "${ROOT_DIR}/vendor/SVT-AV1")
+    set(OPENH264_DIR "${ROOT_DIR}/vendor/openh264")
 endif()
 
 if(WIN32)
@@ -95,14 +93,12 @@ if(WIN32)
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
     )
     target_link_directories(${PROJECT_NAME} PRIVATE
-        "${DAV1D_DIR}"
-        "${SVTAV1_DIR}"
+        "${OPENH264_DIR}"
     )
 else()
     target_link_directories(${PROJECT_NAME} PRIVATE
         "${SPDLOG_DIR}"
-        "${DAV1D_DIR}"
-        "${SVTAV1_DIR}"
+        "${OPENH264_DIR}"
     )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calliforniaCore calliforniaUpdater libspdlog.a)
@@ -120,21 +116,26 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${ROOT_DIR}/vendor/spdlog/include
     ${ROOT_DIR}/vendor/ticTimer
     ${ROOT_DIR}/vendor/CrashCatch/include
-    ${ROOT_DIR}/vendor/SVT-AV1/Source/Lib/Codec
-    ${ROOT_DIR}/vendor/SVT-AV1/Source/API
-    ${ROOT_DIR}/vendor/dav1d/include
+    ${ROOT_DIR}/vendor/openh264/codec/api/wels
+    ${ROOT_DIR}/vendor/openh264/codec/common/inc
     )
 
 if(WIN32)
     # Windows: link against .lib files
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        SvtAv1Enc
-        dav1d
+        openh264
+    )
+    
+    # Copy OpenH264 DLL to output directory
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ROOT_DIR}/vendor/openh264/builddir/openh264-8.dll"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMENT "Copying OpenH264 DLL to output directory"
     )
 else()
     # Linux: link against shared libraries
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        SvtAv1Enc
-        dav1d
+        openh264
     )
 endif()

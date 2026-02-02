@@ -1,5 +1,5 @@
 #include "frameProcessor.h"
-#include "media/av1Encoder.h"
+#include "media/h264Encoder.h"
 #include "utilities/constant.h"
 #include "utilities/logger.h"
 
@@ -17,27 +17,51 @@
 
 FrameProcessor::FrameProcessor(QObject* parent)
     : QObject(parent)
-    , m_av1Encoder(nullptr)
+    , m_screenEncoder(nullptr)
+    , m_cameraEncoder(nullptr)
 {
-    LOG_INFO("FrameProcessor: Initializing AV1 encoder...");
-    m_av1Encoder = new AV1Encoder();
-    if (!m_av1Encoder->initialize(
-        AV1_TARGET_WIDTH, AV1_TARGET_HEIGHT,
-        AV1_PRESET, AV1_CRF, AV1_KEYINT, AV1_FPS)) {
-        // AV1 initialization failed - this should not happen in production
-        LOG_ERROR("FrameProcessor: AV1 encoder initialization FAILED!");
-        delete m_av1Encoder;
-        m_av1Encoder = nullptr;
+    LOG_INFO("FrameProcessor: Initializing H.264 encoders...");
+    
+    // Инициализируем кодировщик для экрана (автоматическая оптимизация)
+    m_screenEncoder = new H264Encoder();
+    m_screenEncoder->setPerformanceMode("auto");      // Авто-определение потоков
+    m_screenEncoder->setQualityParameters(H264_QUALITY_MIN_QP_SCREEN, H264_QUALITY_MAX_QP_SCREEN, H264_BITRATE_SCREEN);
+    // Инициализируем с горизонтальным размером по умолчанию, будем переинициализировать при необходимости
+    if (!m_screenEncoder->initialize(
+        H264_TARGET_WIDTH, H264_TARGET_HEIGHT,
+        H264_BITRATE_SCREEN, H264_FPS, H264_KEYINT)) {
+        LOG_ERROR("FrameProcessor: Screen H.264 encoder initialization FAILED!");
+        delete m_screenEncoder;
+        m_screenEncoder = nullptr;
     } else {
-        LOG_INFO("FrameProcessor: AV1 encoder initialized successfully");
+        LOG_INFO("FrameProcessor: Screen H.264 encoder initialized successfully (AUTO-OPTIMIZED - QP 22-40, 1.5 Mbps)");
+    }
+    
+    // Инициализируем кодировщик для камеры (автоматическая оптимизация)
+    m_cameraEncoder = new H264Encoder();
+    m_cameraEncoder->setPerformanceMode("auto");      // Авто-определение потоков
+    m_cameraEncoder->setQualityParameters(H264_QUALITY_MIN_QP_CAMERA, H264_QUALITY_MAX_QP_CAMERA, H264_BITRATE_CAMERA);
+    // Для камеры всегда используем горизонтальный размер
+    if (!m_cameraEncoder->initialize(
+        H264_TARGET_WIDTH, H264_TARGET_HEIGHT,
+        H264_BITRATE_CAMERA, H264_FPS, H264_KEYINT)) {
+        LOG_ERROR("FrameProcessor: Camera H.264 encoder initialization FAILED!");
+        delete m_cameraEncoder;
+        m_cameraEncoder = nullptr;
+    } else {
+        LOG_INFO("FrameProcessor: Camera H.264 encoder initialized successfully (AUTO-OPTIMIZED - QP 19-34, 2.5 Mbps)");
     }
 }
 
 FrameProcessor::~FrameProcessor()
 {
-    if (m_av1Encoder) {
-        delete m_av1Encoder;
-        m_av1Encoder = nullptr;
+    if (m_screenEncoder) {
+        delete m_screenEncoder;
+        m_screenEncoder = nullptr;
+    }
+    if (m_cameraEncoder) {
+        delete m_cameraEncoder;
+        m_cameraEncoder = nullptr;
     }
 }
 
@@ -68,13 +92,14 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
 
             if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0)
             {
+                // Для камеры всегда используем горизонтальный размер (камера обычно горизонтальная)
                 QSize targetSize = QSize(1920, 1080);
                 std::vector<unsigned char> imageData;
                 
-                if (m_av1Encoder && m_av1Encoder->isInitialized()) {
-                    imageData = pixmapToAV1(croppedPixmap, targetSize);
+                if (m_cameraEncoder && m_cameraEncoder->isInitialized()) {
+                    imageData = pixmapToH264(croppedPixmap, targetSize, false); // false = camera
                 } else {
-                    // AV1 encoder not available - cannot process frame
+                    // H.264 camera encoder not available - cannot process frame
                     return;
                 }
 
@@ -99,13 +124,15 @@ void FrameProcessor::processPixmap(const QPixmap& pixmap)
     {
         if (pixmap.width() > 0 && pixmap.height() > 0)
         {
-            QSize targetSize = QSize(1920, 1080);
+            // Для экрана используем адаптивный размер (будет определен внутри pixmapToH264)
+            QSize targetSize = QSize(-1, -1); // -1 означает "авто-определение"
             std::vector<unsigned char> imageData;
             
-            if (m_av1Encoder && m_av1Encoder->isInitialized()) {
-                imageData = pixmapToAV1(pixmap, targetSize);
+            if (m_screenEncoder && m_screenEncoder->isInitialized()) {
+                // Для экрана передаем изображение как есть, без обрезки
+                imageData = pixmapToH264(pixmap, targetSize, true); // true = screen
             } else {
-                // AV1 encoder not available - cannot process frame
+                // H.264 screen encoder not available - cannot process frame
                 return;
             }
             
@@ -183,10 +210,13 @@ QPixmap FrameProcessor::cropToHorizontal(const QPixmap& pixmap)
     }
 }
 
-std::vector<unsigned char> FrameProcessor::pixmapToAV1(const QPixmap& pixmap, QSize targetSize)
+std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, QSize targetSize, bool isScreen)
 {
-    if (!m_av1Encoder || !m_av1Encoder->isInitialized()) {
-        // AV1 encoder not available - return empty data
+    H264Encoder* encoder = isScreen ? m_screenEncoder : m_cameraEncoder;
+    
+    if (!encoder || !encoder->isInitialized()) {
+        // H.264 encoder not available - return empty data
+        LOG_ERROR("FrameProcessor: {} encoder not available", isScreen ? "Screen" : "Camera");
         return {};
     }
     
@@ -197,40 +227,101 @@ std::vector<unsigned char> FrameProcessor::pixmapToAV1(const QPixmap& pixmap, QS
         image = image.convertToFormat(QImage::Format_RGB32);
     }
     
-    QImage scaledImage = image.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    // Определяем оптимальный размер с учетом ориентации изображения
+    QSize originalSize = image.size();
+    QSize adaptedSize;
     
-    // Convert to RGB888 for AV1 encoding
+    if (targetSize.width() == -1 || targetSize.height() == -1) {
+        // Авто-определение размера (для экрана)
+        if (originalSize.width() > originalSize.height()) {
+            // Горизонтальное изображение - используем 1920x1080
+            adaptedSize = QSize(1920, 1080);
+        } else if (originalSize.width() < originalSize.height()) {
+            // Вертикальное изображение - используем 1080x1920
+            adaptedSize = QSize(1080, 1920);
+        } else {
+            // Квадратное изображение - используем 1080x1080
+            adaptedSize = QSize(1080, 1080);
+        }
+        
+        // Если изображение слишком маленькое, используем меньший размер
+        if (originalSize.width() < 1280 || originalSize.height() < 720) {
+            if (originalSize.width() > originalSize.height()) {
+                adaptedSize = QSize(1280, 720);  // 720p для горизонтальных
+            } else {
+                adaptedSize = QSize(720, 1280);  // 720p для вертикальных
+            }
+        }
+    } else {
+        // Используем переданный размер (для камеры)
+        adaptedSize = targetSize;
+    }
+    
+    // Масштабируем с заполнением всего пространства (без черных полей)
+    QImage scaledImage = image.scaled(adaptedSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    
+    // Убираем спам логов для каждого кадра
+    // LOG_DEBUG("FrameProcessor: {} frame resized from {}x{} to {}x{}", 
+    //           isScreen ? "Screen" : "Camera", 
+    //           originalSize.width(), originalSize.height(),
+    //           scaledImage.width(), scaledImage.height());
+    
+    // Convert to RGB888 for H.264 encoding
     QImage rgbImage = scaledImage.convertToFormat(QImage::Format_RGB888);
     
-    LOG_DEBUG("FrameProcessor: About to encode frame - size: {}x{}, bytes: {}", 
-              rgbImage.width(), rgbImage.height(), rgbImage.sizeInBytes());
+    // Для экрана переинициализируем кодировщик если размер изменился
+    if (isScreen && m_screenEncoder) {
+        int currentWidth = scaledImage.width();
+        int currentHeight = scaledImage.height();
+        
+        // Проверяем нужно ли переинициализировать кодировщик
+        QSize currentEncoderSize = m_screenEncoder->getCurrentSize();
+        if (currentEncoderSize.width() != currentWidth || currentEncoderSize.height() != currentHeight) {
+            LOG_INFO("FrameProcessor: Reinitializing screen encoder from {}x{} to {}x{}", 
+                     currentEncoderSize.width(), currentEncoderSize.height(),
+                     currentWidth, currentHeight);
+            
+            m_screenEncoder->cleanup();
+            if (!m_screenEncoder->initialize(
+                currentWidth, currentHeight,
+                H264_BITRATE_SCREEN, H264_FPS, H264_KEYINT)) {
+                LOG_ERROR("FrameProcessor: Failed to reinitialize screen encoder");
+                return {};
+            }
+        }
+    }
+    
+    // Убираем спам логов для каждого кадра
+    // LOG_DEBUG("FrameProcessor: About to encode {} frame - size: {}x{}, bytes: {}", 
+    //           isScreen ? "screen" : "camera", rgbImage.width(), rgbImage.height(), rgbImage.sizeInBytes());
     
     // Check if encoder is ready
-    if (!m_av1Encoder) {
-        LOG_ERROR("FrameProcessor: AV1 encoder is null!");
+    if (!encoder) {
+        LOG_ERROR("FrameProcessor: {} encoder is null!", isScreen ? "Screen" : "Camera");
         return {};
     }
     
-    // Encode to AV1
-    LOG_DEBUG("FrameProcessor: Calling AV1 encoder...");
-    std::vector<unsigned char> av1Data = m_av1Encoder->encode(rgbImage);
-    LOG_DEBUG("FrameProcessor: AV1 encoding completed, result size: {}", av1Data.size());
+    // Encode to H.264 (без спам логов)
+    // LOG_DEBUG("FrameProcessor: Calling {} H.264 encoder...", isScreen ? "screen" : "camera");
+    std::vector<unsigned char> h264Data = encoder->encode(rgbImage);
+    // LOG_DEBUG("FrameProcessor: {} H.264 encoding completed, result size: {}", 
+    //           isScreen ? "Screen" : "Camera", h264Data.size());
     
-    std::stringstream ss;
-    ss << "AV1 encoded: " << av1Data.size() << " bytes | "
-        << std::fixed << std::setprecision(2)
-        << (av1Data.size() / 1024.0) << " KB | "
-        << (av1Data.size() / (1024.0 * 1024.0)) << " MB";
+    // Убираем спам логов о размере каждого кадра
+    // std::stringstream ss;
+    // ss << "H.264 encoded: " << h264Data.size() << " bytes | "
+    //     << std::fixed << std::setprecision(2)
+    //     << (h264Data.size() / 1024.0) << " KB | "
+    //     << (h264Data.size() / (1024.0 * 1024.0)) << " MB";
+    // LOG_INFO("{}", ss.str());
 
-    LOG_INFO("{}", ss.str());
-
-    if (av1Data.empty()) {
-        // AV1 encoding failed - return empty data
+    if (h264Data.empty()) {
+        // H.264 encoding failed - return empty data
         return {};
     }
     
-    // Return raw AV1 data (no format version byte needed)
-    return av1Data;
+    // Return raw H.264 data
+    return h264Data;
 }
 
 void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos, const QRect& screenGeometry)

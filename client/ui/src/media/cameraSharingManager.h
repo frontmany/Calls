@@ -12,6 +12,7 @@
 #include "utilities/logger.h"
 
 class CameraCaptureController;
+class H264Decoder;
 class CallWidget;
 class ConfigManager;
 class MainMenuWidget;
@@ -23,6 +24,7 @@ class CameraSharingManager : public QObject {
 
 public:
     explicit CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, DialogsController* dialogsController, QObject* parent = nullptr);
+    ~CameraSharingManager();
     
     void setWidgets(CallWidget* callWidget, MainMenuWidget* mainMenuWidget);
     void setNotificationController(NotificationController* notificationController);
@@ -63,4 +65,5 @@ private:
     QMap<core::UserOperationType, QString> m_pendingOperationTexts;
     bool m_isCameraInAdditionalScreen = false;
     bool m_isRemoteCameraInAdditionalScreen = false;
+    H264Decoder* m_h264Decoder = nullptr;
 };

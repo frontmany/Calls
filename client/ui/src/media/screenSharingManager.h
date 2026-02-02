@@ -16,7 +16,7 @@ class DialogsController;
 class CallWidget;
 class CameraCaptureController;
 class NotificationController;
-class AV1Decoder;
+class H264Decoder;
 
 class ScreenSharingManager : public QObject {
     Q_OBJECT
@@ -63,5 +63,5 @@ private:
     CameraCaptureController* m_cameraCaptureController = nullptr;
     QMap<core::UserOperationType, QTimer*> m_operationTimers;
     QMap<core::UserOperationType, QString> m_pendingOperationTexts;
-    AV1Decoder* m_av1Decoder = nullptr;
+    H264Decoder* m_h264Decoder = nullptr;
 };

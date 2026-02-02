@@ -1,6 +1,6 @@
 #include "screenSharingManager.h"
 #include "media/screenCaptureController.h"
-#include "media/av1Decoder.h"
+#include "media/h264Decoder.h"
 #include "managers/dialogsController.h"
 #include "managers/notificationController.h"
 #include "widgets/callWidget.h"
@@ -15,17 +15,17 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
     , m_screenCaptureController(screenController)
     , m_dialogsController(dialogsController)
     , m_cameraCaptureController(cameraController)
-    , m_av1Decoder(nullptr)
+    , m_h264Decoder(nullptr)
 {
-    m_av1Decoder = new AV1Decoder();
-    m_av1Decoder->initialize();
+    m_h264Decoder = new H264Decoder();
+    m_h264Decoder->initialize();
 }
 
 ScreenSharingManager::~ScreenSharingManager()
 {
-    if (m_av1Decoder) {
-        delete m_av1Decoder;
-        m_av1Decoder = nullptr;
+    if (m_h264Decoder) {
+        delete m_h264Decoder;
+        m_h264Decoder = nullptr;
     }
 }
 
@@ -222,7 +222,8 @@ void ScreenSharingManager::onIncomingScreenSharingStopped()
 
 void ScreenSharingManager::onIncomingScreen(const std::vector<unsigned char>& data)
 {
-    LOG_DEBUG("ScreenSharingManager: Received screen data, size: {} bytes", data.size());
+    // Убираем спам логов для каждого кадра
+    // LOG_DEBUG("ScreenSharingManager: Received screen data, size: {} bytes", data.size());
     if (!m_callWidget || data.empty() || !m_coreClient || !m_coreClient->isViewingRemoteScreen()) {
         LOG_WARN("ScreenSharingManager: Cannot process frame - callWidget: {}, data.empty: {}, coreClient: {}, viewingRemoteScreen: {}", 
                  static_cast<bool>(m_callWidget), data.empty(), 
@@ -233,24 +234,27 @@ void ScreenSharingManager::onIncomingScreen(const std::vector<unsigned char>& da
 
     QPixmap frame;
     
-    // Always use AV1 format now - no format detection needed
-    if (m_av1Decoder && m_av1Decoder->isInitialized()) {
-        LOG_DEBUG("ScreenSharingManager: Decoding AV1 data...");
-        // Decode AV1 data directly (no version byte to skip)
-        QImage decodedImage = m_av1Decoder->decode(data);
+    // Always use H.264 format now - no format detection needed
+    if (m_h264Decoder && m_h264Decoder->isInitialized()) {
+        // Убираем спам логов для каждого кадра
+        // LOG_DEBUG("ScreenSharingManager: Decoding H.264 data...");
+        // Decode H.264 data directly (no version byte to skip)
+        QImage decodedImage = m_h264Decoder->decode(data);
         if (!decodedImage.isNull()) {
             frame = QPixmap::fromImage(decodedImage);
-            LOG_DEBUG("ScreenSharingManager: AV1 decoded successfully, image size: {}x{}", 
-                     decodedImage.width(), decodedImage.height());
+            // Убираем спам логов для каждого кадра
+            // LOG_DEBUG("ScreenSharingManager: H.264 decoded successfully, image size: {}x{}", 
+            //          decodedImage.width(), decodedImage.height());
         } else {
-            LOG_WARN("ScreenSharingManager: AV1 decoder returned null image");
+            LOG_WARN("ScreenSharingManager: H.264 decoder returned null image");
         }
     } else {
-        LOG_ERROR("ScreenSharingManager: AV1 decoder not available or not initialized");
+        LOG_ERROR("ScreenSharingManager: H.264 decoder not available or not initialized");
     }
     
     if (!frame.isNull()) {
-        LOG_DEBUG("ScreenSharingManager: Displaying frame in main screen");
+        // Убираем спам логов для каждого кадра
+        // LOG_DEBUG("ScreenSharingManager: Displaying frame in main screen");
         m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
     } else {
         LOG_WARN("ScreenSharingManager: Frame is null, not displaying");
