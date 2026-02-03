@@ -73,6 +73,47 @@ if(WIN32)
         _WIN32_WINNT=0x0601
         ASIO_STANDALONE
     )
+    
+    # Check for hardware encoder support
+    find_path(CUDA_INCLUDE_DIR cuda_runtime.h
+        PATHS "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA*/include"
+        DOC "CUDA include directory"
+    )
+    
+    find_library(CUDA_LIBRARY cuda
+        PATHS "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA*/lib/x64"
+        DOC "CUDA library"
+    )
+    
+    find_library(NVENC_LIBRARY nvEncodeAPI64
+        PATHS "C:/Windows/System32" "C:/Program Files/NVIDIA Corporation/NVENC SDK*/lib/x64"
+        DOC "NVENC library"
+    )
+    
+    if(CUDA_INCLUDE_DIR AND CUDA_LIBRARY AND NVENC_LIBRARY)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_NVENC)
+        target_include_directories(${PROJECT_NAME} PRIVATE ${CUDA_INCLUDE_DIR})
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${CUDA_LIBRARY} ${NVENC_LIBRARY})
+        message(STATUS "NVENC support enabled")
+    endif()
+    
+    # Intel QSV support
+    find_path(QSV_INCLUDE_DIR mfxvideo++.h
+        PATHS "C:/Program Files (x86)/Intel/Media SDK/*/include"
+        DOC "Intel Media SDK include directory"
+    )
+    
+    find_library(QSV_LIBRARY libmfx
+        PATHS "C:/Program Files (x86)/Intel/Media SDK/*/lib/x64"
+        DOC "Intel Media SDK library"
+    )
+    
+    if(QSV_INCLUDE_DIR AND QSV_LIBRARY)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_QSV)
+        target_include_directories(${PROJECT_NAME} PRIVATE ${QSV_INCLUDE_DIR})
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${QSV_LIBRARY})
+        message(STATUS "Intel QSV support enabled")
+    endif()
 endif()
 
 if(WIN32)

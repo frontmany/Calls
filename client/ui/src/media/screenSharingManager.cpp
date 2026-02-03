@@ -15,7 +15,6 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
     , m_screenCaptureController(screenController)
     , m_dialogsController(dialogsController)
     , m_cameraCaptureController(cameraController)
-    , m_h264Decoder(nullptr)
 {
     m_h264Decoder = new H264Decoder();
     m_h264Decoder->initialize();

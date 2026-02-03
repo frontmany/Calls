@@ -10,7 +10,7 @@
 #include <QSize>
 #include <QThread>
 
-class FrameProcessor;
+class FrameProcessorManager;
 
 class ScreenCaptureController : public QObject
 {
@@ -44,11 +44,10 @@ private slots:
 private:
     QTimer* m_captureTimer;
     bool m_isCapturing;
-    int m_pendingFrames = 0;
-    int m_maxQueuedFrames = 1;
+    int m_pendingFrames;
+    int m_maxQueuedFrames;
     QList<QScreen*> m_availableScreens;
     int m_selectedScreenIndex;
 
-    QThread* m_processingThread;
-    FrameProcessor* m_frameProcessor;
+    FrameProcessorManager* m_frameProcessorManager;
 };

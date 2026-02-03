@@ -10,6 +10,8 @@ extern "C" {
 #include "codec_def.h"
 }
 
+class HardwareEncoder;
+
 class H264Encoder {
 public:
     H264Encoder();
@@ -29,6 +31,9 @@ public:
     // Check if encoder is initialized
     bool isInitialized() const { return m_initialized; }
     
+    // Try to initialize hardware encoder first, fallback to software
+    bool initializeWithHardware(int width, int height, int bitrate = 2000000, int fps = 30, int keyframeInterval = 30);
+    
     // Get current encoder dimensions
     QSize getCurrentSize() const { return QSize(m_width, m_height); }
     
@@ -47,12 +52,16 @@ public:
     // Auto-detect optimal thread count based on CPU cores
     int autoDetectThreadCount();
     
+    // Check if hardware encoder is being used
+    bool isHardwareAccelerated() const { return m_hardwareEncoder != nullptr; }
+    
     // Cleanup resources
     void cleanup();
 
 private:
     bool m_initialized;
     ISVCEncoder* m_encoder;
+    std::unique_ptr<HardwareEncoder> m_hardwareEncoder;
     
     int m_width;
     int m_height;

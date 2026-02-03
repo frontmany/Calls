@@ -6,12 +6,6 @@
 #include <cstring>
 #include <algorithm>
 
-extern "C" {
-#include "codec_api.h"
-#include "codec_app_def.h"
-#include "codec_def.h"
-}
-
 H264Decoder::H264Decoder()
     : m_initialized(false)
     , m_decoder(nullptr)

@@ -1,4 +1,5 @@
 #include "screenCaptureController.h"
+#include "media/frameProcessorManager.h"
 #include "media/frameProcessor.h"
 #include "utilities/constant.h"
 
@@ -18,29 +19,20 @@ ScreenCaptureController::ScreenCaptureController(QObject* parent)
     m_isCapturing(false),
     m_selectedScreenIndex(-1),
     m_pendingFrames(0),
-    m_maxQueuedFrames(1),
-    m_processingThread(new QThread(this)),
-    m_frameProcessor(new FrameProcessor())
+    m_maxQueuedFrames(12),
+    m_frameProcessorManager(&FrameProcessorManager::getInstance())
 {
-    m_frameProcessor->moveToThread(m_processingThread);
-    
     connect(m_captureTimer, &QTimer::timeout, this, &ScreenCaptureController::captureScreen);
-    connect(this, &ScreenCaptureController::pixmapReadyForProcessing, m_frameProcessor, &FrameProcessor::processPixmap);
-    connect(m_frameProcessor, &FrameProcessor::frameProcessed, this, &ScreenCaptureController::onFrameProcessed);
-    connect(m_frameProcessor, &FrameProcessor::processingError, this, &ScreenCaptureController::onProcessingError);
-    
-    connect(m_processingThread, &QThread::finished, m_frameProcessor, &QObject::deleteLater);
+    connect(this, &ScreenCaptureController::pixmapReadyForProcessing, m_frameProcessorManager, &FrameProcessorManager::processPixmap);
+    connect(m_frameProcessorManager, &FrameProcessorManager::screenFrameProcessed, this, &ScreenCaptureController::onFrameProcessed);
+    connect(m_frameProcessorManager, &FrameProcessorManager::processingError, this, &ScreenCaptureController::onProcessingError);
     
     refreshAvailableScreens();
-    m_processingThread->start();
 }
 
 ScreenCaptureController::~ScreenCaptureController()
 {
     stopCapture();
-    
-    m_processingThread->quit();
-    m_processingThread->wait();
 }
 
 void ScreenCaptureController::startCapture()
@@ -90,7 +82,7 @@ void ScreenCaptureController::captureScreen()
         QPoint globalCursorPos = QCursor::pos();
         QRect screenGeometry = screen->geometry();
         
-        m_frameProcessor->drawCursorOnPixmap(screenshot, globalCursorPos, screenGeometry);
+        m_frameProcessorManager->getFrameProcessor()->drawCursorOnPixmap(screenshot, globalCursorPos, screenGeometry);
 
         if (m_pendingFrames >= m_maxQueuedFrames) {
             return;

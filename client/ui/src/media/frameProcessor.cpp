@@ -19,37 +19,41 @@ FrameProcessor::FrameProcessor(QObject* parent)
     : QObject(parent)
     , m_screenEncoder(nullptr)
     , m_cameraEncoder(nullptr)
+    , m_isCameraActive(false)
+    , m_isScreenActive(false)
 {
     LOG_INFO("FrameProcessor: Initializing H.264 encoders...");
     
-    // Инициализируем кодировщик для экрана (автоматическая оптимизация)
+    // Инициализируем кодировщик для экрана (высокое качество)
     m_screenEncoder = new H264Encoder();
-    m_screenEncoder->setPerformanceMode("auto");      // Авто-определение потоков
+    m_screenEncoder->setPerformanceMode("balanced");   // Сбалансированный режим для качества
     m_screenEncoder->setQualityParameters(H264_QUALITY_MIN_QP_SCREEN, H264_QUALITY_MAX_QP_SCREEN, H264_BITRATE_SCREEN);
-    // Инициализируем с горизонтальным размером по умолчанию, будем переинициализировать при необходимости
-    if (!m_screenEncoder->initialize(
-        H264_TARGET_WIDTH, H264_TARGET_HEIGHT,
-        H264_BITRATE_SCREEN, H264_FPS, H264_KEYINT)) {
+    // Инициализируем с аппаратным ускорением, fallback к software
+    if (!m_screenEncoder->initializeWithHardware(
+        H264_SCREEN_WIDTH, H264_SCREEN_HEIGHT,
+        H264_BITRATE_SCREEN, H264_SCREEN_FPS, H264_KEYINT)) {
         LOG_ERROR("FrameProcessor: Screen H.264 encoder initialization FAILED!");
         delete m_screenEncoder;
         m_screenEncoder = nullptr;
     } else {
-        LOG_INFO("FrameProcessor: Screen H.264 encoder initialized successfully (AUTO-OPTIMIZED - QP 22-40, 1.5 Mbps)");
+        const char* accelType = m_screenEncoder->isHardwareAccelerated() ? "HARDWARE" : "SOFTWARE";
+        LOG_INFO("FrameProcessor: Screen H.264 encoder initialized successfully ({} ACCELERATED - QP 20-30, 1.5 Mbps, 20 FPS - HIGH QUALITY)", accelType);
     }
     
-    // Инициализируем кодировщик для камеры (автоматическая оптимизация)
+    // Инициализируем кодировщик для камеры (720p с аппаратным ускорением)
     m_cameraEncoder = new H264Encoder();
-    m_cameraEncoder->setPerformanceMode("auto");      // Авто-определение потоков
+    m_cameraEncoder->setPerformanceMode("fast");      // Быстрый режим для камеры
     m_cameraEncoder->setQualityParameters(H264_QUALITY_MIN_QP_CAMERA, H264_QUALITY_MAX_QP_CAMERA, H264_BITRATE_CAMERA);
-    // Для камеры всегда используем горизонтальный размер
-    if (!m_cameraEncoder->initialize(
-        H264_TARGET_WIDTH, H264_TARGET_HEIGHT,
-        H264_BITRATE_CAMERA, H264_FPS, H264_KEYINT)) {
+    // Для камеры всегда используем 720p с аппаратным ускорением
+    if (!m_cameraEncoder->initializeWithHardware(
+        H264_CAMERA_WIDTH, H264_CAMERA_HEIGHT,
+        H264_BITRATE_CAMERA, H264_CAMERA_FPS, H264_KEYINT)) {
         LOG_ERROR("FrameProcessor: Camera H.264 encoder initialization FAILED!");
         delete m_cameraEncoder;
         m_cameraEncoder = nullptr;
     } else {
-        LOG_INFO("FrameProcessor: Camera H.264 encoder initialized successfully (AUTO-OPTIMIZED - QP 19-34, 2.5 Mbps)");
+        const char* accelType = m_cameraEncoder->isHardwareAccelerated() ? "HARDWARE" : "SOFTWARE";
+        LOG_INFO("FrameProcessor: Camera H.264 encoder initialized successfully ({} ACCELERATED - QP 22-28, 1.2 Mbps, 20 FPS, 720p)", accelType);
     }
 }
 
@@ -67,6 +71,11 @@ FrameProcessor::~FrameProcessor()
 
 void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
 {
+    if (!m_isCameraActive) {
+        m_isCameraActive = true;
+        updateBitratesForSimultaneousStreaming();
+    }
+    
     QVideoFrame clonedFrame = frame;
     if (!clonedFrame.map(QVideoFrame::ReadOnly)) return;
     
@@ -92,8 +101,8 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
 
             if (!croppedPixmap.isNull() && croppedPixmap.width() > 0 && croppedPixmap.height() > 0)
             {
-                // Для камеры всегда используем горизонтальный размер (камера обычно горизонтальная)
-                QSize targetSize = QSize(1920, 1080);
+                // Для камеры всегда используем 720p
+                QSize targetSize = QSize(H264_CAMERA_WIDTH, H264_CAMERA_HEIGHT);
                 std::vector<unsigned char> imageData;
                 
                 if (m_cameraEncoder && m_cameraEncoder->isInitialized()) {
@@ -103,7 +112,7 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
                     return;
                 }
 
-                emit frameProcessed(croppedPixmap, imageData);
+                emit cameraFrameProcessed(croppedPixmap, imageData);
             }
         }
         catch (const std::exception& e)
@@ -115,6 +124,11 @@ void FrameProcessor::processVideoFrame(const QVideoFrame& frame)
 
 void FrameProcessor::processPixmap(const QPixmap& pixmap)
 {
+    if (!m_isScreenActive) {
+        m_isScreenActive = true;
+        updateBitratesForSimultaneousStreaming();
+    }
+    
     if (pixmap.isNull())
     {
         return;
@@ -136,7 +150,7 @@ void FrameProcessor::processPixmap(const QPixmap& pixmap)
                 return;
             }
             
-            emit frameProcessed(pixmap, imageData);
+            emit screenFrameProcessed(pixmap, imageData);
         }
     }
     catch (const std::exception& e)
@@ -222,19 +236,27 @@ std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, Q
     
     QImage image = pixmap.toImage();
     
+    // Use reusable image buffer to avoid memory allocations
+    if (m_reusableImage.size() != image.size() || m_reusableImage.format() != image.format()) {
+        m_reusableImage = QImage(image.size(), image.format());
+    }
+    
+    // Copy image data to reusable buffer
     if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32)
     {
-        image = image.convertToFormat(QImage::Format_RGB32);
+        m_reusableImage = image.convertToFormat(QImage::Format_RGB32);
+    } else {
+        m_reusableImage = image.copy();
     }
     
     // Определяем оптимальный размер с учетом ориентации изображения
-    QSize originalSize = image.size();
+    QSize originalSize = m_reusableImage.size();
     QSize adaptedSize;
     
     if (targetSize.width() == -1 || targetSize.height() == -1) {
-        // Авто-определение размера (для экрана)
+        // Авто-определение размера (для экрана) - высокое качество
         if (originalSize.width() > originalSize.height()) {
-            // Горизонтальное изображение - используем 1920x1080
+            // Горизонтальное изображение - используем 1920x1080 для высокого качества
             adaptedSize = QSize(1920, 1080);
         } else if (originalSize.width() < originalSize.height()) {
             // Вертикальное изображение - используем 1080x1920
@@ -244,7 +266,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, Q
             adaptedSize = QSize(1080, 1080);
         }
         
-        // Если изображение слишком маленькое, используем меньший размер
+        // Если изображение маленькое, используем умеренный размер
         if (originalSize.width() < 1280 || originalSize.height() < 720) {
             if (originalSize.width() > originalSize.height()) {
                 adaptedSize = QSize(1280, 720);  // 720p для горизонтальных
@@ -253,26 +275,23 @@ std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, Q
             }
         }
     } else {
-        // Используем переданный размер (для камеры)
+        // Используем переданный размер (для камеры - 720p)
         adaptedSize = targetSize;
     }
     
     // Масштабируем с заполнением всего пространства (без черных полей)
-    QImage scaledImage = image.scaled(adaptedSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    
-    // Убираем спам логов для каждого кадра
-    // LOG_DEBUG("FrameProcessor: {} frame resized from {}x{} to {}x{}", 
-    //           isScreen ? "Screen" : "Camera", 
-    //           originalSize.width(), originalSize.height(),
-    //           scaledImage.width(), scaledImage.height());
+    // Use reusable image for scaling to avoid allocations
+    if (m_reusableImage.size() != adaptedSize) {
+        m_reusableImage = m_reusableImage.scaled(adaptedSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
     
     // Convert to RGB888 for H.264 encoding
-    QImage rgbImage = scaledImage.convertToFormat(QImage::Format_RGB888);
+    QImage rgbImage = m_reusableImage.convertToFormat(QImage::Format_RGB888);
     
     // Для экрана переинициализируем кодировщик если размер изменился
     if (isScreen && m_screenEncoder) {
-        int currentWidth = scaledImage.width();
-        int currentHeight = scaledImage.height();
+        int currentWidth = rgbImage.width();
+        int currentHeight = rgbImage.height();
         
         // Проверяем нужно ли переинициализировать кодировщик
         QSize currentEncoderSize = m_screenEncoder->getCurrentSize();
@@ -284,7 +303,7 @@ std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, Q
             m_screenEncoder->cleanup();
             if (!m_screenEncoder->initialize(
                 currentWidth, currentHeight,
-                H264_BITRATE_SCREEN, H264_FPS, H264_KEYINT)) {
+                H264_BITRATE_SCREEN, H264_SCREEN_FPS, H264_KEYINT)) {
                 LOG_ERROR("FrameProcessor: Failed to reinitialize screen encoder");
                 return {};
             }
@@ -301,11 +320,8 @@ std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, Q
         return {};
     }
     
-    // Encode to H.264 (без спам логов)
-    // LOG_DEBUG("FrameProcessor: Calling {} H.264 encoder...", isScreen ? "screen" : "camera");
+    // Encode to H.264 using reusable buffer
     std::vector<unsigned char> h264Data = encoder->encode(rgbImage);
-    // LOG_DEBUG("FrameProcessor: {} H.264 encoding completed, result size: {}", 
-    //           isScreen ? "Screen" : "Camera", h264Data.size());
     
     // Убираем спам логов о размере каждого кадра
     // std::stringstream ss;
@@ -322,6 +338,33 @@ std::vector<unsigned char> FrameProcessor::pixmapToH264(const QPixmap& pixmap, Q
     
     // Return raw H.264 data
     return h264Data;
+}
+
+void FrameProcessor::updateBitratesForSimultaneousStreaming()
+{
+    bool bothActive = m_isCameraActive && m_isScreenActive;
+    
+    if (bothActive) {
+        LOG_INFO("FrameProcessor: Both streams active - reducing bitrates for performance");
+        
+        if (m_cameraEncoder && m_cameraEncoder->isInitialized()) {
+            m_cameraEncoder->setQualityParameters(H264_QUALITY_MIN_QP_CAMERA, H264_QUALITY_MAX_QP_CAMERA, H264_BITRATE_CAMERA_SIMULTANEOUS);
+        }
+        
+        if (m_screenEncoder && m_screenEncoder->isInitialized()) {
+            m_screenEncoder->setQualityParameters(H264_QUALITY_MIN_QP_SCREEN, H264_QUALITY_MAX_QP_SCREEN, H264_BITRATE_SCREEN_SIMULTANEOUS);
+        }
+    } else {
+        LOG_INFO("FrameProcessor: Single stream active - using normal bitrates");
+        
+        if (m_cameraEncoder && m_cameraEncoder->isInitialized()) {
+            m_cameraEncoder->setQualityParameters(H264_QUALITY_MIN_QP_CAMERA, H264_QUALITY_MAX_QP_CAMERA, H264_BITRATE_CAMERA);
+        }
+        
+        if (m_screenEncoder && m_screenEncoder->isInitialized()) {
+            m_screenEncoder->setQualityParameters(H264_QUALITY_MIN_QP_SCREEN, H264_QUALITY_MAX_QP_SCREEN, H264_BITRATE_SCREEN);
+        }
+    }
 }
 
 void FrameProcessor::drawCursorOnPixmap(QPixmap& pixmap, const QPoint& cursorPos, const QRect& screenGeometry)

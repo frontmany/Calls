@@ -12,7 +12,7 @@
 #include <QSize>
 #include <QThread>
 
-class FrameProcessor;
+class FrameProcessorManager;
 
 class CameraCaptureController : public QObject
 {
@@ -43,14 +43,13 @@ private slots:
 private:
     QTimer* m_captureTimer;
     bool m_isCapturing;
-    int m_pendingFrames = 0;
-    int m_maxQueuedFrames = 1;
+    int m_pendingFrames;
+    int m_maxQueuedFrames;
 
     QCamera* m_camera;
     QMediaCaptureSession* m_captureSession;
     QVideoSink* m_videoSink;
     QMediaDevices* m_mediaDevices;
 
-    QThread* m_processingThread;
-    FrameProcessor* m_frameProcessor;
+    FrameProcessorManager* m_frameProcessorManager;
 };

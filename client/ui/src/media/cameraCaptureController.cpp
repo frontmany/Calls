@@ -1,39 +1,30 @@
 #include "cameraCaptureController.h"
-#include "media/frameProcessor.h"
+#include "media/frameProcessorManager.h"
 
 CameraCaptureController::CameraCaptureController(QObject* parent)
     : QObject(parent),
     m_captureTimer(new QTimer(this)),
     m_isCapturing(false),
     m_pendingFrames(0),
-    m_maxQueuedFrames(1),
+    m_maxQueuedFrames(6),
     m_camera(nullptr),
     m_captureSession(new QMediaCaptureSession(this)),
     m_videoSink(new QVideoSink(this)),
     m_mediaDevices(new QMediaDevices(this)),
-    m_processingThread(new QThread(this)),
-    m_frameProcessor(new FrameProcessor())
+    m_frameProcessorManager(&FrameProcessorManager::getInstance())
 {
-    m_frameProcessor->moveToThread(m_processingThread);
-    
     connect(m_videoSink, &QVideoSink::videoFrameChanged, this, &CameraCaptureController::handleVideoFrame);
-    connect(this, &CameraCaptureController::frameReadyForProcessing, m_frameProcessor, &FrameProcessor::processVideoFrame);
-    connect(m_frameProcessor, &FrameProcessor::frameProcessed, this, &CameraCaptureController::onFrameProcessed);
-    connect(m_frameProcessor, &FrameProcessor::processingError, this, &CameraCaptureController::onProcessingError);
+    connect(this, &CameraCaptureController::frameReadyForProcessing, m_frameProcessorManager, &FrameProcessorManager::processVideoFrame);
+    connect(m_frameProcessorManager, &FrameProcessorManager::cameraFrameProcessed, this, &CameraCaptureController::onFrameProcessed);
+    connect(m_frameProcessorManager, &FrameProcessorManager::processingError, this, &CameraCaptureController::onProcessingError);
     connect(m_mediaDevices, &QMediaDevices::videoInputsChanged, this, &CameraCaptureController::onVideoInputsChanged);
     
-    connect(m_processingThread, &QThread::finished, m_frameProcessor, &QObject::deleteLater);
-    
     m_captureSession->setVideoSink(m_videoSink);
-    m_processingThread->start();
 }
 
 CameraCaptureController::~CameraCaptureController()
 {
     stopCapture();
-    
-    m_processingThread->quit();
-    m_processingThread->wait();
 }
 
 void CameraCaptureController::startCapture()

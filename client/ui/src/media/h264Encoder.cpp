@@ -1,4 +1,5 @@
 #include "h264Encoder.h"
+#include "hardwareEncoder.h"
 #include "utilities/constant.h"
 #include "utilities/logger.h"
 
@@ -8,15 +9,10 @@
 #include <thread>
 #include <algorithm>
 
-extern "C" {
-#include "codec_api.h"
-#include "codec_app_def.h"
-#include "codec_def.h"
-}
-
 H264Encoder::H264Encoder()
     : m_initialized(false)
     , m_encoder(nullptr)
+    , m_hardwareEncoder(nullptr)
     , m_width(0)
     , m_height(0)
     , m_frameNumber(0)
@@ -34,6 +30,41 @@ H264Encoder::H264Encoder()
 H264Encoder::~H264Encoder()
 {
     cleanup();
+}
+
+bool H264Encoder::initializeWithHardware(int width, int height, int bitrate, int fps, int keyframeInterval)
+{
+    LOG_INFO("H264Encoder: Trying hardware acceleration first...");
+    
+    // Try hardware encoders first
+    auto availableEncoders = HardwareEncoder::getAvailableEncoders();
+    
+    if (!availableEncoders.empty()) {
+        auto encoderType = availableEncoders[0]; // Use first available
+        LOG_INFO("H264Encoder: Using hardware encoder: {}", HardwareEncoder::getEncoderName(encoderType));
+        
+        m_hardwareEncoder = std::make_unique<HardwareEncoder>();
+        if (m_hardwareEncoder->initialize(encoderType, width, height, bitrate, fps)) {
+            m_width = width;
+            m_height = height;
+            m_bitrate = bitrate;
+            m_fps = fps;
+            m_keyframeInterval = keyframeInterval;
+            m_frameNumber = 0;
+            m_initialized = true;
+            
+            LOG_INFO("H264Encoder: Hardware encoder initialized successfully");
+            return true;
+        } else {
+            LOG_WARN("H264Encoder: Hardware encoder failed, falling back to software");
+            m_hardwareEncoder.reset();
+        }
+    } else {
+        LOG_INFO("H264Encoder: No hardware encoders available, using software");
+    }
+    
+    // Fallback to software encoder
+    return initialize(width, height, bitrate, fps, keyframeInterval);
 }
 
 bool H264Encoder::initialize(int width, int height, int bitrate, int fps, int keyframeInterval)
@@ -107,24 +138,24 @@ void H264Encoder::setupEncoderParams(SEncParamExt& params) {
     params.iRCMode = RC_BITRATE_MODE;  // Режим контроля битрейта
     params.iMaxBitrate = m_bitrate * 2; // Максимальный битрейт (пики)
     
-    // Multi-threading
-    params.iMultipleThreadIdc = m_threads;      // Используем настроенное количество потоков
+    // Multi-threading - оптимизация для производительности
+    params.iMultipleThreadIdc = 4;      // Фиксированные 4 потока для лучшей производительности
     
-    // Деблокинг фильтр - улучшает качество при высоком сжатии
-    params.iLoopFilterDisableIdc = 0;   // 0=включен, 1=выключен, 2=частично
+    // Деблокинг фильтр - отключаем для скорости
+    params.iLoopFilterDisableIdc = 1;   // 1=выключен для производительности
     params.iLoopFilterAlphaC0Offset = 0; // Смещение альфа/бета (-6..+6)
     params.iLoopFilterBetaOffset = 0;
     
-    // Предварительная обработка
-    params.bEnableDenoise = false;       // Шумоподавление (может ухудшить детализацию)
-    params.bEnableBackgroundDetection = true; // Обнаружение фона
-    params.bEnableAdaptiveQuant = true;  // Адаптивная квантизация (улучшает качество)
-    params.bEnableSceneChangeDetect = true; // Обнаружение смены сцен
+    // Предварительная обработка - оптимизация для скорости
+    params.bEnableDenoise = false;       // Отключено для скорости
+    params.bEnableBackgroundDetection = false; // Отключено для скорости
+    params.bEnableAdaptiveQuant = false;  // Отключено для скорости
+    params.bEnableSceneChangeDetect = false; // Отключено для скорости
     
-    // Энтропийное кодирование - используем настроенный режим
-    params.iEntropyCodingModeFlag = m_entropyMode;  // 1=CABAC (лучше сжатие), 0=CAVLC (быстрее)
+    // Энтропийное кодирование - используем быстрый режим
+    params.iEntropyCodingModeFlag = 0;  // 0=CAVLC (быстрее), 1=CABAC (лучше сжатие)
     
-    // Spatial layer settings
+    // Spatial layer settings - оптимизация
     params.iSpatialLayerNum = 1;
     params.sSpatialLayers[0].iVideoWidth = m_width;
     params.sSpatialLayers[0].iVideoHeight = m_height;
@@ -364,15 +395,14 @@ void H264Encoder::setQualityParameters(int minQp, int maxQp, int bitrate) {
 
 std::vector<unsigned char> H264Encoder::encode(const QImage& image)
 {
-    if (!m_initialized || !m_encoder) {
-        LOG_ERROR("H264Encoder: Not initialized - encoder: {}, initialized: {}", 
-                  static_cast<void*>(m_encoder), m_initialized);
+    if (!m_initialized) {
+        LOG_ERROR("H264Encoder: Not initialized");
         return {};
     }
     
-    if (image.isNull()) {
-        LOG_ERROR("H264Encoder: Null image provided");
-        return {};
+    // Use hardware encoder if available
+    if (m_hardwareEncoder) {
+        return m_hardwareEncoder->encode(image);
     }
     
     // Убираем спам логов для каждого кадра
@@ -391,15 +421,27 @@ std::vector<unsigned char> H264Encoder::encode(const QImage& image)
 
 void H264Encoder::cleanup()
 {
+    if (!m_initialized) {
+        return;
+    }
+    
+    // Cleanup hardware encoder first
+    if (m_hardwareEncoder) {
+        m_hardwareEncoder.reset();
+    }
+    
+    // Cleanup software encoder
     if (m_encoder) {
         m_encoder->Uninitialize();
         WelsDestroySVCEncoder(m_encoder);
         m_encoder = nullptr;
     }
     
+    m_yuvBuffer.clear();
     m_initialized = false;
     m_width = 0;
     m_height = 0;
     m_frameNumber = 0;
-    m_yuvBuffer.clear();
+    
+    LOG_INFO("H264Encoder: Cleanup completed");
 }
