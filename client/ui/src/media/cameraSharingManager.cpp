@@ -8,6 +8,37 @@
 #include "managers/configManager.h"
 #include "utilities/constant.h"
 #include <QTimer>
+#include <QThread>
+
+// CameraDecodingWorker implementation
+CameraDecodingWorker::CameraDecodingWorker(H264Decoder* decoder, QObject* parent)
+    : QObject(parent)
+    , m_decoder(decoder)
+    , m_shouldStop(false)
+{
+}
+
+CameraDecodingWorker::~CameraDecodingWorker()
+{
+}
+
+void CameraDecodingWorker::decodeFrame(const std::vector<unsigned char>& data, int frameId)
+{
+    if (m_shouldStop || !m_decoder || !m_decoder->isInitialized()) {
+        return;
+    }
+    
+    QImage decodedImage = m_decoder->decode(data);
+    if (!decodedImage.isNull()) {
+        QPixmap pixmap = QPixmap::fromImage(decodedImage);
+        emit frameDecoded(pixmap, frameId);
+    }
+}
+
+void CameraDecodingWorker::stop()
+{
+    m_shouldStop = true;
+}
 
 CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client, ConfigManager* configManager, CameraCaptureController* cameraController, DialogsController* dialogsController, QObject* parent)
     : QObject(parent)
@@ -15,13 +46,59 @@ CameraSharingManager::CameraSharingManager(std::shared_ptr<core::Client> client,
     , m_configManager(configManager)
     , m_cameraCaptureController(cameraController)
     , m_dialogsController(dialogsController)
+    , m_currentFrameId(0)
 {
     m_h264Decoder = new H264Decoder();
     m_h264Decoder->initialize();
+    
+    // Создаем поток для декодирования
+    m_decodingThread = new QThread(this);
+    m_decodingWorker = new CameraDecodingWorker(m_h264Decoder);
+    m_decodingWorker->moveToThread(m_decodingThread);
+    
+    // Подключаем сигналы
+    connect(m_decodingWorker, &CameraDecodingWorker::frameDecoded, this, 
+            [this](const QPixmap& pixmap, int frameId) {
+                // Обновляем только если это актуальный кадр
+                if (frameId == m_currentFrameId.loadAcquire() - 1) {
+                    bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
+
+                    if (shouldBeInAdditionalScreen) {
+                        if (!m_isRemoteCameraInAdditionalScreen) {
+                            m_callWidget->hideMainScreen();
+                            m_isRemoteCameraInAdditionalScreen = true;
+                        }
+                        m_callWidget->showFrameInAdditionalScreen(pixmap, m_coreClient->getNicknameInCallWith());
+                    }
+                    else {
+                        if (m_isRemoteCameraInAdditionalScreen) {
+                            m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
+                            m_isRemoteCameraInAdditionalScreen = false;
+                        }
+                        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+                    }
+                }
+            });
+    
+    m_decodingThread->start();
 }
 
 CameraSharingManager::~CameraSharingManager()
 {
+    // Останавливаем поток декодирования
+    if (m_decodingWorker) {
+        m_decodingWorker->stop();
+        m_decodingThread->quit();
+        m_decodingThread->wait(1000); // Ждем до 1 секунды
+        delete m_decodingWorker;
+        m_decodingWorker = nullptr;
+    }
+    
+    if (m_decodingThread) {
+        delete m_decodingThread;
+        m_decodingThread = nullptr;
+    }
+    
     if (m_h264Decoder) {
         delete m_h264Decoder;
         m_h264Decoder = nullptr;
@@ -236,37 +313,35 @@ void CameraSharingManager::onIncomingCamera(const std::vector<unsigned char>& da
 {
     if (!m_callWidget || data.empty() || !m_coreClient || !m_coreClient->isViewingRemoteCamera()) return;
 
-    QPixmap frame;
-
-    if (m_h264Decoder && m_h264Decoder->isInitialized()) {
-        QImage decodedImage = m_h264Decoder->decode(data);
-        if (!decodedImage.isNull()) {
-            frame = QPixmap::fromImage(decodedImage);
-        }
-    }
-
-    if (frame.isNull()) {
+    // Отправляем кадр в поток для декодирования
+    if (m_decodingWorker && m_h264Decoder && m_h264Decoder->isInitialized()) {
+        int frameId = m_currentFrameId.fetchAndAddRelaxed(1);
+        QMetaObject::invokeMethod(m_decodingWorker, "decodeFrame", Qt::QueuedConnection,
+                                 Q_ARG(std::vector<unsigned char>, data), Q_ARG(int, frameId));
+    } else {
+        // Fallback to JPG если декодер недоступен
         const auto* raw = reinterpret_cast<const uchar*>(data.data());
+        QPixmap frame;
         frame.loadFromData(raw, static_cast<int>(data.size()), "JPG");
-    }
+        
+        if (!frame.isNull()) {
+            bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
 
-    if (frame.isNull()) return;
-
-    bool shouldBeInAdditionalScreen = m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen();
-
-    if (shouldBeInAdditionalScreen) {
-        if (!m_isRemoteCameraInAdditionalScreen) {
-            m_callWidget->hideMainScreen();
-            m_isRemoteCameraInAdditionalScreen = true;
+            if (shouldBeInAdditionalScreen) {
+                if (!m_isRemoteCameraInAdditionalScreen) {
+                    m_callWidget->hideMainScreen();
+                    m_isRemoteCameraInAdditionalScreen = true;
+                }
+                m_callWidget->showFrameInAdditionalScreen(frame, m_coreClient->getNicknameInCallWith());
+            }
+            else {
+                if (m_isRemoteCameraInAdditionalScreen) {
+                    m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
+                    m_isRemoteCameraInAdditionalScreen = false;
+                }
+                m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
+            }
         }
-        m_callWidget->showFrameInAdditionalScreen(frame, m_coreClient->getNicknameInCallWith());
-    }
-    else {
-        if (m_isRemoteCameraInAdditionalScreen) {
-            m_callWidget->removeAdditionalScreen(m_coreClient->getNicknameInCallWith());
-            m_isRemoteCameraInAdditionalScreen = false;
-        }
-        m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::CropToFit);
     }
 }
 

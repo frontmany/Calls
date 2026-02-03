@@ -4,6 +4,8 @@
 #include <QPixmap>
 #include <QTimer>
 #include <QMap>
+#include <QThread>
+#include <QAtomicInt>
 #include <vector>
 #include <memory>
 
@@ -13,6 +15,25 @@
 
 class CameraCaptureController;
 class H264Decoder;
+
+class CameraDecodingWorker : public QObject {
+    Q_OBJECT
+
+public:
+    explicit CameraDecodingWorker(H264Decoder* decoder, QObject* parent = nullptr);
+    ~CameraDecodingWorker();
+
+public slots:
+    void decodeFrame(const std::vector<unsigned char>& data, int frameId);
+    void stop();
+
+signals:
+    void frameDecoded(const QPixmap& pixmap, int frameId);
+
+private:
+    H264Decoder* m_decoder;
+    bool m_shouldStop;
+};
 class CallWidget;
 class ConfigManager;
 class MainMenuWidget;
@@ -66,4 +87,8 @@ private:
     bool m_isCameraInAdditionalScreen = false;
     bool m_isRemoteCameraInAdditionalScreen = false;
     H264Decoder* m_h264Decoder = nullptr;
+    QThread* m_decodingThread = nullptr;
+    CameraDecodingWorker* m_decodingWorker = nullptr;
+    QAtomicInt m_currentFrameId;
+    static const int MAX_QUEUE_SIZE = 10;
 };

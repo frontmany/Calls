@@ -1,6 +1,9 @@
 #include "cameraCaptureController.h"
 #include "media/frameProcessorManager.h"
 
+#include <QEventLoop>
+#include <QTimer>
+
 CameraCaptureController::CameraCaptureController(QObject* parent)
     : QObject(parent),
     m_captureTimer(new QTimer(this)),
@@ -24,7 +27,26 @@ CameraCaptureController::CameraCaptureController(QObject* parent)
 
 CameraCaptureController::~CameraCaptureController()
 {
+    // Полная остановка и очистка
     stopCapture();
+    
+    // Дополнительная очистка Qt Multimedia компонентов
+    if (m_captureSession) {
+        m_captureSession->setCamera(nullptr);
+        m_captureSession->setVideoSink(nullptr);
+        delete m_captureSession;
+        m_captureSession = nullptr;
+    }
+    
+    if (m_videoSink) {
+        delete m_videoSink;
+        m_videoSink = nullptr;
+    }
+    
+    if (m_mediaDevices) {
+        delete m_mediaDevices;
+        m_mediaDevices = nullptr;
+    }
 }
 
 void CameraCaptureController::startCapture()
@@ -71,16 +93,31 @@ void CameraCaptureController::stopCapture()
     {
         return;
     }
+    
+    m_isCapturing = false;
+    m_pendingFrames = 0;
 
-    if (m_camera)
-    {
+    // Корректно останавливаем камеру с таймаутом
+    if (m_camera) {
+        // Отключаем все сигналы ПЕРЕД остановкой
+        m_camera->disconnect();
+        
+        // Останавливаем камеру
         m_camera->stop();
+        
+        // Ждем завершения с таймаутом
+        QEventLoop loop;
+        QTimer::singleShot(1000, &loop, &QEventLoop::quit); // 1 секунда таймаут
+        
+        // Принудительно очищаем сессию
+        if (m_captureSession) {
+            m_captureSession->setCamera(nullptr);
+        }
+        
+        // Удаляем камеру
         delete m_camera;
         m_camera = nullptr;
     }
-
-    m_isCapturing = false;
-    m_pendingFrames = 0;
 
     emit captureStopped();
 }

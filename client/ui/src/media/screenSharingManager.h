@@ -4,6 +4,11 @@
 #include <QPixmap>
 #include <QTimer>
 #include <QMap>
+#include <QThread>
+#include <QQueue>
+#include <QMutex>
+#include <QWaitCondition>
+#include <QAtomicInt>
 #include <vector>
 #include <memory>
 
@@ -17,6 +22,25 @@ class CallWidget;
 class CameraCaptureController;
 class NotificationController;
 class H264Decoder;
+
+class DecodingWorker : public QObject {
+    Q_OBJECT
+
+public:
+    explicit DecodingWorker(H264Decoder* decoder, QObject* parent = nullptr);
+    ~DecodingWorker();
+
+public slots:
+    void decodeFrame(const std::vector<unsigned char>& data, int frameId);
+    void stop();
+
+signals:
+    void frameDecoded(const QPixmap& pixmap, int frameId);
+
+private:
+    H264Decoder* m_decoder;
+    bool m_shouldStop;
+};
 
 class ScreenSharingManager : public QObject {
     Q_OBJECT
@@ -64,4 +88,8 @@ private:
     QMap<core::UserOperationType, QTimer*> m_operationTimers;
     QMap<core::UserOperationType, QString> m_pendingOperationTexts;
     H264Decoder* m_h264Decoder = nullptr;
+    QThread* m_decodingThread = nullptr;
+    DecodingWorker* m_decodingWorker = nullptr;
+    QAtomicInt m_currentFrameId;
+    static const int MAX_QUEUE_SIZE = 10;
 };

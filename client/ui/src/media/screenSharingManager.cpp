@@ -8,6 +8,37 @@
 #include "utilities/constant.h"
 #include <QApplication>
 #include <QResizeEvent>
+#include <QThread>
+
+// DecodingWorker implementation
+DecodingWorker::DecodingWorker(H264Decoder* decoder, QObject* parent)
+    : QObject(parent)
+    , m_decoder(decoder)
+    , m_shouldStop(false)
+{
+}
+
+DecodingWorker::~DecodingWorker()
+{
+}
+
+void DecodingWorker::decodeFrame(const std::vector<unsigned char>& data, int frameId)
+{
+    if (m_shouldStop || !m_decoder || !m_decoder->isInitialized()) {
+        return;
+    }
+    
+    QImage decodedImage = m_decoder->decode(data);
+    if (!decodedImage.isNull()) {
+        QPixmap pixmap = QPixmap::fromImage(decodedImage);
+        emit frameDecoded(pixmap, frameId);
+    }
+}
+
+void DecodingWorker::stop()
+{
+    m_shouldStop = true;
+}
 
 ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client, ScreenCaptureController* screenController, DialogsController* dialogsController, CameraCaptureController* cameraController, QObject* parent)
     : QObject(parent)
@@ -15,13 +46,46 @@ ScreenSharingManager::ScreenSharingManager(std::shared_ptr<core::Client> client,
     , m_screenCaptureController(screenController)
     , m_dialogsController(dialogsController)
     , m_cameraCaptureController(cameraController)
+    , m_currentFrameId(0)
 {
     m_h264Decoder = new H264Decoder();
     m_h264Decoder->initialize();
+    
+    // Создаем поток для декодирования
+    m_decodingThread = new QThread(this);
+    m_decodingWorker = new DecodingWorker(m_h264Decoder);
+    m_decodingWorker->moveToThread(m_decodingThread);
+    
+    // Подключаем сигналы
+    connect(m_decodingWorker, &DecodingWorker::frameDecoded, this, 
+            [this](const QPixmap& pixmap, int frameId) {
+                // Обновляем только если это актуальный кадр
+                if (frameId == m_currentFrameId.loadAcquire() - 1) {
+                    if (m_callWidget) {
+                        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+                    }
+                }
+            });
+    
+    m_decodingThread->start();
 }
 
 ScreenSharingManager::~ScreenSharingManager()
 {
+    // Останавливаем поток декодирования
+    if (m_decodingWorker) {
+        m_decodingWorker->stop();
+        m_decodingThread->quit();
+        m_decodingThread->wait(1000); // Ждем до 1 секунды
+        delete m_decodingWorker;
+        m_decodingWorker = nullptr;
+    }
+    
+    if (m_decodingThread) {
+        delete m_decodingThread;
+        m_decodingThread = nullptr;
+    }
+    
     if (m_h264Decoder) {
         delete m_h264Decoder;
         m_h264Decoder = nullptr;
@@ -231,32 +295,13 @@ void ScreenSharingManager::onIncomingScreen(const std::vector<unsigned char>& da
         return;
     }
 
-    QPixmap frame;
-    
-    // Always use H.264 format now - no format detection needed
-    if (m_h264Decoder && m_h264Decoder->isInitialized()) {
-        // Убираем спам логов для каждого кадра
-        // LOG_DEBUG("ScreenSharingManager: Decoding H.264 data...");
-        // Decode H.264 data directly (no version byte to skip)
-        QImage decodedImage = m_h264Decoder->decode(data);
-        if (!decodedImage.isNull()) {
-            frame = QPixmap::fromImage(decodedImage);
-            // Убираем спам логов для каждого кадра
-            // LOG_DEBUG("ScreenSharingManager: H.264 decoded successfully, image size: {}x{}", 
-            //          decodedImage.width(), decodedImage.height());
-        } else {
-            LOG_WARN("ScreenSharingManager: H.264 decoder returned null image");
-        }
+    // Отправляем кадр в поток для декодирования
+    if (m_decodingWorker && m_h264Decoder && m_h264Decoder->isInitialized()) {
+        int frameId = m_currentFrameId.fetchAndAddRelaxed(1);
+        QMetaObject::invokeMethod(m_decodingWorker, "decodeFrame", Qt::QueuedConnection,
+                                 Q_ARG(std::vector<unsigned char>, data), Q_ARG(int, frameId));
     } else {
-        LOG_ERROR("ScreenSharingManager: H.264 decoder not available or not initialized");
-    }
-    
-    if (!frame.isNull()) {
-        // Убираем спам логов для каждого кадра
-        // LOG_DEBUG("ScreenSharingManager: Displaying frame in main screen");
-        m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
-    } else {
-        LOG_WARN("ScreenSharingManager: Frame is null, not displaying");
+        LOG_ERROR("ScreenSharingManager: Decoding worker or H.264 decoder not available");
     }
 }
 
