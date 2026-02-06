@@ -101,7 +101,10 @@ void UpdateManager::onUpdateLoaded(bool emptyUpdate)
         m_dialogsController->setUpdateDialogStatus("Restarting...");
 
         if (m_coreClient->isAuthorized()) {
-            m_coreClient->logout();
+            std::error_code ec = m_coreClient->logout();
+            if (ec) {
+                LOG_WARN("Logout failed during update: {}", ec.message());
+            }
         }
         else {
             QTimer::singleShot(UPDATE_APPLIER_DELAY_MS, [this]() {

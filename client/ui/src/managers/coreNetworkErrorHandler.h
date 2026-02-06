@@ -3,19 +3,13 @@
 #include <QObject>
 #include <memory>
 
-#include "core.h"
-#include "utilities/logger.h"
-
 class AuthorizationWidget;
 class DialogsController;
 class NotificationController;
 class NavigationController;
-class ConfigManager;
 class MainMenuWidget;
 class AudioEffectsManager;
 class CallManager;
-class ScreenSharingManager;
-class CameraSharingManager;
 
 class CoreNetworkErrorHandler : public QObject {
     Q_OBJECT
@@ -24,7 +18,7 @@ public:
     explicit CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
-    void setManagers(CallManager* callManager, ScreenSharingManager* screenSharingManager, CameraSharingManager* cameraSharingManager);
+    void setManagers(CallManager* callManager);
     void setNotificationController(NotificationController* notificationController);
 
 public slots:
@@ -42,6 +36,4 @@ private:
     NotificationController* m_notificationController = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     CallManager* m_callManager = nullptr;
-    ScreenSharingManager* m_screenSharingManager = nullptr;
-    CameraSharingManager* m_cameraSharingManager = nullptr;
 };

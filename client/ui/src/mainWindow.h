@@ -6,17 +6,12 @@
 #include <QFontDatabase>
 #include <memory>
 
-#include "updater.h"
-#include "core.h"
 #include "utilities/event.h"
 
 class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
-class DialogsController;
-class NotificationController;
-class ScreenCaptureController;
-class CameraCaptureController; 
+ 
 class ConfigManager;
 class AudioEffectsManager;
 class AudioSettingsManager;
@@ -25,8 +20,6 @@ class UpdateManager;
 class NavigationController;
 class AuthorizationManager;
 class CallManager;
-class ScreenSharingManager;
-class CameraSharingManager;
 class CoreNetworkErrorHandler;
 class UpdaterNetworkErrorHandler;
 
@@ -47,8 +40,6 @@ private slots:
     void onWindowTitleChanged(const QString& title);
     void onWindowFullscreenRequested();
     void onWindowMaximizedRequested();
-    void onStopScreenCaptureRequested();
-    void onStopCameraCaptureRequested();
     void onEndCallFullscreenExitRequested(); 
     void onStopAllRingtonesRequested();
 
@@ -58,13 +49,9 @@ private:
     void initializeAudioDevicesWatcher();
     void initializeAudioSettingsManager();
     void initializeUpdateManager();
-    void initializeScreenSharingManager();
-    void initializeCameraSharingManager();
     void initializeDialogsController();
     void initializeNotificationController();
     void initializeNavigationController();
-    void initializeScreenCaptureController();
-    void initializeCameraCaptureController();
     void initializeAuthorizationManager();
     void initializeCallManager();
     void initializeCoreNetworkErrorHandler();
@@ -89,8 +76,6 @@ private:
     CallWidget* m_callWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
     NotificationController* m_notificationController = nullptr;
-    ScreenCaptureController* m_screenCaptureController = nullptr;
-    CameraCaptureController* m_CameraCaptureController = nullptr;
     ConfigManager* m_configManager = nullptr;
 
     std::shared_ptr<core::Client> m_coreClient = nullptr;
@@ -103,8 +88,6 @@ private:
     NavigationController* m_navigationController = nullptr;
     AuthorizationManager* m_authorizationManager = nullptr;
     CallManager* m_callManager = nullptr;
-    ScreenSharingManager* m_screenSharingManager = nullptr;
-    CameraSharingManager* m_cameraSharingManager = nullptr;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler = nullptr;
     UpdaterNetworkErrorHandler* m_updaterNetworkErrorHandler = nullptr;
 };

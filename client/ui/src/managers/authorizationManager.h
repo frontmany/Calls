@@ -23,7 +23,6 @@ public:
 public slots:
     void onAuthorizationButtonClicked(const QString& friendNickname);
     void onAuthorizationResult(std::error_code ec);
-    void onLogoutCompleted();
 
 private:
     std::shared_ptr<core::Client> m_coreClient = nullptr;

@@ -21,7 +21,6 @@ private:
         ConnectionRestored,
         ConnectionDownWithUser,
         ConnectionRestoredWithUser,
-        PendingOperation,
         UpdateError,
         Error
     };
@@ -62,9 +61,6 @@ public:
     // ConnectionRestoredWithUser - автоскрытие через таймер
     void showConnectionRestoredWithUser(const QString& statusText, int autoHideMs = 0);
 
-    // PendingOperation - управляется через стек
-    void showPendingOperation(const QString& statusText, core::UserOperationType key);
-    void hidePendingOperation(core::UserOperationType key);
 
     // UpdateError - автоскрытие через таймер
     void showUpdateError(int autoHideMs = 0);

@@ -11,8 +11,6 @@
 #include "widgets/callWidget.h"
 #include "managers/dialogsController.h"
 #include "managers/notificationController.h"
-#include "media/screenCaptureController.h"
-#include "media/cameraCaptureController.h"
 #include "managers/configManager.h"
 #include "utilities/logger.h"
 #include "utilities/diagnostics.h"
@@ -28,8 +26,6 @@
 #include "managers/coreNetworkErrorHandler.h"
 #include "managers/updaterNetworkErrorHandler.h"
 #include "managers/callManager.h"
-#include "media/screenSharingManager.h"
-#include "media/cameraSharingManager.h"
 #include "media/audioDevicesWatcher.h"
 
 #include "events/coreEventListener.h"
@@ -58,8 +54,6 @@ void MainWindow::init() {
     initializeMainMenuWidget();
     initializeCallWidget();
 
-    initializeScreenCaptureController();
-    initializeCameraCaptureController();
     initializeDialogsController();
     initializeNotificationController();
     initializeAudioManager();
@@ -69,8 +63,6 @@ void MainWindow::init() {
     initializeUpdateManager();
     initializeAuthorizationManager();
     initializeCallManager();
-    initializeScreenSharingManager();
-    initializeCameraSharingManager();
     initializeCoreNetworkErrorHandler();
     initializeUpdaterNetworkErrorHandler();
 
@@ -111,7 +103,7 @@ void MainWindow::customEvent(QEvent* event) {
             m_configManager->getServerHost().toStdString(),
             m_configManager->getMainServerTcpPort().toStdString(),
             m_configManager->getMainServerUdpPort().toStdString(),
-            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_screenSharingManager, m_cameraSharingManager, m_coreNetworkErrorHandler)
+            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
         );
 
         if (!coreStarted) {
@@ -141,7 +133,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
             event->accept();
         }
         else {
-            event->ignore();
+            event->accept();
         }
     }
     else {
@@ -194,14 +186,6 @@ void MainWindow::initializeCentralStackedWidget() {
     m_mainLayout->addLayout(m_stackedLayout);
 }
 
-void MainWindow::initializeScreenCaptureController() {
-    m_screenCaptureController = new ScreenCaptureController(this);
-}
-
-void MainWindow::initializeCameraCaptureController() {
-    m_CameraCaptureController = new CameraCaptureController(this);
-}
-
 void MainWindow::initializeDialogsController() {
     m_dialogsController = new DialogsController(this);
     connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
@@ -248,7 +232,7 @@ void MainWindow::initializeAuthorizationManager() {
 }
 
 void MainWindow::initializeCallManager() {
-    m_callManager = new CallManager(m_coreClient, m_audioManager, m_navigationController, m_screenCaptureController, m_CameraCaptureController, m_dialogsController, m_updateManager, this);
+    m_callManager = new CallManager(m_coreClient, m_audioManager, m_navigationController, m_dialogsController, m_updateManager, this);
     if (m_mainMenuWidget && m_callWidget && m_stackedLayout) {
         m_callManager->setWidgets(m_mainMenuWidget, m_callWidget, m_stackedLayout);
     }
@@ -257,33 +241,13 @@ void MainWindow::initializeCallManager() {
     }
 }
 
-void MainWindow::initializeScreenSharingManager() {
-    m_screenSharingManager = new ScreenSharingManager(m_coreClient, m_screenCaptureController, m_dialogsController, m_CameraCaptureController, this);
-    if (m_callWidget) {
-        m_screenSharingManager->setWidgets(m_callWidget);
-    }
-    if (m_screenSharingManager && m_notificationController) {
-        m_screenSharingManager->setNotificationController(m_notificationController);
-    }
-}
-
-void MainWindow::initializeCameraSharingManager() {
-    m_cameraSharingManager = new CameraSharingManager(m_coreClient, m_configManager, m_CameraCaptureController, m_dialogsController, this);
-    if (m_callWidget && m_mainMenuWidget) {
-        m_cameraSharingManager->setWidgets(m_callWidget, m_mainMenuWidget);
-    }
-    if (m_cameraSharingManager && m_notificationController) {
-        m_cameraSharingManager->setNotificationController(m_notificationController);
-    }
-}
-
 void MainWindow::initializeCoreNetworkErrorHandler() {
     m_coreNetworkErrorHandler = new CoreNetworkErrorHandler(m_coreClient, m_navigationController, m_configManager, m_audioManager, this);
     if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
         m_coreNetworkErrorHandler->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
     }
-    if (m_callManager && m_screenSharingManager && m_cameraSharingManager) {
-        m_coreNetworkErrorHandler->setManagers(m_callManager, m_screenSharingManager, m_cameraSharingManager);
+    if (m_callManager) {
+        m_coreNetworkErrorHandler->setManagers(m_callManager);
     }
     if (m_coreNetworkErrorHandler && m_notificationController) {
         m_coreNetworkErrorHandler->setNotificationController(m_notificationController);
@@ -400,38 +364,27 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::hangupClicked, m_callManager, &CallManager::onEndCallButtonClicked);
         }
-        if (m_screenSharingManager) {
-            connect(m_callWidget, &CallWidget::screenShareClicked, m_screenSharingManager, &ScreenSharingManager::onScreenShareButtonClicked);
-        }
-        if (m_cameraSharingManager) {
-            connect(m_callWidget, &CallWidget::cameraClicked, m_cameraSharingManager, &CameraSharingManager::onCameraButtonClicked);
+        // Подключаем сигналы экрана и камеры напрямую к core Client
+        if (m_coreClient) {
+            connect(m_callWidget, &CallWidget::screenShareClicked, [this](bool toggled) {
+                if (toggled) {
+                    m_coreClient->startScreenSharing();
+                } else {
+                    m_coreClient->stopScreenSharing();
+                }
+            });
+            connect(m_callWidget, &CallWidget::cameraClicked, [this](bool toggled) {
+                if (toggled) {
+                    m_coreClient->startCameraSharing();
+                } else {
+                    m_coreClient->stopCameraSharing();
+                }
+            });
         }
     }
 
-    // ScreenCaptureController connections
-    if (m_screenCaptureController && m_screenSharingManager) {
-        connect(m_screenCaptureController, &ScreenCaptureController::captureStarted, m_screenSharingManager, &ScreenSharingManager::onScreenCaptureStarted);
-        connect(m_screenCaptureController, &ScreenCaptureController::captureStopped, m_screenSharingManager, &ScreenSharingManager::onScreenCaptureStopped);
-        connect(m_screenCaptureController, &ScreenCaptureController::screenCaptured, m_screenSharingManager, &ScreenSharingManager::onScreenCaptured);
-    }
-
-    // CameraCaptureController connections
-    if (m_CameraCaptureController && m_cameraSharingManager) {
-        connect(m_CameraCaptureController, &CameraCaptureController::cameraCaptured, m_cameraSharingManager, &CameraSharingManager::onCameraCaptured);
-        connect(m_CameraCaptureController, &CameraCaptureController::captureStarted, m_cameraSharingManager, &CameraSharingManager::onCameraCaptureStarted);
-        connect(m_CameraCaptureController, &CameraCaptureController::captureStopped, m_cameraSharingManager, &CameraSharingManager::onCameraCaptureStopped);
-        connect(m_CameraCaptureController, &CameraCaptureController::errorOccurred, m_cameraSharingManager, &CameraSharingManager::onCameraErrorOccurred);
-    }
 
     // DialogsController connections
-    if (m_dialogsController && m_screenSharingManager) {
-        connect(m_dialogsController, &DialogsController::screenSelected, m_screenSharingManager, &ScreenSharingManager::onScreenSelected);
-        connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {
-            if (m_callWidget) {
-                m_callWidget->setScreenShareButtonActive(false);
-            }
-        });
-    }
 
     // Audio settings dialog connections
     if (m_dialogsController && m_audioSettingsManager) {
@@ -454,8 +407,10 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_navigationController, &NavigationController::windowTitleChanged, this, &MainWindow::onWindowTitleChanged);
         connect(m_navigationController, &NavigationController::windowFullscreenRequested, this, &MainWindow::onWindowFullscreenRequested);
         connect(m_navigationController, &NavigationController::windowMaximizedRequested, this, &MainWindow::onWindowMaximizedRequested);
-        if (m_cameraSharingManager) {
-            connect(m_navigationController, &NavigationController::callWidgetShown, m_cameraSharingManager, &CameraSharingManager::initializeCameraForCall);
+        if (m_coreClient) {
+            connect(m_navigationController, &NavigationController::callWidgetShown, [this]() {
+                // Инициализация камеры при начале звонка будет происходить в core
+            });
         }
     }
     if (m_updateManager) {
@@ -465,9 +420,6 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_callManager, &CallManager::stopScreenCaptureRequested, this, &MainWindow::onStopScreenCaptureRequested);
         connect(m_callManager, &CallManager::stopCameraCaptureRequested, this, &MainWindow::onStopCameraCaptureRequested);
         connect(m_callManager, &CallManager::endCallFullscreenExitRequested, this, &MainWindow::onEndCallFullscreenExitRequested);
-    }
-    if (m_screenSharingManager) {
-        connect(m_screenSharingManager, &ScreenSharingManager::fullscreenExitRequested, this, &MainWindow::onWindowMaximizedRequested);
     }
 }
 
@@ -579,20 +531,6 @@ void MainWindow::onWindowMaximizedRequested()
         m_callWidget->exitFullscreen();
     }
     showMaximized();
-}
-
-void MainWindow::onStopScreenCaptureRequested()
-{
-    if (m_screenSharingManager) {
-        m_screenSharingManager->stopLocalScreenCapture();
-    }
-}
-
-void MainWindow::onStopCameraCaptureRequested()
-{
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->stopLocalCameraCapture();
-    }
 }
 
 void MainWindow::onEndCallFullscreenExitRequested()

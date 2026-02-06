@@ -22,11 +22,6 @@ file(GLOB_RECURSE SOURCES
 )
 source_group("Source Files" FILES ${SOURCES})
 
-# Настраиваемый путь к Qt6
-# Можно задать через:
-#   cmake -DCMAKE_PREFIX_PATH=/path/to/Qt6
-#   или через переменную окружения CMAKE_PREFIX_PATH
-#   (альтернативно: cmake -DQt6_DIR=/path/to/Qt6/lib/cmake/Qt6)
 if(WIN32)
     # Значение по умолчанию для Windows
     set(QT6_DEFAULT_PATH "C:/Qt/6.9.3/msvc2022_64")

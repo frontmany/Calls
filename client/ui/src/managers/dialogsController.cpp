@@ -48,6 +48,7 @@ DialogsController::~DialogsController()
 {
     hideUpdatingDialog();
     hideScreenShareDialog();
+    hideCameraShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
     hideAudioSettingsDialog();
@@ -254,6 +255,18 @@ void DialogsController::hideScreenShareDialog()
         m_screenShareOverlay->deleteLater();
         m_screenShareOverlay = nullptr;
     }
+}
+
+void DialogsController::showCameraShareDialog()
+{
+    // Camera share dialog is just a notification, not a separate dialog
+    // This method can be used to show a camera sharing indicator if needed
+}
+
+void DialogsController::hideCameraShareDialog()
+{
+    // Camera share dialog is just a notification, not a separate dialog
+    // This method can be used to hide a camera sharing indicator if needed
 }
 
 void DialogsController::setUpdateLoadingProgress(double progress)

@@ -35,6 +35,9 @@ public:
 
     void showScreenShareDialog(const QList<QScreen*>& screens);
     void hideScreenShareDialog();
+    
+    void showCameraShareDialog();
+    void hideCameraShareDialog();
 
     void showAlreadyRunningDialog();
     void hideAlreadyRunningDialog();

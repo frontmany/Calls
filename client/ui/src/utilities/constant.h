@@ -23,7 +23,7 @@ constexpr int ERROR_MESSAGE_DURATION_MS = 2500;            // Default error mess
 constexpr int UPDATE_APPLIER_DELAY_MS = 600;               // Delay before launching update applier
 constexpr int BLUR_ANIMATION_DURATION_MS = 1200;           // Blur animation duration
 constexpr int UI_ANIMATION_DURATION_MS = 200;              // Standard UI animation duration
-constexpr int SCREEN_CAPTURE_INTERVAL_MS = 50;             // Screen capture frame interval (~20 FPS)
+constexpr int SCREEN_CAPTURE_INTERVAL_MS = 33;             // Screen capture frame interval (~30 FPS)
 constexpr int CAMERA_CAPTURE_INTERVAL_MS = 50;             // Camera capture frame interval (~20 FPS)
 
 // Incoming call constants
@@ -78,8 +78,8 @@ constexpr int H264_SCREEN_WIDTH = 1920;                     // Screen width: 108
 constexpr int H264_SCREEN_HEIGHT = 1080;                    // Screen height: 1080p (adaptive)
 
 // H.264 encoding parameters
-constexpr int H264_CAMERA_FPS = 20;                         // Camera FPS for performance
-constexpr int H264_SCREEN_FPS = 20;                         // Screen FPS for better quality
+constexpr int H264_CAMERA_FPS = 30;                         // Camera FPS for performance
+constexpr int H264_SCREEN_FPS = 30;                         // Screen FPS for better quality
 constexpr int H264_KEYINT = 30;                            // Keyframe interval in frames
 
 // H.264 Quality presets

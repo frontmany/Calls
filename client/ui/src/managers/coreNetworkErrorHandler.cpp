@@ -7,8 +7,6 @@
 #include "managers/configManager.h"
 #include "managers/callManager.h"
 #include "media/audioEffectsManager.h"
-#include "media/screenSharingManager.h"
-#include "media/cameraSharingManager.h"
 #include <QTimer>
 
 CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
@@ -27,11 +25,9 @@ void CoreNetworkErrorHandler::setWidgets(AuthorizationWidget* authWidget, MainMe
     m_dialogsController = dialogsController;
 }
 
-void CoreNetworkErrorHandler::setManagers(CallManager* callManager, ScreenSharingManager* screenSharingManager, CameraSharingManager* cameraSharingManager)
+void CoreNetworkErrorHandler::setManagers(CallManager* callManager)
 {
     m_callManager = callManager;
-    m_screenSharingManager = screenSharingManager;
-    m_cameraSharingManager = cameraSharingManager;
 }
 
 void CoreNetworkErrorHandler::setNotificationController(NotificationController* notificationController)
@@ -58,22 +54,15 @@ void CoreNetworkErrorHandler::onConnectionDown()
     if (m_callManager) {
         m_callManager->hideOperationDialog();
     }
-    if (m_screenSharingManager) {
-        m_screenSharingManager->hideOperationDialog();
-    }
-    if (m_cameraSharingManager) {
-        m_cameraSharingManager->hideOperationDialog();
-    }
 
     if (m_coreClient->isAuthorized()) {
         if (m_coreClient && m_coreClient->isActiveCall()) {
-            if (m_screenSharingManager) {
-                m_screenSharingManager->stopLocalScreenCapture();
-                m_screenSharingManager->requestFullscreenExit();
+            // Останавливаем трансляции через core
+            if (m_coreClient->isScreenSharing()) {
+                m_coreClient->stopScreenSharing();
             }
-
-            if (m_cameraSharingManager) {
-                m_cameraSharingManager->stopLocalCameraCapture();
+            if (m_coreClient->isCameraSharing()) {
+                m_coreClient->stopCameraSharing();
             }
             
             if (m_callManager) {

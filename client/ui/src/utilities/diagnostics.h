@@ -9,3 +9,4 @@ namespace ui::utilities
         const std::string& crashDumpDirectory,
         const std::string& appVersion);
 }
+ 

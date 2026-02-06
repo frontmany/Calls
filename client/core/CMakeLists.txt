@@ -28,6 +28,7 @@ endif()
 
 set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
 set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
+set(FFMPEG_DIR "${ROOT_DIR}/vendor/ffmpeg")
 
 if (WIN32) 
     set(CRYPTOPP_DIR "${ROOT_DIR}/vendor/cryptopp/x64/Output")
@@ -40,6 +41,7 @@ endif()
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${PORTAUDIO_DIR}"
     "${OPUS_DIR}"
+    "${FFMPEG_DIR}"
     "${CRYPTOPP_DIR}"
     "${SPDLOG_DIR}"
 )
@@ -48,6 +50,9 @@ if(WIN32)
     target_link_libraries(${PROJECT_NAME} PUBLIC
         "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
         "${OPUS_DIR}/$<CONFIG>/opus.lib"
+        "${FFMPEG_DIR}/lib/avcodec.lib"
+        "${FFMPEG_DIR}/lib/avutil.lib"
+        "${FFMPEG_DIR}/lib/swscale.lib"
         "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
         ole32 
@@ -58,6 +63,9 @@ else()
     target_link_libraries(${PROJECT_NAME} PUBLIC
         "${PORTAUDIO_DIR}/libportaudio.a"
         "${OPUS_DIR}/libopus.a"
+        "${FFMPEG_DIR}/lib/libavcodec.a"
+        "${FFMPEG_DIR}/lib/libavutil.a"
+        "${FFMPEG_DIR}/lib/libswscale.a"
         "${CRYPTOPP_DIR}/libcryptopp.a"
         libspdlog.a
     )
@@ -67,6 +75,7 @@ endif()
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${ROOT_DIR}/vendor/opus/include     
     ${ROOT_DIR}/vendor/portaudio/include
+    ${ROOT_DIR}/vendor/ffmpeg/include
     ${ROOT_DIR}/vendor/json/include                    
     ${ROOT_DIR}/vendor/cryptopp               
     ${ROOT_DIR}/vendor/spdlog/include              

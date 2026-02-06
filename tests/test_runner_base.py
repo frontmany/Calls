@@ -122,20 +122,6 @@ class CallbacksHandler(callsClientPy.EventListener):
         self.events.append(event)
         print(f"[{self.name}] Authorization result: {status}")
     
-    def onStartOutgoingCallResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"call_result_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Start outgoing call result: {status}")
-    
-    def onAcceptCallResult(self, ec_value, nickname):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"accept_result_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Accept call result: {status} from {nickname}")
-    
     def onOutgoingCallTimeout(self, ec_value):
         self.events.append("max_time_reached")
         print(f"[{self.name}] Outgoing call timeout")
@@ -169,59 +155,6 @@ class CallbacksHandler(callsClientPy.EventListener):
     def onCallEndedByRemote(self, ec_value):
         self.events.append("remote_ended_call")
         print(f"[{self.name}] Remote user ended call")
-    
-    def onLogoutCompleted(self):
-        self.events.append("logout_completed")
-        print(f"[{self.name}] Logout completed")
-    
-    def onEndCallResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"end_call_result_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] End call result: {status}")
-    
-    def onDeclineCallResult(self, ec_value, nickname):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"decline_result_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Decline call result: {status} from {nickname}")
-    
-    def onStopOutgoingCallResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"stop_outgoing_result_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Stop outgoing call result: {status}")
-    
-    def onStartScreenSharingResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"start_screen_sharing_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Start screen sharing result: {status}")
-    
-    def onStopScreenSharingResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"stop_screen_sharing_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Stop screen sharing result: {status}")
-    
-    def onStartCameraSharingResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"start_camera_sharing_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Start camera sharing result: {status}")
-    
-    def onStopCameraSharingResult(self, ec_value):
-        is_success = (ec_value == 0)
-        status = "OK" if is_success else "ERROR"
-        event = f"stop_camera_sharing_{status}"
-        self.events.append(event)
-        print(f"[{self.name}] Stop camera sharing result: {status}")
     
     def onIncomingScreenSharingStarted(self):
         self.events.append("incoming_screen_sharing_started")

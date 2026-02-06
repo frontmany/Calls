@@ -106,18 +106,3 @@ void AuthorizationManager::onAuthorizationResult(std::error_code ec) {
     }
 }
 
-void AuthorizationManager::onLogoutCompleted()
-{
-    // Сбросить состояние клиента перед закрытием приложения
-    if (m_coreClient) {
-        // Вызываем reset через stop(), который также останавливает сеть
-        m_coreClient->stop();
-    }
-
-    if (m_updateManager->shouldRestart()) {
-        m_updateManager->launchUpdateApplier();
-    }
-    else {
-        QApplication::quit();
-    }
-}

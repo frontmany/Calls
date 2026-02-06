@@ -26,92 +26,6 @@ public:
         }
     }
 
-    void onLogoutCompleted() override
-    {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onLogoutCompleted);
-    }
-
-    void onStartOutgoingCallResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onStartOutgoingCallResult")) {
-            py_func(ec_value);
-        }
-    }
-
-    void onStopOutgoingCallResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onStopOutgoingCallResult")) {
-            py_func(ec_value);
-        }
-    }
-
-    void onAcceptCallResult(std::error_code ec, const std::string& nickname) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onAcceptCallResult")) {
-            py_func(ec_value, nickname);
-        }
-    }
-
-    void onDeclineCallResult(std::error_code ec, const std::string& nickname) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onDeclineCallResult")) {
-            py_func(ec_value, nickname);
-        }
-    }
-
-    void onEndCallResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onEndCallResult")) {
-            py_func(ec_value);
-        }
-    }
-
-    void onStartScreenSharingResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onStartScreenSharingResult")) {
-            py_func(ec_value);
-        }
-    }
-
-    void onStopScreenSharingResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onStopScreenSharingResult")) {
-            py_func(ec_value);
-        }
-    }
-
-    void onStartCameraSharingResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onStartCameraSharingResult")) {
-            py_func(ec_value);
-        }
-    }
-
-    void onStopCameraSharingResult(std::error_code ec) override
-    {
-        int ec_value = static_cast<int>(ec.value());
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onStopCameraSharingResult")) {
-            py_func(ec_value);
-        }
-    }
-
     void onIncomingScreenSharingStarted() override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreenSharingStarted);
@@ -127,6 +41,21 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreen, data);
     }
 
+    void onScreenSharingStarted() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onScreenSharingStarted);
+    }
+
+    void onScreenSharingStopped() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onScreenSharingStopped);
+    }
+
+    void onStartScreenSharingError() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onStartScreenSharingError);
+    }
+
     void onIncomingCameraSharingStarted() override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStarted);
@@ -140,6 +69,21 @@ public:
     void onIncomingCamera(const std::vector<unsigned char>& data) override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCamera, data);
+    }
+
+    void onCameraSharingStarted() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onCameraSharingStarted);
+    }
+
+    void onCameraSharingStopped() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onCameraSharingStopped);
+    }
+
+    void onStartCameraSharingError() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onStartCameraSharingError);
     }
 
     void onOutgoingCallAccepted() override
@@ -229,40 +173,18 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onAuthorizationResult", [](core::EventListener& self, int ec_value) {
             self.onAuthorizationResult(std::error_code(ec_value, core::error_category()));
         }, py::arg("ec_value"))
-        .def("onLogoutCompleted", &core::EventListener::onLogoutCompleted)
-        .def("onStartOutgoingCallResult", [](core::EventListener& self, int ec_value) {
-            self.onStartOutgoingCallResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onStopOutgoingCallResult", [](core::EventListener& self, int ec_value) {
-            self.onStopOutgoingCallResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onAcceptCallResult", [](core::EventListener& self, int ec_value, const std::string& nickname) {
-            self.onAcceptCallResult(std::error_code(ec_value, core::error_category()), nickname);
-        }, py::arg("ec_value"), py::arg("nickname"))
-        .def("onDeclineCallResult", [](core::EventListener& self, int ec_value, const std::string& nickname) {
-            self.onDeclineCallResult(std::error_code(ec_value, core::error_category()), nickname);
-        }, py::arg("ec_value"), py::arg("nickname"))
-        .def("onEndCallResult", [](core::EventListener& self, int ec_value) {
-            self.onEndCallResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onStartScreenSharingResult", [](core::EventListener& self, int ec_value) {
-            self.onStartScreenSharingResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onStopScreenSharingResult", [](core::EventListener& self, int ec_value) {
-            self.onStopScreenSharingResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onStartCameraSharingResult", [](core::EventListener& self, int ec_value) {
-            self.onStartCameraSharingResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onStopCameraSharingResult", [](core::EventListener& self, int ec_value) {
-            self.onStopCameraSharingResult(std::error_code(ec_value, core::error_category()));
-        }, py::arg("ec_value"))
-        .def("onIncomingScreenSharingStarted", &core::EventListener::onIncomingScreenSharingStarted)
+.def("onIncomingScreenSharingStarted", &core::EventListener::onIncomingScreenSharingStarted)
         .def("onIncomingScreenSharingStopped", &core::EventListener::onIncomingScreenSharingStopped)
         .def("onIncomingScreen", &core::EventListener::onIncomingScreen)
+        .def("onScreenSharingStarted", &core::EventListener::onScreenSharingStarted)
+        .def("onScreenSharingStopped", &core::EventListener::onScreenSharingStopped)
+        .def("onStartScreenSharingError", &core::EventListener::onStartScreenSharingError)
         .def("onIncomingCameraSharingStarted", &core::EventListener::onIncomingCameraSharingStarted)
         .def("onIncomingCameraSharingStopped", &core::EventListener::onIncomingCameraSharingStopped)
         .def("onIncomingCamera", &core::EventListener::onIncomingCamera)
+        .def("onCameraSharingStarted", &core::EventListener::onCameraSharingStarted)
+        .def("onCameraSharingStopped", &core::EventListener::onCameraSharingStopped)
+        .def("onStartCameraSharingError", &core::EventListener::onStartCameraSharingError)
         .def("onOutgoingCallAccepted", &core::EventListener::onOutgoingCallAccepted)
         .def("onOutgoingCallDeclined", &core::EventListener::onOutgoingCallDeclined)
         .def("onOutgoingCallTimeout", [](core::EventListener& self, int ec_value) {

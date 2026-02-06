@@ -13,35 +13,39 @@
 #include <atomic>
 
 #include "keyManager.h"
-#include "errorCode.h"
-#include "pendingRequests.h"
+#include "utilities/errorCode.h"
+#include "network/tcp/client.h"
+#include "network/udp/client.h"
 #include "packetType.h"
 #include "eventListener.h"
 #include "clientStateManager.h"
-#include "packetProcessor.h"
-#include "network/tcp/controlController.h"
-#include "network/udp/mediaController.h"
-#include "audio/audioEngine.h"
-#include "userOperationManager.h"
-#include "services/MediaEncryptionService.h"
-#include "services/CallService.h"
-#include "services/AuthorizationService.h"
-#include "services/MediaSharingService.h"
+#include "packetProcessingService.h"
+#include "authorizationService.h"
+#include "callService.h"
 #include "json.hpp"
+
+#include "media/audio/audioEngine.h"
+#include "media/mediaController.h"
 
 namespace core
 {
     void initializeDiagnostics(const std::string& appDirectory,
         const std::string& logDirectory,
         const std::string& crashDumpDirectory,
-        const std::string& appVersion);
+        const std::string& appVersion
+    );
 
     class Client {
     public:
-        Client();
+        Client() = default;
         ~Client();
 
-        bool start(const std::string& host, const std::string& controlPort, const std::string& mediaPort, std::shared_ptr<EventListener> eventListener);
+        bool start(const std::string& host,
+            const std::string& tcpPort,
+            const std::string& udpPort,
+            std::shared_ptr<EventListener> eventListener
+        );
+
         void stop();
 
         void refreshAudioDevices();
@@ -143,18 +147,18 @@ namespace core
         void onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext);
 
     private:
-        PendingRequests m_pendingRequests;
         ClientStateManager m_stateManager;
         KeyManager m_keyManager;
-        core::network::udp::MediaController m_mediaController;
-        std::unique_ptr<core::network::tcp::ControlController> m_controlController;
-        core::audio::AudioEngine m_audioEngine;
+
+        std::unique_ptr<network::udp::Client> m_udpClient;
+        std::unique_ptr<network::tcp::Client> m_tcpClient;
+
         std::shared_ptr<EventListener> m_eventListener;
-        std::unique_ptr<PacketProcessor> m_packetProcessor;
-        UserOperationManager m_operationManager;
-        core::services::MediaEncryptionService m_mediaEncryptionService;
-        std::unique_ptr<core::services::CallService> m_callService;
-        std::unique_ptr<core::services::AuthorizationService> m_authorizationService;
-        std::unique_ptr<core::services::MediaSharingService> m_mediaSharingService;
+
+        std::unique_ptr<AuthorizationService> m_authorizationService;
+        std::unique_ptr<CallService> m_callService;
+
+        std::unique_ptr<media::MediaController> m_mediaController;
+        std::unique_ptr<PacketProcessingService> m_packetProcessor;
     };
 }

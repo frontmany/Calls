@@ -114,33 +114,6 @@ void NotificationController::showConnectionRestoredWithUser(const QString& statu
     showNotificationState(state, false, autoHideMs);
 }
 
-void NotificationController::showPendingOperation(const QString& statusText, core::UserOperationType key)
-{
-    NotificationState state;
-    state.type = NotificationType::PendingOperation;
-    state.text = statusText;
-    state.isWaitingAnimation = true;
-    state.isOverlay = false;
-    state.notificationStyleType = NotificationStyleType::BASE;
-    state.key = key;
-
-    showNotificationState(state, true, 0);
-}
-
-void NotificationController::hidePendingOperation(core::UserOperationType key)
-{
-    // Удаляем из стека
-    removeNotificationFromStack(NotificationType::PendingOperation, key);
-    
-    // Если сейчас показывается это уведомление, скрываем его и показываем последнее из стека
-    if (m_isShowing && m_currentState.type == NotificationType::PendingOperation &&
-        m_currentState.key.has_value() && m_currentState.key.value() == key)
-    {
-        hideCurrentNotification();
-        showLastNotification();
-    }
-}
-
 void NotificationController::showUpdateError(int autoHideMs)
 {
     NotificationState state;
@@ -215,11 +188,10 @@ void NotificationController::removeNotificationFromStack(NotificationType type, 
 void NotificationController::showNotificationState(const NotificationState& state, bool addToStack, int autoHideMs)
 {
     // Если уже показываем уведомление, сохраняем текущее состояние в стек
-    // только если текущее уведомление из стека (ConnectionDownWithUser или PendingOperation)
+    // только если текущее уведомление из стека (ConnectionDownWithUser)
     if (m_isShowing)
     {
-        bool currentIsFromStack = (m_currentState.type == NotificationType::ConnectionDownWithUser ||
-                                   m_currentState.type == NotificationType::PendingOperation);
+        bool currentIsFromStack = (m_currentState.type == NotificationType::ConnectionDownWithUser);
         if (currentIsFromStack)
         {
             addNotificationToStack(m_currentState);

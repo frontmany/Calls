@@ -2,6 +2,7 @@
 #include "jsonType.h"
 #include "packetFactory.h"
 #include "utilities/crypto.h"
+
 #include "json.hpp"
 
 #include "utilities/logger.h"
@@ -45,10 +46,6 @@ namespace core
             appVersion);
     }
 
-    Client::Client()
-    {
-    }
-
     Client::~Client() {
         if (m_authorizationService) {
             m_authorizationService->stopReconnectRetry();
@@ -78,7 +75,7 @@ namespace core
             std::bind(&Client::onConnectionRestored, this)
         );
 
-        m_controlController = std::make_unique<core::network::tcp::ControlController>(
+        m_controlController = std::make_unique<core::network::tcp::Client>(
             [this](uint32_t type, const unsigned char* data, size_t size) {
                 if (m_packetProcessor)
                     m_packetProcessor->processPacket(data, static_cast<int>(size), static_cast<PacketType>(type));
@@ -91,10 +88,10 @@ namespace core
         m_callService = std::make_unique<core::services::CallService>(
             m_stateManager, m_keyManager, m_operationManager, m_pendingRequests,
             m_mediaController, m_controlController, m_audioEngine, m_eventListener);
-        m_mediaSharingService = std::make_unique<core::services::MediaSharingService>(
+        m_mediaService = std::make_unique<core::services::MediaService>(
             m_stateManager, m_operationManager, m_pendingRequests,
-            m_mediaController, m_controlController, m_mediaEncryptionService, m_eventListener);
-        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_pendingRequests, m_mediaController, m_controlController, m_audioEngine, m_eventListener, m_mediaEncryptionService);
+            m_mediaController, m_controlController, m_eventListener);
+        m_packetProcessor = std::make_unique<PacketProcessor>(m_stateManager, m_keyManager, m_pendingRequests, m_mediaController, m_controlController, m_audioEngine, m_eventListener);
         m_packetProcessor->setOrphanReconnectSuccessHandler([this](std::optional<nlohmann::json> completionContext) { onReconnectCompleted(completionContext); });
 
         m_controlController->connect(host, controlPort);
@@ -135,7 +132,6 @@ namespace core
         (void)length;
         (void)type;
     }
-
 
     void Client::onConnectionDown() {
         LOG_ERROR("Connection down");
@@ -223,19 +219,11 @@ namespace core
     }
 
     void Client::onLogoutCompleted(std::optional<nlohmann::json> completionContext) {
-        if (m_authorizationService) {
-            m_authorizationService->onLogoutCompleted(completionContext);
-        }
-        // Reset вызывается после того, как UI обработает событие onLogoutCompleted
-        // Это гарантирует, что состояние не изменится до закрытия приложения
+        reset();
     }
 
     void Client::onLogoutFailed(std::optional<nlohmann::json> failureContext) {
-        if (m_authorizationService) {
-            m_authorizationService->onLogoutFailed(failureContext);
-        }
-        // Reset вызывается после того, как UI обработает событие onLogoutCompleted
-        // Это гарантирует, что состояние не изменится до закрытия приложения
+        reset();
     }
 
     void Client::onRequestUserInfoCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext) {
@@ -359,50 +347,50 @@ namespace core
     }
 
     void Client::onStartScreenSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStartScreenSharingCompleted(completionContext);
+        if (m_mediaService) {
+            m_mediaService->onStartMediaCompleted(core::services::MediaType::Screen, completionContext);
         }
     }
 
     void Client::onStartScreenSharingFailed(std::optional<nlohmann::json> failureContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStartScreenSharingFailed(failureContext);
+        if (m_mediaService) {
+            m_mediaService->onStartMediaFailed(core::services::MediaType::Screen, failureContext);
         }
     }
 
     void Client::onStopScreenSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStopScreenSharingCompleted(completionContext);
+        if (m_mediaService) {
+            m_mediaService->onStopMediaCompleted(core::services::MediaType::Screen, completionContext);
         }
     }
 
     void Client::onStopScreenSharingFailed(std::optional<nlohmann::json> failureContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStopScreenSharingFailed(failureContext);
+        if (m_mediaService) {
+            m_mediaService->onStopMediaFailed(core::services::MediaType::Screen, failureContext);
         }
     }
 
     void Client::onStartCameraSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStartCameraSharingCompleted(completionContext);
+        if (m_mediaService) {
+            m_mediaService->onStartMediaCompleted(core::services::MediaType::Camera, completionContext);
         }
     }
 
     void Client::onStartCameraSharingFailed(std::optional<nlohmann::json> failureContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStartCameraSharingFailed(failureContext);
+        if (m_mediaService) {
+            m_mediaService->onStartMediaFailed(core::services::MediaType::Camera, failureContext);
         }
     }
 
     void Client::onStopCameraSharingCompleted(std::optional<nlohmann::json> completionContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStopCameraSharingCompleted(completionContext);
+        if (m_mediaService) {
+            m_mediaService->onStopMediaCompleted(core::services::MediaType::Camera, completionContext);
         }
     }
 
     void Client::onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext) {
-        if (m_mediaSharingService) {
-            m_mediaSharingService->onStopCameraSharingFailed(failureContext);
+        if (m_mediaService) {
+            m_mediaService->onStopMediaFailed(core::services::MediaType::Camera, failureContext);
         }
     }
 
@@ -569,37 +557,45 @@ namespace core
     }
 
     std::error_code Client::startScreenSharing() {
-        return m_mediaSharingService->startScreenSharing();
+        return m_mediaService->startVideoSharing(core::services::MediaType::Screen);
     }
 
     std::error_code Client::stopScreenSharing() {
-        return m_mediaSharingService->stopScreenSharing();
+        return m_mediaService->stopVideoSharing(core::services::MediaType::Screen);
     }
 
     std::error_code Client::sendScreen(const std::vector<unsigned char>& data) {
-        return m_mediaSharingService->sendScreen(data);
+        return m_mediaService->sendVideoFrame(core::services::MediaType::Screen, data);
     }
 
     std::error_code Client::startCameraSharing() {
-        return m_mediaSharingService->startCameraSharing();
+        return m_mediaService->startVideoSharing(core::services::MediaType::Camera);
     }
 
     std::error_code Client::stopCameraSharing() {
-        return m_mediaSharingService->stopCameraSharing();
+        return m_mediaService->stopVideoSharing(core::services::MediaType::Camera);
     }
 
     std::error_code Client::sendCamera(const std::vector<unsigned char>& data) {
-        return m_mediaSharingService->sendCamera(data);
+        return m_mediaService->sendVideoFrame(core::services::MediaType::Camera, data);
     }
 
     void Client::onInputVoice(const unsigned char* data, int length) {
         if (!m_stateManager.isActiveCall() || m_stateManager.isConnectionDown()) return;
 
-        const CryptoPP::SecByteBlock& callKey = m_stateManager.getActiveCall().getCallKey();
-
-        auto cipherData = m_mediaEncryptionService.encryptMedia(data, length, callKey);
-        if (!cipherData.empty()) {
-            m_mediaController.send(std::move(cipherData), static_cast<uint32_t>(PacketType::VOICE));
+        // Convert to float PCM for AudioProcessor
+        if (length > 0 && data) {
+            // Assuming 16-bit PCM input, convert to float
+            const int16_t* pcmData = reinterpret_cast<const int16_t*>(data);
+            int sampleCount = length / sizeof(int16_t);
+            std::vector<float> floatData(sampleCount);
+            
+            for (int i = 0; i < sampleCount; ++i) {
+                floatData[i] = static_cast<float>(pcmData[i]) / 32768.0f;
+            }
+            
+            // Send through MediaService
+            m_mediaService->sendAudioFrame(floatData);
         }
     }
 }
