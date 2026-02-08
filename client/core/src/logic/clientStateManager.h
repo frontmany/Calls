@@ -7,13 +7,13 @@
 #include <unordered_map>
 #include <functional>
 
-#include "model/call.h"
-#include "model/incomingCall.h"
-#include "model/outgoingCall.h"
+#include "models/call.h"
+#include "models/incomingCall.h"
+#include "models/outgoingCall.h"
 #include "media/mediaState.h"
 #include "media/mediaType.h"
 
-namespace core
+namespace core::logic
 {
     class ClientStateManager {
     public:
@@ -27,26 +27,26 @@ namespace core
         bool isViewingRemoteCamera() const;
         bool isOutgoingCall() const;
         bool isActiveCall() const;
+        bool isInReconnectGracePeriod() const;
         bool isCallParticipantConnectionDown() const;
 
         void setAuthorized(bool value);
         void setConnectionDown(bool value);
         void setCallParticipantConnectionDown(bool value);
-        void setLastReconnectSuccessTime();
-        bool isInReconnectGracePeriod() const;
         void setMediaState(media::MediaType type, media::MediaState state);
         void setViewingRemoteScreen(bool value);
         void setViewingRemoteCamera(bool value);
 
         const std::string& getMyNickname() const;
         void setMyNickname(const std::string& nickname);
-        void clearMyNickname();
+        void resetMyNickname();
 
         const std::string& getMyToken() const;
         void setMyToken(const std::string& token);
-        void clearMyToken();
+        void resetMyToken();
 
         const media::MediaState getMediaState(media::MediaType type) const;
+
         const OutgoingCall& getOutgoingCall() const;
         const Call& getActiveCall() const;
 
@@ -62,7 +62,8 @@ namespace core
         void setActiveCall(const std::string& nickname,
             const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& callKey);
 
-        void clearCallState();
+        void resetActiveCall();
+        void resetOutgoingCall();
 
         const std::unordered_map<std::string, IncomingCall>& getIncomingCalls() const;
         int getIncomingCallsCount() const;
@@ -81,9 +82,8 @@ namespace core
         }
         
         void removeIncomingCall(const std::string& nickname);
-        bool tryRemoveIncomingCall(const std::string& nickname);
 
-        void clearIncomingCalls();
+        void resetIncomingCalls();
 
         void reset();
 
@@ -100,7 +100,5 @@ namespace core
         std::optional<Call> m_activeCall;
         std::optional<OutgoingCall> m_outgoingCall;
         std::unordered_map<std::string, IncomingCall> m_incomingCalls;
-
-        std::chrono::steady_clock::time_point m_lastReconnectSuccessTime{};
     };
 }

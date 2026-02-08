@@ -2,7 +2,7 @@
 #include <system_error>
 #include <string>
 
-namespace core
+namespace core::constant
 {
     enum class ErrorCode {
         success = 0,

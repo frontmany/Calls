@@ -83,12 +83,10 @@ namespace core
         std::error_code acceptCall(const std::string& friendNickname);
         std::error_code declineCall(const std::string& friendNickname);
         std::error_code endCall();
-        std::error_code startScreenSharing();
+        std::error_code startScreenSharing(int screenIndex);
         std::error_code stopScreenSharing();
-        std::error_code sendScreen(const std::vector<unsigned char>& data);
-        std::error_code startCameraSharing();
+        std::error_code startCameraSharing(std::string deviceName);
         std::error_code stopCameraSharing();
-        std::error_code sendCamera(const std::vector<unsigned char>& data);
 
     private:
         void onReceive(const unsigned char* data, int length, PacketType type);

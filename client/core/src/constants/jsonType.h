@@ -1,6 +1,6 @@
 #pragma once 
 
-namespace core
+namespace core::constant
 {
     static constexpr const char* UID = "UID";
     static constexpr const char* RESULT = "result";

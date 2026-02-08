@@ -4,10 +4,11 @@
 #include <unordered_map>
 #include <string>
 
-namespace core {
+namespace core::constant
+{
     enum class PacketType : uint32_t {
         // only send
-        AUTHORIZATION = 2,
+        AUTHORIZATION,
         LOGOUT,
         RECONNECT,
         GET_USER_INFO,

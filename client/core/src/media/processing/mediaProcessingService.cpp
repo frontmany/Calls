@@ -26,8 +26,6 @@ namespace core
             
             // Компоненты шифрования
             std::unique_ptr<MediaEncryptionService> encryptionService;
-            CryptoPP::SecByteBlock encryptionKey;
-            bool encryptionKeySet = false;
             mutable std::mutex encryptionMutex;
             
             ~Impl() {
@@ -70,8 +68,6 @@ namespace core
             void cleanupEncryption() {
                 std::lock_guard<std::mutex> lock(encryptionMutex);
                 encryptionService.reset();
-                encryptionKey.CleanNew(0);
-                encryptionKeySet = false;
             }
             
             void cleanupAll() {
@@ -90,7 +86,7 @@ namespace core
 
         MediaProcessingService::~MediaProcessingService() = default;
 
-        bool MediaProcessingService::initializeAudio(int sampleRate, int channels, int frameSize)
+        bool MediaProcessingService::setupAudioProcessing(int sampleRate, int channels, int frameSize)
         {
             m_sampleRate = sampleRate;
             m_channels = channels;
@@ -108,7 +104,7 @@ namespace core
             return true;
         }
 
-        bool MediaProcessingService::initializeVideo(int width, int height, int bitrate)
+        bool MediaProcessingService::setupVideoProcessing(int width, int height, int bitrate)
         {
             m_width = width;
             m_height = height;
@@ -144,13 +140,6 @@ namespace core
         void MediaProcessingService::cleanupVideo()
         {
             pImpl->cleanupVideo();
-            m_videoInitialized = false;
-        }
-
-        void MediaProcessingService::cleanupAll()
-        {
-            pImpl->cleanupAll();
-            m_audioInitialized = false;
             m_videoInitialized = false;
         }
 
@@ -264,7 +253,7 @@ namespace core
             pImpl->lastDecodedVideoFrame.clear();
             
             // Устанавливаем callback для получения декодированных данных
-            pImpl->videoDecoder->setDecodedFrameCallback([this](const FrameData& frame) {
+            pImpl->videoDecoder->setDecodedFrameCallback([this](const Frame& frame) {
                 if (frame.isValid()) {
                     pImpl->lastDecodedVideoFrame.assign(frame.data, frame.data + frame.size);
                 }
@@ -278,51 +267,37 @@ namespace core
             return pImpl->lastDecodedVideoFrame;
         }
 
-        // Методы шифрования
-        void MediaProcessingService::setEncryptionKey(const std::vector<unsigned char>& key)
+        std::vector<unsigned char> MediaProcessingService::encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key)
         {
-            std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
-            
-            if (key.empty()) {
-                return;
+            if (key.empty() || !data || size <= 0) {
+                return {};
             }
+            
+            std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
             
             // Создаем сервис шифрования если нужен
             if (!pImpl->encryptionService) {
                 pImpl->encryptionService = std::make_unique<MediaEncryptionService>();
             }
             
-            // Устанавливаем ключ
-            pImpl->encryptionKey.Assign(key.data(), key.size());
-            pImpl->encryptionKeySet = true;
+            CryptoPP::SecByteBlock encryptionKey(key.data(), key.size());
+            return pImpl->encryptionService->encryptMedia(data, size, encryptionKey);
         }
 
-        bool MediaProcessingService::hasEncryptionKey() const
+        std::vector<unsigned char> MediaProcessingService::decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key)
         {
-            std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
-            return pImpl->encryptionKeySet;
-        }
-
-        std::vector<unsigned char> MediaProcessingService::encryptData(const unsigned char* data, int size)
-        {
-            std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
-            
-            if (!pImpl->encryptionService || !pImpl->encryptionKeySet || !data || size <= 0) {
+            if (key.size() == 0 || !encryptedData || size <= 0) {
                 return {};
             }
             
-            return pImpl->encryptionService->encryptMedia(data, size, pImpl->encryptionKey);
-        }
-
-        std::vector<unsigned char> MediaProcessingService::decryptData(const unsigned char* encryptedData, int size)
-        {
             std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
             
-            if (!pImpl->encryptionService || !pImpl->encryptionKeySet || !encryptedData || size <= 0) {
-                return {};
+            // Создаем сервис шифрования если нужен
+            if (!pImpl->encryptionService) {
+                pImpl->encryptionService = std::make_unique<MediaEncryptionService>();
             }
             
-            return pImpl->encryptionService->decryptMedia(encryptedData, size, pImpl->encryptionKey);
+            return pImpl->encryptionService->decryptMedia(encryptedData, size, key);
         }
     }
 }

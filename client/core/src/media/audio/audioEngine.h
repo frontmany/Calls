@@ -9,8 +9,6 @@
 #include <string>
 #include <optional>
 
-#include "../processing/encode/opusEncoder.h"
-#include "../processing/decode/opusDecoder.h"
 #include "deviceInfo.h"
 #include "audioPacket.h"
 
@@ -22,17 +20,17 @@ namespace core
     {
         class AudioEngine {
         public:
-            AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> returnInputEncodedAudioCallback, OpusEncoder::Config encoderConfig = OpusEncoder::Config(), OpusDecoder::Config decoderConfig = OpusDecoder::Config());
             AudioEngine();
             ~AudioEngine();
 
-            bool initialize(std::function<void(const unsigned char* data, int length)> encodedInputCallback);
+            bool initialize(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels);
+            void setInputAudioCallback(std::function<void(const float* data, int length)> inputCallback);
             void refreshAudioDevices();
             bool initialized() const;
             bool isStream() const;
             bool startStream();
             bool stopStream();
-            void playAudio(const unsigned char* data, int length);
+            void playAudio(const float* data, int length);
             void muteMicrophone(bool isMute);
             void muteSpeaker(bool isMute);
             bool isSpeakerMuted() const;
@@ -41,8 +39,6 @@ namespace core
             void setOutputVolume(int volume);
             int getInputVolume() const;
             int getOutputVolume() const;
-
-            // Device selection API
             static int getDeviceCount();
             static std::optional<DeviceInfo> getDeviceInfo(int deviceIndex);
             static std::vector<DeviceInfo> getInputDevices();
@@ -60,7 +56,7 @@ namespace core
             int getCurrentOutputDevice() const;
 
         private:
-            bool init();
+            bool initializeInternal();
             float softClip(float x);
             void processInputAudio(const float* input, unsigned long frameCount);
             void processOutputAudio(float* output, unsigned long frameCount);
@@ -77,12 +73,10 @@ namespace core
             std::atomic<bool> m_speakerMuted = false;
 
             PaError m_lastError = paNoError;
-            std::unique_ptr<OpusEncoder> m_encoder;
-            std::unique_ptr<OpusDecoder> m_decoder;
             std::queue<AudioPacket> m_outputAudioQueue;
             std::mutex m_outputAudioQueueMutex;
             std::mutex m_inputAudioMutex;
-            std::function<void(const unsigned char* data, int length)> m_encodedInputCallback;
+            std::function<void(const float* data, int length)> m_inputCallback;
 
             float m_inputVolume = 1.0f;
             float m_outputVolume = 1.0f;
@@ -96,8 +90,7 @@ namespace core
             std::optional<int> m_inputDeviceIndex;
             std::optional<int> m_outputDeviceIndex;
 
-            std::vector<unsigned char> m_encodedInputBuffer;
-            std::vector<float> m_decodedOutputBuffer;
+            std::vector<float> m_inputBuffer;
         };
     }
 }

@@ -1,24 +1,31 @@
 #include "mediaService.h"
-#include "packetFactory.h"
+#include "logic/packetFactory.h"
 #include "utilities/crypto.h"
 
-namespace core
+using namespace core::constant;
+using namespace core::media;
+
+namespace core::logic
 {
     MediaService::MediaService(
         std::shared_ptr<ClientStateManager> stateManager,
+        std::shared_ptr<media::AudioEngine> audioEngine,
+        std::shared_ptr<media::MediaProcessingService> mediaProcessingService,
         std::shared_ptr<EventListener> eventListener,
         std::function<void(const std::vector<unsigned char>&, PacketType)> sendPacket,
         std::function<void(const std::vector<unsigned char>&, media::MediaType)> sendMediaFrame)
-        : m_stateManager(stateManager),
-        m_eventListener(eventListener),
-        m_sendPacket(sendPacket),
-        m_sendMediaFrame(sendMediaFrame)
+        : m_stateManager(stateManager)
+        , m_audioEngine(audioEngine)
+        , m_mediaProcessingService(mediaProcessingService)
+        , m_eventListener(eventListener)
+        , m_sendPacket(sendPacket)
+        , m_sendMediaFrame(sendMediaFrame)
     {
-        m_audioEngine.initialize([this](const unsigned char* data, int length) {onRawAudio(data, length); });
+        m_audioEngine->setInputAudioCallback([this](const float* data, int length) {onRawAudio(data, length); });
         m_screenCaptureService.setFrameCallback([this](const media::Frame& frame) {onRawFrame(frame); });
         m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) {onRawFrame(frame); });
-        m_mediaProcessingService.initializeAudio();
-        m_mediaProcessingService.initializeVideo();
+        m_mediaProcessingService->setupAudioProcessing();
+        m_mediaProcessingService->setupVideoProcessing();
     }
 
     std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, int screeIndex = 0)
@@ -107,7 +114,7 @@ namespace core
 
         m_stateManager->setMediaState(media::MediaType::Audio, media::MediaState::Starting);
 
-        m_audioEngine.startStream();
+        m_audioEngine->startStream();
 
         m_stateManager->setMediaState(media::MediaType::Audio, media::MediaState::Active);
 
@@ -122,69 +129,23 @@ namespace core
             return ; // TODO custom error code
         }
 
-        m_audioEngine.stopStream();
+        m_audioEngine->stopStream();
 
         m_stateManager->setMediaState(media::MediaType::Audio, media::MediaState::Stopped);
 
         return {};
     }
 
-    void MediaService::onIncomingScreenSharingStarted(const nlohmann::json& packet) {
-
-    }
-
-    void MediaService::onIncomingScreenSharingStopped(const nlohmann::json& packet) {
-
-    }
-
-    void MediaService::onIncomingCameraSharingStarted(const nlohmann::json& packet) {
-        std::string senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH];
-        std::string myNicknameHash = jsonObject[RECEIVER_NICKNAME_HASH];
-
-        if (!m_stateManager->isAuthorized() ||
-            m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
-            m_stateManager->isViewingRemoteScreen()) return;
-
-        if (utilities::crypto::calculateHash(m_stateManager->getActiveCall().getNickname()) != senderNicknameHash ||
-            utilities::crypto::calculateHash(m_stateManager->getMyNickname()) != myNicknameHash) return;
-
-        m_stateManager->setViewingRemoteScreen(true);
-
-        m_eventListener->onIncomingScreenSharingStarted();
-    }
-
-    void MediaService::onIncomingCameraSharingStoped(const nlohmann::json& packet) {
-
-    }
-
-    void MediaService::onIncomingAudio(const unsigned char* data, int length) {
-
-    }
-
-    void MediaService::onIncomingScreen(const unsigned char* data, int length) {
-
-    }
-
-    void MediaService::onIncomingCamera(const unsigned char* data, int length) {
-
-    }
-
-    void MediaService::setEncryptionKey(const std::vector<unsigned char>& key) {
-        m_mediaProcessingService.setEncryptionKey(key);
-    }
-}
-    
     //TODO create implementations and all necessary transformations of data and use m_eventListener onLocalScreen / onLocalCamera 
 
-    void MediaService::onRawAudio(const unsigned char* data, int length) {
+    void MediaService::onRawAudio(const float* data, int length) {
         std::lock_guard<std::mutex> lock(m_mutex);
 
     }
 
     void MediaService::onRawFrame(const media::Frame& frame) {
         std::lock_guard<std::mutex> lock(m_mutex);
-       
+
     }
 
     std::vector<unsigned char> MediaService::processVideoFrame(MediaType type, const std::vector<unsigned char>& frameData)
@@ -226,4 +187,4 @@ namespace core
 
         return encodedData;
     }
-
+}

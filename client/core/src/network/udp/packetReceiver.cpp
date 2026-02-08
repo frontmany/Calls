@@ -20,14 +20,10 @@ PacketReceiver::~PacketReceiver() {
 
 bool PacketReceiver::initialize(asio::ip::udp::socket& socket,
     std::function<void(const unsigned char*, int, uint32_t)> onPacketReceived,
-    std::function<void()> onErrorCallback,
-    std::function<void(uint32_t)> onPingReceived,
     const asio::ip::udp::endpoint& serverEndpoint)
 {
     m_socket = std::ref(socket);
     m_onPacketReceived = std::move(onPacketReceived);
-    m_onErrorCallback = std::move(onErrorCallback);
-    m_onPingReceived = std::move(onPingReceived);
     m_serverEndpoint = serverEndpoint;
     m_running = false;
     m_remoteEndpoint = asio::ip::udp::endpoint();
@@ -106,13 +102,13 @@ void PacketReceiver::doReceive() {
             if (errorCode) {
                 if (errorCode != asio::error::operation_aborted) {
                     try {
-                        notifyError(errorCode);
+                        logError(errorCode);
                     }
                     catch (const std::exception& exception) {
-                        LOG_ERROR("Media receiver notifyError exception: {}", exception.what());
+                        LOG_ERROR("Media receiver logError exception: {}", exception.what());
                     }
                     catch (...) {
-                        LOG_ERROR("Media receiver notifyError unknown exception");
+                        LOG_ERROR("Media receiver logError unknown exception");
                     }
                 }
                 if (m_running.load())
@@ -150,12 +146,6 @@ void PacketReceiver::processDatagram(std::size_t bytesTransferred) {
     const std::size_t actualPayload = bytesTransferred - m_headerSize;
     if (payloadLength > actualPayload) {
         LOG_WARN("Media payload length mismatch: declared {}, available {}", payloadLength, actualPayload);
-        return;
-    }
-
-    if (packetType == 0 || packetType == 1) {
-        if (m_onPingReceived)
-            m_onPingReceived(packetType);
         return;
     }
 
@@ -315,17 +305,11 @@ void PacketReceiver::processReceivedPackets() {
     }
 }
 
-void PacketReceiver::setConnectionDown(bool isDown) {
-    m_connectionDown = isDown;
-}
-
-void PacketReceiver::notifyError(const std::error_code& errorCode) {
+void PacketReceiver::logError(const std::error_code& errorCode) {
     if (errorCode == asio::error::operation_aborted)
         return;
-    if (!m_connectionDown.load())
-        LOG_ERROR("Media packet receiver error: {}", core::utilities::errorCodeForLog(errorCode));
-    if (m_onErrorCallback)
-        m_onErrorCallback();
+
+    LOG_ERROR("UDP receiver error: {}", core::utilities::errorCodeForLog(errorCode));
 }
 
 }

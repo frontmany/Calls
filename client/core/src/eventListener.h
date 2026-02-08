@@ -4,19 +4,19 @@
 #include <vector>
 #include <system_error>
 
-namespace core 
+namespace core
 {
     class EventListener {
     public:
         virtual ~EventListener() = default;
 
         virtual void onAuthorizationResult(std::error_code ec) = 0;
+        virtual void onStartOutgoingCallResult(std::error_code ec) = 0;
+
         virtual void onIncomingScreenSharingStarted() = 0;
         virtual void onIncomingScreenSharingStopped() = 0;
         virtual void onIncomingScreen(const std::vector<unsigned char>& data) = 0;
 
-        virtual void onScreenSharingStarted() = 0;
-        virtual void onScreenSharingStopped() = 0;
         virtual void onStartScreenSharingError() = 0;
         virtual void onLocalScreen(const std::vector<unsigned char>& data) = 0;
 
@@ -24,8 +24,6 @@ namespace core
         virtual void onIncomingCameraSharingStopped() = 0;
         virtual void onIncomingCamera(const std::vector<unsigned char>& data) = 0;
 
-        virtual void onCameraSharingStarted() = 0;
-        virtual void onCameraSharingStopped() = 0;
         virtual void onStartCameraSharingError() = 0;
         virtual void onLocalCamera(const std::vector<unsigned char>& data) = 0;
 

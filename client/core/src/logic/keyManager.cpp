@@ -1,6 +1,7 @@
 #include "keyManager.h"
 
-namespace core {
+namespace core::logic 
+{
     KeyManager::~KeyManager()
     {
         if (m_future.valid()) {

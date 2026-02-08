@@ -7,9 +7,9 @@
 #include <thread>
 #include <vector>
 
-#include "network/TcpClient/packet.h"
-#include "network/TcpClient/packetsReceiver.h"
-#include "network/TcpClient/packetsSender.h"
+#include "network/tcp/packet.h"
+#include "network/tcp/packetReceiver.h"
+#include "network/tcp/packetSender.h"
 #include "utilities/safeQueue.h"
 #include "asio.hpp"
 

@@ -1,0 +1,101 @@
+#include "mediaPacketHandler.h"
+#include "logic/clientStateManager.h"
+#include "constants/jsonType.h"
+
+using namespace core::constant;
+
+namespace core::logic {
+    MediaPacketHandler::MediaPacketHandler(
+        std::shared_ptr<ClientStateManager> stateManager,
+        std::shared_ptr<media::AudioEngine> audioEngine,
+        std::shared_ptr<media::MediaProcessingService> mediaProcessingService,
+        std::shared_ptr<EventListener> eventListener)
+        : m_stateManager(stateManager)
+        , m_audioEngine(audioEngine)
+        , m_mediaProcessingService(mediaProcessingService)
+        , m_eventListener(eventListener)
+    {
+    }
+
+    void MediaPacketHandler::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall() ||
+            m_stateManager->isViewingRemoteScreen()) return;
+
+        const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+
+        if (utilities::crypto::calculateHash(m_stateManager->getActiveCall().getNickname()) != senderNicknameHash) return;
+
+        m_stateManager->setViewingRemoteScreen(true);
+        m_eventListener->onIncomingScreenSharingStarted();
+    }
+
+    void MediaPacketHandler::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall() ||
+            !m_stateManager->isViewingRemoteScreen()) return;
+
+        const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+
+        if (utilities::crypto::calculateHash(m_stateManager->getActiveCall().getNickname()) != senderNicknameHash) return;
+
+        m_stateManager->setViewingRemoteScreen(false);
+        m_eventListener->onIncomingScreenSharingStopped();
+    }
+
+    void MediaPacketHandler::onIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall() ||
+            m_stateManager->isViewingRemoteCamera()) return;
+        
+        const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+
+        if (utilities::crypto::calculateHash(m_stateManager->getActiveCall().getNickname()) != senderNicknameHash) return;
+
+        m_stateManager->setViewingRemoteCamera(true);
+        m_eventListener->onIncomingCameraSharingStarted();
+    }
+
+    void MediaPacketHandler::onIncomingCameraSharingStoped(const nlohmann::json& jsonObject) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall() ||
+            !m_stateManager->isViewingRemoteCamera()) return;
+
+        const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+
+        if (utilities::crypto::calculateHash(m_stateManager->getActiveCall().getNickname()) != senderNicknameHash) return;
+
+        m_stateManager->setViewingRemoteCamera(false);
+        m_eventListener->onIncomingCameraSharingStopped();
+    }
+
+    void MediaPacketHandler::onIncomingAudio(const unsigned char* data, int length) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall() ||
+            !m_audioEngine->isStream()) return;
+        
+        auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
+        auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.begin(), decryptedData.size());
+        m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(decryptedData.size()));
+    }
+
+    void MediaPacketHandler::onIncomingScreen(const unsigned char* data, int length) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall() ||
+            !m_audioEngine->isStream()) return;
+
+        auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
+        auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.begin(), decryptedData.size());
+        m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(decryptedData.size()));
+    }
+
+    void MediaPacketHandler::onIncomingCamera(const unsigned char* data, int length) {
+
+    }
+}

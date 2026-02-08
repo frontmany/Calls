@@ -16,8 +16,8 @@ namespace core
             ~MediaProcessingService();
 
             // Инициализация процессоров
-            bool initializeAudio(int sampleRate = 48000, int channels = 1, int frameSize = 960);
-            bool initializeVideo(int width = 1920, int height = 1080, int bitrate = 1800000);
+            bool setupAudioProcessing(int sampleRate = 48000, int channels = 1, int frameSize = 960);
+            bool setupVideoProcessing(int width = 1920, int height = 1080, int bitrate = 1800000);
             
             // Очистка ресурсов
             void cleanupAudio();
@@ -32,8 +32,8 @@ namespace core
             std::vector<unsigned char> decodeVideoFrame(const unsigned char* h264Data, int dataSize);
 
             // Шифрование/дешифрование медиа данных
-            std::vector<unsigned char> encryptData(const unsigned char* data, int size);
-            std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size);
+            std::vector<unsigned char> encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key);
+            std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key);
             
             // Получение информации о процессорах
             bool isAudioInitialized() const { return m_audioInitialized; }
@@ -48,9 +48,6 @@ namespace core
             int getWidth() const { return m_width; }
             int getHeight() const { return m_height; }
 
-            // Управление ключом шифрования
-            void setEncryptionKey(const std::vector<unsigned char>& key);
-            bool hasEncryptionKey() const;
 
         private:
             struct Impl;

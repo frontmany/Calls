@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "packetType.h"
+#include "utilities/packetType.h"
 #include "utilities/safeQueue.h"
 
 namespace core::network::udp {
@@ -44,14 +44,11 @@ public:
 
     bool initialize(asio::ip::udp::socket& socket,
         std::function<void(const unsigned char*, int, uint32_t)> onPacketReceived,
-        std::function<void()> onErrorCallback,
-        std::function<void(uint32_t)> onPingReceived,
         const asio::ip::udp::endpoint& serverEndpoint);
 
     void start();
     void stop();
     bool isRunning() const;
-    void setConnectionDown(bool isDown);
 
 private:
     using PendingPacketMap = std::unordered_map<uint64_t, PendingPacket>;
@@ -66,7 +63,7 @@ private:
     uint16_t readUint16(const unsigned char* data);
     uint32_t readUint32(const unsigned char* data);
     uint64_t readUint64(const unsigned char* data);
-    void notifyError(const std::error_code& errorCode);
+    void logError(const std::error_code& errorCode);
 
 private:
     std::optional<std::reference_wrapper<asio::ip::udp::socket>> m_socket;
@@ -82,9 +79,6 @@ private:
     const std::size_t m_maxPendingPackets = 8;
     const std::chrono::milliseconds m_pendingPacketTimeout{3000};
     std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
-    std::function<void()> m_onErrorCallback;
-    std::function<void(uint32_t)> m_onPingReceived;
-    std::atomic_bool m_connectionDown{false};
     asio::ip::udp::endpoint m_serverEndpoint;
 };
 

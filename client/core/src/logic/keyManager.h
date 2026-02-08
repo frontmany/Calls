@@ -6,7 +6,7 @@
 
 #include "utilities/crypto.h"
 
-namespace core 
+namespace core::logic
 {
     class KeyManager {
     public:

@@ -8,25 +8,9 @@ namespace core
 {
     namespace media 
     {
-        AudioEngine::AudioEngine(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels, std::function<void(const unsigned char* data, int length)> encodedInputCallback, OpusEncoder::Config encoderConfig, OpusDecoder::Config decoderConfig)
-            : m_sampleRate(sampleRate),
-            m_framesPerBuffer(framesPerBuffer),
-            m_inputChannels(inputChannels),
-            m_outputChannels(outputChannels),
-            m_encoder(std::make_unique<OpusEncoder>(encoderConfig)),
-            m_decoder(std::make_unique<OpusDecoder>(decoderConfig))
-        {
-            m_encodedInputBuffer.resize(4000);
-            m_decodedOutputBuffer.resize(4096);
-            m_encodedInputCallback = encodedInputCallback;
-        }
-
         AudioEngine::AudioEngine()
-            : m_encoder(std::make_unique<OpusEncoder>()),
-            m_decoder(std::make_unique<OpusDecoder>())
         {
-            m_encodedInputBuffer.resize(4000);
-            m_decodedOutputBuffer.resize(4096);
+            m_inputBuffer.resize(m_framesPerBuffer * m_inputChannels);
         }
 
         AudioEngine::~AudioEngine() {
@@ -41,7 +25,7 @@ namespace core
             }
         }
 
-        bool AudioEngine::init() {
+        bool AudioEngine::initializeInternal() {
             m_lastError = Pa_Initialize();
             if (m_lastError != paNoError) {
                 return false;
@@ -93,58 +77,19 @@ namespace core
             return true;
         }
 
-        bool AudioEngine::initialize(std::function<void(const unsigned char* data, int length)> encodedInputCallback) {
-            m_encodedInputCallback = encodedInputCallback;
+        bool AudioEngine::initialize(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels) {
+            m_sampleRate = sampleRate;
+            m_framesPerBuffer = framesPerBuffer;
+            m_inputChannels = inputChannels;
+            m_outputChannels = outputChannels;
+            
+            m_inputBuffer.resize(m_framesPerBuffer * m_inputChannels);
+            
+            return initializeInternal();
+        }
 
-            m_lastError = Pa_Initialize();
-            if (m_lastError != paNoError) {
-                return false;
-            }
-
-            PaStreamParameters inputParameters, outputParameters;
-            memset(&inputParameters, 0, sizeof(inputParameters));
-            memset(&outputParameters, 0, sizeof(outputParameters));
-
-            if (m_inputChannels > 0) {
-                inputParameters.device = m_inputDeviceIndex.has_value() ? m_inputDeviceIndex.value() : Pa_GetDefaultInputDevice();
-                if (inputParameters.device == paNoDevice) {
-                    Pa_Terminate();
-                    return false;
-                }
-
-                inputParameters.channelCount = m_inputChannels;
-                inputParameters.sampleFormat = paFloat32;
-                inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
-                inputParameters.hostApiSpecificStreamInfo = nullptr;
-            }
-
-            if (m_outputChannels > 0) {
-                outputParameters.device = m_outputDeviceIndex.has_value() ? m_outputDeviceIndex.value() : Pa_GetDefaultOutputDevice();
-                if (outputParameters.device == paNoDevice) {
-                    Pa_Terminate();
-                    return false;
-                }
-
-                outputParameters.channelCount = m_outputChannels;
-                outputParameters.sampleFormat = paFloat32;
-                outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
-                outputParameters.hostApiSpecificStreamInfo = nullptr;
-            }
-
-            m_lastError = Pa_OpenStream(&m_stream,
-                (m_inputChannels > 0) ? &inputParameters : nullptr,
-                (m_outputChannels > 0) ? &outputParameters : nullptr,
-                m_sampleRate, m_framesPerBuffer,
-                paNoFlag,
-                &AudioEngine::paInputAudioCallback, this);
-
-            if (m_lastError != paNoError) {
-                Pa_Terminate();
-                return false;
-            }
-
-            m_isInitialized = true;
-            return true;
+        void AudioEngine::setInputAudioCallback(std::function<void(const float* data, int length)> inputCallback) {
+            m_inputCallback = inputCallback;
         }
 
         void AudioEngine::refreshAudioDevices() {
@@ -166,7 +111,7 @@ namespace core
                 m_isInitialized = false;
             }
 
-            init();
+            initializeInternal();
 
             if (wasStreaming) {
                 startStream();
@@ -212,23 +157,15 @@ namespace core
             return static_cast<int>(m_outputVolume * 100.0f);
         }
 
-        void AudioEngine::playAudio(const unsigned char* data, int length) {
-            if (!m_isInitialized || !m_isStream) return;
+        void AudioEngine::playAudio(const float* data, int length) {
+            if (!m_isInitialized || !m_isStream || !data || length <= 0) return;
 
             AudioPacket packet;
+            packet.audioData.assign(data, data + length);
+            packet.samples = length;
 
-            if (m_decoder && data && length > 0) {
-                int samplesDecoded = m_decoder->decode(data, length, m_decodedOutputBuffer.data(), static_cast<int>(m_decodedOutputBuffer.size()), 0);
-
-                if (samplesDecoded > 0) {
-
-                    packet.audioData.assign(m_decodedOutputBuffer.data(), m_decodedOutputBuffer.data() + samplesDecoded);
-                    packet.samples = samplesDecoded;
-
-                    std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
-                    m_outputAudioQueue.push(std::move(packet));
-                }
-            }
+            std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
+            m_outputAudioQueue.push(std::move(packet));
         }
 
         float AudioEngine::softClip(float x) {
@@ -239,23 +176,16 @@ namespace core
             std::lock_guard<std::mutex> lock(m_inputAudioMutex);
             std::lock_guard<std::mutex> volumeLock(m_volumeMutex);
 
-            if (m_encoder && input) {
+            if (input && m_inputCallback) {
                 if (m_inputVolume != 1.0f) {
                     std::vector<float> adjustedInput(frameCount * m_inputChannels);
                     for (unsigned long i = 0; i < frameCount * m_inputChannels; ++i) {
                         adjustedInput[i] = softClip(input[i] * m_inputVolume);
                     }
-
-                    int encodedSize = m_encoder->encode(adjustedInput.data(), m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
-                    if (encodedSize > 0 && m_encodedInputCallback) {
-                        m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
-                    }
+                    m_inputCallback(adjustedInput.data(), static_cast<int>(adjustedInput.size()));
                 }
                 else {
-                    int encodedSize = m_encoder->encode(input, m_encodedInputBuffer.data(), static_cast<int>(m_encodedInputBuffer.size()));
-                    if (encodedSize > 0 && m_encodedInputCallback) {
-                        m_encodedInputCallback(m_encodedInputBuffer.data(), encodedSize);
-                    }
+                    m_inputCallback(input, static_cast<int>(frameCount * m_inputChannels));
                 }
             }
         }
@@ -290,11 +220,12 @@ namespace core
                 }
             }
         }
+
         bool AudioEngine::startStream() {
             std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 
             if (!m_isInitialized) {
-                if (!init()) {
+                if (!initializeInternal()) {
                     return false;
                 }
             }
@@ -308,7 +239,7 @@ namespace core
                 Pa_CloseStream(m_stream);
                 m_stream = nullptr;
 
-                if (!init()) {
+                if (!initializeInternal()) {
                     m_lastError = Pa_StartStream(m_stream);
                     if (m_lastError != paNoError) {
                         return false;
@@ -622,7 +553,7 @@ namespace core
             }
 
             if (wasInitialized) {
-                if (!init()) {
+                if (!initializeInternal()) {
                     m_inputDeviceIndex = std::nullopt;
                     return false;
                 }
@@ -682,7 +613,7 @@ namespace core
             }
 
             if (wasInitialized) {
-                if (!init()) {
+                if (!initializeInternal()) {
                     m_outputDeviceIndex = std::nullopt;
                     return false;
                 }
