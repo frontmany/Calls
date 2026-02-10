@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <functional>
 #include <optional>
 #include <vector>
 
@@ -17,7 +16,7 @@ public:
     PacketSender();
     ~PacketSender();
 
-    void initialize(asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint, std::function<void()> onErrorCallback);
+    void initialize(asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint);
     void send(const Packet& packet);
     void stop();
 
@@ -35,7 +34,6 @@ private:
     std::atomic<bool> m_isSending;
     asio::ip::udp::endpoint m_serverEndpoint;
     std::optional<std::reference_wrapper<asio::ip::udp::socket>> m_socket;
-    std::function<void()> m_onErrorCallback;
     std::vector<std::vector<unsigned char>> m_currentDatagrams;
     std::size_t m_currentDatagramIndex;
     const std::size_t m_maxPayloadSize = 1300;

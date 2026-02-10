@@ -6,26 +6,19 @@
 #include <optional>
 #include <unordered_map>
 #include <thread>
-#include <chrono>
-#include <vector>
-#include <cstdint>
-#include <memory>
-#include <atomic>
+#pragma once
 
-#include "keyManager.h"
-#include "utilities/errorCode.h"
-#include "network/tcp/client.h"
-#include "network/udp/client.h"
-#include "packetType.h"
-#include "eventListener.h"
-#include "clientStateManager.h"
-#include "packetProcessingService.h"
-#include "authorizationService.h"
-#include "callService.h"
-#include "json.hpp"
+#include <string>
+#include <memory>
 
 #include "media/audio/audioEngine.h"
-#include "media/mediaController.h"
+#include "network/networkController.h"
+#include "logic/services/authorizationService.h"
+#include "logic/services/callService.h"
+#include "logic/services/mediaService.h"
+#include "logic/services/reconnectionService.h"
+#include "logic/handlers/packetHandleController.h"
+#include "logic/clientStateManager.h"
 
 namespace core
 {
@@ -40,7 +33,9 @@ namespace core
         Client() = default;
         ~Client();
 
-        bool start(const std::string& host,
+        bool start(
+            const std::string& tcpHost,
+            const std::string& udpHost,
             const std::string& tcpPort,
             const std::string& udpPort,
             std::shared_ptr<EventListener> eventListener
@@ -63,9 +58,10 @@ namespace core
         bool isMicrophoneMuted() const;
         bool isSpeakerMuted() const;
         bool isAuthorized() const;
+        bool isConnectionDown() const;
         bool isOutgoingCall() const;
         bool isActiveCall() const;
-        bool isConnectionDown() const;
+
         int getInputVolume() const;
         int getOutputVolume() const;
         int getCurrentInputDevice() const;
@@ -89,74 +85,13 @@ namespace core
         std::error_code stopCameraSharing();
 
     private:
-        void onReceive(const unsigned char* data, int length, PacketType type);
-        void onInputVoice(const unsigned char* data, int length);
-        void reset();
-
-        void onNetworkReceive(const unsigned char* data, int length, uint32_t type);
-        void onConnectionDown();
-        void onConnectionRestored();
-
-        void onReconnectCompleted(std::optional<nlohmann::json> completionContext);
-        void onReconnectFailed(std::optional<nlohmann::json> failureContext);
-
-        void onAuthorizeCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
-        void onAuthorizeFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
-
-        void onLogoutCompleted(std::optional<nlohmann::json> completionContext);
-        void onLogoutFailed(std::optional<nlohmann::json> failureContext);
-
-        void onRequestUserInfoCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
-        void onRequestUserInfoFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-
-        void onStartOutgoingCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
-        void onStartOutgoingCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-        void onOutgoingCallTimeout();
-
-        void onStopOutgoingCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
-        void onStopOutgoingCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
-
-        void onDeclineIncomingCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
-        void onDeclineIncomingCallFailed(std::optional<nlohmann::json> failureContext);
-
-        void onAcceptCallStopOutgoingCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
-        void onAcceptCallStopOutgoingFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-        void onAcceptCallEndActiveCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
-        void onAcceptCallEndActiveFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-
-        void onAcceptCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
-        void onAcceptCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-        void onAcceptCallFailedAfterEndCall(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-
-        void onDeclineCallCompleted(const std::string& userNickname, std::optional<nlohmann::json> completionContext);
-        void onDeclineCallFailed(const std::string& userNickname, std::optional<nlohmann::json> failureContext);
-
-        void onEndCallCompleted(const std::string& nickname, std::optional<nlohmann::json> completionContext);
-        void onEndCallFailed(const std::string& nickname, std::optional<nlohmann::json> failureContext);
-
-        void onStartScreenSharingCompleted(std::optional<nlohmann::json> completionContext);
-        void onStartScreenSharingFailed(std::optional<nlohmann::json> failureContext);
-        void onStopScreenSharingCompleted(std::optional<nlohmann::json> completionContext);
-        void onStopScreenSharingFailed(std::optional<nlohmann::json> failureContext);
-
-        void onStartCameraSharingCompleted(std::optional<nlohmann::json> completionContext);
-        void onStartCameraSharingFailed(std::optional<nlohmann::json> failureContext);
-        void onStopCameraSharingCompleted(std::optional<nlohmann::json> completionContext);
-        void onStopCameraSharingFailed(std::optional<nlohmann::json> failureContext);
-
-    private:
-        ClientStateManager m_stateManager;
-        KeyManager m_keyManager;
-
-        std::unique_ptr<network::udp::Client> m_udpClient;
-        std::unique_ptr<network::tcp::Client> m_tcpClient;
-
-        std::shared_ptr<EventListener> m_eventListener;
-
-        std::unique_ptr<AuthorizationService> m_authorizationService;
-        std::unique_ptr<CallService> m_callService;
-
-        std::unique_ptr<media::MediaController> m_mediaController;
-        std::unique_ptr<PacketProcessingService> m_packetProcessor;
+        std::shared_ptr<logic::ClientStateManager> m_stateManager;
+        std::shared_ptr<media::AudioEngine> m_audioEngine;
+        std::unique_ptr<logic::AuthorizationService> m_authorizationService;
+        std::unique_ptr<logic::CallService> m_callService;
+        std::unique_ptr<logic::MediaService> m_mediaService;
+        std::unique_ptr<logic::ReconnectionService> m_reconnectionService;
+        std::unique_ptr<logic::PacketHandleController> m_packetHandleController;
+        std::unique_ptr<network::NetworkController> m_networkController;
     };
 }

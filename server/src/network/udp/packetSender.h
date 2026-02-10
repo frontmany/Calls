@@ -6,15 +6,13 @@
 #include <optional>
 #include <vector>
 
-#include "packet.h"
+#include "network/udp/packet.h"
 #include "utilities/safeQueue.h"
 
 #include <asio.hpp>
 
-namespace server
+namespace server::network::udp
 {
-    namespace network 
-    {
     class PacketSender
     {
     public:
@@ -48,6 +46,5 @@ namespace server
         const std::size_t m_maxPayloadSize = 1300;
         const std::size_t m_headerSize = 18;
     };
-    }
 }
 

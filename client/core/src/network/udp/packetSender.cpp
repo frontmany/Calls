@@ -16,10 +16,9 @@ PacketSender::~PacketSender() {
     stop();
 }
 
-void PacketSender::initialize(asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint, std::function<void()> onErrorCallback) {
+void PacketSender::initialize(asio::ip::udp::socket& socket, asio::ip::udp::endpoint remoteEndpoint) {
     m_socket = std::ref(socket);
     m_serverEndpoint = remoteEndpoint;
-    m_onErrorCallback = std::move(onErrorCallback);
     m_isSending = false;
     m_currentDatagrams.clear();
     m_currentDatagramIndex = 0;
@@ -103,8 +102,6 @@ void PacketSender::sendNextDatagram() {
             if (errorCode) {
                 LOG_ERROR("Media failed to send datagram chunk: {}", core::utilities::errorCodeForLog(errorCode));
                 m_isSending = false;
-                if (m_onErrorCallback)
-                    m_onErrorCallback();
                 processNextPacketFromQueue();
                 return;
             }

@@ -1,6 +1,6 @@
-#include "network/TcpClient/client.h"
-#include "network/TcpClient/packetsReceiver.h"
-#include "network/TcpClient/packetsSender.h"
+#include "client.h"
+#include "network/tcp/packetsReceiver.h"
+#include "network/tcp/packetsSender.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
 #include "utilities/errorCodeForLog.h"
@@ -18,9 +18,12 @@ namespace core::network::tcp {
 
 using namespace core::utilities::crypto;
 
-Client::Client(OnControlPacket onControlPacket, std::function<void()> onConnectionDown)
-    : m_socket(m_context)
-    , m_onControlPacket(std::move(onControlPacket))
+Client::Client(asio::io_context& context,
+    std::function<void(uint32_t type, const unsigned char* data, size_t size)>&& onPacket,
+    std::function<void()>&& onConnectionDown)
+    : m_context(context)
+    , m_socket(context)
+    , m_onPacket(std::move(onPacket))
     , m_onConnectionDown(std::move(onConnectionDown))
 {
 }
@@ -43,23 +46,53 @@ void Client::connect(const std::string& host, const std::string& port) {
     catch (...) {
         LOG_ERROR("Control invalid port: {}", port);
         m_connecting = false;
+        signalConnectResult(false);
         if (m_onConnectionDown)
             m_onConnectionDown();
         return;
     }
 
-    if (m_context.stopped()) {
-        m_context.restart();
-        m_socket = asio::ip::tcp::socket(m_context);
+    if (!m_socket.is_open()) {
+        std::error_code ec;
+        m_socket.open(asio::ip::tcp::v4(), ec);
+        if (ec) {
+            LOG_ERROR("Control failed to open socket: {}", core::utilities::errorCodeForLog(ec));
+            m_connecting = false;
+            signalConnectResult(false);
+            if (m_onConnectionDown)
+                m_onConnectionDown();
+            return;
+        }
     }
 
-    m_workGuard = std::make_unique<asio::executor_work_guard<asio::io_context::executor_type>>(
-        asio::make_work_guard(m_context));
-
-    if (!m_asioThread.joinable())
-        m_asioThread = std::thread([this]() { m_context.run(); });
-
     runConnect(host, portNumber);
+}
+
+bool Client::connectSync(const std::string& host, const std::string& port, int timeoutMs) {
+    m_connectPromise = std::make_shared<std::promise<bool>>();
+    auto future = m_connectPromise->get_future();
+
+    connect(host, port);
+
+    if (future.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready) {
+        return future.get();
+    }
+
+    LOG_WARN("Control connectSync timed out after {}ms", timeoutMs);
+    disconnect();
+    return false;
+}
+
+void Client::signalConnectResult(bool success) {
+    if (m_connectPromise) {
+        try {
+            m_connectPromise->set_value(success);
+        }
+        catch (const std::future_error&) {
+            // Promise already satisfied — ignore
+        }
+        m_connectPromise.reset();
+    }
 }
 
 void Client::runConnect(const std::string& host, uint16_t portNumber) {
@@ -68,6 +101,7 @@ void Client::runConnect(const std::string& host, uint16_t portNumber) {
             if (errorCode != asio::error::operation_aborted)
                 LOG_ERROR("Control connect failed: {}", core::utilities::errorCodeForLog(errorCode));
             m_connecting = false;
+            signalConnectResult(false);
             if (m_onConnectionDown) m_onConnectionDown();
             return;
         }
@@ -93,6 +127,7 @@ void Client::runConnect(const std::string& host, uint16_t portNumber) {
             if (resolveError) {
                 LOG_ERROR("Control resolve {}:{} failed: {}", host, portNumber, core::utilities::errorCodeForLog(resolveError));
                 m_connecting = false;
+                signalConnectResult(false);
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
             }
@@ -107,6 +142,7 @@ void Client::readHandshake() {
                 if (errorCode != asio::error::operation_aborted)
                     LOG_ERROR("Control handshake read error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_connecting = false;
+                signalConnectResult(false);
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
             }
@@ -123,6 +159,7 @@ void Client::writeHandshake() {
                 if (errorCode != asio::error::operation_aborted)
                     LOG_ERROR("Control handshake write error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_connecting = false;
+                signalConnectResult(false);
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
             }
@@ -137,6 +174,7 @@ void Client::readHandshakeConfirmation() {
                 if (errorCode != asio::error::operation_aborted)
                     LOG_ERROR("Control handshake confirmation read error: {}", core::utilities::errorCodeForLog(errorCode));
                 m_connecting = false;
+                signalConnectResult(false);
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
             }
@@ -144,11 +182,13 @@ void Client::readHandshakeConfirmation() {
             if (m_handshakeConfirmation != m_handshakeOut) {
                 LOG_WARN("Control handshake validation failed");
                 m_connecting = false;
+                signalConnectResult(false);
                 if (m_onConnectionDown) m_onConnectionDown();
                 return;
             }
             m_connecting = false;
             m_connected = true;
+            signalConnectResult(true);
             initializeAfterHandshake();
         });
 }
@@ -187,8 +227,8 @@ void Client::processPacketQueue() {
         Packet packet = std::move(*optionalPacket);
         const unsigned char* data = packet.body.empty() ? nullptr : packet.body.data();
         size_t size = packet.body.size();
-        if (m_onControlPacket)
-            m_onControlPacket(packet.type, data, size);
+        if (m_onPacket)
+            m_onPacket(packet.type, data, size);
     }
 }
 
@@ -197,6 +237,8 @@ void Client::disconnect() {
     m_connected = false;
     m_connecting = false;
 
+    signalConnectResult(false);
+
     if (m_processThread.joinable()) {
         m_processThread.join();
     }
@@ -204,20 +246,20 @@ void Client::disconnect() {
     asio::post(m_context, [this]() {
         if (m_socket.is_open()) {
             std::error_code errorCode;
+            m_socket.shutdown(asio::ip::tcp::socket::shutdown_both, errorCode);
             m_socket.close(errorCode);
             if (errorCode)
                 LOG_ERROR("Control socket close error: {}", core::utilities::errorCodeForLog(errorCode));
         }
     });
 
-    m_workGuard.reset();
-    if (m_asioThread.joinable()) {
-        m_asioThread.join();
-    }
+    // Give the posted close a moment to execute on the shared io thread
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     m_receiver.reset();
     m_sender.reset();
     m_outQueue.clear();
+    m_inQueue.clear();
     m_shuttingDown = false;
 }
 

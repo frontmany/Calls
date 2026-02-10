@@ -1,10 +1,10 @@
 #include "server.h"
-#include "packetFactory.h"
-#include "jsonType.h"
+#include "logic/packetFactory.h"
+#include "constants/jsonType.h"
 #include "utilities/crypto.h"
 #include "utilities/logger.h"
-#include "pendingCall.h"
-#include "network/tcp_packet.h"
+#include "models/pendingCall.h"
+#include "network/tcp/packet.h"
 
 #include <algorithm>
 #include <chrono>
@@ -12,6 +12,7 @@
 #include <string>
 
 using namespace server;
+using namespace server::constant;
 using namespace server::utilities;
 
 namespace
@@ -24,58 +25,50 @@ namespace
 namespace server
 {
     Server::Server(const std::string& tcpPort, const std::string& udpPort)
-        : m_tcpPort(tcpPort)
-        , m_udpPort(udpPort)
-        , m_packetSender(m_networkController)
-        , m_mediaRelayService(m_userRepository, m_callManager, m_packetSender)
+        : m_networkController(
+            static_cast<uint16_t>(std::stoul(tcpPort)),
+            udpPort,
+            [this](network::tcp::OwnedPacket&& packet) {handleReceiveTcp(std::move(packet)); },
+            [this](network::tcp::ConnectionPtr connection) {handleConnectionWithUserDown(connection); },
+            [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& ep) {handleReceiveUdp(data, size, type, ep);})
     {
-        m_networkController.init(udpPort,
-            [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& ep) {
-                onReceiveUdp(data, size, type, ep);
-            });
+        registerHandlers();
+    }
 
-        uint16_t tcpPortNum = static_cast<uint16_t>(std::stoul(tcpPort));
-        m_tcpController = std::make_unique<network::TcpControlController>(
-            tcpPortNum,
-            [this](network::OwnedTcpPacket&& p) { onTcpControlPacket(std::move(p)); },
-            [this](network::TcpConnectionPtr conn) { onTcpDisconnect(conn); });
+    void Server::registerHandlers() {
+        m_packetHandlers.emplace(PacketType::AUTHORIZATION, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleAuthorization(json, conn); });
+        m_packetHandlers.emplace(PacketType::RECONNECT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleReconnect(json, conn); });
+        m_packetHandlers.emplace(PacketType::LOGOUT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleLogout(json, conn); });
+        m_packetHandlers.emplace(PacketType::GET_USER_INFO, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleGetFriendInfo(json, conn); });
+        m_packetHandlers.emplace(PacketType::CALLING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleStartOutgoingCall(json, conn); });
+        m_packetHandlers.emplace(PacketType::CALLING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleStopOutgoingCall(json, conn); });
+        m_packetHandlers.emplace(PacketType::CALL_ACCEPT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleAcceptCall(json, conn); });
+        m_packetHandlers.emplace(PacketType::CALL_DECLINE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleDeclineCall(json, conn); });
+        m_packetHandlers.emplace(PacketType::CALL_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleEndCall(json, conn); });
+        m_packetHandlers.emplace(PacketType::SCREEN_SHARING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::SCREEN_SHARING_BEGIN, conn); });
+        m_packetHandlers.emplace(PacketType::SCREEN_SHARING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::SCREEN_SHARING_END, conn); });
+        m_packetHandlers.emplace(PacketType::CAMERA_SHARING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::CAMERA_SHARING_BEGIN, conn); });
+        m_packetHandlers.emplace(PacketType::CAMERA_SHARING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::CAMERA_SHARING_END, conn); });
     }
 
     void Server::run() {
-        m_udpThread = std::thread([this]() { m_networkController.run(); });
-        if (m_tcpController)
-            m_tcpController->start();
-        if (m_udpThread.joinable())
-            m_udpThread.join();
+        m_networkController.start();
     }
 
     void Server::stop() {
-        if (m_tcpController)
-            m_tcpController->stop();
         m_networkController.stop();
-        if (m_udpThread.joinable())
-            m_udpThread.join();
     }
 
-    void Server::onReceiveUdp(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
+    void Server::handleReceiveUdp(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
         PacketType type = static_cast<PacketType>(rawType);
-        if (type == PacketType::VOICE) {
-            handleVoice(data, size, endpointFrom);
-            return;
-        }
-        if (type == PacketType::SCREEN) {
-            handleScreen(data, size, endpointFrom);
-            return;
-        }
-        if (type == PacketType::CAMERA) {
-            handleCamera(data, size, endpointFrom);
-            return;
+        if (type == PacketType::VOICE || type == PacketType::SCREEN || type == PacketType::CAMERA) {
+            m_networkController.sendUdp(data, size, rawType, endpointFrom);
         }
     }
 
-    void Server::onTcpControlPacket(network::OwnedTcpPacket&& owned) {
-        network::TcpConnectionPtr conn = owned.connection;
-        network::TcpPacket& p = owned.packet;
+    void Server::handleReceiveTcp(network::tcp::OwnedPacket&& owned) {
+        network::tcp::ConnectionPtr conn = owned.connection;
+        network::tcp::Packet& p = owned.packet;
         uint32_t rawType = p.type;
 
         if (p.body.empty()) {
@@ -94,46 +87,14 @@ namespace server
         }
 
         PacketType type = static_cast<PacketType>(rawType);
-        switch (type) {
-            case PacketType::AUTHORIZATION:
-                handleAuthorizationTcp(json, conn);
-                break;
-            case PacketType::RECONNECT:
-                handleReconnectTcp(json, conn);
-                break;
-            case PacketType::LOGOUT:
-                handleLogoutTcp(json, conn);
-                break;
-            case PacketType::GET_USER_INFO:
-                handleGetFriendInfoTcp(json, conn);
-                break;
-            case PacketType::CALLING_BEGIN:
-                handleStartOutgoingCallTcp(json, conn);
-                break;
-            case PacketType::CALLING_END:
-                handleStopOutgoingCallTcp(json, conn);
-                break;
-            case PacketType::CALL_ACCEPT:
-                handleAcceptCallTcp(json, conn);
-                break;
-            case PacketType::CALL_DECLINE:
-                handleDeclineCallTcp(json, conn);
-                break;
-            case PacketType::CALL_END:
-                handleEndCallTcp(json, conn);
-                break;
-            case PacketType::SCREEN_SHARING_BEGIN:
-            case PacketType::SCREEN_SHARING_END:
-            case PacketType::CAMERA_SHARING_BEGIN:
-            case PacketType::CAMERA_SHARING_END:
-                handleRedirectTcp(json, type, conn);
-                break;
-            default:
-                LOG_WARN("[TCP] Unknown control packet type {}", rawType);
-        }
+        auto it = m_packetHandlers.find(type);
+        if (it != m_packetHandlers.end())
+            it->second(json, conn);
+        else
+            LOG_WARN("[TCP] Unknown control packet type {}", rawType);
     }
 
-    void Server::onTcpDisconnect(network::TcpConnectionPtr conn) {
+    void Server::handleConnectionWithUserDown(network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_connToUser.find(conn);
         if (it == m_connToUser.end()) {
@@ -149,12 +110,12 @@ namespace server
         processConnectionDown(user);
     }
 
-    void Server::sendTcp(network::TcpConnectionPtr conn, uint32_t type, const std::vector<unsigned char>& body) {
+    void Server::sendTcp(network::tcp::ConnectionPtr conn, uint32_t type, const std::vector<unsigned char>& body) {
         if (!conn) return;
-        network::TcpPacket packet;
+        network::tcp::Packet packet;
         packet.type = type;
         packet.body = body;
-        conn->sendPacket(packet);
+        conn->send(packet);
     }
 
     void Server::sendTcpToUser(const std::string& receiverNicknameHash, uint32_t type, const std::string& jsonBody) {
@@ -174,7 +135,7 @@ namespace server
         return true;
     }
 
-    void Server::handleAuthorizationTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleAuthorization(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string uid = json[UID].get<std::string>();
@@ -227,7 +188,7 @@ namespace server
         }
     }
 
-    void Server::handleReconnectTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleReconnect(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string uid = json[UID].get<std::string>();
@@ -261,7 +222,7 @@ namespace server
                     auto tcpEp = conn->remoteEndpoint();
                     if (!tcpEp.address().is_unspecified()) {
                         asio::ip::udp::endpoint udpEp(tcpEp.address(), udpPort);
-                        m_userRepository.updateUserEndpoint(senderNicknameHash, udpEp);
+                        m_userRepository.updateUserUdpEndpoint(senderNicknameHash, udpEp);
                     }
                 }
             }
@@ -277,7 +238,7 @@ namespace server
             }
 
             if (allowed && user->isInCall()) {
-                auto partner = m_callManager.getCallPartner(user->getNicknameHash());
+                auto partner = user->getCallPartner();
                 if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
                     auto partnerInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
                     if (!partnerInRepo->isConnectionDown()) {
@@ -293,7 +254,7 @@ namespace server
         }
     }
 
-    void Server::handleLogoutTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleLogout(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
@@ -306,7 +267,7 @@ namespace server
         }
     }
 
-    void Server::handleGetFriendInfoTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleGetFriendInfo(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string uid = json[UID].get<std::string>();
@@ -327,7 +288,7 @@ namespace server
         }
     }
 
-    void Server::handleStartOutgoingCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleStartOutgoingCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string uid = json[UID].get<std::string>();
@@ -362,7 +323,7 @@ namespace server
         }
     }
 
-    void Server::handleStopOutgoingCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleStopOutgoingCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
@@ -392,7 +353,7 @@ namespace server
         }
     }
 
-    void Server::handleAcceptCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleAcceptCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
@@ -421,20 +382,6 @@ namespace server
             receiver->setCall(call);
             sender->setCall(call);
 
-            auto declineOthers = [this](const UserPtr& busy) {
-                if (!busy) return;
-                for (auto& pc : busy->getIncomingPendingCalls()) {
-                    auto initiator = pc->getInitiator();
-                    if (!initiator) continue;
-                    resetOutgoingPendingCall(initiator);
-                    removeIncomingPendingCall(busy, pc);
-                    auto [_, decl] = PacketFactory::getCallDeclinedPacket(busy->getNicknameHash(), initiator->getNicknameHash());
-                    sendTcpToUserIfConnected(initiator->getNicknameHash(), static_cast<uint32_t>(PacketType::CALL_DECLINE), decl);
-                }
-            };
-            declineOthers(receiver);
-            declineOthers(sender);
-
             std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
             std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
             LOG_INFO("Call accepted: {} -> {}", rp, sp);
@@ -444,7 +391,7 @@ namespace server
         }
     }
 
-    void Server::handleDeclineCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleDeclineCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
@@ -477,7 +424,7 @@ namespace server
         }
     }
 
-    void Server::handleEndCallTcp(const nlohmann::json& json, network::TcpConnectionPtr conn) {
+    void Server::handleEndCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
@@ -495,7 +442,7 @@ namespace server
                 std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
                 std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
                 LOG_INFO("Call ended: {} ended call with {}", sp, rp);
-                m_callManager.endCall(sender->getNicknameHash(), receiver->getNicknameHash());
+                m_callManager.endCall(sender->getCall());
                 sender->resetCall();
                 receiver->resetCall();
             }
@@ -505,23 +452,11 @@ namespace server
         }
     }
 
-    void Server::handleRedirectTcp(const nlohmann::json& json, PacketType type, network::TcpConnectionPtr) {
+    void Server::redirectPacket(const nlohmann::json& json, PacketType type, network::tcp::ConnectionPtr) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (!json.contains(RECEIVER_NICKNAME_HASH)) return;
         std::string receiver = json[RECEIVER_NICKNAME_HASH].get<std::string>();
         sendTcpToUser(receiver, static_cast<uint32_t>(type), json.dump());
-    }
-
-    void Server::handleVoice(const unsigned char* data, int size, const asio::ip::udp::endpoint& ep) {
-        m_mediaRelayService.relayMedia(data, size, PacketType::VOICE, ep);
-    }
-
-    void Server::handleScreen(const unsigned char* data, int size, const asio::ip::udp::endpoint& ep) {
-        m_mediaRelayService.relayMedia(data, size, PacketType::SCREEN, ep);
-    }
-
-    void Server::handleCamera(const unsigned char* data, int size, const asio::ip::udp::endpoint& ep) {
-        m_mediaRelayService.relayMedia(data, size, PacketType::CAMERA, ep);
     }
 
     void Server::processConnectionDown(const UserPtr& user) {
@@ -554,7 +489,8 @@ namespace server
         }
 
         if (user->isInCall()) {
-            auto partner = m_callManager.getCallPartner(user->getNicknameHash());
+            auto partner = user->getCallPartner();
+            m_callManager.endCall(user->getCall());
             if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
                 auto pInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
                 if (pInRepo && !pInRepo->isConnectionDown()) {
@@ -563,8 +499,6 @@ namespace server
                 }
                 if (pInRepo) pInRepo->resetCall();
             }
-            if (partner)
-                m_callManager.endCall(user->getNicknameHash(), partner->getNicknameHash());
             user->resetCall();
         }
     }
@@ -580,7 +514,8 @@ namespace server
             m_connToUser.erase(conn);
 
         if (user->isInCall()) {
-            auto partner = m_callManager.getCallPartner(nicknameHash);
+            auto partner = user->getCallPartner();
+            m_callManager.endCall(user->getCall());
             if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
                 auto partnerInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
                 if (partnerInRepo) {
@@ -592,7 +527,6 @@ namespace server
                     }
                     partnerInRepo->resetCall();
                 }
-                m_callManager.endCall(nicknameHash, partner->getNicknameHash());
             }
             user->resetCall();
         }

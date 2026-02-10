@@ -15,7 +15,7 @@ namespace core::network::udp
 {
     class Client {
     public:
-        Client();
+        explicit Client(asio::io_context& context);
         ~Client();
 
         bool initialize(const std::string& host,
@@ -34,11 +34,9 @@ namespace core::network::udp
     private:
         uint64_t generateId();
 
-        asio::io_context m_context;
+        asio::io_context& m_context;
         asio::ip::udp::socket m_socket;
         asio::ip::udp::endpoint m_serverEndpoint;
-        asio::executor_work_guard<asio::io_context::executor_type> m_workGuard;
-        std::thread m_asioThread;
 
         PacketReceiver m_packetReceiver;
         PacketSender m_packetSender;
@@ -48,7 +46,6 @@ namespace core::network::udp
         uint16_t m_localPort;
 
         std::function<void(const unsigned char*, int, uint32_t)> m_onReceive;
-        std::atomic_bool m_connectionDownNotified{false};
     };
 
 }

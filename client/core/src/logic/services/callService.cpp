@@ -26,9 +26,25 @@ namespace core::logic
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (m_stateManager->isActiveCall()) return make_error_code(ErrorCode::active_call_exists);
 
-        auto packet = PacketFactory::getRequestUserInfoPacket(m_stateManager->getMyNickname(), m_keyManager->getMyPublicKey(), userNickname);
+        auto& incomingCalls = m_stateManager->getIncomingCalls();
 
-        return m_sendPacket(packet, PacketType::GET_USER_INFO);
+        bool incomingCallExists = false;
+
+        for (auto& [nickname, incomingCall] : incomingCalls) {
+            if (nickname == userNickname) {
+                incomingCallExists = true;
+                break;
+            }
+        }
+
+        if (incomingCallExists) {
+            return acceptCall(userNickname);
+        }
+        else {
+            auto packet = PacketFactory::getRequestUserInfoPacket(m_stateManager->getMyNickname(), m_keyManager->getMyPublicKey(), userNickname);
+
+            return m_sendPacket(packet, PacketType::GET_USER_INFO);
+        }
     }
 
     std::error_code CallService::stopOutgoingCall() {

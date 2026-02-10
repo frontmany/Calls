@@ -7,9 +7,9 @@
 
 namespace core::network::udp 
 {
-    Client::Client()
-        : m_socket(m_context)
-        , m_workGuard(asio::make_work_guard(m_context))
+    Client::Client(asio::io_context& context)
+        : m_context(context)
+        , m_socket(context)
         , m_running(false)
         , m_nextPacketId(0)
         , m_localPort(0)
@@ -70,15 +70,12 @@ namespace core::network::udp
             if (!errorCode)
                 m_localPort = static_cast<uint16_t>(localEndpoint.port());
 
-            std::function<void()> errorHandler = []() {};
-            auto pingReceivedHandler = [](uint32_t) {};
-
-            if (!m_packetReceiver.initialize(m_socket, m_onReceive, errorHandler, pingReceivedHandler, m_serverEndpoint)) {
+            if (!m_packetReceiver.initialize(m_socket, m_onReceive, m_serverEndpoint)) {
                 LOG_ERROR("Media failed to initialize packet receiver");
                 return false;
             }
 
-            m_packetSender.initialize(m_socket, m_serverEndpoint, errorHandler);
+            m_packetSender.initialize(m_socket, m_serverEndpoint);
 
             LOG_INFO("Media controller initialized, server: {}:{}, local port {}", host, port, m_localPort);
             return true;
@@ -93,13 +90,12 @@ namespace core::network::udp
     void Client::start() {
         if (m_running.exchange(true))
             return;
-        m_asioThread = std::thread([this]() { m_context.run(); });
         m_packetReceiver.start();
     }
 
     void Client::stop() {
         bool wasRunning = m_running.exchange(false);
-        if (!wasRunning && !m_asioThread.joinable())
+        if (!wasRunning)
             return;
 
         m_packetSender.stop();
@@ -114,14 +110,6 @@ namespace core::network::udp
             if (errorCode)
                 LOG_WARN("Media failed to close socket: {}", core::utilities::errorCodeForLog(errorCode));
         }
-
-        m_workGuard.reset();
-        m_context.stop();
-
-        if (m_asioThread.joinable())
-            m_asioThread.join();
-
-        m_context.restart();
     }
 
     bool Client::isRunning() const {
@@ -133,10 +121,6 @@ namespace core::network::udp
     }
 
     bool Client::send(const std::vector<unsigned char>& data, uint32_t type) {
-        if (type == 0 || type == 1) {
-            LOG_ERROR("Media packet types 0 and 1 are reserved");
-            return false;
-        }
         Packet packet;
         packet.id = generateId();
         packet.type = type;
@@ -146,10 +130,6 @@ namespace core::network::udp
     }
 
     bool Client::send(std::vector<unsigned char>&& data, uint32_t type) {
-        if (type == 0 || type == 1) {
-            LOG_ERROR("Media packet types 0 and 1 are reserved");
-            return false;
-        }
         Packet packet;
         packet.id = generateId();
         packet.type = type;

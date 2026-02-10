@@ -5,10 +5,8 @@
 #include "utilities/logger.h"
 #include "utilities/errorCodeForLog.h"
 
-namespace server
+namespace server::network::udp
 {
-    namespace network 
-    {
     PacketSender::PacketSender()
         : m_isSending(false), m_currentDatagramIndex(0)
     {
@@ -181,7 +179,6 @@ namespace server
         }
 
         return packets;
-    }
     }
 }
 

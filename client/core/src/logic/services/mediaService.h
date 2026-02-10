@@ -27,8 +27,8 @@ namespace core::logic
             std::shared_ptr<media::AudioEngine> audioEngine,
             std::shared_ptr<media::MediaProcessingService> mediaProcessingService,
             std::shared_ptr<EventListener> eventListener,
-            std::function<void(const std::vector<unsigned char>&, core::constant::PacketType)> sendPacket,
-            std::function<void(const std::vector<unsigned char>&, media::MediaType)> sendMediaFrame
+            std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> sendPacket,
+            std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> sendMediaFrame
         );
 
         ~MediaService() = default;
@@ -56,7 +56,7 @@ namespace core::logic
         std::shared_ptr< media::MediaProcessingService> m_mediaProcessingService;
         std::shared_ptr<media::AudioEngine> m_audioEngine;
         std::shared_ptr<EventListener> m_eventListener;
-        std::function<void(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
-        std::function<void(const std::vector<unsigned char>&, media::MediaType)> m_sendMediaFrame;
+        std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
+        std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendMediaFrame;
     };
 }

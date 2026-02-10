@@ -9,10 +9,8 @@
 #include "utilities/logger.h"
 #include "utilities/errorCodeForLog.h"
 
-namespace server
+namespace server::network::udp
 {
-    namespace network 
-    {
         PacketReceiver::PacketReceiver()
         : m_running(false) {
     }
@@ -420,7 +418,6 @@ namespace server
         if (m_onErrorCallback) {
             m_onErrorCallback();
         }
-    }
     }
 }
 

@@ -20,13 +20,13 @@ namespace core::logic
             std::shared_ptr<EventListener> eventListener
         );
 
-        void onIncomingScreenSharingStarted(const nlohmann::json& jsonObject);
-        void onIncomingScreenSharingStopped(const nlohmann::json& jsonObject);
-        void onIncomingCameraSharingStarted(const nlohmann::json& jsonObject);
-        void onIncomingCameraSharingStoped(const nlohmann::json& jsonObject);
-        void onIncomingAudio(const unsigned char* data, int length);
-        void onIncomingScreen(const unsigned char* data, int length);
-        void onIncomingCamera(const unsigned char* data, int length);
+        void handleIncomingScreenSharingStarted(const nlohmann::json& jsonObject);
+        void handleIncomingScreenSharingStopped(const nlohmann::json& jsonObject);
+        void handleIncomingCameraSharingStarted(const nlohmann::json& jsonObject);
+        void handleIncomingCameraSharingStopped(const nlohmann::json& jsonObject);
+        void handleIncomingAudio(const unsigned char* data, int length);
+        void handleIncomingScreen(const unsigned char* data, int length);
+        void handleIncomingCamera(const unsigned char* data, int length);
 
     private:
         std::shared_ptr<ClientStateManager> m_stateManager;

@@ -86,7 +86,7 @@ namespace core
 
         MediaProcessingService::~MediaProcessingService() = default;
 
-        bool MediaProcessingService::setupAudioProcessing(int sampleRate, int channels, int frameSize)
+        bool MediaProcessingService::initializeAudioProcessing(int sampleRate, int channels, int frameSize)
         {
             m_sampleRate = sampleRate;
             m_channels = channels;
@@ -104,7 +104,7 @@ namespace core
             return true;
         }
 
-        bool MediaProcessingService::setupVideoProcessing(int width, int height, int bitrate)
+        bool MediaProcessingService::initializeVideoProcessing(int width, int height, int bitrate)
         {
             m_width = width;
             m_height = height;

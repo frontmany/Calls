@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <thread>
@@ -17,12 +18,13 @@ namespace core::network::tcp {
 
 class Client {
 public:
-    using OnControlPacket = std::function<void(uint32_t type, const unsigned char* data, size_t size)>;
-
-    Client(OnControlPacket onControlPacket, std::function<void()> onConnectionDown);
+    Client(asio::io_context& context,
+        std::function<void(uint32_t type, const unsigned char* data, size_t size)>&& onPacket,
+        std::function<void()>&& onConnectionDown);
     ~Client();
 
     void connect(const std::string& host, const std::string& port);
+    bool connectSync(const std::string& host, const std::string& port, int timeoutMs);
     void disconnect();
     bool isConnected() const;
     bool send(uint32_t type, const std::vector<unsigned char>& body);
@@ -35,11 +37,10 @@ private:
     void writeHandshake();
     void initializeAfterHandshake();
     void processPacketQueue();
+    void signalConnectResult(bool success);
 
-    asio::io_context m_context;
+    asio::io_context& m_context;
     asio::ip::tcp::socket m_socket;
-    std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
-    std::thread m_asioThread;
     std::thread m_processThread;
 
     core::utilities::SafeQueue<Packet> m_inQueue;
@@ -52,7 +53,9 @@ private:
     uint64_t m_handshakeOut = 0;
     uint64_t m_handshakeConfirmation = 0;
 
-    OnControlPacket m_onControlPacket;
+    std::shared_ptr<std::promise<bool>> m_connectPromise;
+
+    std::function<void(uint32_t type, const unsigned char* data, size_t size)> m_onPacket;
     std::function<void()> m_onConnectionDown;
 
     std::atomic<bool> m_connecting{ false };

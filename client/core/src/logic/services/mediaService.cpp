@@ -12,8 +12,8 @@ namespace core::logic
         std::shared_ptr<media::AudioEngine> audioEngine,
         std::shared_ptr<media::MediaProcessingService> mediaProcessingService,
         std::shared_ptr<EventListener> eventListener,
-        std::function<void(const std::vector<unsigned char>&, PacketType)> sendPacket,
-        std::function<void(const std::vector<unsigned char>&, media::MediaType)> sendMediaFrame)
+        std::function<std::error_code(const std::vector<unsigned char>&, PacketType)> sendPacket,
+        std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> sendMediaFrame)
         : m_stateManager(stateManager)
         , m_audioEngine(audioEngine)
         , m_mediaProcessingService(mediaProcessingService)
@@ -24,8 +24,6 @@ namespace core::logic
         m_audioEngine->setInputAudioCallback([this](const float* data, int length) {onRawAudio(data, length); });
         m_screenCaptureService.setFrameCallback([this](const media::Frame& frame) {onRawFrame(frame); });
         m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) {onRawFrame(frame); });
-        m_mediaProcessingService->setupAudioProcessing();
-        m_mediaProcessingService->setupVideoProcessing();
     }
 
     std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, int screeIndex = 0)

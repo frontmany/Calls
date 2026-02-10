@@ -16,8 +16,8 @@ namespace core
             ~MediaProcessingService();
 
             // Инициализация процессоров
-            bool setupAudioProcessing(int sampleRate = 48000, int channels = 1, int frameSize = 960);
-            bool setupVideoProcessing(int width = 1920, int height = 1080, int bitrate = 1800000);
+            bool initializeAudioProcessing(int sampleRate = 48000, int channels = 1, int frameSize = 960);
+            bool initializeVideoProcessing(int width = 1920, int height = 1080, int bitrate = 1800000);
             
             // Очистка ресурсов
             void cleanupAudio();

@@ -34,6 +34,27 @@ namespace core::logic
         void processPacket(const unsigned char* data, int length, core::constant::PacketType type);
 
     private:
+        void handleIncomingAudio(const unsigned char* data, int length);
+        void handleIncomingScreen(const unsigned char* data, int length);
+        void handleIncomingCamera(const unsigned char* data, int length);
+        void handleAuthorizationResult(const nlohmann::json& jsonObject);
+        void handleReconnectResult(const nlohmann::json& jsonObject);
+        void handleUserInfoResult(const nlohmann::json& jsonObject);
+        void handleIncomingCallBegin(const nlohmann::json& jsonObject);
+        void handleIncomingCallEnded(const nlohmann::json& jsonObject);
+        void handleCallAccepted(const nlohmann::json& jsonObject);
+        void handleCallDeclined(const nlohmann::json& jsonObject);
+        void handleCallEndedByRemote(const nlohmann::json& jsonObject);
+        void handleScreenSharingStarted(const nlohmann::json& jsonObject);
+        void handleScreenSharingStopped(const nlohmann::json& jsonObject);
+        void handleCameraSharingStarted(const nlohmann::json& jsonObject);
+        void handleCameraSharingStopped(const nlohmann::json& jsonObject);
+        void handleRemoteUserConnectionDown(const nlohmann::json& jsonObject);
+        void handleRemoteUserConnectionRestored(const nlohmann::json& jsonObject);
+        void handleRemoteUserLogout(const nlohmann::json& jsonObject);
+
+    private:
+        std::shared_ptr<media::AudioEngine> m_audioEngine;
         std::unique_ptr<AuthorizationPacketHandler>& m_authorizationPacketHandler;
         std::unique_ptr<CallPacketHandler>& m_callPacketHandler;
         std::unique_ptr<MediaPacketHandler>& m_mediaPacketHandler;

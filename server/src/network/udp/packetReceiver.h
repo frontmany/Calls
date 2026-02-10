@@ -14,10 +14,8 @@
 
 #include "utilities/safeQueue.h"
 
-namespace server
+namespace server::network::udp
 {
-    namespace network 
-    {
     class PacketReceiver {
     private:
         struct PendingPacket {
@@ -88,6 +86,5 @@ namespace server
         std::function<void()> m_onErrorCallback;
         std::function<void(uint32_t, const asio::ip::udp::endpoint&)> m_onPingReceived;
     };
-    }
 }
 

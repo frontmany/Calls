@@ -221,7 +221,7 @@ namespace core
             }
         }
 
-        bool AudioEngine::startStream() {
+        bool AudioEngine::startAudioCapture() {
             std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 
             if (!m_isInitialized) {
@@ -255,7 +255,7 @@ namespace core
             return true;
         }
 
-        bool AudioEngine::stopStream() {
+        bool AudioEngine::stopAudioCapture() {
             std::lock_guard<std::mutex> lock(m_inputAudioMutex);
 
             if (!m_isInitialized || !m_isStream) return true;

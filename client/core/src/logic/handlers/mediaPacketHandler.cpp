@@ -17,7 +17,7 @@ namespace core::logic {
     {
     }
 
-    void MediaPacketHandler::onIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
+    void MediaPacketHandler::handleIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
             !m_stateManager->isActiveCall() ||
@@ -31,7 +31,7 @@ namespace core::logic {
         m_eventListener->onIncomingScreenSharingStarted();
     }
 
-    void MediaPacketHandler::onIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
+    void MediaPacketHandler::handleIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
             !m_stateManager->isActiveCall() ||
@@ -45,7 +45,7 @@ namespace core::logic {
         m_eventListener->onIncomingScreenSharingStopped();
     }
 
-    void MediaPacketHandler::onIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
+    void MediaPacketHandler::handleIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
             !m_stateManager->isActiveCall() ||
@@ -59,7 +59,7 @@ namespace core::logic {
         m_eventListener->onIncomingCameraSharingStarted();
     }
 
-    void MediaPacketHandler::onIncomingCameraSharingStoped(const nlohmann::json& jsonObject) {
+    void MediaPacketHandler::handleIncomingCameraSharingStopped(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
             !m_stateManager->isActiveCall() ||
@@ -73,7 +73,7 @@ namespace core::logic {
         m_eventListener->onIncomingCameraSharingStopped();
     }
 
-    void MediaPacketHandler::onIncomingAudio(const unsigned char* data, int length) {
+    void MediaPacketHandler::handleIncomingAudio(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
             !m_stateManager->isActiveCall() ||
@@ -84,7 +84,7 @@ namespace core::logic {
         m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(decryptedData.size()));
     }
 
-    void MediaPacketHandler::onIncomingScreen(const unsigned char* data, int length) {
+    void MediaPacketHandler::handleIncomingScreen(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
             !m_stateManager->isActiveCall() ||
@@ -95,7 +95,7 @@ namespace core::logic {
         m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(decryptedData.size()));
     }
 
-    void MediaPacketHandler::onIncomingCamera(const unsigned char* data, int length) {
+    void MediaPacketHandler::handleIncomingCamera(const unsigned char* data, int length) {
 
     }
 }

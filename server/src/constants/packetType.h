@@ -1,9 +1,10 @@
 #pragma once 
 
 #include <cstdint>
+#include <functional>
 #include <string>
 
-namespace server
+namespace server::constant
 {
     enum class PacketType : uint32_t {
     // only receive
@@ -71,3 +72,10 @@ inline std::string packetTypeToString(PacketType type) {
     }
 }
 }
+
+template<>
+struct std::hash<server::constant::PacketType> {
+    std::size_t operator()(server::constant::PacketType t) const noexcept {
+        return std::hash<uint32_t>{}(static_cast<uint32_t>(t));
+    }
+};

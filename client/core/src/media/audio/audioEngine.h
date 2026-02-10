@@ -23,13 +23,13 @@ namespace core
             AudioEngine();
             ~AudioEngine();
 
-            bool initialize(int sampleRate, int framesPerBuffer, int inputChannels, int outputChannels);
+            bool initialize(int sampleRate = 48000, int framesPerBuffer = 960, int inputChannels = 1, int outputChannels = 1);
             void setInputAudioCallback(std::function<void(const float* data, int length)> inputCallback);
             void refreshAudioDevices();
             bool initialized() const;
             bool isStream() const;
-            bool startStream();
-            bool stopStream();
+            bool startAudioCapture();
+            bool stopAudioCapture();
             void playAudio(const float* data, int length);
             void muteMicrophone(bool isMute);
             void muteSpeaker(bool isMute);

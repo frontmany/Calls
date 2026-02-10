@@ -9,10 +9,11 @@
 #include "utilities/crypto.h"
 #include "ticTimer.h"
 #include "asio.hpp"
-#include "network/tcp_connection.h"
+#include "network/tcp/connection.h"
 
 namespace server
 {
+    namespace network { using TcpConnection = tcp::Connection; }
 
     class Call;
     class PendingCall;
