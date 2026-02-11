@@ -176,9 +176,16 @@ namespace server
                 LOG_INFO("User authorized: {}", prefix);
             }
 
+            std::optional<std::string> encryptedNickname;
+            std::optional<std::string> packetKey;
+            if (authorized && json.contains(ENCRYPTED_NICKNAME) && json[ENCRYPTED_NICKNAME].is_string())
+                encryptedNickname = json[ENCRYPTED_NICKNAME].get<std::string>();
+            if (authorized && json.contains(PACKET_KEY) && json[PACKET_KEY].is_string())
+                packetKey = json[PACKET_KEY].get<std::string>();
+
             std::vector<unsigned char> packet;
             if (authorized)
-                packet = PacketFactory::getAuthorizationResultPacket(true, uid, nicknameHash, token);
+                packet = PacketFactory::getAuthorizationResultPacket(true, uid, nicknameHash, token, encryptedNickname, packetKey);
             else
                 packet = PacketFactory::getAuthorizationResultPacket(false, uid, nicknameHash);
             sendTcp(conn, static_cast<uint32_t>(PacketType::AUTHORIZATION_RESULT), packet);

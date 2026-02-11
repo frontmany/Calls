@@ -3,7 +3,7 @@
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
 
-NavigationController::NavigationController(std::shared_ptr<core::Client> client, QObject* parent)
+NavigationController::NavigationController(std::shared_ptr<core::Core> client, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
 {

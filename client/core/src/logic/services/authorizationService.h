@@ -28,7 +28,7 @@ namespace core::logic
     private:
         std::shared_ptr<ClientStateManager> m_stateManager;
         std::shared_ptr<KeyManager> m_keyManager;
-        std::function<uint16_t()>&& m_getLocalUdpPort;
+        std::function<uint16_t()> m_getLocalUdpPort;
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
     };
 }

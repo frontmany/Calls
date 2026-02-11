@@ -13,7 +13,7 @@ class AudioEffectsManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit AudioEffectsManager(std::shared_ptr<core::Client> client, QObject* parent = nullptr);
+    explicit AudioEffectsManager(std::shared_ptr<core::Core> client, QObject* parent = nullptr);
     ~AudioEffectsManager();
 
     void playIncomingCallRingtone();
@@ -33,7 +33,7 @@ private:
     void playSoundEffect(const QUrl& soundUrl);
     QAudioDevice resolveOutputDevice() const;
 
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     QMediaPlayer* m_ringtonePlayer = nullptr;
     QAudioOutput* m_audioOutput = nullptr;
 };

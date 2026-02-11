@@ -27,7 +27,6 @@ namespace core::logic
         bool isViewingRemoteCamera() const;
         bool isOutgoingCall() const;
         bool isActiveCall() const;
-        bool isInReconnectGracePeriod() const;
         bool isCallParticipantConnectionDown() const;
 
         void setAuthorized(bool value);
@@ -36,6 +35,8 @@ namespace core::logic
         void setMediaState(media::MediaType type, media::MediaState state);
         void setViewingRemoteScreen(bool value);
         void setViewingRemoteCamera(bool value);
+        void setSharingScreen(bool value);
+        void setSharingCamera(bool value);
 
         const std::string& getMyNickname() const;
         void setMyNickname(const std::string& nickname);
@@ -56,7 +57,10 @@ namespace core::logic
             std::function<void()> onTimeout)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_callStateManager.setOutgoingCall(nickname, timeout, std::move(onTimeout));
+            if (m_outgoingCall.has_value()) {
+                m_outgoingCall->stop();
+            }
+            m_outgoingCall.emplace(nickname, timeout, std::move(onTimeout));
         }
 
         void setActiveCall(const std::string& nickname,

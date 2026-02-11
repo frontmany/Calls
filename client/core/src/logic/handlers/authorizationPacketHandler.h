@@ -25,5 +25,5 @@ namespace core::logic
         std::shared_ptr<ClientStateManager> m_stateManager;
         std::shared_ptr<KeyManager> m_keyManager;
         std::shared_ptr<EventListener> m_eventListener;
-    }
+    };
 }

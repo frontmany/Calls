@@ -8,7 +8,7 @@ namespace server::constant
 {
     enum class PacketType : uint32_t {
     // only receive
-    AUTHORIZATION = 2,
+    AUTHORIZATION,
     LOGOUT,
     RECONNECT,
     GET_USER_INFO,

@@ -16,7 +16,7 @@ namespace server::network::tcp
         asio::io_context& ctx,
         asio::ip::tcp::socket&& socket,
         std::function<void(OwnedPacket&&)> onPacket,
-        std::function<void(Connection)> onDisconnected)
+        std::function<void(ConnectionPtr)> onDisconnected)
         : m_ctx(ctx)
         , m_socket(std::move(socket))
         , m_receiver(
@@ -94,7 +94,7 @@ namespace server::network::tcp
                     m_onDisconnected(shared_from_this());
                     return;
                 }
-                if (scramble(m_handshakeOut) != m_handshakeIn) {
+                if (server::utilities::crypto::scramble(m_handshakeOut) != m_handshakeIn) {
                     LOG_WARN("[TCP] Handshake validation failed");
                     m_onDisconnected(shared_from_this());
                     return;

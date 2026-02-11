@@ -2,13 +2,11 @@
 
 #include <vector>
 
-namespace core
+namespace core::media
 {
-    namespace media 
-    {
-        struct AudioPacket {
-            std::vector<float> audioData;
-            int samples;
-        };
-    }
+    struct AudioPacket {
+        std::vector<float> audioData;
+        int samples;
+    };
+    
 }

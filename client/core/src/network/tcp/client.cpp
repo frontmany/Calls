@@ -1,6 +1,6 @@
 #include "client.h"
-#include "network/tcp/packetsReceiver.h"
-#include "network/tcp/packetsSender.h"
+#include "network/tcp/packetReceiver.h"
+#include "network/tcp/packetSender.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
 #include "utilities/errorCodeForLog.h"

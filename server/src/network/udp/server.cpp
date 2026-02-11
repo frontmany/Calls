@@ -9,7 +9,7 @@
 
 using namespace std::chrono_literals;
 
-namespace server::network
+namespace server::network::udp
 {
     Server::Server()
         : m_socket(m_context)

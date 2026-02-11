@@ -13,7 +13,7 @@
 
 #include "widgets/buttons.h"
 #include "utilities/utilities.h"
-#include "audio/audioEngine.h"
+#include "media/audio/audioEngine.h"
 
 class AudioSettingsDialog : public QDialog
 {
@@ -43,7 +43,7 @@ private:
     void applyStyle();
     QString sliderStyle() const;
     QString scrollAreaStyle() const;
-    void buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::audio::DeviceInfo>& devices, int currentIndex, bool isInput);
+    void buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::media::DeviceInfo>& devices, int currentIndex, bool isInput);
     void clearLayout(QLayout* layout);
     void updateDeviceLogos(QButtonGroup* group);
 

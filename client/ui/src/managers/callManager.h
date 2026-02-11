@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QByteArray>
 #include <QStackedLayout>
 #include <QMap>
 #include <QSet>
@@ -28,7 +29,7 @@ private:
     };
 
 public:
-    explicit CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager = nullptr, QObject* parent = nullptr);
+    explicit CallManager(std::shared_ptr<core::Core> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager = nullptr, QObject* parent = nullptr);
     
     void setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout);
     void setNotificationController(NotificationController* notificationController);
@@ -52,6 +53,20 @@ public slots:
     void onCallParticipantConnectionRestored();
     void onLocalConnectionDownInCall();
 
+    // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
+    void onLocalScreenFrame(QByteArray data);
+    void onLocalCameraFrame(QByteArray data);
+    void onIncomingScreenFrame(QByteArray data);
+    void onIncomingCameraFrame(QByteArray data);
+
+    // Media state slots
+    void onIncomingScreenSharingStarted();
+    void onIncomingScreenSharingStopped();
+    void onIncomingCameraSharingStarted();
+    void onIncomingCameraSharingStopped();
+    void onStartScreenSharingError();
+    void onStartCameraSharingError();
+
 signals:
     void endCallFullscreenExitRequested();
 
@@ -66,7 +81,7 @@ private:
     void handleEndCallErrorNotificationAppearance();
     void updateIncomingCallsUi();
 
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     NavigationController* m_navigationController = nullptr;
     DialogsController* m_dialogsController = nullptr;

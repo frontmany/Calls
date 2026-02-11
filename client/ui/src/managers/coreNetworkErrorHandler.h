@@ -3,6 +3,8 @@
 #include <QObject>
 #include <memory>
 
+#include "core.h"
+
 class AuthorizationWidget;
 class DialogsController;
 class NotificationController;
@@ -10,12 +12,13 @@ class NavigationController;
 class MainMenuWidget;
 class AudioEffectsManager;
 class CallManager;
+class ConfigManager;
 
 class CoreNetworkErrorHandler : public QObject {
     Q_OBJECT
 
 public:
-    explicit CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
+    explicit CoreNetworkErrorHandler(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
     void setManagers(CallManager* callManager);
@@ -27,7 +30,7 @@ public slots:
     void onConnectionRestoredAuthorizationNeeded();
 
 private:
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     NavigationController* m_navigationController = nullptr;
     ConfigManager* m_configManager = nullptr;
     AuthorizationWidget* m_authorizationWidget = nullptr;

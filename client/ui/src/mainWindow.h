@@ -4,9 +4,12 @@
 #include <QStackedLayout>
 #include <QHBoxLayout>
 #include <QFontDatabase>
+#include <QTimer>
 #include <memory>
 
 #include "utilities/event.h"
+#include "core.h"
+#include "updater.h"
 
 class AuthorizationWidget;
 class MainMenuWidget;
@@ -20,6 +23,8 @@ class UpdateManager;
 class NavigationController;
 class AuthorizationManager;
 class CallManager;
+class DialogsController;
+class NotificationController;
 class CoreNetworkErrorHandler;
 class UpdaterNetworkErrorHandler;
 
@@ -42,6 +47,7 @@ private slots:
     void onWindowMaximizedRequested();
     void onEndCallFullscreenExitRequested(); 
     void onStopAllRingtonesRequested();
+    void onInitialConnectionRetry();
 
 private:
     void initializeCentralStackedWidget();
@@ -78,7 +84,7 @@ private:
     NotificationController* m_notificationController = nullptr;
     ConfigManager* m_configManager = nullptr;
 
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 
     AudioEffectsManager* m_audioManager = nullptr;
@@ -90,4 +96,6 @@ private:
     CallManager* m_callManager = nullptr;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler = nullptr;
     UpdaterNetworkErrorHandler* m_updaterNetworkErrorHandler = nullptr;
+
+    QTimer* m_initialConnectionRetryTimer = nullptr;  // Retries Core::start() when server was down at startup
 };

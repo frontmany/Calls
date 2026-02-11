@@ -23,5 +23,5 @@ namespace core::logic
     private:
         std::shared_ptr<ClientStateManager> m_stateManager;
         std::shared_ptr<EventListener> m_eventListener;
-    }
+    };
 }

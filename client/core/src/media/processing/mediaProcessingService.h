@@ -5,70 +5,69 @@
 #include <cstdint>
 #include <mutex>
 
-namespace core
+#include "secblock.h"
+
+namespace core::media
 {
-    namespace media
-    {
-        // Унифицированный процессор для H.264 кодирования/декодирование видео, Opus кодирования/декодирование аудио и шифрования
-        class MediaProcessingService {
-        public:
-            MediaProcessingService();
-            ~MediaProcessingService();
+    // Унифицированный процессор для H.264 кодирования/декодирование видео, Opus кодирования/декодирование аудио и шифрования
+    class MediaProcessingService {
+    public:
+        MediaProcessingService();
+        ~MediaProcessingService();
 
-            // Инициализация процессоров
-            bool initializeAudioProcessing(int sampleRate = 48000, int channels = 1, int frameSize = 960);
-            bool initializeVideoProcessing(int width = 1920, int height = 1080, int bitrate = 1800000);
+        // Инициализация процессоров
+        bool initializeAudioProcessing(int sampleRate = 48000, int channels = 1, int frameSize = 960);
+        bool initializeVideoProcessing(int width = 1920, int height = 1080, int bitrate = 1800000);
             
-            // Очистка ресурсов
-            void cleanupAudio();
-            void cleanupVideo();
+        // Очистка ресурсов
+        void cleanupAudio();
+        void cleanupVideo();
 
-            // Кодирование/декодирование аудио
-            std::vector<unsigned char> encodeAudioFrame(const float* pcmData, int frameSize);
-            std::vector<float> decodeAudioFrame(const unsigned char* opusData, int dataSize);
+        // Кодирование/декодирование аудио
+        std::vector<unsigned char> encodeAudioFrame(const float* pcmData, int frameSize);
+        std::vector<float> decodeAudioFrame(const unsigned char* opusData, int dataSize);
 
-            // Кодирование/декодирование видео
-            std::vector<unsigned char> encodeVideoFrame(const unsigned char* rawData, int width, int height);
-            std::vector<unsigned char> decodeVideoFrame(const unsigned char* h264Data, int dataSize);
+        // Кодирование/декодирование видео
+        std::vector<unsigned char> encodeVideoFrame(const unsigned char* rawData, int width, int height);
+        std::vector<unsigned char> decodeVideoFrame(const unsigned char* h264Data, int dataSize);
 
-            // Шифрование/дешифрование медиа данных
-            std::vector<unsigned char> encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key);
-            std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key);
+        // Шифрование/дешифрование медиа данных
+        std::vector<unsigned char> encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key);
+        std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key);
             
-            // Получение информации о процессорах
-            bool isAudioInitialized() const { return m_audioInitialized; }
-            bool isVideoInitialized() const { return m_videoInitialized; }
+        // Получение информации о процессорах
+        bool isAudioInitialized() const { return m_audioInitialized; }
+        bool isVideoInitialized() const { return m_videoInitialized; }
 
-            // Аудио параметры
-            int getSampleRate() const { return m_sampleRate; }
-            int getChannels() const { return m_channels; }
-            int getFrameSize() const { return m_frameSize; }
+        // Аудио параметры
+        int getSampleRate() const { return m_sampleRate; }
+        int getChannels() const { return m_channels; }
+        int getFrameSize() const { return m_frameSize; }
 
-            // Видео параметры
-            int getWidth() const { return m_width; }
-            int getHeight() const { return m_height; }
+        // Видео параметры
+        int getWidth() const { return m_width; }
+        int getHeight() const { return m_height; }
 
 
-        private:
-            struct Impl;
-            std::unique_ptr<Impl> pImpl;
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> pImpl;
 
-            // Аудио параметры
-            int m_sampleRate;
-            int m_channels;
-            int m_frameSize;
-            bool m_audioInitialized;
+        // Аудио параметры
+        int m_sampleRate;
+        int m_channels;
+        int m_frameSize;
+        bool m_audioInitialized;
 
-            // Видео параметры
-            int m_width;
-            int m_height;
-            bool m_videoInitialized;
+        // Видео параметры
+        int m_width;
+        int m_height;
+        bool m_videoInitialized;
 
-            // Вспомогательные методы
-            bool initializeAudioEncoder(int sampleRate, int channels, int frameSize);
-            bool initializeAudioDecoder(int sampleRate, int channels);
-            bool initializeVideoEncoder(int width, int height, int bitrate);
-            bool initializeVideoDecoder();
-        };
-    }
+        // Вспомогательные методы
+        bool initializeAudioEncoder(int sampleRate, int channels, int frameSize);
+        bool initializeAudioDecoder(int sampleRate, int channels);
+        bool initializeVideoEncoder(int width, int height, int bitrate);
+        bool initializeVideoDecoder();
+    };
 }

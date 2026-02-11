@@ -1,14 +1,11 @@
 #pragma once 
 
-namespace core
+namespace core::media
 {
-    namespace media
-    {
-        enum class MediaState {
-            Stopped,
-            Starting,
-            Active,
-            Stopping
-        };
-    }
+    enum class MediaState {
+        Stopped,
+        Starting,
+        Active,
+        Stopping
+    };
 }

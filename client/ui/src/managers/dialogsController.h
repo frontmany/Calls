@@ -6,7 +6,6 @@
 #include <QScreen>
 #include <QMap>
 #include <functional>
-#include "userOperationType.h"
 
 class OverlayWidget;
 class AudioSettingsDialog;

@@ -1,6 +1,7 @@
 #include "mediaService.h"
 #include "logic/packetFactory.h"
-#include "utilities/crypto.h"
+#include "constants/errorCode.h"
+#include "utilities/logger.h"
 
 using namespace core::constant;
 using namespace core::media;
@@ -21,27 +22,27 @@ namespace core::logic
         , m_sendPacket(sendPacket)
         , m_sendMediaFrame(sendMediaFrame)
     {
-        m_audioEngine->setInputAudioCallback([this](const float* data, int length) {onRawAudio(data, length); });
-        m_screenCaptureService.setFrameCallback([this](const media::Frame& frame) {onRawFrame(frame); });
-        m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) {onRawFrame(frame); });
+        m_audioEngine->setInputAudioCallback([this](const float* data, int length) { onRawAudio(data, length); });
+        m_screenCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Screen); });
+        m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Camera); });
     }
 
-    std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, int screeIndex = 0)
+    std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, int screeIndex)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (m_stateManager->getMediaState(media::MediaType::Screen) != media::MediaState::Stopped) {
-            return ; // TODO custom error code
+        if (m_stateManager->getMediaState(MediaType::Screen) != MediaState::Stopped) {
+            return make_error_code(ErrorCode::screen_sharing_already_active);
         }
 
-        m_stateManager->setMediaState(media::MediaType::Screen, media::MediaState::Starting);
+        m_stateManager->setMediaState(MediaType::Screen, MediaState::Starting);
 
         auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
         m_sendPacket(packet, PacketType::SCREEN_SHARING_BEGIN);
 
         m_screenCaptureService.start(screeIndex);
 
-        m_stateManager->setMediaState(media::MediaType::Screen, media::MediaState::Active);
+        m_stateManager->setMediaState(MediaType::Screen, MediaState::Active);
     
         return {};
     }
@@ -50,36 +51,36 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (m_stateManager->getMediaState(media::MediaType::Screen) != media::MediaState::Active) {
-            return ; // TODO custom error code
+        if (m_stateManager->getMediaState(MediaType::Screen) != MediaState::Active) {
+            return make_error_code(ErrorCode::screen_sharing_not_active);
         }
+
+        m_screenCaptureService.stop();
 
         auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
         m_sendPacket(packet, PacketType::SCREEN_SHARING_END);
 
-        m_screenCaptureService.stop();
-
-        m_stateManager->setMediaState(media::MediaType::Screen, media::MediaState::Stopped);
+        m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
     
         return {};
     }
 
-    std::error_code MediaService::startCameraSharing(const std::string& myNickname, const std::string& userNickname, std::string deviceName = "")
+    std::error_code MediaService::startCameraSharing(const std::string& myNickname, const std::string& userNickname, std::string deviceName)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (m_stateManager->getMediaState(media::MediaType::Camera) != media::MediaState::Stopped) {
-            return ; // TODO custom error code
+        if (m_stateManager->getMediaState(MediaType::Camera) != MediaState::Stopped) {
+            return make_error_code(ErrorCode::camera_sharing_already_active);
         }
 
-        m_stateManager->setMediaState(media::MediaType::Camera, media::MediaState::Starting);
+        m_stateManager->setMediaState(MediaType::Camera, MediaState::Starting);
 
         auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
         m_sendPacket(packet, PacketType::CAMERA_SHARING_BEGIN);
 
-        m_cameraCaptureService.start(deviceName);
+        m_cameraCaptureService.start(deviceName.empty() ? nullptr : deviceName.c_str());
 
-        m_stateManager->setMediaState(media::MediaType::Camera, media::MediaState::Active);
+        m_stateManager->setMediaState(MediaType::Camera, MediaState::Active);
     
         return {};
     }
@@ -88,16 +89,16 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (m_stateManager->getMediaState(media::MediaType::Camera) != media::MediaState::Active) {
-            return ; // TODO custom error code
+        if (m_stateManager->getMediaState(MediaType::Camera) != MediaState::Active) {
+            return make_error_code(ErrorCode::camera_sharing_not_active);
         }
+
+        m_cameraCaptureService.stop();
 
         auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
         m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
 
-        m_cameraCaptureService.stop();
-
-        m_stateManager->setMediaState(media::MediaType::Camera, media::MediaState::Stopped);
+        m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
 
         return {};
     }
@@ -106,15 +107,18 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (m_stateManager->getMediaState(media::MediaType::Audio) != media::MediaState::Stopped) {
-            return ; // TODO custom error code
+        if (m_stateManager->getMediaState(MediaType::Audio) != MediaState::Stopped) {
+            return make_error_code(ErrorCode::operation_in_progress);
         }
 
-        m_stateManager->setMediaState(media::MediaType::Audio, media::MediaState::Starting);
+        m_stateManager->setMediaState(MediaType::Audio, MediaState::Starting);
 
-        m_audioEngine->startStream();
+        if (!m_audioEngine->startAudioCapture()) {
+            m_stateManager->setMediaState(MediaType::Audio, MediaState::Stopped);
+            return make_error_code(ErrorCode::network_error);
+        }
 
-        m_stateManager->setMediaState(media::MediaType::Audio, media::MediaState::Active);
+        m_stateManager->setMediaState(MediaType::Audio, MediaState::Active);
 
         return {};
     }
@@ -123,66 +127,85 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (m_stateManager->getMediaState(media::MediaType::Audio) != media::MediaState::Active) {
-            return ; // TODO custom error code
+        if (m_stateManager->getMediaState(MediaType::Audio) != MediaState::Active) {
+            return make_error_code(ErrorCode::operation_in_progress);
         }
 
-        m_audioEngine->stopStream();
+        m_audioEngine->stopAudioCapture();
 
-        m_stateManager->setMediaState(media::MediaType::Audio, media::MediaState::Stopped);
+        m_stateManager->setMediaState(MediaType::Audio, MediaState::Stopped);
 
         return {};
     }
 
-    //TODO create implementations and all necessary transformations of data and use m_eventListener onLocalScreen / onLocalCamera 
-
     void MediaService::onRawAudio(const float* data, int length) {
         std::lock_guard<std::mutex> lock(m_mutex);
 
+        if (!m_stateManager->isActiveCall() ||
+            m_stateManager->getMediaState(MediaType::Audio) != MediaState::Active) {
+            return;
+        }
+
+        auto encodedAudio = m_mediaProcessingService->encodeAudioFrame(data, length);
+        if (encodedAudio.empty()) {
+            return;
+        }
+
+        auto encryptedAudio = encryptWithCallKey(encodedAudio);
+        if (encryptedAudio.empty()) {
+            return;
+        }
+
+        m_sendMediaFrame(encryptedAudio, PacketType::VOICE);
     }
 
-    void MediaService::onRawFrame(const media::Frame& frame) {
+    void MediaService::onRawFrame(const media::Frame& frame, MediaType type) {
         std::lock_guard<std::mutex> lock(m_mutex);
 
+        if (!frame.isValid() || !m_stateManager->isActiveCall()) {
+            return;
+        }
+
+        if (m_stateManager->getMediaState(type) != MediaState::Active) {
+            return;
+        }
+
+        // Send local preview to UI
+        if (m_eventListener) {
+            std::vector<unsigned char> rawData(frame.data, frame.data + frame.size);
+            if (type == MediaType::Screen) {
+                m_eventListener->onLocalScreen(rawData);
+            } else {
+                m_eventListener->onLocalCamera(rawData);
+            }
+        }
+
+        // Encode, encrypt, send
+        auto encodedVideo = m_mediaProcessingService->encodeVideoFrame(frame.data, frame.width, frame.height);
+        if (encodedVideo.empty()) {
+            return;
+        }
+
+        auto encryptedVideo = encryptWithCallKey(encodedVideo);
+        if (encryptedVideo.empty()) {
+            return;
+        }
+
+        PacketType packetType = (type == MediaType::Screen) ? PacketType::SCREEN : PacketType::CAMERA;
+        m_sendMediaFrame(encryptedVideo, packetType);
     }
 
-    std::vector<unsigned char> MediaService::processVideoFrame(MediaType type, const std::vector<unsigned char>& frameData)
-    {
-        if (!m_videoProcessor || !m_videoProcessor->isInitialized()) {
+    std::vector<unsigned char> MediaService::encryptWithCallKey(const std::vector<unsigned char>& data) {
+        if (!m_stateManager->isActiveCall()) {
             return {};
         }
 
-        // Encode frame to H.264
-        auto encodedData = m_videoProcessor->encodeFrame(frameData.data(), 1920, 1080);
-        if (encodedData.empty()) {
-            return {};
+        const auto& callKey = m_stateManager->getActiveCall().getCallKey();
+        if (callKey.size() == 0) {
+            return data;
         }
 
-        // Encrypt if key is available
-        if (m_stateManager.getMyKey().size_in_bytes() > 0) {
-            return m_encryption->encryptMedia(encodedData.data(), encodedData.size(), m_stateManager.getMyKey());
-        }
-
-        return encodedData;
-    }
-
-    std::vector<unsigned char> MediaService::processAudioFrame(const std::vector<float>& audioData)
-    {
-        if (!m_audioProcessor || !m_audioProcessor->isInitialized()) {
-            return {};
-        }
-
-        // Encode audio to Opus
-        auto encodedData = m_audioProcessor->encodeFrame(audioData.data(), 960);
-        if (encodedData.empty()) {
-            return {};
-        }
-
-        // Encrypt if key is available
-        if (m_stateManager.getMyKey().size_in_bytes() > 0) {
-            return m_encryption->encryptMedia(encodedData.data(), encodedData.size(), m_stateManager.getMyKey());
-        }
-
-        return encodedData;
+        std::vector<unsigned char> keyVec(callKey.begin(), callKey.end());
+        return m_mediaProcessingService->encryptData(data.data(), static_cast<int>(data.size()), keyVec);
     }
 }

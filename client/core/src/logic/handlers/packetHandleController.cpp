@@ -48,6 +48,8 @@ namespace core::logic
         m_packetHandlers.emplace(PacketType::USER_LOGOUT, [this](const nlohmann::json& json) {handleRemoteUserLogout(json); });
     }
 
+    PacketHandleController::~PacketHandleController() = default;
+
     void PacketHandleController::processPacket(const unsigned char* data, int length, PacketType type)
     {
         if (type == PacketType::VOICE) {

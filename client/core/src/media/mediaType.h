@@ -1,13 +1,10 @@
 #pragma once 
 
-namespace core
+namespace core::media
 {
-    namespace media
-    {
-        enum class MediaType {
-            Screen,
-            Camera,
-            Audio
-        };
-    }
+    enum class MediaType {
+        Screen,
+        Camera,
+        Audio
+    };
 }

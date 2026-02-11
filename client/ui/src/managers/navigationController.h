@@ -15,7 +15,7 @@ class NavigationController : public QObject {
     Q_OBJECT
 
 public:
-    explicit NavigationController(std::shared_ptr<core::Client> client, QObject* parent = nullptr);
+    explicit NavigationController(std::shared_ptr<core::Core> client, QObject* parent = nullptr);
     
     void setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget);
 
@@ -34,7 +34,7 @@ signals:
     void callWidgetShown();
 
 private:
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;

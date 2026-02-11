@@ -14,37 +14,34 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-namespace core
+namespace core::media
 {
-    namespace media
+    class H264Encoder
     {
-        class H264Encoder
-        {
-        public:
-            using EncodedDataCallback = std::function<void(const uint8_t* data, size_t size, int64_t pts)>;
+    public:
+        using EncodedDataCallback = std::function<void(const uint8_t* data, size_t size, int64_t pts)>;
 
-            H264Encoder();
-            ~H264Encoder();
+        H264Encoder();
+        ~H264Encoder();
 
-            bool initialize(int width, int height, int fps = 30, int bitrate = 2000000);
-            void cleanup();
-            bool encodeFrame(const Frame& frame);
-            void setEncodedDataCallback(EncodedDataCallback callback);
-            bool isInitialized() const;
+        bool initialize(int width, int height, int fps = 30, int bitrate = 2000000);
+        void cleanup();
+        bool encodeFrame(const Frame& frame);
+        void setEncodedDataCallback(EncodedDataCallback callback);
+        bool isInitialized() const;
 
-        private:
-            AVCodecContext* m_codecContext;
-            AVFrame* m_frame;
-            AVPacket* m_packet;
-            SwsContext* m_swsContext;
+    private:
+        AVCodecContext* m_codecContext;
+        AVFrame* m_frame;
+        AVPacket* m_packet;
+        SwsContext* m_swsContext;
             
-            EncodedDataCallback m_encodedCallback;
-            bool m_initialized;
-            int m_width;
-            int m_height;
-            int m_fps;
+        EncodedDataCallback m_encodedCallback;
+        bool m_initialized;
+        int m_width;
+        int m_height;
+        int m_fps;
             
-            bool convertFrame(const Frame& inputFrame);
-        };
-    }
+        bool convertFrame(const Frame& inputFrame);
+    };
 }

@@ -33,5 +33,5 @@ namespace core::logic
         std::shared_ptr<media::AudioEngine> m_audioEngine;
         std::shared_ptr<media::MediaProcessingService> m_mediaProcessingService;
         std::shared_ptr<EventListener> m_eventListener;
-    }
+    };
 }

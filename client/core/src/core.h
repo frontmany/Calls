@@ -28,10 +28,10 @@ namespace core
         const std::string& appVersion
     );
 
-    class Client {
+    class Core {
     public:
-        Client() = default;
-        ~Client();
+        Core() = default;
+        ~Core();
 
         bool start(
             const std::string& tcpHost,

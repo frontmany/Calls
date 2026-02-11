@@ -5,11 +5,9 @@
 #include <mutex>
 #include <cstdint>
 
-namespace core
+namespace core::media
 {
-    namespace media 
-    {
-        class OpusEncoder {
+    class OpusEncoder {
     public:
         enum class EncoderMode {
             VOIP = OPUS_APPLICATION_VOIP,
@@ -37,9 +35,8 @@ namespace core
 
     private:
         Config m_config;
-        OpusEncoder* m_encoder;
+        ::OpusEncoder* m_encoder;
         bool m_initialized = false;
         mutable std::mutex m_mutex;
     };
-    }
 }

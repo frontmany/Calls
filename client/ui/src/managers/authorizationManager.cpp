@@ -7,11 +7,11 @@
 #include "managers/updateManager.h"
 
 #include "../utilities/logger.h"
-#include "errorCode.h"
+#include "constants/errorCode.h"
 #include <QApplication>
 #include <system_error>
 
-AuthorizationManager::AuthorizationManager(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
+AuthorizationManager::AuthorizationManager(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_navigationController(navigationController)
@@ -31,19 +31,19 @@ void AuthorizationManager::onAuthorizationButtonClicked(const QString& friendNic
     std::error_code ec = m_coreClient->authorize(friendNickname.toStdString());
     
     if (ec) {
-        if (ec == core::make_error_code(core::ErrorCode::connection_down)) {
+        if (ec == core::constant::make_error_code(core::constant::ErrorCode::connection_down)) {
             LOG_ERROR("Authorization failed: connection down");
 
             QString errorMessage = "Connection down. Please check your connection and try again.";
             m_authorizationWidget->setErrorMessage(errorMessage);
         }
-        else if (ec == core::make_error_code(core::ErrorCode::already_authorized)) {
+        else if (ec == core::constant::make_error_code(core::constant::ErrorCode::already_authorized)) {
             LOG_WARN("Authorization failed: already authorized");
 
             QString errorMessage = "You are already authorized.";
             m_authorizationWidget->setErrorMessage(errorMessage);
         }
-        else if (ec == core::make_error_code(core::ErrorCode::operation_in_progress)) {
+        else if (ec == core::constant::make_error_code(core::constant::ErrorCode::operation_in_progress)) {
             LOG_WARN("Authorization failed: operation in progress");
 
             QString errorMessage = "Authorization is already in progress. Please wait.";
@@ -67,13 +67,13 @@ void AuthorizationManager::onAuthorizationResult(std::error_code ec) {
     m_authorizationWidget->resetBlur(); 
 
     if (ec) {
-        if (ec == core::make_error_code(core::ErrorCode::network_error)) {
+        if (ec == core::constant::make_error_code(core::constant::ErrorCode::network_error)) {
             LOG_ERROR("Authorization failed: network error");
 
             QString errorMessage = "Network error: please try again";
             m_authorizationWidget->setErrorMessage(errorMessage);
         }
-        else if (ec == core::make_error_code(core::ErrorCode::taken_nickname)) {
+        else if (ec == core::constant::make_error_code(core::constant::ErrorCode::taken_nickname)) {
             LOG_WARN("Authorization failed: nickname already taken");
 
             QString errorMessage = "Taken nickname";

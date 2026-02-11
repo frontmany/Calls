@@ -44,9 +44,8 @@ namespace core::logic
             
     private:
         void onRawAudio(const float* data, int length);
-        void onRawFrame(const media::Frame& frame);
-        std::vector<unsigned char> processVideoFrame(media::MediaType type, const std::vector<unsigned char>& frameData);
-        std::vector<unsigned char> processAudioFrame(const std::vector<float>& audioData);
+        void onRawFrame(const media::Frame& frame, media::MediaType type);
+        std::vector<unsigned char> encryptWithCallKey(const std::vector<unsigned char>& data);
 
     private:
         mutable std::mutex m_mutex;

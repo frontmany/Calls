@@ -3,7 +3,7 @@
 #include <QMediaDevices>
 #include "media/audio/audioEngine.h"
 
-AudioEffectsManager::AudioEffectsManager(std::shared_ptr<core::Client> client, QObject* parent)
+AudioEffectsManager::AudioEffectsManager(std::shared_ptr<core::Core> client, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
 {
@@ -123,7 +123,7 @@ QAudioDevice AudioEffectsManager::resolveOutputDevice() const
     }
 
     const int currentIndex = m_coreClient->getCurrentOutputDevice();
-    const auto deviceInfo = core::audio::AudioEngine::getDeviceInfo(currentIndex);
+    const auto deviceInfo = core::media::AudioEngine::getDeviceInfo(currentIndex);
     if (!deviceInfo) {
         return QMediaDevices::defaultAudioOutput();
     }

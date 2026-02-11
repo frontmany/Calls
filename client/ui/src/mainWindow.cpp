@@ -1,10 +1,12 @@
 #include "mainWindow.h"
 #include <QApplication>
+#include <QGuiApplication>
 #include <QTimer>
 #include <QCloseEvent>
 #include <QDir>
 #include <QCoreApplication>
 #include <QFile>
+#include <QScreen>
 
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
@@ -18,15 +20,15 @@
 #include "utilities/utilities.h"
 #include "utilities/constant.h"
 
-#include "media/audioEffectsManager.h"
-#include "media/audioSettingsManager.h"
+#include "audio/audioEffectsManager.h"
+#include "audio/audioSettingsManager.h"
 #include "managers/updateManager.h"
 #include "managers/navigationController.h"
 #include "managers/authorizationManager.h"
 #include "managers/coreNetworkErrorHandler.h"
 #include "managers/updaterNetworkErrorHandler.h"
 #include "managers/callManager.h"
-#include "media/audioDevicesWatcher.h"
+#include "audio/audioDevicesWatcher.h"
 
 #include "events/coreEventListener.h"
 #include "events/updaterEventListener.h"
@@ -43,9 +45,13 @@ void MainWindow::init() {
     replaceUpdateApplier();
     initializeDiagnostics();
 
-    m_coreClient = std::make_shared<core::Client>();
+    m_coreClient = std::make_shared<core::Core>();
 
     m_updaterClient = std::make_shared<updater::Client>();
+
+    m_initialConnectionRetryTimer = new QTimer(this);
+    m_initialConnectionRetryTimer->setSingleShot(true);
+    connect(m_initialConnectionRetryTimer, &QTimer::timeout, this, &MainWindow::onInitialConnectionRetry);
 
     loadFonts();
 
@@ -66,8 +72,16 @@ void MainWindow::init() {
     initializeCoreNetworkErrorHandler();
     initializeUpdaterNetworkErrorHandler();
 
-    connectWidgetsToManagers();
-    applyAudioSettings();
+        connectWidgetsToManagers();
+    // Apply UI-only settings (widgets); Core audio settings applied after Core::start()
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
+        m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
+    }
+    if (m_callWidget) {
+        m_callWidget->setInputVolume(m_configManager->getInputVolume());
+        m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
+    }
     showMaximized();
 
     QCoreApplication::postEvent(this, new StartupEvent());
@@ -101,16 +115,26 @@ void MainWindow::customEvent(QEvent* event) {
 
         const bool coreStarted = m_coreClient->start(
             m_configManager->getServerHost().toStdString(),
+            m_configManager->getServerHost().toStdString(),
             m_configManager->getMainServerTcpPort().toStdString(),
             m_configManager->getMainServerUdpPort().toStdString(),
             std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
         );
 
+        if (coreStarted) {
+            applyAudioSettings();  // Apply to Core (m_audioEngine now exists)
+        }
+
         if (!coreStarted) {
-            LOG_ERROR("Core client failed to start (check server {} TCP {} UDP {}, network, and core.log)",
+            LOG_ERROR("Core client failed to start (check server {} TCP {} UDP {}, network, and core.log). Will retry every {} s.",
                 m_configManager->getServerHost().toStdString(),
                 m_configManager->getMainServerTcpPort().toStdString(),
-                m_configManager->getMainServerUdpPort().toStdString());
+                m_configManager->getMainServerUdpPort().toStdString(),
+                INITIAL_CONNECTION_RETRY_INTERVAL_MS / 1000);
+            if (m_coreNetworkErrorHandler)
+                m_coreNetworkErrorHandler->onConnectionDown();
+            if (m_initialConnectionRetryTimer)
+                m_initialConnectionRetryTimer->start(INITIAL_CONNECTION_RETRY_INTERVAL_MS);
         }
 
         m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(),
@@ -121,7 +145,33 @@ void MainWindow::customEvent(QEvent* event) {
     QMainWindow::customEvent(event);
 }
 
+void MainWindow::onInitialConnectionRetry() {
+    const bool coreStarted = m_coreClient->start(
+        m_configManager->getServerHost().toStdString(),
+        m_configManager->getServerHost().toStdString(),
+        m_configManager->getMainServerTcpPort().toStdString(),
+        m_configManager->getMainServerUdpPort().toStdString(),
+        std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
+    );
+
+    if (coreStarted) {
+        if (m_initialConnectionRetryTimer && m_initialConnectionRetryTimer->isActive())
+            m_initialConnectionRetryTimer->stop();
+        if (m_coreNetworkErrorHandler)
+            m_coreNetworkErrorHandler->onConnectionRestored();
+        applyAudioSettings();
+        LOG_INFO("Core connected to server after retry.");
+    }
+    else {
+        if (m_initialConnectionRetryTimer)
+            m_initialConnectionRetryTimer->start(INITIAL_CONNECTION_RETRY_INTERVAL_MS);
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (m_initialConnectionRetryTimer && m_initialConnectionRetryTimer->isActive())
+        m_initialConnectionRetryTimer->stop();
+
     if (m_updaterClient) {
         m_updaterClient->stop();
     }
@@ -323,8 +373,14 @@ void MainWindow::connectWidgetsToManagers() {
             connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, m_callManager, &CallManager::onStartCallingButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, m_callManager, &CallManager::onStopCallingButtonClicked);
         }
-        if (m_cameraSharingManager) {
-            connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, m_cameraSharingManager, &CameraSharingManager::onActivateCameraButtonClicked);
+        if (m_coreClient) {
+            connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, [this](bool active) {
+                if (active) {
+                    m_coreClient->startCameraSharing("");
+                } else {
+                    m_coreClient->stopCameraSharing();
+                }
+            });
         }
     }
 
@@ -364,18 +420,36 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::hangupClicked, m_callManager, &CallManager::onEndCallButtonClicked);
         }
-        // Подключаем сигналы экрана и камеры напрямую к core Client
-        if (m_coreClient) {
+        // Screen share: show dialog for screen selection, then start sharing
+        if (m_coreClient && m_dialogsController) {
             connect(m_callWidget, &CallWidget::screenShareClicked, [this](bool toggled) {
                 if (toggled) {
-                    m_coreClient->startScreenSharing();
+                    QList<QScreen*> screens = QGuiApplication::screens();
+                    if (screens.size() <= 1) {
+                        m_coreClient->startScreenSharing(0);
+                    } else {
+                        m_dialogsController->showScreenShareDialog(screens);
+                    }
                 } else {
                     m_coreClient->stopScreenSharing();
                 }
             });
+
+            connect(m_dialogsController, &DialogsController::screenSelected, [this](int screenIndex) {
+                m_coreClient->startScreenSharing(screenIndex);
+            });
+
+            connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {
+                if (m_callWidget) {
+                    m_callWidget->setScreenShareButtonActive(false);
+                }
+            });
+        }
+        // Camera sharing
+        if (m_coreClient) {
             connect(m_callWidget, &CallWidget::cameraClicked, [this](bool toggled) {
                 if (toggled) {
-                    m_coreClient->startCameraSharing();
+                    m_coreClient->startCameraSharing("");
                 } else {
                     m_coreClient->stopCameraSharing();
                 }
@@ -407,18 +481,12 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_navigationController, &NavigationController::windowTitleChanged, this, &MainWindow::onWindowTitleChanged);
         connect(m_navigationController, &NavigationController::windowFullscreenRequested, this, &MainWindow::onWindowFullscreenRequested);
         connect(m_navigationController, &NavigationController::windowMaximizedRequested, this, &MainWindow::onWindowMaximizedRequested);
-        if (m_coreClient) {
-            connect(m_navigationController, &NavigationController::callWidgetShown, [this]() {
-                // Инициализация камеры при начале звонка будет происходить в core
-            });
-        }
+        // Camera initialization during call start is handled in core
     }
     if (m_updateManager) {
         connect(m_updateManager, &UpdateManager::stopAllRingtonesRequested, this, &MainWindow::onStopAllRingtonesRequested);
     }
     if (m_callManager) {
-        connect(m_callManager, &CallManager::stopScreenCaptureRequested, this, &MainWindow::onStopScreenCaptureRequested);
-        connect(m_callManager, &CallManager::stopCameraCaptureRequested, this, &MainWindow::onStopCameraCaptureRequested);
         connect(m_callManager, &CallManager::endCallFullscreenExitRequested, this, &MainWindow::onEndCallFullscreenExitRequested);
     }
 }

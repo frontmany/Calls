@@ -51,8 +51,11 @@ if(WIN32)
         "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
         "${OPUS_DIR}/$<CONFIG>/opus.lib"
         "${FFMPEG_DIR}/lib/avcodec.lib"
+        "${FFMPEG_DIR}/lib/avformat.lib"
+        "${FFMPEG_DIR}/lib/avdevice.lib"
         "${FFMPEG_DIR}/lib/avutil.lib"
         "${FFMPEG_DIR}/lib/swscale.lib"
+        strmiids
         "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
         ole32 

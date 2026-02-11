@@ -43,7 +43,7 @@ namespace core::logic
     }
 
     const media::MediaState ClientStateManager::getMediaState(media::MediaType type) const {
-        auto it = std::find(m_mediaState.begin(), m_mediaState.end(), type);
+        auto it = m_mediaState.find(type);
         return it == m_mediaState.end() ? media::MediaState::Stopped : it->second;
     }
 

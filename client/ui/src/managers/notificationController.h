@@ -6,7 +6,7 @@
 #include <QTimer>
 #include <functional>
 #include <optional>
-#include "userOperationType.h"
+#include "constants/userOperationType.h"
 #include "notifications/notificationStyleType.h"
 
 class OverlayWidget;

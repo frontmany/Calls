@@ -6,11 +6,9 @@
 #include <mutex>
 #include <cstdint>
 
-namespace core
+namespace core::media
 {
-    namespace media
-    {
-        class OpusDecoder {
+    class OpusDecoder {
     public:
         struct Config {
             int sampleRate = 48000;
@@ -28,9 +26,8 @@ namespace core
 
     private:
         Config m_config;
-        OpusDecoder* m_decoder = nullptr;
+        ::OpusDecoder* m_decoder = nullptr;
         bool m_initialized = false;
         mutable std::mutex m_mutex;
     };
-    }
 }

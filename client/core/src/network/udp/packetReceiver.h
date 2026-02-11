@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "utilities/packetType.h"
+#include "constants/packetType.h"
 #include "utilities/safeQueue.h"
 
 namespace core::network::udp {

@@ -16,7 +16,7 @@ class AuthorizationManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit AuthorizationManager(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent = nullptr);
+    explicit AuthorizationManager(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authorizationWidget, MainMenuWidget* mainMenuWidget);
 
@@ -25,7 +25,7 @@ public slots:
     void onAuthorizationResult(std::error_code ec);
 
 private:
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     AuthorizationWidget* m_authorizationWidget = nullptr;
     class MainMenuWidget* m_mainMenuWidget = nullptr;
     NavigationController* m_navigationController = nullptr;

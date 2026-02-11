@@ -38,5 +38,5 @@ namespace core::logic
         std::shared_ptr<KeyManager> m_keyManager;
         std::shared_ptr<EventListener> m_eventListener;
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
-    }
+    };
 }

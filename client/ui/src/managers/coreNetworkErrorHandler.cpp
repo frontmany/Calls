@@ -6,10 +6,10 @@
 #include "managers/navigationController.h"
 #include "managers/configManager.h"
 #include "managers/callManager.h"
-#include "media/audioEffectsManager.h"
+#include "audio/audioEffectsManager.h"
 #include <QTimer>
 
-CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Client> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
+CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_navigationController(navigationController)
@@ -55,6 +55,8 @@ void CoreNetworkErrorHandler::onConnectionDown()
         m_callManager->hideOperationDialog();
     }
 
+    if (!m_coreClient) return;
+
     if (m_coreClient->isAuthorized()) {
         if (m_coreClient && m_coreClient->isActiveCall()) {
             // Останавливаем трансляции через core
@@ -85,8 +87,10 @@ void CoreNetworkErrorHandler::onConnectionDown()
         }
     }
     else {
-        m_authorizationWidget->resetBlur();
-        m_authorizationWidget->setAuthorizationDisabled(true);
+        if (m_authorizationWidget) {
+            m_authorizationWidget->resetBlur();
+            m_authorizationWidget->setAuthorizationDisabled(true);
+        }
 
         if (m_notificationController)
         {

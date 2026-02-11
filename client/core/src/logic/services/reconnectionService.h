@@ -2,7 +2,7 @@
 
 #include "logic/clientStateManager.h"
 #include "logic/packetFactory.h"
-#include "utilities/packetType.h"
+#include "constants/packetType.h"
 #include "eventListener.h"
 #include "json.hpp"
 
@@ -22,7 +22,7 @@ namespace core::logic
            std::shared_ptr<ClientStateManager> stateManager,
            std::shared_ptr<EventListener> eventListener,
            std::function<uint16_t()>&& getLocalUdpPort,
-           std::function<std::error_code(const std::vector<unsigned char>, core::constant::PacketType)>&& sendPacket,
+           std::function<std::error_code(const std::vector<unsigned char>, constant::PacketType)>&& sendPacket,
            std::function<bool()>&& attemptEstablishConnection
         );
 
@@ -49,6 +49,6 @@ namespace core::logic
 
         std::function<uint16_t()> m_getLocalUdpPort;
         std::function<bool()> m_attemptEstablishConnection; // blocking for n seconds
-        std::function<std::error_code(const std::vector<unsigned char>, core::constant::PacketType)> m_sendPacket;
+        std::function<std::error_code(const std::vector<unsigned char>, constant::PacketType)> m_sendPacket;
     };
 }

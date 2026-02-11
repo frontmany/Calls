@@ -14,7 +14,7 @@
 #include "../utilities/logger.h"
 #include "../utilities/constant.h"
 
-UpdateManager::UpdateManager(std::shared_ptr<core::Client> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent)
+UpdateManager::UpdateManager(std::shared_ptr<core::Core> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_updaterClient(updater)

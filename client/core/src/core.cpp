@@ -1,19 +1,4 @@
 #include "core.h"
-#include "jsonType.h"
-#include "packetFactory.h"
-#include "utilities/crypto.h"
-
-#include "keyManager.h"
-#include "utilities/errorCode.h"
-#include "network/tcp/client.h"
-#include "network/udp/client.h"
-#include "packetType.h"
-#include "eventListener.h"
-#include "packetProcessingService.h"
-#include "authorizationService.h"
-#include "callService.h"
-
-
 #include "utilities/logger.h"
 #include "utilities/crashCatchInitializer.h"
 #include "constants/errorCode.h"
@@ -37,37 +22,57 @@ namespace core
 
         basePath = std::filesystem::absolute(basePath);
 
-        std::filesystem::path logDir = logDirectory.empty()
-            ? basePath / "logs"
+        std::filesystem::path logDir = logDirectory.empty() 
+            ? basePath / "logs" 
             : std::filesystem::path(logDirectory);
+
         if (logDir.is_relative()) {
             logDir = basePath / logDir;
         }
 
         core::utilities::log::set_log_directory(logDir.string());
-        std::filesystem::path crashDir = crashDumpDirectory.empty()
-            ? basePath / "crashDumps"
+
+        std::filesystem::path crashDir = crashDumpDirectory.empty() 
+            ? basePath / "crashDumps" 
             : std::filesystem::path(crashDumpDirectory);
+
         if (crashDir.is_relative()) {
             crashDir = basePath / crashDir;
         }
 
-        core::utilities::initializeCrashCatch((crashDir / "calliforniaCore").string(),
-            appVersion);
+        core::utilities::initializeCrashCatch((crashDir / "Core").string(), appVersion);
     }
 
-    Client::~Client() {
+    Core::~Core() {
         stop();
     }
 
-    bool Client::start(
+    bool Core::start(
         const std::string& tcpHost,
         const std::string& udpHost,
         const std::string& tcpPort,
         const std::string& udpPort,
         std::shared_ptr<EventListener> eventListener)
     {
-        m_networkController = std::make_unique<network::NetworkController>();
+        m_stateManager = std::make_shared<logic::ClientStateManager>();
+
+        auto keyManager = std::make_shared<logic::KeyManager>();
+        keyManager->generateKeys();
+
+        m_networkController = std::make_unique<network::NetworkController>(
+            [this](const unsigned char* data, int size, constant::PacketType type) {
+                if (m_packetHandleController)
+                    m_packetHandleController->processPacket(data, size, type);
+            },
+            [this, eventListener]() {
+                if (m_stateManager)
+                    m_stateManager->setConnectionDown(true);
+                if (m_reconnectionService)
+                    m_reconnectionService->startReconnectionAttempts();
+                if (eventListener)
+                    eventListener->onConnectionDown();
+            }
+        );
         bool tcpConnected = m_networkController->connectTCP(tcpHost, tcpPort);
         bool udpStarted = m_networkController->runUDP(udpHost, udpPort);
 
@@ -111,219 +116,226 @@ namespace core
             return false;
         }
 
-        m_stateManager = std::make_shared<logic::ClientStateManager>();
-
-        auto keyManager = std::make_shared<logic::KeyManager>();
-        keyManager->generateKeys();
+        auto sendTcpFn = [this](const std::vector<unsigned char>& packet, constant::PacketType type) -> std::error_code {
+            return m_networkController->sendTCP(packet, type)
+                ? std::error_code{}
+                : core::constant::make_error_code(core::constant::ErrorCode::network_error);
+        };
+        auto sendUdpFn = [this](const std::vector<unsigned char>& data, constant::PacketType type) -> std::error_code {
+            return m_networkController->sendUDP(data, type)
+                ? std::error_code{}
+                : core::constant::make_error_code(core::constant::ErrorCode::network_error);
+        };
 
         m_authorizationService = std::make_unique<logic::AuthorizationService>(m_stateManager, keyManager,
-            [this]() {return m_networkController->getUDPLocalPort(); },
-            [this](const std::vector<unsigned char>& packet, core::constant::PacketType type) {m_networkController->sendTCP(packet, type); }
+            [this]() { return m_networkController->getUDPLocalPort(); },
+            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); }
         );
         
         m_callService = std::make_unique<logic::CallService>(m_stateManager, keyManager,
-            [this](const std::vector<unsigned char>& packet, constant::PacketType type) {m_networkController->sendTCP(packet, type); }
-        );
+            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); });
 
         m_mediaService = std::make_unique<logic::MediaService>(m_stateManager, m_audioEngine, mediaProcessingService, eventListener,
-            [this](const std::vector<unsigned char>& packet, constant::PacketType type) {m_networkController->sendTCP(packet, type); },
-            [this](const std::vector<unsigned char>& data, constant::PacketType type) {m_networkController->sendUDP(data, type); }
-        );
+            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); },
+            [sendUdpFn](const std::vector<unsigned char>& d, constant::PacketType t) { return sendUdpFn(d, t); });
 
-        m_reconnectionService = std::make_unique<logic::ReconnectionService>(m_stateManager, keyManager,
-            [this]() {return m_networkController->getUDPLocalPort(); },
-            [this](const std::vector<unsigned char>& packet, core::constant::PacketType type) {m_networkController->sendTCP(packet, type); },
-            [this]() {return m_networkController->tryReconnectTCP(5); }
+        m_reconnectionService = std::make_unique<logic::ReconnectionService>(m_stateManager, eventListener,
+            [this]() { return m_networkController->getUDPLocalPort(); },
+            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); },
+            [this]() { return m_networkController->tryReconnectTCP(5); }
         );
 
         m_packetHandleController = std::make_unique<logic::PacketHandleController>(m_stateManager, keyManager, m_audioEngine, mediaProcessingService, eventListener,
-            [this](const std::vector<unsigned char>& packet, core::constant::PacketType type) {m_networkController->sendTCP(packet, type); }
-        );
+            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); });
 
         return true;
     }
 
-    void Client::stop() {
-        if (m_authorizationService) {
-            m_authorizationService->stopReconnectRetry();
+    void Core::stop() {
+        if (m_reconnectionService) {
+            m_reconnectionService->stopReconnectionAttempts();
         }
-        reset();
-        if (m_controlController)
-            m_controlController->disconnect();
-        m_mediaController.stop();
+
+        if (m_audioEngine && m_audioEngine->isStream()) {
+            m_audioEngine->stopAudioCapture();
+        }
+
+        m_packetHandleController.reset();
+        m_reconnectionService.reset();
+        m_mediaService.reset();
+        m_callService.reset();
+        m_authorizationService.reset();
+
+        if (m_stateManager) {
+            m_stateManager->reset();
+        }
+
+        m_networkController.reset();
+        m_audioEngine.reset();
+        m_stateManager.reset();
     }
 
-    void Client::reset() {
-        m_stateManager->reset();
-        m_keyManager.resetKeys();
-        m_pendingRequests.failAll(std::nullopt);
-        m_operationManager.clearAllOperations();
-
-        if (m_audioEngine->isStream())
-            m_audioEngine->stopStream();
-    }
-
-    std::vector<std::string> Client::getCallers() const {
+    std::vector<std::string> Core::getCallers() const {
+        if (!m_stateManager) return {};
         auto& incomingCalls = m_stateManager->getIncomingCalls();
-
         std::vector<std::string> callersNicknames;
         for (auto& [nickname, incomingCall] : incomingCalls) {
             callersNicknames.push_back(nickname);
         }
-
         return callersNicknames;
     }
 
-    void Client::muteMicrophone(bool isMute) {
-        m_audioEngine->muteMicrophone(isMute);
+    void Core::muteMicrophone(bool isMute) {
+        if (m_audioEngine) m_audioEngine->muteMicrophone(isMute);
     }
 
-    void Client::muteSpeaker(bool isMute) {
-        m_audioEngine->muteSpeaker(isMute);
+    void Core::muteSpeaker(bool isMute) {
+        if (m_audioEngine) m_audioEngine->muteSpeaker(isMute);
     }
 
-    bool Client::isScreenSharing() const {
-        return m_stateManager->isScreenSharing();
+    bool Core::isScreenSharing() const {
+        return m_stateManager && m_stateManager->getMediaState(media::MediaType::Screen) == media::MediaState::Active;
     }
 
-    bool Client::isViewingRemoteScreen() const {
-        return m_stateManager->isViewingRemoteScreen();
+    bool Core::isViewingRemoteScreen() const {
+        return m_stateManager ? m_stateManager->isViewingRemoteScreen() : false;
     }
 
-    bool Client::isCameraSharing() const {
-        return m_stateManager->isCameraSharing();
+    bool Core::isCameraSharing() const {
+        return m_stateManager && m_stateManager->getMediaState(media::MediaType::Camera) == media::MediaState::Active;
     }
 
-    bool Client::isViewingRemoteCamera() const {
-        return m_stateManager->isViewingRemoteCamera();
+    bool Core::isViewingRemoteCamera() const {
+        return m_stateManager ? m_stateManager->isViewingRemoteCamera() : false;
     }
 
-    bool Client::isMicrophoneMuted() const {
-        return m_audioEngine->isMicrophoneMuted();
+    bool Core::isMicrophoneMuted() const {
+        return m_audioEngine ? m_audioEngine->isMicrophoneMuted() : false;
     }
 
-    bool Client::isSpeakerMuted() const {
-        return m_audioEngine->isSpeakerMuted();
+    bool Core::isSpeakerMuted() const {
+        return m_audioEngine ? m_audioEngine->isSpeakerMuted() : false;
     }
 
-    void Client::refreshAudioDevices() {
-        m_audioEngine->refreshAudioDevices();
+    void Core::refreshAudioDevices() {
+        if (m_audioEngine) m_audioEngine->refreshAudioDevices();
     }
 
-    int Client::getInputVolume() const {
-        return m_audioEngine->getInputVolume();
+    int Core::getInputVolume() const {
+        return m_audioEngine ? m_audioEngine->getInputVolume() : 100;
     }
 
-    int Client::getOutputVolume() const {
-        return m_audioEngine->getOutputVolume();
+    int Core::getOutputVolume() const {
+        return m_audioEngine ? m_audioEngine->getOutputVolume() : 100;
     }
 
-    void Client::setInputVolume(int volume) {
-        m_audioEngine->setInputVolume(volume);
+    void Core::setInputVolume(int volume) {
+        if (m_audioEngine) m_audioEngine->setInputVolume(volume);
     }
 
-    void Client::setOutputVolume(int volume) {
-        m_audioEngine->setOutputVolume(volume);
+    void Core::setOutputVolume(int volume) {
+        if (m_audioEngine) m_audioEngine->setOutputVolume(volume);
     }
 
-    bool Client::setInputDevice(int deviceIndex) {
-        return m_audioEngine->setInputDevice(deviceIndex);
+    bool Core::setInputDevice(int deviceIndex) {
+        return m_audioEngine ? m_audioEngine->setInputDevice(deviceIndex) : false;
     }
 
-    bool Client::setOutputDevice(int deviceIndex) {
-        return m_audioEngine->setOutputDevice(deviceIndex);
+    bool Core::setOutputDevice(int deviceIndex) {
+        return m_audioEngine ? m_audioEngine->setOutputDevice(deviceIndex) : false;
     }
 
-    int Client::getCurrentInputDevice() const {
-        return m_audioEngine->getCurrentInputDevice();
+    int Core::getCurrentInputDevice() const {
+        return m_audioEngine ? m_audioEngine->getCurrentInputDevice() : -1;
     }
 
-    int Client::getCurrentOutputDevice() const {
-        return m_audioEngine->getCurrentOutputDevice();
+    int Core::getCurrentOutputDevice() const {
+        return m_audioEngine ? m_audioEngine->getCurrentOutputDevice() : -1;
     }
 
-    bool Client::isAuthorized() const {
-        return m_stateManager->isAuthorized();
+    bool Core::isAuthorized() const {
+        return m_stateManager ? m_stateManager->isAuthorized() : false;
     }
 
-    bool Client::isOutgoingCall() const {
-        return m_stateManager->isOutgoingCall();
+    bool Core::isOutgoingCall() const {
+        return m_stateManager ? m_stateManager->isOutgoingCall() : false;
     }
 
-    bool Client::isActiveCall() const {
-        return m_stateManager->isActiveCall();
+    bool Core::isActiveCall() const {
+        return m_stateManager ? m_stateManager->isActiveCall() : false;
     }
 
-    bool Client::isConnectionDown() const {
-        return m_stateManager->isConnectionDown();
+    bool Core::isConnectionDown() const {
+        return m_stateManager ? m_stateManager->isConnectionDown() : true;
     }
 
-    int Client::getIncomingCallsCount() const {
-        return m_stateManager->getIncomingCallsCount();
+    int Core::getIncomingCallsCount() const {
+        return m_stateManager ? m_stateManager->getIncomingCallsCount() : 0;
     }
 
-    const std::string& Client::getMyNickname() const {
-        return m_stateManager->getMyNickname();
+    const std::string& Core::getMyNickname() const {
+        static const std::string empty;
+        return m_stateManager ? m_stateManager->getMyNickname() : empty;
     }
 
-    const std::string& Client::getNicknameWhomCalling() const {
-        return m_stateManager->getOutgoingCall().getNickname();
+    const std::string& Core::getNicknameWhomCalling() const {
+        static const std::string empty;
+        return m_stateManager ? m_stateManager->getOutgoingCall().getNickname() : empty;
     }
 
-    const std::string& Client::getNicknameInCallWith() const {
-        return m_stateManager->getActiveCall().getNickname();
+    const std::string& Core::getNicknameInCallWith() const {
+        static const std::string empty;
+        return m_stateManager ? m_stateManager->getActiveCall().getNickname() : empty;
     }
 
-
-
-    std::error_code Client::authorize(const std::string& nickname) {
+    std::error_code Core::authorize(const std::string& nickname) {
         return m_authorizationService->authorize(nickname);
     }
 
-    std::error_code Client::logout() {
+    std::error_code Core::logout() {
         return m_authorizationService->logout();
     }
 
-    std::error_code Client::startOutgoingCall(const std::string& userNickname) {
-        m_callService->startOutgoingCall(userNickname);
+    std::error_code Core::startOutgoingCall(const std::string& userNickname) {
+        return m_callService->startOutgoingCall(userNickname);
     }
 
-    std::error_code Client::stopOutgoingCall() {
+    std::error_code Core::stopOutgoingCall() {
         return m_callService->stopOutgoingCall();
     }
 
-    std::error_code Client::acceptCall(const std::string& userNickname) {
+    std::error_code Core::acceptCall(const std::string& userNickname) {
         return m_callService->acceptCall(userNickname);
     } 
 
-    std::error_code Client::declineCall(const std::string& userNickname) {
+    std::error_code Core::declineCall(const std::string& userNickname) {
         return m_callService->declineCall(userNickname);
     }
 
-    std::error_code Client::endCall() {
+    std::error_code Core::endCall() {
         return m_callService->endCall();
     }
 
-    std::error_code Client::startScreenSharing(int screenIndex) {
-        if (!m_stateManager->isActiveCall()) return make_error_code(ErrorCode::no_active_call);
+    std::error_code Core::startScreenSharing(int screenIndex) {
+        if (!m_stateManager->isActiveCall()) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
 
         return m_mediaService->startScreenSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname(), screenIndex);
     }
 
-    std::error_code Client::stopScreenSharing() {
-        if (!m_stateManager->isActiveCall()) return make_error_code(ErrorCode::no_active_call);
+    std::error_code Core::stopScreenSharing() {
+        if (!m_stateManager->isActiveCall()) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
 
         return m_mediaService->stopScreenSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
     }
 
-    std::error_code Client::startCameraSharing(std::string deviceName) {
-        if (!m_stateManager->isActiveCall()) return make_error_code(ErrorCode::no_active_call);
+    std::error_code Core::startCameraSharing(std::string deviceName) {
+        if (!m_stateManager->isActiveCall()) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
 
         return m_mediaService->startCameraSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname(), deviceName);
     }
 
-    std::error_code Client::stopCameraSharing() {
-        if (!m_stateManager->isActiveCall()) return make_error_code(ErrorCode::no_active_call);
+    std::error_code Core::stopCameraSharing() {
+        if (!m_stateManager->isActiveCall()) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
 
         return m_mediaService->stopCameraSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
     }

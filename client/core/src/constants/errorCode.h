@@ -94,5 +94,5 @@ namespace core::constant
 namespace std
 {
     template<>
-    struct is_error_code_enum<core::ErrorCode> : true_type {};
+    struct is_error_code_enum<core::constant::ErrorCode> : true_type {};
 }

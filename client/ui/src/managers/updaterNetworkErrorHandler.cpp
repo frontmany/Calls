@@ -1,4 +1,5 @@
 #include "updaterNetworkErrorHandler.h"
+#include "utilities/logger.h"
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "managers/dialogsController.h"

@@ -6,6 +6,7 @@ namespace server::constant
     static constexpr const char* UDP_PORT = "udpPort";
     static constexpr const char* RESULT = "result";
     static constexpr const char* TOKEN = "token";
+    static constexpr const char* ENCRYPTED_NICKNAME = "encrypted_nickname";
     static constexpr const char* SENDER_ENCRYPTED_NICKNAME = "sender_encrypted_nickname";
     static constexpr const char* NICKNAME_HASH = "nickname_hash";
     static constexpr const char* SENDER_NICKNAME_HASH = "sender_nickname_hash";

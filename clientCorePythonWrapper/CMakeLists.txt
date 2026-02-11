@@ -33,11 +33,13 @@ else()
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
 endif()
 
+set(FFMPEG_DIR "${ROOT_DIR}/vendor/ffmpeg")
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${PORTAUDIO_DIR}"
     "${OPUS_DIR}"
     "${CRYPTOPP_DIR}"
     "${SPDLOG_DIR}"
+    "${FFMPEG_DIR}/lib"
 )
 
 if(WIN32)
@@ -46,9 +48,15 @@ if(WIN32)
         "${OPUS_DIR}/$<CONFIG>/opus.lib"
         "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
+        "${FFMPEG_DIR}/lib/avcodec.lib"
+        "${FFMPEG_DIR}/lib/avformat.lib"
+        "${FFMPEG_DIR}/lib/avdevice.lib"
+        "${FFMPEG_DIR}/lib/avutil.lib"
+        "${FFMPEG_DIR}/lib/swscale.lib"
         ole32 
         winmm 
         uuid
+        strmiids
         calliforniaCore
     )
 else()

@@ -8,11 +8,13 @@
 #include "widgets/callWidget.h"
 #include "utilities/logger.h"
 #include "utilities/constant.h"
-#include "errorCode.h"
+#include "constants/errorCode.h"
 #include <system_error>
 #include <QList>
+#include <QImage>
+#include <QPixmap>
 
-CallManager::CallManager(std::shared_ptr<core::Client> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
+CallManager::CallManager(std::shared_ptr<core::Core> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
     , m_coreClient(client)
     , m_audioManager(audioManager)
@@ -196,9 +198,9 @@ void CallManager::onStartCallingResult(std::error_code ec)
         if (m_mainMenuWidget) {
             m_mainMenuWidget->setCallButtonEnabled(true);
         }
-        if (ec == core::make_error_code(core::ErrorCode::network_error) || ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
+        if (ec == core::constant::make_error_code(core::constant::ErrorCode::network_error) || ec == core::constant::make_error_code(core::constant::ErrorCode::unexisting_user)) {
             QString errorMessage;
-            if (ec == core::make_error_code(core::ErrorCode::unexisting_user)) {
+            if (ec == core::constant::make_error_code(core::constant::ErrorCode::unexisting_user)) {
                 errorMessage = "User not found";
                 LOG_WARN("Start calling failed: user not found");
             }
@@ -338,15 +340,17 @@ void CallManager::handleEndCallErrorNotificationAppearance()
     if (m_notificationController) {
         m_notificationController->showErrorNotification(errorText, 1500);
     }
+}
+
 void CallManager::onCallParticipantConnectionDown()
 {
     LOG_WARN("Call participant connection down");
     
-    if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
+    if (m_coreClient && m_coreClient->isScreenSharing()) {
         m_coreClient->stopScreenSharing();
     }
 
-    if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
+    if (m_coreClient && m_coreClient->isCameraSharing()) {
         m_coreClient->stopCameraSharing();
     }
 
@@ -435,12 +439,112 @@ void CallManager::onRemoteUserEndedCall()
         m_navigationController->switchToMainMenuWidget();
     }
 
-    if (m_screenCaptureController && m_screenCaptureController->isCapturing()) {
+    if (m_coreClient && m_coreClient->isScreenSharing()) {
         m_coreClient->stopScreenSharing();
     }
 
-    if (m_cameraCaptureController && m_cameraCaptureController->isCapturing()) {
+    if (m_coreClient && m_coreClient->isCameraSharing()) {
         m_coreClient->stopCameraSharing();
+    }
+}
+
+// --- Media frame slots ---
+
+void CallManager::onLocalScreenFrame(QByteArray data)
+{
+    if (!m_callWidget) return;
+
+    QImage image;
+    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
+        QPixmap pixmap = QPixmap::fromImage(image);
+        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    }
+}
+
+void CallManager::onLocalCameraFrame(QByteArray data)
+{
+    if (!m_callWidget) return;
+
+    QImage image;
+    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
+        QPixmap pixmap = QPixmap::fromImage(image);
+        m_callWidget->showFrameInAdditionalScreen(pixmap, "localCamera");
+    }
+}
+
+void CallManager::onIncomingScreenFrame(QByteArray data)
+{
+    if (!m_callWidget) return;
+
+    QImage image;
+    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
+        QPixmap pixmap = QPixmap::fromImage(image);
+        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    }
+}
+
+void CallManager::onIncomingCameraFrame(QByteArray data)
+{
+    if (!m_callWidget) return;
+
+    QImage image;
+    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
+        QPixmap pixmap = QPixmap::fromImage(image);
+        m_callWidget->showFrameInAdditionalScreen(pixmap, "remoteCamera");
+    }
+}
+
+// --- Media state slots ---
+
+void CallManager::onIncomingScreenSharingStarted()
+{
+    if (m_callWidget) {
+        m_callWidget->showEnterFullscreenButton();
+    }
+}
+
+void CallManager::onIncomingScreenSharingStopped()
+{
+    if (m_callWidget) {
+        m_callWidget->hideMainScreen();
+        m_callWidget->hideEnterFullscreenButton();
+        if (m_callWidget->isFullScreen()) {
+            m_callWidget->exitFullscreen();
+        }
+    }
+}
+
+void CallManager::onIncomingCameraSharingStarted()
+{
+    // Remote camera frames will arrive via onIncomingCameraFrame
+}
+
+void CallManager::onIncomingCameraSharingStopped()
+{
+    if (m_callWidget) {
+        m_callWidget->removeAdditionalScreen("remoteCamera");
+    }
+}
+
+void CallManager::onStartScreenSharingError()
+{
+    if (m_callWidget) {
+        m_callWidget->setScreenShareButtonActive(false);
+    }
+
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification("Failed to start screen sharing", 1500);
+    }
+}
+
+void CallManager::onStartCameraSharingError()
+{
+    if (m_callWidget) {
+        m_callWidget->setCameraButtonActive(false);
+    }
+
+    if (m_notificationController) {
+        m_notificationController->showErrorNotification("Failed to start camera sharing", 1500);
     }
 }
 

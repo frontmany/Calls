@@ -4,7 +4,8 @@
 
 using namespace core::constant;
 
-namespace core::logic {
+namespace core::logic 
+{
     MediaPacketHandler::MediaPacketHandler(
         std::shared_ptr<ClientStateManager> stateManager,
         std::shared_ptr<media::AudioEngine> audioEngine,
@@ -80,22 +81,36 @@ namespace core::logic {
             !m_audioEngine->isStream()) return;
         
         auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
-        auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.begin(), decryptedData.size());
-        m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(decryptedData.size()));
+        if (decryptedData.empty()) return;
+        auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
+        if (!audioFrame.empty()) {
+            m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(audioFrame.size()));
+        }
     }
 
     void MediaPacketHandler::handleIncomingScreen(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
-            !m_audioEngine->isStream()) return;
+            !m_stateManager->isActiveCall()) return;
 
         auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
-        auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.begin(), decryptedData.size());
-        m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(decryptedData.size()));
+        if (decryptedData.empty()) return;
+        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
+        if (!videoFrame.empty() && m_eventListener) {
+            m_eventListener->onIncomingScreen(videoFrame);
+        }
     }
 
     void MediaPacketHandler::handleIncomingCamera(const unsigned char* data, int length) {
+        if (!m_stateManager->isAuthorized() ||
+            m_stateManager->isConnectionDown() ||
+            !m_stateManager->isActiveCall()) return;
 
+        auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
+        if (decryptedData.empty()) return;
+        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
+        if (!videoFrame.empty() && m_eventListener) {
+            m_eventListener->onIncomingCamera(videoFrame);
+        }
     }
 }

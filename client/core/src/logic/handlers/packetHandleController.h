@@ -30,6 +30,7 @@ namespace core::logic
             std::shared_ptr<EventListener> eventListener,
             std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket
         );
+        ~PacketHandleController();
 
         void processPacket(const unsigned char* data, int length, core::constant::PacketType type);
 
@@ -55,10 +56,10 @@ namespace core::logic
 
     private:
         std::shared_ptr<media::AudioEngine> m_audioEngine;
-        std::unique_ptr<AuthorizationPacketHandler>& m_authorizationPacketHandler;
-        std::unique_ptr<CallPacketHandler>& m_callPacketHandler;
-        std::unique_ptr<MediaPacketHandler>& m_mediaPacketHandler;
-        std::unique_ptr<ReconnectionPacketHandler>& m_reconnectionPacketHandler;
+        std::unique_ptr<AuthorizationPacketHandler> m_authorizationPacketHandler;
+        std::unique_ptr<CallPacketHandler> m_callPacketHandler;
+        std::unique_ptr<MediaPacketHandler> m_mediaPacketHandler;
+        std::unique_ptr<ReconnectionPacketHandler> m_reconnectionPacketHandler;
         std::unordered_map<core::constant::PacketType, std::function<void(const nlohmann::json&)>> m_packetHandlers;
     };
 }

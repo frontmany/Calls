@@ -15,7 +15,7 @@ class UpdateManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit UpdateManager(std::shared_ptr<core::Client> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent = nullptr);
+    explicit UpdateManager(std::shared_ptr<core::Core> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent = nullptr);
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
     bool shouldRestart();
     bool isUpdateNeeded() const;
@@ -37,7 +37,7 @@ private:
     bool m_shouldRestart = false;
     bool m_updateNeeded = false;
 
-    std::shared_ptr<core::Client> m_coreClient = nullptr;
+    std::shared_ptr<core::Core> m_coreClient = nullptr;
     std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 
     ConfigManager* m_configManager = nullptr; 

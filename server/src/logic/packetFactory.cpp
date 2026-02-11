@@ -1,9 +1,12 @@
 #include "packetFactory.h"
+#include "constants/jsonType.h"
+#include "json.hpp"
 
+using namespace server::utilities;
+using namespace server::constant;
 
 namespace server
 {
-    using namespace utilities;
 
 namespace
 {
@@ -22,15 +25,20 @@ std::vector<unsigned char> PacketFactory::getConfirmationPacket(const std::strin
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getAuthorizationResultPacket(bool authorized, const std::string& uid, const std::string& receiverNicknameHash, std::optional<std::string> receiverToken) {
+std::vector<unsigned char> PacketFactory::getAuthorizationResultPacket(bool authorized, const std::string& uid, const std::string& receiverNicknameHash, std::optional<std::string> receiverToken, std::optional<std::string> encryptedNickname, std::optional<std::string> packetKey) {
     nlohmann::json jsonObject;
 
     jsonObject[UID] = uid;
     jsonObject[RESULT] = authorized;
     jsonObject[NICKNAME_HASH] = receiverNicknameHash;
 
-    if (authorized) 
+    if (authorized) {
         jsonObject[TOKEN] = receiverToken.value();
+        if (encryptedNickname.has_value())
+            jsonObject[ENCRYPTED_NICKNAME] = encryptedNickname.value();
+        if (packetKey.has_value())
+            jsonObject[PACKET_KEY] = packetKey.value();
+    }
 
     return toBytes(jsonObject.dump());
 }

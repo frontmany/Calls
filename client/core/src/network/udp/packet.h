@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "packetType.h"
-
 namespace core::network::udp {
 
 struct Packet {

@@ -284,14 +284,14 @@ QString AudioSettingsDialog::scrollAreaStyle() const
 
 void AudioSettingsDialog::refreshDevices(int currentInputIndex, int currentOutputIndex)
 {
-    auto inputs = core::audio::AudioEngine::getInputDevices();
-    auto outputs = core::audio::AudioEngine::getOutputDevices();
+    auto inputs = core::media::AudioEngine::getInputDevices();
+    auto outputs = core::media::AudioEngine::getOutputDevices();
 
     if (currentInputIndex < 0) {
-        currentInputIndex = core::audio::AudioEngine::getDefaultInputDeviceIndex();
+        currentInputIndex = core::media::AudioEngine::getDefaultInputDeviceIndex();
     }
     if (currentOutputIndex < 0) {
-        currentOutputIndex = core::audio::AudioEngine::getDefaultOutputDeviceIndex();
+        currentOutputIndex = core::media::AudioEngine::getDefaultOutputDeviceIndex();
     }
 
     buildDeviceList(m_inputDevicesLayout, m_inputButtonsGroup, inputs, currentInputIndex, true);
@@ -383,7 +383,7 @@ void AudioSettingsDialog::updateDeviceLogos(QButtonGroup* group)
     }
 }
 
-void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::audio::DeviceInfo>& devices, int currentIndex, bool isInput)
+void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::media::DeviceInfo>& devices, int currentIndex, bool isInput)
 {
     if (!layout || !group) return;
 

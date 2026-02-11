@@ -3,35 +3,39 @@
 #include <vector>
 #include <system_error>
 
+#include "eventListener.h"
+
 class AuthorizationManager;
 class CallManager;
+class CoreNetworkErrorHandler;
 
 class CoreEventListener : public core::EventListener {
 public:
     CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, CoreNetworkErrorHandler* networkErrorHandler);
 
     void onAuthorizationResult(std::error_code ec) override;
+    void onStartOutgoingCallResult(std::error_code ec) override;
+
     void onIncomingScreenSharingStarted() override;
     void onIncomingScreenSharingStopped() override;
     void onIncomingScreen(const std::vector<unsigned char>& data) override;
 
-    void onScreenSharingStarted() override;
-    void onScreenSharingStopped() override;
     void onStartScreenSharingError() override;
+    void onLocalScreen(const std::vector<unsigned char>& data) override;
 
     void onIncomingCameraSharingStarted() override;
     void onIncomingCameraSharingStopped() override;
     void onIncomingCamera(const std::vector<unsigned char>& data) override;
 
-    void onCameraSharingStarted() override;
-    void onCameraSharingStopped() override;
     void onStartCameraSharingError() override;
+    void onLocalCamera(const std::vector<unsigned char>& data) override;
 
     void onOutgoingCallAccepted() override;
     void onOutgoingCallDeclined() override;
     void onOutgoingCallTimeout(std::error_code ec) override;
     void onIncomingCall(const std::string& friendNickname) override;
     void onIncomingCallExpired(std::error_code ec, const std::string& friendNickname) override;
+    void onCallEndedByRemote(std::error_code ec) override;
 
     void onCallParticipantConnectionDown() override;
     void onCallParticipantConnectionRestored() override;
@@ -39,7 +43,6 @@ public:
     void onConnectionDown() override;
     void onConnectionRestored() override;
     void onConnectionRestoredAuthorizationNeeded() override;
-    void onCallEndedByRemote(std::error_code ec) override;
 
 private:
     AuthorizationManager* m_authorizationManager;

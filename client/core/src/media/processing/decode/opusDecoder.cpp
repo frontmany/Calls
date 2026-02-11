@@ -2,10 +2,8 @@
 #include <iostream>
 #include <cstring>
 
-namespace core
+namespace core::media
 {
-    namespace media 
-    {
     OpusDecoder::OpusDecoder(const Config& config)
         : m_config(config)
     {
@@ -44,6 +42,5 @@ namespace core
         if (!m_initialized || !m_decoder) return OPUS_INVALID_STATE;
 
         return opus_decode_float(m_decoder, data, dataLength, pcm, frameSize, decodeFec);
-    }
     }
 }

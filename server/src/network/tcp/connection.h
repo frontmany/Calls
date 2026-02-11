@@ -18,7 +18,7 @@ namespace server::network::tcp
             asio::io_context& ctx,
             asio::ip::tcp::socket&& socket,
             std::function<void(OwnedPacket&&)> onPacket,
-            std::function<void(Connection)> onDisconnected);
+            std::function<void(ConnectionPtr)> onDisconnected);
 
         void send(const Packet& packet);
         void close();
@@ -38,6 +38,6 @@ namespace server::network::tcp
         PacketSender m_sender;
 
         std::function<void(OwnedPacket&&)> m_onPacket;
-        std::function<void(Connection)> m_onDisconnected;
+        std::function<void(ConnectionPtr)> m_onDisconnected;
     };
 }
