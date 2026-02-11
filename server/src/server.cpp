@@ -283,9 +283,15 @@ namespace server
 
             auto requested = m_userRepository.findUserByNickname(nicknameHash);
             bool senderExists = m_userRepository.containsUser(senderNicknameHash);
+            std::optional<std::string> encryptedNickname;
+            std::optional<std::string> packetKey;
+            if (requested && senderExists && json.contains(ENCRYPTED_NICKNAME) && json[ENCRYPTED_NICKNAME].is_string())
+                encryptedNickname = json[ENCRYPTED_NICKNAME].get<std::string>();
+            if (requested && senderExists && json.contains(PACKET_KEY) && json[PACKET_KEY].is_string())
+                packetKey = json[PACKET_KEY].get<std::string>();
             std::vector<unsigned char> packet;
             if (requested && senderExists)
-                packet = PacketFactory::getUserInfoResultPacket(true, uid, requested->getNicknameHash(), requested->getPublicKey());
+                packet = PacketFactory::getUserInfoResultPacket(true, uid, requested->getNicknameHash(), requested->getPublicKey(), encryptedNickname, packetKey);
             else
                 packet = PacketFactory::getUserInfoResultPacket(false, uid, nicknameHash);
             sendTcp(conn, static_cast<uint32_t>(PacketType::GET_USER_INFO_RESULT), packet);

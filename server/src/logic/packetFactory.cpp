@@ -57,15 +57,19 @@ std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool recon
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getUserInfoResultPacket(bool userInfoFound, const std::string& uid, const std::string& userNicknameHash, std::optional<CryptoPP::RSA::PublicKey> userPublicKey) {
+std::vector<unsigned char> PacketFactory::getUserInfoResultPacket(bool userInfoFound, const std::string& uid, const std::string& userNicknameHash, std::optional<CryptoPP::RSA::PublicKey> userPublicKey, std::optional<std::string> encryptedNickname, std::optional<std::string> packetKey) {
     nlohmann::json jsonObject;
 
     jsonObject[UID] = uid;
     jsonObject[RESULT] = userInfoFound;
     jsonObject[NICKNAME_HASH] = userNicknameHash;
 
-    if (userInfoFound && userPublicKey.has_value()) 
+    if (userInfoFound && userPublicKey.has_value())
         jsonObject[PUBLIC_KEY] = crypto::serializePublicKey(userPublicKey.value());
+    if (userInfoFound && encryptedNickname.has_value())
+        jsonObject[ENCRYPTED_NICKNAME] = encryptedNickname.value();
+    if (userInfoFound && packetKey.has_value())
+        jsonObject[PACKET_KEY] = packetKey.value();
 
     return toBytes(jsonObject.dump());
 }

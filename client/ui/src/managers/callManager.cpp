@@ -101,8 +101,12 @@ void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
         }
     }
     else {
+        m_incomingCalls.remove(friendNickname);
         if (m_dialogsController) {
-            m_dialogsController->setIncomingCallButtonsActive(friendNickname, false);
+            m_dialogsController->hideIncomingCallsDialog(friendNickname);
+        }
+        if (m_audioManager && m_incomingCalls.isEmpty()) {
+            m_audioManager->stopIncomingCallRingtone();
         }
         if (m_coreClient && m_coreClient->isScreenSharing()) {
             m_coreClient->stopScreenSharing();
@@ -141,12 +145,14 @@ void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
         }
     }
     else {
+        m_incomingCalls.remove(friendNickname);
         if (m_dialogsController) {
             m_dialogsController->hideIncomingCallsDialog(friendNickname);
         }
         updateIncomingCallsUi();
-
         if (m_audioManager) {
+            if (m_incomingCalls.isEmpty())
+                m_audioManager->stopIncomingCallRingtone();
             m_audioManager->playCallingEndedEffect();
         }
     }
@@ -165,6 +171,9 @@ void CallManager::onEndCallButtonClicked()
         }
     }
     else {
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setStatusLabelOnline();
+        }
         if (m_callWidget && m_callWidget->isFullScreen()) {
             emit endCallFullscreenExitRequested();
         }
