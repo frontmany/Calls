@@ -174,9 +174,9 @@ namespace core::logic
         if (m_eventListener) {
             std::vector<unsigned char> rawData(frame.data, frame.data + frame.size);
             if (type == MediaType::Screen) {
-                m_eventListener->onLocalScreen(rawData);
+                m_eventListener->onLocalScreen(rawData, frame.width, frame.height);
             } else {
-                m_eventListener->onLocalCamera(rawData);
+                m_eventListener->onLocalCamera(rawData, frame.width, frame.height);
             }
         }
 

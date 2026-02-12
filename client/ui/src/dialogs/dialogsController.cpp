@@ -1,5 +1,5 @@
 #include "dialogsController.h"
-#include "widgets/overlayWidget.h"
+#include "widgets/components/overlayWidget.h"
 #include "utilities/utilities.h"
 #include "dialogs/screenShareDialog.h"
 #include "dialogs/alreadyRunningDialog.h"

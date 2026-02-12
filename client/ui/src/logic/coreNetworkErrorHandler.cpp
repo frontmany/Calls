@@ -1,11 +1,11 @@
 #include "coreNetworkErrorHandler.h"
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
-#include "managers/dialogsController.h"
-#include "managers/notificationController.h"
-#include "managers/navigationController.h"
-#include "managers/configManager.h"
-#include "managers/callManager.h"
+#include "dialogs/dialogsController.h"
+#include "notifications/notificationController.h"
+#include "logic/navigationController.h"
+#include "logic/configManager.h"
+#include "logic/callManager.h"
 #include "audio/audioEffectsManager.h"
 #include <QTimer>
 

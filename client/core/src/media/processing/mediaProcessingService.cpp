@@ -2,6 +2,7 @@
 #include "media/processing/encode/h264Encoder.h"
 #include "media/processing/decode/h264Decoder.h"
 #include "media/processing/encryption/mediaEncryptionService.h"
+#include <libavutil/pixfmt.h>
 #include <stdexcept>
 #include <opus.h>
 
@@ -230,8 +231,8 @@ namespace core::media
             pImpl->lastEncodedVideoFrame.assign(data, data + size);
         });
             
-        // Создаем FrameData
-        Frame frame(rawData, width * height * 3, width, height, 0); // RGB24
+        // Создаем FrameData (AV_PIX_FMT_RGB24 обязателен для sws_scale)
+        Frame frame(rawData, width * height * 3, width, height, AV_PIX_FMT_RGB24);
             
         // Кодируем кадр
         if (!pImpl->videoEncoder->encodeFrame(frame)) {

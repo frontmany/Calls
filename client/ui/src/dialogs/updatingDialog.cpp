@@ -1,6 +1,6 @@
 #include "dialogs/updatingDialog.h"
-#include "utilities/color.h"
-#include "utilities/utilities.h"
+#include "constants/color.h"
+#include "utilities/utility.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>

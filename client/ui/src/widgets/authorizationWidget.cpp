@@ -1,13 +1,11 @@
 #include "authorizationWidget.h"
-#include "utilities/constant.h"
-#include "utilities/color.h"
+#include "constants/constant.h"
+#include "constants/color.h"
 
 #include <QRegularExpressionValidator>
 #include <QShortcut>
-#include <QApplication>
-#include <QEventLoop>
 
-#include "../utilities/utilities.h"
+#include "utilities/utility.h"
 
 const QColor StyleAuthorizationWidget::m_primaryColor = COLOR_ACCENT;
 const QColor StyleAuthorizationWidget::m_hoverColor = COLOR_ACCENT_HOVER;

@@ -3,9 +3,9 @@
 #include <QByteArray>
 #include <vector>
 
-#include "../managers/authorizationManager.h"
-#include "../managers/callManager.h"
-#include "../managers/coreNetworkErrorHandler.h"
+#include "logic/authorizationManager.h"
+#include "logic/callManager.h"
+#include "logic/coreNetworkErrorHandler.h"
 
 CoreEventListener::CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, CoreNetworkErrorHandler* networkErrorHandler)
     : m_authorizationManager(authorizationManager)
@@ -44,11 +44,11 @@ void CoreEventListener::onIncomingScreenSharingStopped() {
     }
 }
 
-void CoreEventListener::onIncomingScreen(const std::vector<unsigned char>& data) {
+void CoreEventListener::onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) {
     if (m_callManager) {
         QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onIncomingScreenFrame",
-            Qt::QueuedConnection, Q_ARG(QByteArray, frameData));
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 
@@ -59,11 +59,11 @@ void CoreEventListener::onStartScreenSharingError() {
     }
 }
 
-void CoreEventListener::onLocalScreen(const std::vector<unsigned char>& data) {
+void CoreEventListener::onLocalScreen(const std::vector<unsigned char>& data, int width, int height) {
     if (m_callManager) {
         QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onLocalScreenFrame",
-            Qt::QueuedConnection, Q_ARG(QByteArray, frameData));
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 
@@ -81,11 +81,11 @@ void CoreEventListener::onIncomingCameraSharingStopped() {
     }
 }
 
-void CoreEventListener::onIncomingCamera(const std::vector<unsigned char>& data) {
+void CoreEventListener::onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) {
     if (m_callManager) {
         QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraFrame",
-            Qt::QueuedConnection, Q_ARG(QByteArray, frameData));
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 
@@ -96,11 +96,11 @@ void CoreEventListener::onStartCameraSharingError() {
     }
 }
 
-void CoreEventListener::onLocalCamera(const std::vector<unsigned char>& data) {
+void CoreEventListener::onLocalCamera(const std::vector<unsigned char>& data, int width, int height) {
     if (m_callManager) {
         QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onLocalCameraFrame",
-            Qt::QueuedConnection, Q_ARG(QByteArray, frameData));
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 

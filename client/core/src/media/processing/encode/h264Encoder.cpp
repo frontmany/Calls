@@ -170,48 +170,45 @@ namespace core::media
 
     bool H264Encoder::convertFrame(const Frame& inputFrame)
     {
-        // Check if we need to create or update sws context
+        // Validate input - avoid "bad src image pointers"
+        if (!inputFrame.data || inputFrame.width <= 0 || inputFrame.height <= 0 ||
+            inputFrame.format == AV_PIX_FMT_NONE || inputFrame.format < 0) {
+            return false;
+        }
+
+        // Use RGB24 if format not explicitly set
+        AVPixelFormat srcFormat = (inputFrame.format != 0) ?
+            static_cast<AVPixelFormat>(inputFrame.format) : AV_PIX_FMT_RGB24;
+
+        // Recreate sws context when dimensions change
         if (!m_swsContext ||
             m_frame->width != inputFrame.width ||
             m_frame->height != inputFrame.height) {
 
             if (m_swsContext) {
                 sws_freeContext(m_swsContext);
+                m_swsContext = nullptr;
             }
 
             m_swsContext = sws_getContext(
-                inputFrame.width, inputFrame.height, (AVPixelFormat)inputFrame.format,
+                inputFrame.width, inputFrame.height, srcFormat,
                 m_width, m_height, AV_PIX_FMT_YUV420P,
                 SWS_BILINEAR, nullptr, nullptr, nullptr
             );
 
             if (!m_swsContext) {
-                std::cerr << "Failed to create sws context" << std::endl;
                 return false;
             }
         }
 
-        // Make sure frame is writable
         int ret = av_frame_make_writable(m_frame);
         if (ret < 0) {
-            std::cerr << "Failed to make frame writable: error code " << ret << std::endl;
             return false;
         }
 
-        // Setup input data pointers
-        const uint8_t* srcData[4];
-        int srcLinesize[4];
+        const uint8_t* srcData[4] = { inputFrame.data, nullptr, nullptr, nullptr };
+        int srcLinesize[4] = { inputFrame.width * 3, 0, 0, 0 };
 
-        // Simple RGB format handling (assuming packed RGB)
-        srcData[0] = inputFrame.data;
-        srcLinesize[0] = inputFrame.width * 3; // Assuming RGB24
-
-        for (int i = 1; i < 4; i++) {
-            srcData[i] = nullptr;
-            srcLinesize[i] = 0;
-        }
-
-        // Convert frame - scale from input resolution to encoder resolution
         ret = sws_scale(
             m_swsContext,
             srcData, srcLinesize,
@@ -219,11 +216,8 @@ namespace core::media
             m_frame->data, m_frame->linesize
         );
 
-        // Check if conversion was successful (should return output height)
-        if (ret != m_height) {
-            std::cerr << "Warning: Frame conversion returned height " << ret
-                << ", expected " << m_height << " (this is normal for scaling)" << std::endl;
-            // Don't return false for scaling operations
+        if (ret <= 0 || ret != m_height) {
+            return false;
         }
 
         return true;

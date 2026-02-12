@@ -1,9 +1,8 @@
-#include "diagnostics.h"
+#pragma once
+
+#include <string>
 #include "logger.h"
 #include "CrashCatch.hpp"
-
-#include <filesystem>
-#include <iostream>
 
 namespace ui::utilities
 {
@@ -20,6 +19,7 @@ namespace ui::utilities
         std::filesystem::path logDir = logDirectory.empty()
             ? basePath / "logs"
             : std::filesystem::path(logDirectory);
+
         if (logDir.is_relative()) {
             logDir = basePath / logDir;
         }
@@ -29,6 +29,7 @@ namespace ui::utilities
         std::filesystem::path dumpDir = crashDumpDirectory.empty()
             ? basePath / "crashDumps"
             : std::filesystem::path(crashDumpDirectory);
+
         if (dumpDir.is_relative()) {
             dumpDir = basePath / dumpDir;
         }
@@ -45,11 +46,12 @@ namespace ui::utilities
         crashConfig.dumpFolder = dumpFolderStr;
         crashConfig.dumpFileName = "calliforniaUI";
         crashConfig.onCrash = [](const CrashCatch::CrashContext& context)
-        {
-            std::cout << "Crash captured. Dump: " << context.dumpFilePath
-                << " Log: " << context.logFilePath << std::endl;
-        };
+            {
+                std::cout << "Crash captured. Dump: " << context.dumpFilePath
+                    << " Log: " << context.logFilePath << std::endl;
+            };
 
         CrashCatch::initialize(crashConfig);
     }
 }
+ 

@@ -4,7 +4,7 @@
 #include <QGridLayout>
 #include <QSizePolicy>
 #include <unordered_set>
-#include "utilities/color.h"
+#include "constants/color.h"
 
 namespace {
     QString containerStyle(int radius, int padding)

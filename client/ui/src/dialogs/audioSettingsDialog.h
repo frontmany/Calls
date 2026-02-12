@@ -11,7 +11,7 @@
 #include <QVariant>
 #include <vector>
 
-#include "widgets/buttons.h"
+#include "widgets/components/button.h"
 #include "utilities/utilities.h"
 #include "media/audio/audioEngine.h"
 

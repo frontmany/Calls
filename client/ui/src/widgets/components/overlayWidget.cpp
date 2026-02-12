@@ -1,5 +1,5 @@
 #include "overlayWidget.h"
-#include "utilities/color.h"
+#include "constants/color.h"
 #include <QResizeEvent>
 
 OverlayWidget::OverlayWidget(QWidget* parent)

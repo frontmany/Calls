@@ -5,8 +5,8 @@
 #include <string>
 
 #include "utilities/utilities.h"
-#include "utilities/constant.h"
-#include "utilities/color.h"
+#include "constants/constant.h"
+#include "constants/color.h"
 
 // Style definitions
 const QColor StyleCallWidget::m_primaryColor = COLOR_ACCENT;
@@ -427,7 +427,6 @@ void CallWidget::setupUI() {
     connect(m_exitFullscreenButton, &ButtonIcon::clicked, [this]() {emit requestExitFullscreen(); });
     connect(m_enterFullscreenButton, &ButtonIcon::clicked, [this]() {emit requestEnterFullscreen(); });
     connect(m_microphoneButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
-        m_microphoneMuted = toggled;
         emit muteMicrophoneClicked(toggled);
     });
     connect(m_screenShareButton, &ToggleButtonIcon::toggled, [this](bool toggled) {emit screenShareClicked(toggled); });
@@ -435,7 +434,7 @@ void CallWidget::setupUI() {
     connect(m_hangupButton, &QPushButton::clicked, [this]() {emit hangupClicked(); });
     connect(m_settingsButton, &ButtonIcon::clicked, [this]()
     {
-        emit audioSettingsRequested(m_microphoneMuted, m_speakerMuted, m_inputVolume, m_outputVolume);
+        emit audioSettingsRequested();
     });
 
     setMouseTracking(true);
@@ -538,11 +537,11 @@ bool CallWidget::isAdditionalScreenVisible(const std::string& screenId) const {
 }
 
 void CallWidget::setInputVolume(int newVolume) {
-    m_inputVolume = newVolume;
+    Q_UNUSED(newVolume);
 }
 
 void CallWidget::setOutputVolume(int newVolume) {
-    m_outputVolume = newVolume;
+    Q_UNUSED(newVolume);
 }
 
 void CallWidget::setMicrophoneMuted(bool muted) {
@@ -550,11 +549,10 @@ void CallWidget::setMicrophoneMuted(bool muted) {
     {
         m_microphoneButton->setToggled(muted);
     }
-    m_microphoneMuted = muted;
 }
 
 void CallWidget::setSpeakerMuted(bool muted) {
-    m_speakerMuted = muted;
+    Q_UNUSED(muted);
 }
 
 void CallWidget::applyStandardSize() {

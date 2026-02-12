@@ -42,6 +42,13 @@ public slots:
     void onDeclineCallButtonClicked(const QString& friendNickname);
     void onEndCallButtonClicked();
 
+    void onAudioDevicePickerRequested();
+    void onCallWidgetAudioSettingsRequested();
+    void onActivateCameraClicked(bool active);
+    void onScreenShareClicked(bool toggled);
+    void onScreenSelected(int screenIndex);
+    void onScreenShareDialogCancelled();
+    void onCallWidgetCameraClicked(bool toggled);
     void onStartCallingResult(std::error_code ec);
     void onMaximumCallingTimeReached();
     void onCallingAccepted();
@@ -54,10 +61,10 @@ public slots:
     void onLocalConnectionDownInCall();
 
     // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
-    void onLocalScreenFrame(QByteArray data);
-    void onLocalCameraFrame(QByteArray data);
-    void onIncomingScreenFrame(QByteArray data);
-    void onIncomingCameraFrame(QByteArray data);
+    void onLocalScreenFrame(QByteArray data, int width, int height);
+    void onLocalCameraFrame(QByteArray data, int width, int height);
+    void onIncomingScreenFrame(QByteArray data, int width, int height);
+    void onIncomingCameraFrame(QByteArray data, int width, int height);
 
     // Media state slots
     void onIncomingScreenSharingStarted();
@@ -80,6 +87,7 @@ private:
     void handleStopCallingErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
     void updateIncomingCallsUi();
+    void resetCallWidgetState();
 
     std::shared_ptr<core::Core> m_coreClient = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;

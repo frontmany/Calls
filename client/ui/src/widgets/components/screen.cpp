@@ -1,5 +1,5 @@
 #include "screen.h"
-#include "utilities/utilities.h"
+#include "utilities/utility.h"
 
 #include <QPainter>
 #include <QPainterPath>

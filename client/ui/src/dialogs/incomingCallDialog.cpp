@@ -1,9 +1,9 @@
 #include "dialogs/incomingCallDialog.h"
-#include "widgets/buttons.h"
-#include "widgets/incomingCallWidget.h"
+#include "widgets/components/button.h"
+#include "widgets/components/incomingCallWidget.h"
 #include "utilities/utilities.h"
-#include "utilities/constant.h"
-#include "utilities/color.h"
+#include "constants/constant.h"
+#include "constants/color.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>

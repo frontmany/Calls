@@ -14,8 +14,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
 
-#include "buttons.h"
-#include "utilities/constant.h"
+#include "widgets/components/button.h"
+#include "constants/constant.h"
 
 struct StyleAuthorizationWidget {
     // Color constants

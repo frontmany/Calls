@@ -3,8 +3,8 @@
 #include <QMetaObject>
 #include <QApplication>
 
-#include "managers/updateManager.h"
-#include "managers/updaterNetworkErrorHandler.h"
+#include "logic/updateManager.h"
+#include "logic/updaterNetworkErrorHandler.h"
 
 UpdaterEventListener::UpdaterEventListener(UpdateManager* updateManager, UpdaterNetworkErrorHandler* networkErrorHandler) 
 	: m_updateManager(updateManager)

@@ -13,9 +13,9 @@
 #include <QMouseEvent>
 #include <QMap>
 
-#include "buttons.h"
-#include "screen.h"
-#include "utilities/constant.h"
+#include "widgets/components/button.h"
+#include "widgets/components/screen.h"
+#include "constants/constant.h"
 
 class QResizeEvent;
 class QShowEvent;
@@ -92,7 +92,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
-    void audioSettingsRequested(bool micMuted, bool speakerMuted, int inputVolume, int outputVolume);
+    void audioSettingsRequested();
     void requestEnterFullscreen();
     void requestExitFullscreen();
     void screenShareClicked(bool toggled);
@@ -188,8 +188,4 @@ private:
     // States
     QString m_friendNickname;
     bool m_screenFullscreenActive = false;
-    bool m_microphoneMuted = false;
-    bool m_speakerMuted = false;
-    int m_inputVolume = DEFAULT_VOLUME;
-    int m_outputVolume = DEFAULT_VOLUME;
 };

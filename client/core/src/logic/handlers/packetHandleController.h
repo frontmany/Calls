@@ -5,11 +5,12 @@
 #include <mutex>
 #include <unordered_map>
 #include "constants/packetType.h"
-#include "media/audio/audioEngine.h"
 #include "media/processing/mediaProcessingService.h"
 #include "eventListener.h"
 
 #include "json.hpp"
+
+namespace core::media { class AudioEngine; }
 
 namespace core::logic
 {
@@ -28,7 +29,9 @@ namespace core::logic
             std::shared_ptr<media::AudioEngine> audioEngine,
             std::shared_ptr<media::MediaProcessingService> mediaProcessingService,
             std::shared_ptr<EventListener> eventListener,
-            std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket
+            std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket,
+            std::function<void()> startAudioSharing = nullptr,
+            std::function<void()> stopAudioSharing = nullptr
         );
         ~PacketHandleController();
 
@@ -55,7 +58,8 @@ namespace core::logic
         void handleRemoteUserLogout(const nlohmann::json& jsonObject);
 
     private:
-        std::shared_ptr<media::AudioEngine> m_audioEngine;
+        std::function<void()> m_startAudioSharing;
+        std::function<void()> m_stopAudioSharing;
         std::unique_ptr<AuthorizationPacketHandler> m_authorizationPacketHandler;
         std::unique_ptr<CallPacketHandler> m_callPacketHandler;
         std::unique_ptr<MediaPacketHandler> m_mediaPacketHandler;

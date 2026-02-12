@@ -5,7 +5,7 @@
 #include <QScreen>
 #include "updater.h"
 #include <QDebug>
-#include "constant.h"
+#include "constants/constant.h"
 
 static qreal getDeviceScaleFactor() {
     QScreen* screen = QApplication::primaryScreen();

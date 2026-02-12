@@ -1,5 +1,5 @@
-#include "buttons.h"
-#include "utilities/color.h"
+#include "widgets/components/button.h"
+#include "constants/color.h"
 /*
 
 AvatarIcon::AvatarIcon(QWidget* parent, int iconSize, int size, bool needHover, Theme theme)

@@ -1,9 +1,9 @@
 #include "settingsPanelWidget.h"
-#include "buttons.h"
+#include "widgets/components/button.h"
 #include <QIcon>
 #include "utilities/utilities.h"
-#include "utilities/constant.h"
-#include "utilities/color.h"
+#include "constants/constant.h"
+#include "constants/color.h"
 
 const QColor SettingsPanel::StyleSettingsPanel::primaryColor = COLOR_SETTINGS_ACCENT;
 const QColor SettingsPanel::StyleSettingsPanel::hoverColor = COLOR_SETTINGS_ACCENT_HOVER;
@@ -290,45 +290,35 @@ void SettingsPanel::setOutputVolume(int volume) {
 }
 
 void SettingsPanel::setMicrophoneMuted(bool muted) {
-    m_isMicMuted = muted;
-    
     if (m_micMuteButton->isToggled() != muted) {
         m_micMuteButton->setToggled(muted);
     }
-
     m_micSlider->setEnabled(!muted);
 }
 
 void SettingsPanel::setSpeakerMuted(bool muted) {
-    m_isSpeakerMuted = muted;
-    
     if (m_speakerMuteButton->isToggled() != muted) {
         m_speakerMuteButton->setToggled(muted);
     }
-
     m_speakerSlider->setEnabled(!muted);
 }
 
 void SettingsPanel::onMicMuteClicked()
 {
-    m_isMicMuted = m_micMuteButton->isToggled();
-
-    if (m_micSlider)
-    {
-        m_micSlider->setEnabled(!m_isMicMuted);
-        emit muteMicrophoneClicked(m_isMicMuted);
+    const bool muted = m_micMuteButton->isToggled();
+    if (m_micSlider) {
+        m_micSlider->setEnabled(!muted);
     }
+    emit muteMicrophoneClicked(muted);
 }
 
 void SettingsPanel::onSpeakerMuteClicked()
 {
-    m_isSpeakerMuted = m_speakerMuteButton->isToggled();
-
-    if (m_speakerSlider)
-    {
-        m_speakerSlider->setEnabled(!m_isSpeakerMuted);
-        emit muteSpeakerClicked(m_isSpeakerMuted);
+    const bool muted = m_speakerMuteButton->isToggled();
+    if (m_speakerSlider) {
+        m_speakerSlider->setEnabled(!muted);
     }
+    emit muteSpeakerClicked(muted);
 }
 
 void SettingsPanel::onCameraButtonClicked(bool enabled)

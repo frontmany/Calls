@@ -116,12 +116,12 @@ namespace core
             return false;
         }
 
-        auto sendTcpFn = [this](const std::vector<unsigned char>& packet, constant::PacketType type) -> std::error_code {
+        auto sendTcp = [this](const std::vector<unsigned char>& packet, constant::PacketType type) -> std::error_code {
             return m_networkController->sendTCP(packet, type)
                 ? std::error_code{}
                 : core::constant::make_error_code(core::constant::ErrorCode::network_error);
         };
-        auto sendUdpFn = [this](const std::vector<unsigned char>& data, constant::PacketType type) -> std::error_code {
+        auto sendUdp = [this](const std::vector<unsigned char>& data, constant::PacketType type) -> std::error_code {
             return m_networkController->sendUDP(data, type)
                 ? std::error_code{}
                 : core::constant::make_error_code(core::constant::ErrorCode::network_error);
@@ -129,24 +129,26 @@ namespace core
 
         m_authorizationService = std::make_unique<logic::AuthorizationService>(m_stateManager, keyManager,
             [this]() { return m_networkController->getUDPLocalPort(); },
-            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); }
+            [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); }
         );
         
         m_callService = std::make_unique<logic::CallService>(m_stateManager, keyManager,
-            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); });
+            [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); });
 
         m_mediaService = std::make_unique<logic::MediaService>(m_stateManager, m_audioEngine, mediaProcessingService, eventListener,
-            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); },
-            [sendUdpFn](const std::vector<unsigned char>& d, constant::PacketType t) { return sendUdpFn(d, t); });
+            [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
+            [sendUdp](const std::vector<unsigned char>& d, constant::PacketType t) { return sendUdp(d, t); });
 
         m_reconnectionService = std::make_unique<logic::ReconnectionService>(m_stateManager, eventListener,
             [this]() { return m_networkController->getUDPLocalPort(); },
-            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); },
+            [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
             [this]() { return m_networkController->tryReconnectTCP(5); }
         );
 
         m_packetHandleController = std::make_unique<logic::PacketHandleController>(m_stateManager, keyManager, m_audioEngine, mediaProcessingService, eventListener,
-            [sendTcpFn](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcpFn(p, t); });
+            [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
+            [this]() { if (m_mediaService) m_mediaService->startAudioSharing(); },
+            [this]() { if (m_mediaService) m_mediaService->stopAudioSharing(); });
 
         return true;
     }
@@ -305,7 +307,11 @@ namespace core
     }
 
     std::error_code Core::acceptCall(const std::string& userNickname) {
-        return m_callService->acceptCall(userNickname);
+        auto ec = m_callService->acceptCall(userNickname);
+        if (!ec && m_mediaService) {
+            m_mediaService->startAudioSharing();
+        }
+        return ec;
     } 
 
     std::error_code Core::declineCall(const std::string& userNickname) {
@@ -313,7 +319,11 @@ namespace core
     }
 
     std::error_code Core::endCall() {
-        return m_callService->endCall();
+        auto ec = m_callService->endCall();
+        if (!ec && m_mediaService) {
+            m_mediaService->stopAudioSharing();
+        }
+        return ec;
     }
 
     std::error_code Core::startScreenSharing(int screenIndex) {

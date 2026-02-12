@@ -11,23 +11,23 @@
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
-#include "managers/dialogsController.h"
-#include "managers/notificationController.h"
-#include "managers/configManager.h"
+#include "dialogs/dialogsController.h"
+#include "notifications/notificationController.h"
+#include "logic/configManager.h"
 #include "utilities/logger.h"
-#include "utilities/diagnostics.h"
+#include "utilities/diagnostic.h"
 #include "utilities/updaterDiagnostics.h"
 #include "utilities/utilities.h"
-#include "utilities/constant.h"
+#include "constants/constant.h"
 
 #include "audio/audioEffectsManager.h"
 #include "audio/audioSettingsManager.h"
-#include "managers/updateManager.h"
-#include "managers/navigationController.h"
-#include "managers/authorizationManager.h"
-#include "managers/coreNetworkErrorHandler.h"
-#include "managers/updaterNetworkErrorHandler.h"
-#include "managers/callManager.h"
+#include "logic/updateManager.h"
+#include "logic/navigationController.h"
+#include "logic/authorizationManager.h"
+#include "logic/coreNetworkErrorHandler.h"
+#include "logic/updaterNetworkErrorHandler.h"
+#include "logic/callManager.h"
 #include "audio/audioDevicesWatcher.h"
 
 #include "events/coreEventListener.h"
@@ -348,39 +348,11 @@ void MainWindow::connectWidgetsToManagers() {
             connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
         }
-        if (m_dialogsController) {
-            connect(m_mainMenuWidget, &MainMenuWidget::audioDevicePickerRequested, this, [this]() {
-                if (m_dialogsController && m_configManager) {
-                    const bool micMuted = m_configManager->isMicrophoneMuted();
-                    const bool speakerMuted = m_configManager->isSpeakerMuted();
-                    const int inputVolume = m_configManager->getInputVolume();
-                    const int outputVolume = m_configManager->getOutputVolume();
-                    const int currentInputDevice = (m_coreClient) ? m_coreClient->getCurrentInputDevice() : -1;
-                    const int currentOutputDevice = (m_coreClient) ? m_coreClient->getCurrentOutputDevice() : -1;
-
-                    m_dialogsController->showAudioSettingsDialog(
-                        false,
-                        micMuted,
-                        speakerMuted,
-                        inputVolume,
-                        outputVolume,
-                        currentInputDevice,
-                        currentOutputDevice);
-                }
-            });
-        }
         if (m_callManager) {
+            connect(m_mainMenuWidget, &MainMenuWidget::audioDevicePickerRequested, m_callManager, &CallManager::onAudioDevicePickerRequested);
             connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, m_callManager, &CallManager::onStartCallingButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, m_callManager, &CallManager::onStopCallingButtonClicked);
-        }
-        if (m_coreClient) {
-            connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, [this](bool active) {
-                if (active) {
-                    m_coreClient->startCameraSharing("");
-                } else {
-                    m_coreClient->stopCameraSharing();
-                }
-            });
+            connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, m_callManager, &CallManager::onActivateCameraClicked);
         }
     }
 
@@ -390,26 +362,8 @@ void MainWindow::connectWidgetsToManagers() {
             connect(m_callWidget, &CallWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onCallWidgetEnterFullscreenRequested);
             connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onCallWidgetExitFullscreenRequested);
         }
-        if (m_dialogsController) {
-            connect(m_callWidget, &CallWidget::audioSettingsRequested, this, [this](bool micMuted, bool speakerMuted, int inputVolume, int outputVolume) {
-                if (m_dialogsController) {
-                    const bool micMutedValue = (m_configManager) ? m_configManager->isMicrophoneMuted() : micMuted;
-                    const bool speakerMutedValue = (m_configManager) ? m_configManager->isSpeakerMuted() : speakerMuted;
-                    const int inputVolumeValue = (m_configManager) ? m_configManager->getInputVolume() : inputVolume;
-                    const int outputVolumeValue = (m_configManager) ? m_configManager->getOutputVolume() : outputVolume;
-                    const int currentInputDevice = (m_coreClient) ? m_coreClient->getCurrentInputDevice() : -1;
-                    const int currentOutputDevice = (m_coreClient) ? m_coreClient->getCurrentOutputDevice() : -1;
-
-                    m_dialogsController->showAudioSettingsDialog(
-                        true,
-                        micMutedValue,
-                        speakerMutedValue,
-                        inputVolumeValue,
-                        outputVolumeValue,
-                        currentInputDevice,
-                        currentOutputDevice);
-                }
-            });
+        if (m_callManager) {
+            connect(m_callWidget, &CallWidget::audioSettingsRequested, m_callManager, &CallManager::onCallWidgetAudioSettingsRequested);
         }
         if (m_audioSettingsManager) {
             connect(m_callWidget, &CallWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
@@ -420,45 +374,18 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::hangupClicked, m_callManager, &CallManager::onEndCallButtonClicked);
         }
-        // Screen share: show dialog for screen selection, then start sharing
-        if (m_coreClient && m_dialogsController) {
-            connect(m_callWidget, &CallWidget::screenShareClicked, [this](bool toggled) {
-                if (toggled) {
-                    QList<QScreen*> screens = QGuiApplication::screens();
-                    if (screens.size() <= 1) {
-                        m_coreClient->startScreenSharing(0);
-                    } else {
-                        m_dialogsController->showScreenShareDialog(screens);
-                    }
-                } else {
-                    m_coreClient->stopScreenSharing();
-                }
-            });
-
-            connect(m_dialogsController, &DialogsController::screenSelected, [this](int screenIndex) {
-                m_coreClient->startScreenSharing(screenIndex);
-            });
-
-            connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, [this]() {
-                if (m_callWidget) {
-                    m_callWidget->setScreenShareButtonActive(false);
-                }
-            });
-        }
-        // Camera sharing
-        if (m_coreClient) {
-            connect(m_callWidget, &CallWidget::cameraClicked, [this](bool toggled) {
-                if (toggled) {
-                    m_coreClient->startCameraSharing("");
-                } else {
-                    m_coreClient->stopCameraSharing();
-                }
-            });
+        if (m_callManager) {
+            connect(m_callWidget, &CallWidget::screenShareClicked, m_callManager, &CallManager::onScreenShareClicked);
+            connect(m_callWidget, &CallWidget::cameraClicked, m_callManager, &CallManager::onCallWidgetCameraClicked);
         }
     }
 
 
     // DialogsController connections
+    if (m_dialogsController && m_callManager) {
+        connect(m_dialogsController, &DialogsController::screenSelected, m_callManager, &CallManager::onScreenSelected);
+        connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, m_callManager, &CallManager::onScreenShareDialogCancelled);
+    }
 
     // Audio settings dialog connections
     if (m_dialogsController && m_audioSettingsManager) {

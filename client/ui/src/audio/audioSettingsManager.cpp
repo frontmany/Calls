@@ -1,5 +1,5 @@
 #include "audioSettingsManager.h"
-#include "managers/configManager.h"
+#include "logic/configManager.h"
 #include "core.h"
 
 AudioSettingsManager::AudioSettingsManager(std::shared_ptr<core::Core> client, ConfigManager* configManager, QObject* parent)

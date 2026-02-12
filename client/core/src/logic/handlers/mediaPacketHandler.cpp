@@ -97,7 +97,7 @@ namespace core::logic
         if (decryptedData.empty()) return;
         auto videoFrame = m_mediaProcessingService->decodeVideoFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingScreen(videoFrame);
+            m_eventListener->onIncomingScreen(videoFrame, m_mediaProcessingService->getWidth(), m_mediaProcessingService->getHeight());
         }
     }
 
@@ -110,7 +110,7 @@ namespace core::logic
         if (decryptedData.empty()) return;
         auto videoFrame = m_mediaProcessingService->decodeVideoFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingCamera(videoFrame);
+            m_eventListener->onIncomingCamera(videoFrame, m_mediaProcessingService->getWidth(), m_mediaProcessingService->getHeight());
         }
     }
 }

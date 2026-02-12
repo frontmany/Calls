@@ -1,7 +1,7 @@
 #include "dialogs/screenShareDialog.h"
-#include "widgets/screenPreviewWidget.h"
-#include "utilities/utilities.h"
-#include "utilities/color.h"
+#include "widgets/components/screenPreviewWidget.h"
+#include "utilities/utility.h"
+#include "constants/color.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QScrollArea>

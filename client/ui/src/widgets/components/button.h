@@ -8,7 +8,7 @@
 #include <QEvent>
 #include <QPainter>
 #include <QPropertyAnimation>
-#include "utilities/utilities.h"
+#include "utilities/utility.h"
 
 /*
 class ToggleSwitch : public QWidget {

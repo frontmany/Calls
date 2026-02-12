@@ -18,9 +18,9 @@ public:
     bool isCameraActive() const;
     bool isSpeakerMuted() const;
     bool isMicrophoneMuted() const;
-    bool isMultiInstanceAllowed() const;
     int getOutputVolume() const; // speaker
     int getInputVolume() const; // mic
+    bool isMultiInstanceAllowed() const;
     const QString& getConfigPath();
     const QString& getVersion() const;
     const QString& getMainServerTcpPort() const;

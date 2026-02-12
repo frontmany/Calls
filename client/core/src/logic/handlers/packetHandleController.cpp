@@ -23,8 +23,11 @@ namespace core::logic
         std::shared_ptr<media::AudioEngine> audioEngine,
         std::shared_ptr<media::MediaProcessingService> mediaProcessingService,
         std::shared_ptr<EventListener> eventListener,
-        std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket)
-        : m_audioEngine(audioEngine)
+        std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket,
+        std::function<void()> startAudioSharing,
+        std::function<void()> stopAudioSharing)
+        : m_startAudioSharing(std::move(startAudioSharing))
+        , m_stopAudioSharing(std::move(stopAudioSharing))
     {
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
         m_callPacketHandler = std::make_unique<CallPacketHandler>(stateManager, keyManager, eventListener, std::move(sendPacket));
@@ -110,7 +113,9 @@ namespace core::logic
 
     void PacketHandleController::handleCallAccepted(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleOutgoingCallAccepted(jsonObject);
-        m_audioEngine->startAudioCapture();
+        if (m_startAudioSharing) {
+            m_startAudioSharing();
+        }
     }
 
     void PacketHandleController::handleCallDeclined(const nlohmann::json& jsonObject) {
@@ -119,7 +124,9 @@ namespace core::logic
 
     void PacketHandleController::handleCallEndedByRemote(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleCallEndedByRemote(jsonObject);
-        m_audioEngine->stopAudioCapture();
+        if (m_stopAudioSharing) {
+            m_stopAudioSharing();
+        }
     }
 
     void PacketHandleController::handleScreenSharingStarted(const nlohmann::json& jsonObject) {
@@ -140,16 +147,22 @@ namespace core::logic
 
     void PacketHandleController::handleRemoteUserConnectionDown(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleRemoteUserConnectionDown(jsonObject);
-        m_audioEngine->stopAudioCapture();
+        if (m_stopAudioSharing) {
+            m_stopAudioSharing();
+        }
     }
 
     void PacketHandleController::handleRemoteUserConnectionRestored(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleRemoteUserConnectionRestored(jsonObject);
-        m_audioEngine->startAudioCapture();
+        if (m_startAudioSharing) {
+            m_startAudioSharing();
+        }
     }
 
     void PacketHandleController::handleRemoteUserLogout(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleRemoteUserLogout(jsonObject);
-        m_audioEngine->stopAudioCapture();
+        if (m_stopAudioSharing) {
+            m_stopAudioSharing();
+        }
     }
 }

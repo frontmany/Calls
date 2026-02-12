@@ -14,6 +14,8 @@ namespace core::media
         , m_outputWidth(0)
         , m_outputHeight(0)
         , m_outputFormat(AV_PIX_FMT_RGB24)
+        , m_lastSrcWidth(0)
+        , m_lastSrcHeight(0)
     {
     }
 
@@ -160,36 +162,47 @@ namespace core::media
 
     bool H264Decoder::convertFrameToRGB()
     {
-        // Check if we need to create or update sws context
+        // Validate source frame - skip invalid frames to avoid "bad src image pointers"
+        if (!m_frame->data[0] || m_frame->width <= 0 || m_frame->height <= 0 ||
+            m_frame->format == AV_PIX_FMT_NONE || m_frame->format < 0) {
+            return false;
+        }
+
+        // Use actual frame dimensions for output if not explicitly set
+        int dstWidth = (m_outputWidth > 0) ? m_outputWidth : m_frame->width;
+        int dstHeight = (m_outputHeight > 0) ? m_outputHeight : m_frame->height;
+
+        // Recreate sws context when source or destination dimensions change
         if (!m_swsContext ||
-            m_frameRGB->width != m_outputWidth ||
-            m_frameRGB->height != m_outputHeight) {
+            m_lastSrcWidth != m_frame->width || m_lastSrcHeight != m_frame->height ||
+            m_frameRGB->width != dstWidth || m_frameRGB->height != dstHeight) {
 
             if (m_swsContext) {
                 sws_freeContext(m_swsContext);
+                m_swsContext = nullptr;
             }
+
+            m_lastSrcWidth = m_frame->width;
+            m_lastSrcHeight = m_frame->height;
 
             // Setup RGB frame
             m_frameRGB->format = m_outputFormat;
-            m_frameRGB->width = m_outputWidth;
-            m_frameRGB->height = m_outputHeight;
+            m_frameRGB->width = dstWidth;
+            m_frameRGB->height = dstHeight;
 
             // Allocate buffer for RGB frame
             int ret = av_frame_get_buffer(m_frameRGB, 0);
             if (ret < 0) {
-                std::cerr << "Failed to allocate RGB frame buffer: error code " << ret << std::endl;
                 return false;
             }
 
-            // Create sws context
             m_swsContext = sws_getContext(
                 m_frame->width, m_frame->height, (AVPixelFormat)m_frame->format,
-                m_outputWidth, m_outputHeight, (AVPixelFormat)m_outputFormat,
+                dstWidth, dstHeight, (AVPixelFormat)m_outputFormat,
                 SWS_BILINEAR, nullptr, nullptr, nullptr
             );
 
             if (!m_swsContext) {
-                std::cerr << "Failed to create sws context" << std::endl;
                 return false;
             }
         }
@@ -197,7 +210,6 @@ namespace core::media
         // Make sure RGB frame is writable
         int ret = av_frame_make_writable(m_frameRGB);
         if (ret < 0) {
-            std::cerr << "Failed to make RGB frame writable: error code " << ret << std::endl;
             return false;
         }
 
@@ -209,9 +221,8 @@ namespace core::media
             m_frameRGB->data, m_frameRGB->linesize
         );
 
-        if (ret != m_frame->height) {
-            std::cerr << "Failed to convert frame to RGB: expected height " << m_frame->height
-                << ", got " << ret << std::endl;
+        // sws_scale returns output height on success, negative on error
+        if (ret < 0 || ret != dstHeight) {
             return false;
         }
 
@@ -233,6 +244,8 @@ namespace core::media
         m_outputWidth = width;
         m_outputHeight = height;
         m_outputFormat = format;
+        m_lastSrcWidth = 0;
+        m_lastSrcHeight = 0;
 
         // Force recreation of sws context on next decode
         if (m_swsContext) {

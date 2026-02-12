@@ -36,9 +36,9 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreenSharingStopped);
     }
 
-    void onIncomingScreen(const std::vector<unsigned char>& data) override
+    void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreen, data);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreen, data, width, height);
     }
 
     void onStartOutgoingCallResult(std::error_code ec) override
@@ -65,19 +65,19 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStopped);
     }
 
-    void onIncomingCamera(const std::vector<unsigned char>& data) override
+    void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCamera, data);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCamera, data, width, height);
     }
 
-    void onLocalScreen(const std::vector<unsigned char>& data) override
+    void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onLocalScreen, data);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onLocalScreen, data, width, height);
     }
 
-    void onLocalCamera(const std::vector<unsigned char>& data) override
+    void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onLocalCamera, data);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onLocalCamera, data, width, height);
     }
 
     void onStartCameraSharingError() override

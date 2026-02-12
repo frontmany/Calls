@@ -1,8 +1,8 @@
 #include "configManager.h"
 #include "utilities/logger.h"
-#include "utilities/configKeys.h"
-#include "utilities/utilities.h"
-#include "utilities/constant.h"
+#include "constants/configKey.h"
+#include "utilities/utility.h"
+#include "constants/constant.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -72,37 +72,37 @@ void ConfigManager::saveConfig() {
     try {
         QJsonObject configObject;
 
-        configObject[ConfigKeys::VERSION] = m_version;
-        configObject[ConfigKeys::UPDATER_HOST] = m_updaterHost;
-        configObject[ConfigKeys::SERVER_HOST] = m_serverHost;
-        configObject[ConfigKeys::MAIN_SERVER_TCP_PORT] = m_mainServerTcpPort;
-        configObject[ConfigKeys::MAIN_SERVER_UDP_PORT] = m_mainServerUdpPort;
-        configObject[ConfigKeys::UPDATER_SERVER_TCP_PORT] = m_updaterServerTcpPort;
-        configObject[ConfigKeys::MULTI_INSTANCE] = m_isMultiInstanceAllowed ? "1" : "0";
-        configObject[ConfigKeys::INPUT_VOLUME] = m_inputVolume;
-        configObject[ConfigKeys::OUTPUT_VOLUME] = m_outputVolume;
-        configObject[ConfigKeys::MICROPHONE_MUTED] = m_isMicrophoneMuted ? "1" : "0";
-        configObject[ConfigKeys::SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
-        configObject[ConfigKeys::CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
-        configObject[ConfigKeys::FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
-        configObject[ConfigKeys::LOG_DIRECTORY] = m_logDirectory;
-        configObject[ConfigKeys::CRASH_DUMP_DIRECTORY] = m_crashDumpDirectory;
-        configObject[ConfigKeys::APP_DIRECTORY] = m_appDirectory;
-        configObject[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY] = m_temporaryUpdateDirectory;
-        configObject[ConfigKeys::DELETION_LIST_FILE_NAME] = m_deletionListFileName;
-        configObject[ConfigKeys::OPERATION_SYSTEM_TYPE] = static_cast<int>(m_operationSystemType);
+        configObject[VERSION] = m_version;
+        configObject[UPDATER_HOST] = m_updaterHost;
+        configObject[SERVER_HOST] = m_serverHost;
+        configObject[MAIN_SERVER_TCP_PORT] = m_mainServerTcpPort;
+        configObject[MAIN_SERVER_UDP_PORT] = m_mainServerUdpPort;
+        configObject[UPDATER_SERVER_TCP_PORT] = m_updaterServerTcpPort;
+        configObject[MULTI_INSTANCE] = m_isMultiInstanceAllowed ? "1" : "0";
+        configObject[INPUT_VOLUME] = m_inputVolume;
+        configObject[OUTPUT_VOLUME] = m_outputVolume;
+        configObject[MICROPHONE_MUTED] = m_isMicrophoneMuted ? "1" : "0";
+        configObject[SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
+        configObject[CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
+        configObject[FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
+        configObject[LOG_DIRECTORY] = m_logDirectory;
+        configObject[CRASH_DUMP_DIRECTORY] = m_crashDumpDirectory;
+        configObject[APP_DIRECTORY] = m_appDirectory;
+        configObject[TEMPORARY_UPDATE_DIRECTORY] = m_temporaryUpdateDirectory;
+        configObject[DELETION_LIST_FILE_NAME] = m_deletionListFileName;
+        configObject[OPERATION_SYSTEM_TYPE] = static_cast<int>(m_operationSystemType);
         
         QJsonArray ignoredFilesArray;
         for (const std::string& file : m_ignoredFilesWhileCollectingForUpdate) {
             ignoredFilesArray.append(QString::fromStdString(file));
         }
-        configObject[ConfigKeys::IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE] = ignoredFilesArray;
+        configObject[IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE] = ignoredFilesArray;
         
         QJsonArray ignoredDirsArray;
         for (const std::string& dir : m_ignoredDirectoriesWhileCollectingForUpdate) {
             ignoredDirsArray.append(QString::fromStdString(dir));
         }
-        configObject[ConfigKeys::IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE] = ignoredDirsArray;
+        configObject[IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE] = ignoredDirsArray;
 
         QJsonDocument configDoc(configObject);
 
@@ -164,7 +164,7 @@ void ConfigManager::setDefaultValues() {
     m_crashDumpDirectory = QDir(validatedBasePath).filePath("crashes");
     m_temporaryUpdateDirectory = QDir(validatedBasePath).filePath("update");
     
-    m_deletionListFileName = DELETION_LIST_FILE_NAME;
+    m_deletionListFileName = DEFAULT_DELETION_LIST_FILE_NAME;
     m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
     m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{IGNORED_DIRECTORY_LOGS, IGNORED_DIRECTORY_CRASHES};
     m_operationSystemType = operationSystemType;
@@ -270,11 +270,11 @@ bool ConfigManager::isFirstLaunchFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains(ConfigKeys::FIRST_LAUNCH)) {
+    if (!jsonObj.contains(FIRST_LAUNCH)) {
         return true;
     }
 
-    QJsonValue firstLaunchValue = jsonObj[ConfigKeys::FIRST_LAUNCH];
+    QJsonValue firstLaunchValue = jsonObj[FIRST_LAUNCH];
 
     if (firstLaunchValue.isString()) {
         QString value = firstLaunchValue.toString().toLower().trimmed();
@@ -340,7 +340,7 @@ QString ConfigManager::getApplicationVersionFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString version = jsonObj[ConfigKeys::VERSION].toString();
+    QString version = jsonObj[VERSION].toString();
 
     if (version.isEmpty()) {
     }
@@ -371,7 +371,7 @@ QString ConfigManager::getUpdaterHostFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString host = jsonObj[ConfigKeys::UPDATER_HOST].toString();
+    QString host = jsonObj[UPDATER_HOST].toString();
 
     if (host.isEmpty()) {
     }
@@ -402,7 +402,7 @@ QString ConfigManager::getServerHostFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString host = jsonObj[ConfigKeys::SERVER_HOST].toString();
+    QString host = jsonObj[SERVER_HOST].toString();
 
     if (host.isEmpty()) {
     }
@@ -422,7 +422,7 @@ QString ConfigManager::getMainServerTcpPortFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
         return DEFAULT_MAIN_SERVER_TCP_PORT;
-    QString p = doc.object()[ConfigKeys::MAIN_SERVER_TCP_PORT].toString();
+    QString p = doc.object()[MAIN_SERVER_TCP_PORT].toString();
     return p.isEmpty() ? DEFAULT_MAIN_SERVER_TCP_PORT : p;
 }
 
@@ -436,7 +436,7 @@ QString ConfigManager::getMainServerUdpPortFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
         return DEFAULT_MAIN_SERVER_UDP_PORT;
-    QString p = doc.object()[ConfigKeys::MAIN_SERVER_UDP_PORT].toString();
+    QString p = doc.object()[MAIN_SERVER_UDP_PORT].toString();
     return p.isEmpty() ? DEFAULT_MAIN_SERVER_UDP_PORT : p;
 }
 
@@ -450,7 +450,7 @@ QString ConfigManager::getUpdaterServerTcpPortFromConfig() {
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
         return DEFAULT_UPDATER_SERVER_TCP_PORT;
-    QString p = doc.object()[ConfigKeys::UPDATER_SERVER_TCP_PORT].toString();
+    QString p = doc.object()[UPDATER_SERVER_TCP_PORT].toString();
     return p.isEmpty() ? DEFAULT_UPDATER_SERVER_TCP_PORT : p;
 }
 
@@ -476,11 +476,11 @@ bool ConfigManager::isMultiInstanceAllowedFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains(ConfigKeys::MULTI_INSTANCE)) {
+    if (!jsonObj.contains(MULTI_INSTANCE)) {
         return false;
     }
 
-    QJsonValue multiInstanceValue = jsonObj[ConfigKeys::MULTI_INSTANCE];
+    QJsonValue multiInstanceValue = jsonObj[MULTI_INSTANCE];
 
     if (multiInstanceValue.isString()) {
         QString value = multiInstanceValue.toString().toLower().trimmed();
@@ -521,7 +521,7 @@ int ConfigManager::getInputVolumeFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QJsonValue volumeValue = jsonObj[ConfigKeys::INPUT_VOLUME];
+    QJsonValue volumeValue = jsonObj[INPUT_VOLUME];
     
     int volume = DEFAULT_VOLUME;
     if (volumeValue.isDouble()) {
@@ -565,7 +565,7 @@ int ConfigManager::getOutputVolumeFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QJsonValue volumeValue = jsonObj[ConfigKeys::OUTPUT_VOLUME];
+    QJsonValue volumeValue = jsonObj[OUTPUT_VOLUME];
     
     int volume = DEFAULT_VOLUME;
     if (volumeValue.isDouble()) {
@@ -610,11 +610,11 @@ bool ConfigManager::isMicrophoneMutedFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains(ConfigKeys::MICROPHONE_MUTED)) {
+    if (!jsonObj.contains(MICROPHONE_MUTED)) {
         return false;
     }
 
-    QJsonValue mutedValue = jsonObj[ConfigKeys::MICROPHONE_MUTED];
+    QJsonValue mutedValue = jsonObj[MICROPHONE_MUTED];
 
     if (mutedValue.isString()) {
         QString value = mutedValue.toString().toLower().trimmed();
@@ -656,11 +656,11 @@ bool ConfigManager::isSpeakerMutedFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains(ConfigKeys::SPEAKER_MUTED)) {
+    if (!jsonObj.contains(SPEAKER_MUTED)) {
         return false;
     }
 
-    QJsonValue mutedValue = jsonObj[ConfigKeys::SPEAKER_MUTED];
+    QJsonValue mutedValue = jsonObj[SPEAKER_MUTED];
 
     if (mutedValue.isString()) {
         QString value = mutedValue.toString().toLower().trimmed();
@@ -702,11 +702,11 @@ bool ConfigManager::isCameraActiveFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains(ConfigKeys::CAMERA_ENABLED)) {
+    if (!jsonObj.contains(CAMERA_ENABLED)) {
         return false;
     }
 
-    QJsonValue enabledValue = jsonObj[ConfigKeys::CAMERA_ENABLED];
+    QJsonValue enabledValue = jsonObj[CAMERA_ENABLED];
 
     if (enabledValue.isString()) {
         QString value = enabledValue.toString().toLower().trimmed();
@@ -775,7 +775,7 @@ QString ConfigManager::getLogDirectoryFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString logDirPath = jsonObj[ConfigKeys::LOG_DIRECTORY].toString();
+    QString logDirPath = jsonObj[LOG_DIRECTORY].toString();
     
     if (!logDirPath.isEmpty()) {
         return logDirPath;
@@ -805,7 +805,7 @@ QString ConfigManager::getCrashDumpDirectoryFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString crashDirPath = jsonObj[ConfigKeys::CRASH_DUMP_DIRECTORY].toString();
+    QString crashDirPath = jsonObj[CRASH_DUMP_DIRECTORY].toString();
     
     if (!crashDirPath.isEmpty()) {
         return crashDirPath;
@@ -837,7 +837,7 @@ QString ConfigManager::getAppDirectoryFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString appDir = jsonObj[ConfigKeys::APP_DIRECTORY].toString();
+    QString appDir = jsonObj[APP_DIRECTORY].toString();
 
     if (!appDir.isEmpty()) {
         return validateAppDirectoryPath(appDir);
@@ -882,7 +882,7 @@ QString ConfigManager::getTemporaryUpdateDirectoryFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString tempDirPath = jsonObj[ConfigKeys::TEMPORARY_UPDATE_DIRECTORY].toString();
+    QString tempDirPath = jsonObj[TEMPORARY_UPDATE_DIRECTORY].toString();
     
     if (!tempDirPath.isEmpty()) {
         return tempDirPath;
@@ -912,7 +912,7 @@ QString ConfigManager::getDeletionListFileNameFromConfig() {
     }
 
     QJsonObject jsonObj = doc.object();
-    QString fileName = jsonObj[ConfigKeys::DELETION_LIST_FILE_NAME].toString();
+    QString fileName = jsonObj[DELETION_LIST_FILE_NAME].toString();
 
     if (fileName.isEmpty()) {
         return "remove.json";
@@ -942,7 +942,7 @@ std::unordered_set<std::string> ConfigManager::getIgnoredFilesWhileCollectingFor
     }
 
     QJsonObject jsonObj = doc.object();
-    QJsonValue ignoredFilesValue = jsonObj[ConfigKeys::IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE];
+    QJsonValue ignoredFilesValue = jsonObj[IGNORED_FILES_WHILE_COLLECTING_FOR_UPDATE];
 
     if (!ignoredFilesValue.isArray()) {
         return std::unordered_set<std::string>();
@@ -980,7 +980,7 @@ std::unordered_set<std::string> ConfigManager::getIgnoredDirectoriesWhileCollect
     }
 
     QJsonObject jsonObj = doc.object();
-    QJsonValue ignoredDirsValue = jsonObj[ConfigKeys::IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE];
+    QJsonValue ignoredDirsValue = jsonObj[IGNORED_DIRECTORIES_WHILE_COLLECTING_FOR_UPDATE];
 
     if (!ignoredDirsValue.isArray()) {
         return std::unordered_set<std::string>{"logs"};
@@ -1023,11 +1023,11 @@ updater::OperationSystemType ConfigManager::getOperationSystemTypeFromConfig() {
 
     QJsonObject jsonObj = doc.object();
 
-    if (!jsonObj.contains(ConfigKeys::OPERATION_SYSTEM_TYPE)) {
+    if (!jsonObj.contains(OPERATION_SYSTEM_TYPE)) {
         return resolveOperationSystemType();
     }
 
-    QJsonValue operationSystemTypeValue = jsonObj[ConfigKeys::OPERATION_SYSTEM_TYPE];
+    QJsonValue operationSystemTypeValue = jsonObj[OPERATION_SYSTEM_TYPE];
     
     if (operationSystemTypeValue.isDouble()) {
         int operationSystemTypeInt = operationSystemTypeValue.toInt();

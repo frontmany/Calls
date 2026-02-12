@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <memory>
 
-#include "utilities/event.h"
+#include "utilities/startupEvent.h"
 #include "core.h"
 #include "updater.h"
 

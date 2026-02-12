@@ -1,18 +1,20 @@
 #include "callManager.h"
 #include "audio/audioEffectsManager.h"
-#include "managers/navigationController.h"
-#include "managers/dialogsController.h"
-#include "managers/notificationController.h"
-#include "managers/updateManager.h"
+#include "logic/navigationController.h"
+#include "dialogs/dialogsController.h"
+#include "notifications/notificationController.h"
+#include "logic/updateManager.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
+#include "widgets/components/screen.h"
 #include "utilities/logger.h"
-#include "utilities/constant.h"
+#include "constants/constant.h"
 #include "constants/errorCode.h"
 #include <system_error>
 #include <QList>
 #include <QImage>
 #include <QPixmap>
+#include <QGuiApplication>
 
 CallManager::CallManager(std::shared_ptr<core::Core> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
@@ -85,7 +87,11 @@ void CallManager::onStopCallingButtonClicked()
     }
     else {
         if (m_mainMenuWidget) {
-            m_mainMenuWidget->setStopCallingButtonEnabled(false);
+            m_mainMenuWidget->removeCallingPanel();
+            m_mainMenuWidget->setStatusLabelOnline();
+        }
+        if (m_audioManager) {
+            m_audioManager->stopCallingRingtone();
         }
     }
 }
@@ -158,6 +164,94 @@ void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
     }
 }
 
+void CallManager::onAudioDevicePickerRequested()
+{
+    if (!m_dialogsController || !m_coreClient) return;
+
+    m_dialogsController->showAudioSettingsDialog(
+        true,
+        m_coreClient->isMicrophoneMuted(),
+        m_coreClient->isSpeakerMuted(),
+        m_coreClient->getInputVolume(),
+        m_coreClient->getOutputVolume(),
+        m_coreClient->getCurrentInputDevice(),
+        m_coreClient->getCurrentOutputDevice());
+}
+
+void CallManager::onCallWidgetAudioSettingsRequested()
+{
+    if (!m_dialogsController || !m_coreClient) return;
+
+    m_dialogsController->showAudioSettingsDialog(
+        true,
+        m_coreClient->isMicrophoneMuted(),
+        m_coreClient->isSpeakerMuted(),
+        m_coreClient->getInputVolume(),
+        m_coreClient->getOutputVolume(),
+        m_coreClient->getCurrentInputDevice(),
+        m_coreClient->getCurrentOutputDevice());
+}
+
+void CallManager::onActivateCameraClicked(bool active)
+{
+    if (!m_coreClient) return;
+
+    if (active) {
+        std::error_code ec = m_coreClient->startCameraSharing("");
+        if (ec) {
+            onStartCameraSharingError();
+        }
+    } else {
+        m_coreClient->stopCameraSharing();
+    }
+}
+
+void CallManager::onScreenShareClicked(bool toggled)
+{
+    if (!m_coreClient || !m_dialogsController) return;
+
+    if (!toggled) {
+        m_coreClient->stopScreenSharing();
+        return;
+    }
+
+    QList<QScreen*> screens = QGuiApplication::screens();
+    if (screens.isEmpty()) return;
+
+    m_dialogsController->showScreenShareDialog(screens);
+}
+
+void CallManager::onScreenSelected(int screenIndex)
+{
+    if (!m_coreClient) return;
+
+    std::error_code ec = m_coreClient->startScreenSharing(screenIndex);
+    if (ec) {
+        onStartScreenSharingError();
+    }
+}
+
+void CallManager::onScreenShareDialogCancelled()
+{
+    if (m_callWidget) {
+        m_callWidget->setScreenShareButtonActive(false);
+    }
+}
+
+void CallManager::onCallWidgetCameraClicked(bool toggled)
+{
+    if (!m_coreClient) return;
+
+    if (toggled) {
+        std::error_code ec = m_coreClient->startCameraSharing("");
+        if (ec) {
+            onStartCameraSharingError();
+        }
+    } else {
+        m_coreClient->stopCameraSharing();
+    }
+}
+
 void CallManager::onEndCallButtonClicked()
 {
     if (!m_coreClient) return;
@@ -178,12 +272,13 @@ void CallManager::onEndCallButtonClicked()
             emit endCallFullscreenExitRequested();
         }
 
-        if (m_navigationController) {
-            m_navigationController->switchToMainMenuWidget();
+        if (m_callWidget) {
+            resetCallWidgetState();
+            m_callWidget->hide();
         }
 
-        if (m_callWidget) {
-            m_callWidget->hide();
+        if (m_navigationController) {
+            m_navigationController->switchToMainMenuWidget();
         }
 
         if (m_audioManager) {
@@ -427,6 +522,20 @@ void CallManager::hideOperationDialog()
     }
 }
 
+void CallManager::resetCallWidgetState()
+{
+    if (!m_callWidget) return;
+
+    if (m_callWidget->isFullScreen()) {
+        m_callWidget->exitFullscreen();
+    }
+    m_callWidget->hideEnterFullscreenButton();
+    m_callWidget->setCameraButtonActive(false);
+    m_callWidget->setScreenShareButtonActive(false);
+    m_callWidget->hideMainScreen();
+    m_callWidget->hideAdditionalScreens();
+}
+
 void CallManager::onRemoteUserEndedCall()
 {
     if (!m_mainMenuWidget) return;
@@ -441,6 +550,7 @@ void CallManager::onRemoteUserEndedCall()
     }
 
     if (m_callWidget) {
+        resetCallWidgetState();
         m_callWidget->hide();
     }
 
@@ -459,48 +569,44 @@ void CallManager::onRemoteUserEndedCall()
 
 // --- Media frame slots ---
 
-void CallManager::onLocalScreenFrame(QByteArray data)
+void CallManager::onLocalScreenFrame(QByteArray data, int width, int height)
 {
-    if (!m_callWidget) return;
+    if (!m_callWidget || width <= 0 || height <= 0) return;
+    if (data.size() < width * height * 3) return;
 
-    QImage image;
-    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
-        QPixmap pixmap = QPixmap::fromImage(image);
-        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
-    }
+    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
+    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
 }
 
-void CallManager::onLocalCameraFrame(QByteArray data)
+void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
 {
-    if (!m_callWidget) return;
+    if (!m_callWidget || width <= 0 || height <= 0) return;
+    if (data.size() < width * height * 3) return;
 
-    QImage image;
-    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
-        QPixmap pixmap = QPixmap::fromImage(image);
-        m_callWidget->showFrameInAdditionalScreen(pixmap, "localCamera");
-    }
+    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
+    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    m_callWidget->showFrameInAdditionalScreen(pixmap, "localCamera");
 }
 
-void CallManager::onIncomingScreenFrame(QByteArray data)
+void CallManager::onIncomingScreenFrame(QByteArray data, int width, int height)
 {
-    if (!m_callWidget) return;
+    if (!m_callWidget || width <= 0 || height <= 0) return;
+    if (data.size() < width * height * 3) return;
 
-    QImage image;
-    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
-        QPixmap pixmap = QPixmap::fromImage(image);
-        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
-    }
+    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
+    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
 }
 
-void CallManager::onIncomingCameraFrame(QByteArray data)
+void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
 {
-    if (!m_callWidget) return;
+    if (!m_callWidget || width <= 0 || height <= 0) return;
+    if (data.size() < width * height * 3) return;
 
-    QImage image;
-    if (image.loadFromData(reinterpret_cast<const uchar*>(data.constData()), data.size())) {
-        QPixmap pixmap = QPixmap::fromImage(image);
-        m_callWidget->showFrameInAdditionalScreen(pixmap, "remoteCamera");
-    }
+    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
+    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    m_callWidget->showFrameInAdditionalScreen(pixmap, "remoteCamera");
 }
 
 // --- Media state slots ---

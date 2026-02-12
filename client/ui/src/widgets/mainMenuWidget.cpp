@@ -5,11 +5,11 @@
 #include <QRegularExpressionValidator>
 #include <QShortcut>
 
-#include "buttons.h"
+#include "widgets/components/button.h"
 #include "utilities/utilities.h"
-#include "utilities/constant.h"
-#include "utilities/color.h"
-#include "utilities/color.h"
+#include "constants/constant.h"
+#include "constants/color.h"
+#include "constants/color.h"
 
 // Style definitions
 const QColor StyleMainMenuWidget::m_primaryColor = COLOR_ACCENT;

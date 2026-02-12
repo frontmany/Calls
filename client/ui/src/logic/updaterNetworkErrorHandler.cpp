@@ -2,11 +2,11 @@
 #include "utilities/logger.h"
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
-#include "managers/dialogsController.h"
-#include "managers/notificationController.h"
-#include "managers/navigationController.h"
-#include "managers/updateManager.h"
-#include "managers/configManager.h"
+#include "dialogs/dialogsController.h"
+#include "notifications/notificationController.h"
+#include "logic/navigationController.h"
+#include "logic/updateManager.h"
+#include "logic/configManager.h"
 #include <QTimer>
 
 UpdaterNetworkErrorHandler::UpdaterNetworkErrorHandler(std::shared_ptr<updater::Client> updater, NavigationController* navigationController, UpdateManager* updateManager, ConfigManager* configManager, QObject* parent)

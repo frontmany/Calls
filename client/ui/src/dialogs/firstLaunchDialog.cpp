@@ -1,6 +1,6 @@
 #include "dialogs/firstLaunchDialog.h"
-#include "utilities/utilities.h"
-#include "utilities/color.h"
+#include "utilities/utility.h"
+#include "constants/color.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGraphicsDropShadowEffect>

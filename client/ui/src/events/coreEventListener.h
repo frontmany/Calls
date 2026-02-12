@@ -18,17 +18,17 @@ public:
 
     void onIncomingScreenSharingStarted() override;
     void onIncomingScreenSharingStopped() override;
-    void onIncomingScreen(const std::vector<unsigned char>& data) override;
+    void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) override;
 
     void onStartScreenSharingError() override;
-    void onLocalScreen(const std::vector<unsigned char>& data) override;
+    void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) override;
 
     void onIncomingCameraSharingStarted() override;
     void onIncomingCameraSharingStopped() override;
-    void onIncomingCamera(const std::vector<unsigned char>& data) override;
+    void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) override;
 
     void onStartCameraSharingError() override;
-    void onLocalCamera(const std::vector<unsigned char>& data) override;
+    void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) override;
 
     void onOutgoingCallAccepted() override;
     void onOutgoingCallDeclined() override;

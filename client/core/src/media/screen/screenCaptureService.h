@@ -26,7 +26,6 @@ namespace core::media
         void stop();
         bool isRunning() const;
         void setFrameCallback(FrameCallback callback);
-        static int getScreenCount();
 
     private:
         void cleanup();

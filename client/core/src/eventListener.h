@@ -15,17 +15,17 @@ namespace core
 
         virtual void onIncomingScreenSharingStarted() = 0;
         virtual void onIncomingScreenSharingStopped() = 0;
-        virtual void onIncomingScreen(const std::vector<unsigned char>& data) = 0;
+        virtual void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) = 0;
 
         virtual void onStartScreenSharingError() = 0;
-        virtual void onLocalScreen(const std::vector<unsigned char>& data) = 0;
+        virtual void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) = 0;
 
         virtual void onIncomingCameraSharingStarted() = 0;
         virtual void onIncomingCameraSharingStopped() = 0;
-        virtual void onIncomingCamera(const std::vector<unsigned char>& data) = 0;
+        virtual void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) = 0;
 
         virtual void onStartCameraSharingError() = 0;
-        virtual void onLocalCamera(const std::vector<unsigned char>& data) = 0;
+        virtual void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) = 0;
 
         virtual void onOutgoingCallAccepted() = 0;
         virtual void onOutgoingCallDeclined() = 0;

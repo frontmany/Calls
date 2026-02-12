@@ -41,7 +41,9 @@ namespace core::media
         int m_outputWidth;
         int m_outputHeight;
         int m_outputFormat;
-            
+        int m_lastSrcWidth;
+        int m_lastSrcHeight;
+
         bool convertFrameToRGB();
     };
 }

@@ -101,29 +101,6 @@ namespace core::media
         m_frameCallback = callback;
     }
 
-    int ScreenCaptureService::getScreenCount()
-    {
-#ifdef _WIN32
-        return GetSystemMetrics(SM_CMONITORS);
-#elif defined(__APPLE__)
-        CGDirectDisplayID displays[32];
-        uint32_t displayCount = 0;
-
-        CGError error = CGGetActiveDisplayList(32, displays, &displayCount);
-        if (error != kCGErrorSuccess || displayCount == 0) {
-            return 1;
-        }
-        return displayCount;
-#else
-        Display* display = XOpenDisplay(nullptr);
-        if (!display) return 1;
-
-        int screenCount = ScreenCount(display);
-        XCloseDisplay(display);
-        return screenCount;
-#endif
-    }
-
     bool ScreenCaptureService::initializeScreenCapture(int screenIndex)
     {
         int width = 0, height = 0;

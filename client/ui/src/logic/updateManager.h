@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "updater.h"
-#include "managers/configManager.h"
+#include "logic/configManager.h"
 #include "core.h"
 
 class AuthorizationWidget;

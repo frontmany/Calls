@@ -1,9 +1,9 @@
 #include "updateManager.h"
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
-#include "managers/dialogsController.h"
+#include "dialogs/dialogsController.h"
 #include "events/updaterEventListener.h"
-#include "utilities/constant.h"
+#include "constants/constant.h"
 
 #include <QProcess>
 #include <QObject>
@@ -12,7 +12,7 @@
 #include <QFileInfo>
 
 #include "../utilities/logger.h"
-#include "../utilities/constant.h"
+#include "constants/constant.h"
 
 UpdateManager::UpdateManager(std::shared_ptr<core::Core> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent)
     : QObject(parent)

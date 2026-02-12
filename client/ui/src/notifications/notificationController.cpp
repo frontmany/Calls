@@ -1,5 +1,5 @@
 #include "notificationController.h"
-#include "widgets/overlayWidget.h"
+#include "widgets/components/overlayWidget.h"
 #include "utilities/utilities.h"
 #include "notifications/notification.h"
 #include "notifications/notificationStyleType.h"

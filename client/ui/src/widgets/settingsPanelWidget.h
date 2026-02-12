@@ -46,8 +46,6 @@ private:
     ToggleButtonIcon* m_cameraButton = nullptr;
     ToggleButtonIcon* m_micMuteButton = nullptr;
     ToggleButtonIcon* m_speakerMuteButton = nullptr;
-    bool m_isMicMuted = false;
-    bool m_isSpeakerMuted = false;
     struct StyleSettingsPanel {
         static const QColor primaryColor;
         static const QColor hoverColor;
