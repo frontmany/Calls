@@ -27,7 +27,7 @@ namespace core::logic
         m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Camera); });
     }
 
-    std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, int screeIndex)
+    std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, const media::ScreenCaptureTarget& target)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -40,7 +40,10 @@ namespace core::logic
         auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
         m_sendPacket(packet, PacketType::SCREEN_SHARING_BEGIN);
 
-        m_screenCaptureService.start(screeIndex);
+        if (!m_screenCaptureService.start(target)) {
+            m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
+            return make_error_code(ErrorCode::network_error);
+        }
 
         m_stateManager->setMediaState(MediaType::Screen, MediaState::Active);
     

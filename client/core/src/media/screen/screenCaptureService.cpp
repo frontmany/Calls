@@ -3,6 +3,10 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <cctype>
+#include <cmath>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -24,6 +28,42 @@ extern "C" {
 
 namespace core::media
 {
+    namespace
+    {
+        bool hasGeometry(const ScreenCaptureTarget& t)
+        {
+            return t.width > 0 && t.height > 0;
+        }
+    }
+
+#ifdef _WIN32
+    namespace
+    {
+        struct MonitorCandidate
+        {
+            int index = -1;
+            RECT rect{ 0, 0, 0, 0 };
+            std::string deviceName;
+        };
+
+        std::string normalizeDisplayId(const std::string& id)
+        {
+            std::string normalized;
+            normalized.reserve(id.size());
+
+            for (char ch : id) {
+                if (ch == '\\' || ch == '.') {
+                    continue;
+                }
+                normalized.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(ch))));
+            }
+
+            return normalized;
+        }
+
+    }
+#endif
+
     ScreenCaptureService::ScreenCaptureService()
         : m_formatContext(nullptr)
         , m_codecContext(nullptr)
@@ -45,16 +85,17 @@ namespace core::media
         stop();
     }
 
-    bool ScreenCaptureService::start(int screenIndex)
+    bool ScreenCaptureService::start(const ScreenCaptureTarget& target)
     {
         if (m_isRunning) {
             std::cerr << "Screen capture is already running" << std::endl;
             return false;
         }
 
-        m_screenIndex = screenIndex;
+        m_target = target;
+        m_screenIndex = target.index;
 
-        if (!initializeScreenCapture(screenIndex)) {
+        if (!initializeScreenCapture(target)) {
             return false;
         }
 
@@ -66,9 +107,10 @@ namespace core::media
                 captureFrame();
                 std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 FPS
             }
-            });
+        });
 
-        std::cout << "Screen capture started successfully for screen " << screenIndex << std::endl;
+        std::cout << "Screen capture started successfully for target index " << target.index
+            << ", osId '" << target.osId << "'" << std::endl;
         return true;
     }
 
@@ -101,60 +143,89 @@ namespace core::media
         m_frameCallback = callback;
     }
 
-    bool ScreenCaptureService::initializeScreenCapture(int screenIndex)
+    bool ScreenCaptureService::initializeScreenCapture(const ScreenCaptureTarget& target)
     {
+        const int screenIndex = target.index;
         int width = 0, height = 0;
         char deviceName[256];
 
 #ifdef _WIN32
-        int monitorCount = GetSystemMetrics(SM_CMONITORS);
-
-        if (screenIndex >= monitorCount) {
-            std::cerr << "Invalid screen index: " << screenIndex << " (max: " << (monitorCount - 1) << ")" << std::endl;
-            return false;
-        }
-
-        struct MonitorInfo {
-            int index;
-            RECT rect;
-            bool found;
-            int currentIndex;
-        };
-
-        MonitorInfo monitorInfo = { screenIndex, {0, 0, 0, 0}, false, 0 };
-
+        std::vector<MonitorCandidate> monitors;
         EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hMonitor, HDC, LPRECT, LPARAM dwData) -> BOOL {
-            MonitorInfo* info = reinterpret_cast<MonitorInfo*>(dwData);
-
+            auto* monitorList = reinterpret_cast<std::vector<MonitorCandidate>*>(dwData);
             MONITORINFOEX mi;
             mi.cbSize = sizeof(MONITORINFOEX);
-            if (GetMonitorInfo(hMonitor, &mi)) {
-                if (info->currentIndex == info->index) {
-                    info->rect = mi.rcMonitor;
-                    info->found = true;
-                    return FALSE;
-                }
-                info->currentIndex++;
-            }
-            return TRUE;
-            }, reinterpret_cast<LPARAM>(&monitorInfo));
 
-        if (!monitorInfo.found) {
-            std::cerr << "Failed to find monitor " << screenIndex << std::endl;
+            if (GetMonitorInfo(hMonitor, &mi)) {
+                MonitorCandidate candidate;
+                candidate.index = static_cast<int>(monitorList->size());
+                candidate.rect = mi.rcMonitor;
+                candidate.deviceName = mi.szDevice;
+                monitorList->push_back(candidate);
+            }
+
+            return TRUE;
+        }, reinterpret_cast<LPARAM>(&monitors));
+
+        if (monitors.empty()) {
+            std::cerr << "No monitors found for screen capture" << std::endl;
             return false;
         }
 
-        width = monitorInfo.rect.right - monitorInfo.rect.left;
-        height = monitorInfo.rect.bottom - monitorInfo.rect.top;
+        const MonitorCandidate* selected = nullptr;
+
+        if (!target.osId.empty()) {
+            const std::string normalizedTargetId = normalizeDisplayId(target.osId);
+            const auto it = std::find_if(monitors.begin(), monitors.end(), [&normalizedTargetId](const MonitorCandidate& candidate) {
+                return normalizeDisplayId(candidate.deviceName) == normalizedTargetId;
+            });
+            if (it != monitors.end()) {
+                selected = &(*it);
+                std::cout << "Screen selected by OS id '" << target.osId
+                    << "' -> monitor " << selected->index
+                    << " (" << selected->deviceName << ")" << std::endl;
+            }
+        }
+
+        if (!selected && hasGeometry(target)) {
+            const auto it = std::find_if(monitors.begin(), monitors.end(), [&target](const MonitorCandidate& candidate) {
+                const int candidateWidth = candidate.rect.right - candidate.rect.left;
+                const int candidateHeight = candidate.rect.bottom - candidate.rect.top;
+                return candidate.rect.left == target.x &&
+                    candidate.rect.top == target.y &&
+                    candidateWidth == target.width &&
+                    candidateHeight == target.height;
+            });
+            if (it != monitors.end()) {
+                selected = &(*it);
+                std::cout << "Screen selected by geometry (" << target.x << "," << target.y << ","
+                    << target.width << "x" << target.height << ") -> monitor " << selected->index
+                    << " (" << selected->deviceName << ")" << std::endl;
+            }
+        }
+
+        if (!selected && screenIndex >= 0 && screenIndex < static_cast<int>(monitors.size())) {
+            selected = &monitors[screenIndex];
+            std::cout << "Screen selected by fallback index " << screenIndex
+                << " -> monitor (" << selected->deviceName << ")" << std::endl;
+        }
+
+        if (!selected) {
+            selected = &monitors.front();
+            std::cout << "Falling back to first monitor (" << selected->deviceName << ")" << std::endl;
+        }
+
+        width = selected->rect.right - selected->rect.left;
+        height = selected->rect.bottom - selected->rect.top;
 
         snprintf(deviceName, sizeof(deviceName), "desktop");
 
-        std::cout << "Monitor " << screenIndex << " at ("
-            << monitorInfo.rect.left << "," << monitorInfo.rect.top
+        std::cout << "Monitor " << selected->index << " at ("
+            << selected->rect.left << "," << selected->rect.top
             << ") size " << width << "x" << height << std::endl;
 
-        int offsetX = monitorInfo.rect.left;
-        int offsetY = monitorInfo.rect.top;
+        int offsetX = selected->rect.left;
+        int offsetY = selected->rect.top;
 
         m_formatContext = avformat_alloc_context();
         if (!m_formatContext) {
@@ -183,7 +254,7 @@ namespace core::media
         av_dict_set(&options, "offset_x", offsetXStr, 0);
         av_dict_set(&options, "offset_y", offsetYStr, 0);
 
-        std::cout << "Setting capture offset to (" << offsetX << "," << offsetY << ") for monitor " << screenIndex << std::endl;
+        std::cout << "Setting capture offset to (" << offsetX << "," << offsetY << ") for monitor " << selected->index << std::endl;
 #elif defined(__APPLE__)
         CGDirectDisplayID displays[32];
         uint32_t displayCount = 0;
@@ -194,18 +265,36 @@ namespace core::media
             return false;
         }
 
-        if (screenIndex >= displayCount) {
-            std::cerr << "Invalid display index: " << screenIndex << " (max: " << (displayCount - 1) << ")" << std::endl;
-            return false;
+        int selectedIndex = screenIndex >= 0 && screenIndex < static_cast<int>(displayCount) ? screenIndex : 0;
+
+        if (hasGeometry(target) && target.dpr > 0) {
+            const double scale = target.dpr;
+            const int lx = static_cast<int>(std::lround(target.x / scale));
+            const int ly = static_cast<int>(std::lround(target.y / scale));
+            const int lw = static_cast<int>(std::lround(target.width / scale));
+            const int lh = static_cast<int>(std::lround(target.height / scale));
+            for (uint32_t i = 0; i < displayCount; ++i) {
+                CGRect bounds = CGDisplayBounds(displays[i]);
+                if (static_cast<int>(bounds.origin.x) == lx && static_cast<int>(bounds.origin.y) == ly &&
+                    static_cast<int>(bounds.size.width) == lw && static_cast<int>(bounds.size.height) == lh) {
+                    selectedIndex = static_cast<int>(i);
+                    std::cout << "Screen selected by geometry (" << target.x << "," << target.y << ","
+                        << target.width << "x" << target.height << ") -> display " << selectedIndex << std::endl;
+                    break;
+                }
+            }
+        } else if (screenIndex >= static_cast<int>(displayCount)) {
+            std::cerr << "Invalid display index: " << screenIndex << " (max: " << (displayCount - 1) << "), using 0" << std::endl;
+            selectedIndex = 0;
         }
 
-        CGDirectDisplayID displayID = displays[screenIndex];
+        CGDirectDisplayID displayID = displays[selectedIndex];
         width = CGDisplayPixelsWide(displayID);
         height = CGDisplayPixelsHigh(displayID);
 
-        snprintf(deviceName, sizeof(deviceName), "display:%d", screenIndex);
+        snprintf(deviceName, sizeof(deviceName), "display:%d", selectedIndex);
 
-        std::cout << "Display " << screenIndex << " size " << width << "x" << height << std::endl;
+        std::cout << "Display " << selectedIndex << " size " << width << "x" << height << std::endl;
 
         m_formatContext = avformat_alloc_context();
         if (!m_formatContext) {
@@ -227,28 +316,40 @@ namespace core::media
         av_dict_set(&options, "video_size", videoSize.c_str(), 0);
         av_dict_set(&options, "pixel_format", "bgr0", 0);
 #else
-        Display* display = XOpenDisplay(nullptr);
-        if (!display) {
-            std::cerr << "Failed to open X11 display" << std::endl;
-            return false;
-        }
+        int offsetX = 0;
+        int offsetY = 0;
 
-        int screenCount = ScreenCount(display);
-        if (screenIndex >= screenCount) {
-            std::cerr << "Invalid screen index: " << screenIndex << std::endl;
+        if (hasGeometry(target)) {
+            offsetX = target.x;
+            offsetY = target.y;
+            width = target.width;
+            height = target.height;
+            snprintf(deviceName, sizeof(deviceName), ":0.0+%d,%d", offsetX, offsetY);
+            std::cout << "Screen selected by geometry: offset (" << offsetX << "," << offsetY
+                << ") size " << width << "x" << height << std::endl;
+        } else {
+            Display* display = XOpenDisplay(nullptr);
+            if (!display) {
+                std::cerr << "Failed to open X11 display" << std::endl;
+                return false;
+            }
+
+            int screenCount = ScreenCount(display);
+            if (screenIndex >= screenCount || screenIndex < 0) {
+                std::cerr << "Invalid screen index: " << screenIndex << " (max: " << (screenCount - 1) << "), using 0" << std::endl;
+                screenIndex = 0;
+            }
+
+            Screen* screen = ScreenOfDisplay(display, screenIndex);
+            width = screen->width;
+            height = screen->height;
+            offsetX = screenIndex > 0 ? screen->x : 0;
+            offsetY = screenIndex > 0 ? screen->y : 0;
+
+            snprintf(deviceName, sizeof(deviceName), ":0.0+%d,%d", offsetX, offsetY);
             XCloseDisplay(display);
-            return false;
+            std::cout << "Screen " << screenIndex << " at (" << offsetX << "," << offsetY << ") size " << width << "x" << height << std::endl;
         }
-
-        Screen* screen = ScreenOfDisplay(display, screenIndex);
-        width = screen->width;
-        height = screen->height;
-
-        snprintf(deviceName, sizeof(deviceName), ":0.0+%d,%d",
-            screenIndex > 0 ? screen->x : 0,
-            screenIndex > 0 ? screen->y : 0);
-
-        XCloseDisplay(display);
 
         m_formatContext = avformat_alloc_context();
         if (!m_formatContext) {

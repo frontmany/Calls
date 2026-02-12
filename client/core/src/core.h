@@ -79,7 +79,7 @@ namespace core
         std::error_code acceptCall(const std::string& friendNickname);
         std::error_code declineCall(const std::string& friendNickname);
         std::error_code endCall();
-        std::error_code startScreenSharing(int screenIndex);
+        std::error_code startScreenSharing(const media::ScreenCaptureTarget& target);
         std::error_code stopScreenSharing();
         std::error_code startCameraSharing(std::string deviceName);
         std::error_code stopCameraSharing();

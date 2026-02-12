@@ -33,7 +33,7 @@ namespace core::logic
 
         ~MediaService() = default;
 
-        std::error_code startScreenSharing(const std::string& myNickname, const std::string& userNickname, int screeIndex = 0);
+        std::error_code startScreenSharing(const std::string& myNickname, const std::string& userNickname, const media::ScreenCaptureTarget& target);
         std::error_code stopScreenSharing(const std::string& myNickname, const std::string& userNickname);
 
         std::error_code startCameraSharing(const std::string& myNickname, const std::string& userNickname, std::string deviceName = "");

@@ -15,6 +15,7 @@
 #include <QImage>
 #include <QPixmap>
 #include <QGuiApplication>
+#include <cmath>
 
 CallManager::CallManager(std::shared_ptr<core::Core> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
@@ -225,7 +226,26 @@ void CallManager::onScreenSelected(int screenIndex)
 {
     if (!m_coreClient) return;
 
-    std::error_code ec = m_coreClient->startScreenSharing(screenIndex);
+    QList<QScreen*> screens = QGuiApplication::screens();
+    if (screenIndex < 0 || screenIndex >= screens.size() || !screens[screenIndex]) {
+        onStartScreenSharingError();
+        return;
+    }
+
+    QScreen* selectedScreen = screens[screenIndex];
+    const QRect geometry = selectedScreen->geometry();
+    const double dpr = selectedScreen->devicePixelRatio();
+
+    core::media::ScreenCaptureTarget target;
+    target.index = screenIndex;
+    target.osId = selectedScreen->name().toStdString();
+    target.x = static_cast<int>(std::lround(geometry.x() * dpr));
+    target.y = static_cast<int>(std::lround(geometry.y() * dpr));
+    target.width = static_cast<int>(std::lround(geometry.width() * dpr));
+    target.height = static_cast<int>(std::lround(geometry.height() * dpr));
+    target.dpr = dpr;
+
+    std::error_code ec = m_coreClient->startScreenSharing(target);
     if (ec) {
         onStartScreenSharingError();
     }
