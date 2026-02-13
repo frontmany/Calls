@@ -52,19 +52,20 @@ namespace core::logic
 
     std::error_code MediaService::stopScreenSharing(const std::string& myNickname, const std::string& userNickname)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
-        if (m_stateManager->getMediaState(MediaType::Screen) != MediaState::Active) {
-            return make_error_code(ErrorCode::screen_sharing_not_active);
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_stateManager->getMediaState(MediaType::Screen) != MediaState::Active) {
+                return make_error_code(ErrorCode::screen_sharing_not_active);
+            }
+            m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
         }
-
+        // Do not hold m_mutex here: capture thread callback (onRawFrame) takes m_mutex; stop() joins that thread -> deadlock.
         m_screenCaptureService.stop();
-
-        auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
-        m_sendPacket(packet, PacketType::SCREEN_SHARING_END);
-
-        m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
-    
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
+            m_sendPacket(packet, PacketType::SCREEN_SHARING_END);
+        }
         return {};
     }
 
@@ -90,19 +91,20 @@ namespace core::logic
 
     std::error_code MediaService::stopCameraSharing(const std::string& myNickname, const std::string& userNickname)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
-        if (m_stateManager->getMediaState(MediaType::Camera) != MediaState::Active) {
-            return make_error_code(ErrorCode::camera_sharing_not_active);
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_stateManager->getMediaState(MediaType::Camera) != MediaState::Active) {
+                return make_error_code(ErrorCode::camera_sharing_not_active);
+            }
+            m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
         }
-
+        // Do not hold m_mutex here: capture thread callback (onRawFrame) takes m_mutex; stop() joins that thread -> deadlock.
         m_cameraCaptureService.stop();
-
-        auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
-        m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
-
-        m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
-
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
+            m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
+        }
         return {};
     }
 

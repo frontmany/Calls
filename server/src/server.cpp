@@ -61,9 +61,24 @@ namespace server
 
     void Server::handleReceiveUdp(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
         PacketType type = static_cast<PacketType>(rawType);
-        if (type == PacketType::VOICE || type == PacketType::SCREEN || type == PacketType::CAMERA) {
-            m_networkController.sendUdp(data, size, rawType, endpointFrom);
+        if (type != PacketType::VOICE && type != PacketType::SCREEN && type != PacketType::CAMERA)
+            return;
+
+        UserPtr sender = m_userRepository.findUserByEndpoint(endpointFrom);
+        if (!sender) {
+            LOG_DEBUG("[UDP] Media from unknown endpoint {}:{}", endpointFrom.address().to_string(), endpointFrom.port());
+            return;
         }
+        if (sender->getEndpoint().address() != endpointFrom.address() || sender->getEndpoint().port() != endpointFrom.port())
+            m_userRepository.updateUserUdpEndpoint(sender->getNicknameHash(), endpointFrom);
+
+        UserPtr partner = sender->getCallPartner();
+        if (!partner || !m_userRepository.containsUser(partner->getNicknameHash()))
+            return;
+        if (partner->isConnectionDown())
+            return;
+
+        m_networkController.sendUdp(data, size, rawType, partner->getEndpoint());
     }
 
     void Server::handleReceiveTcp(network::tcp::OwnedPacket&& owned) {

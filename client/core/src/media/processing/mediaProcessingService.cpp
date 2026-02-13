@@ -123,8 +123,8 @@ namespace core::media
             return false;
         }
             
-        // Устанавливаем формат вывода декодера
-        pImpl->videoDecoder->setOutputFormat(width, height, 0); // RGB24
+        // Decode to RGB24 because UI renders raw RGB frames.
+        pImpl->videoDecoder->setOutputFormat(width, height, AV_PIX_FMT_RGB24);
             
         m_videoInitialized = true;
         return true;
@@ -238,7 +238,7 @@ namespace core::media
         if (!pImpl->videoEncoder->encodeFrame(frame)) {
             return {};
         }
-            
+             
         return pImpl->lastEncodedVideoFrame;
     }
 
@@ -248,17 +248,16 @@ namespace core::media
             return {};
         }
             
-        // Очищаем предыдущий результат
         pImpl->lastDecodedVideoFrame.clear();
             
-        // Устанавливаем callback для получения декодированных данных
         pImpl->videoDecoder->setDecodedFrameCallback([this](const Frame& frame) {
             if (frame.isValid()) {
                 pImpl->lastDecodedVideoFrame.assign(frame.data, frame.data + frame.size);
+                m_width = frame.width;
+                m_height = frame.height;
             }
         });
             
-        // Декодируем пакет
         if (!pImpl->videoDecoder->decodePacket(h264Data, dataSize, 0)) {
             return {};
         }

@@ -211,15 +211,20 @@ void CallManager::onScreenShareClicked(bool toggled)
 {
     if (!m_coreClient || !m_dialogsController) return;
 
-    if (!toggled) {
-        m_coreClient->stopScreenSharing();
-        return;
+    if (toggled) {
+        QList<QScreen*> screens = QGuiApplication::screens();
+        if (screens.isEmpty()) return;
+
+        m_dialogsController->showScreenShareDialog(screens);
     }
+    else {
+        m_coreClient->stopScreenSharing();
 
-    QList<QScreen*> screens = QGuiApplication::screens();
-    if (screens.isEmpty()) return;
-
-    m_dialogsController->showScreenShareDialog(screens);
+        if (m_callWidget) {
+            m_callWidget->hideMainScreen();
+            m_callWidget->hideAdditionalScreens();
+        }
+    }
 }
 
 void CallManager::onScreenSelected(int screenIndex)
@@ -269,6 +274,10 @@ void CallManager::onCallWidgetCameraClicked(bool toggled)
         }
     } else {
         m_coreClient->stopCameraSharing();
+        if (m_callWidget) {
+            m_callWidget->hideMainScreen();
+            m_callWidget->hideAdditionalScreens();
+        }
     }
 }
 

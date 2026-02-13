@@ -91,7 +91,8 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingScreen(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall()) return;
+            !m_stateManager->isActiveCall() ||
+            !m_stateManager->isViewingRemoteScreen()) return;
 
         auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
         if (decryptedData.empty()) return;
@@ -104,7 +105,8 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingCamera(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall()) return;
+            !m_stateManager->isActiveCall() ||
+            !m_stateManager->isViewingRemoteCamera()) return;
 
         auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
         if (decryptedData.empty()) return;
