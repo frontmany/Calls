@@ -5,6 +5,7 @@
 #include "media/processing/encode/opusEncoder.h"
 #include "media/processing/decode/opusDecoder.h"
 #include <libavutil/pixfmt.h>
+#include <cstring>
 #include <stdexcept>
 
 namespace core::media
@@ -219,10 +220,21 @@ namespace core::media
         pipeline.lastDecodedFrame.clear();
             
         pipeline.decoder->setDecodedFrameCallback([&pipeline](const Frame& frame) {
-            if (frame.isValid()) {
+            if (!frame.isValid()) return;
+            pipeline.width = frame.width;
+            pipeline.height = frame.height;
+            const int bytesPerPixel = 3;
+            const int rowBytes = frame.width * bytesPerPixel;
+            const int srcStride = (frame.linesize > 0) ? frame.linesize : rowBytes;
+            if (srcStride == rowBytes) {
                 pipeline.lastDecodedFrame.assign(frame.data, frame.data + frame.size);
-                pipeline.width = frame.width;
-                pipeline.height = frame.height;
+                return;
+            }
+            pipeline.lastDecodedFrame.resize(static_cast<size_t>(frame.height) * rowBytes);
+            unsigned char* dst = pipeline.lastDecodedFrame.data();
+            for (int y = 0; y < frame.height; ++y) {
+                memcpy(dst, frame.data + static_cast<size_t>(y) * srcStride, rowBytes);
+                dst += rowBytes;
             }
         });
             

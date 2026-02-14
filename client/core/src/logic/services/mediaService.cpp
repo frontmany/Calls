@@ -40,6 +40,12 @@ namespace core::logic
         auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
         m_sendPacket(packet, PacketType::SCREEN_SHARING_BEGIN);
 
+        constexpr int kScreenBitrate = 1800000;
+        if (!m_mediaProcessingService->initializeVideoProcessing(MediaType::Screen, kScreenBitrate)) {
+            m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
+            return make_error_code(ErrorCode::network_error);
+        }
+
         if (!m_screenCaptureService.start(target)) {
             m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
             return make_error_code(ErrorCode::network_error);
@@ -63,6 +69,7 @@ namespace core::logic
         m_screenCaptureService.stop();
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+            m_mediaProcessingService->cleanupVideo(MediaType::Screen);
             auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
             m_sendPacket(packet, PacketType::SCREEN_SHARING_END);
         }

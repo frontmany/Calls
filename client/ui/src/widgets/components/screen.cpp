@@ -45,16 +45,15 @@ void Screen::setScaleMode(ScaleMode mode)
     }
 }
 
+QSize Screen::contentSize() const
+{
+    return m_pixmap.isNull() ? QSize() : m_pixmap.size();
+}
+
 QSize Screen::sizeHint() const
 {
-    if (!m_pixmap.isNull()) {
-        QSize pixmapSize = m_pixmap.size();
-        return QSize(
-            pixmapSize.width(),
-            pixmapSize.height()
-        );
-    }
-
+    QSize content = contentSize();
+    if (!content.isEmpty()) return content;
     return QWidget::sizeHint();
 }
 

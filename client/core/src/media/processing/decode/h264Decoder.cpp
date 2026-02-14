@@ -136,7 +136,12 @@ namespace core::media
                 return false;
             }
 
-            // Update output dimensions if not set
+            // Update output dimensions when stream resolution changes (e.g. remote switched screen)
+            if (m_frame->width > 0 && m_frame->height > 0 &&
+                (m_outputWidth != m_frame->width || m_outputHeight != m_frame->height)) {
+                m_outputWidth = m_frame->width;
+                m_outputHeight = m_frame->height;
+            }
             if (m_outputWidth == 0 || m_outputHeight == 0) {
                 m_outputWidth = m_frame->width;
                 m_outputHeight = m_frame->height;
@@ -148,6 +153,7 @@ namespace core::media
                 outputFrame.data = m_frameRGB->data[0];
                 outputFrame.width = m_outputWidth;
                 outputFrame.height = m_outputHeight;
+                outputFrame.linesize = m_frameRGB->linesize[0];
                 outputFrame.format = m_outputFormat;
                 outputFrame.pts = m_frame->pts;
                 outputFrame.size = static_cast<int>(av_image_get_buffer_size((AVPixelFormat)m_outputFormat,

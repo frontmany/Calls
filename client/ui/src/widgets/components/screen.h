@@ -18,6 +18,7 @@ public:
     void setRoundedCornersEnabled(bool enabled);
     void setScaleMode(ScaleMode mode);
     ScaleMode scaleMode() const { return m_scaleMode; }
+    QSize contentSize() const;
 
 protected:
     QSize sizeHint() const override;

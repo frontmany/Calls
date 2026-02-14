@@ -556,17 +556,27 @@ void CallWidget::setSpeakerMuted(bool muted) {
 }
 
 void CallWidget::applyStandardSize() {
-    QSize targetSize;
-
     QSize availableSize = size();
-    targetSize = scaledScreenSize16by9(1440);
-    
-    int reservedHeight = scale(100);
-    int availableHeight = availableSize.height() - reservedHeight;
-    if (availableHeight > 0 && targetSize.height() > availableHeight)
-    {
-        int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
-        targetSize = QSize(adjustedWidth, availableHeight);
+    const int reservedHeight = scale(100);
+    const int availableHeight = std::max(1, availableSize.height() - reservedHeight);
+
+    QSize targetSize;
+    QSize contentSize = m_mainScreen->contentSize();
+    if (!contentSize.isEmpty() && contentSize.width() > 0 && contentSize.height() > 0) {
+        const double aspect = static_cast<double>(contentSize.width()) / contentSize.height();
+        int fitW = availableSize.width();
+        int fitH = static_cast<int>(std::lround(availableSize.width() / aspect));
+        if (fitH > availableHeight) {
+            fitH = availableHeight;
+            fitW = static_cast<int>(std::lround(availableHeight * aspect));
+        }
+        targetSize = QSize(std::max(1, fitW), std::max(1, fitH));
+    } else {
+        targetSize = scaledScreenSize16by9(1440);
+        if (targetSize.height() > availableHeight) {
+            int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
+            targetSize = QSize(adjustedWidth, availableHeight);
+        }
     }
 
     m_mainScreen->setRoundedCornersEnabled(true);
@@ -575,17 +585,30 @@ void CallWidget::applyStandardSize() {
 }
 
 void CallWidget::applyDecreasedSize() {
-    QSize targetSize = scaledScreenSize16by9(scale(1280));
-    
     QSize availableSize = size();
-    int reservedHeight = scale(100) + scale(154);
-    int availableHeight = availableSize.height() - reservedHeight;
-    if (availableHeight > 0 && targetSize.height() > availableHeight)
-    {
-        int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
-        targetSize = QSize(adjustedWidth, availableHeight);
+    const int reservedHeight = scale(100) + scale(154);
+    const int availableHeight = std::max(1, availableSize.height() - reservedHeight);
+
+    QSize targetSize;
+    QSize contentSize = m_mainScreen->contentSize();
+    if (!contentSize.isEmpty() && contentSize.width() > 0 && contentSize.height() > 0) {
+        const double aspect = static_cast<double>(contentSize.width()) / contentSize.height();
+        int maxW = scale(1280);
+        int fitW = std::min(availableSize.width(), maxW);
+        int fitH = static_cast<int>(std::lround(fitW / aspect));
+        if (fitH > availableHeight) {
+            fitH = availableHeight;
+            fitW = static_cast<int>(std::lround(availableHeight * aspect));
+        }
+        targetSize = QSize(std::max(1, fitW), std::max(1, fitH));
+    } else {
+        targetSize = scaledScreenSize16by9(scale(1280));
+        if (targetSize.height() > availableHeight) {
+            int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
+            targetSize = QSize(adjustedWidth, availableHeight);
+        }
     }
-    
+
     m_mainScreen->setMinimumSize(scale(100), scale(100));
     m_mainScreen->setMaximumSize(targetSize);
 }
@@ -632,6 +655,10 @@ void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode s
 
     m_mainScreen->setScaleMode(scaleMode);
     m_mainScreen->setPixmap(frame);
+
+    if (!m_screenFullscreenActive) {
+        updateMainScreenSize();
+    }
 
     if (!m_mainScreen->isVisible())
     {
