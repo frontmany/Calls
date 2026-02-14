@@ -876,11 +876,25 @@ void CallWidget::mouseMoveEvent(QMouseEvent* event)
 
 void CallWidget::onExitFullscreenHideTimerTimeout()
 {
+    if (m_audioSettingsDialogOpen)
+        return;
     if (m_screenFullscreenActive && m_exitFullscreenButton) {
         m_exitFullscreenButton->hide();
     }
     if (!m_screenFullscreenActive && m_settingsButton) {
         m_settingsButton->hide();
+    }
+}
+
+void CallWidget::setAudioSettingsDialogOpen(bool open)
+{
+    m_audioSettingsDialogOpen = open;
+    if (open) {
+        if (m_overlayButtonHideTimer)
+            m_overlayButtonHideTimer->stop();
+    } else {
+        if (!m_screenFullscreenActive && m_settingsButton)
+            m_settingsButton->hide();
     }
 }
 

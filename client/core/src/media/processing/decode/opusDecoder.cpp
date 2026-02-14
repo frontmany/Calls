@@ -41,35 +41,30 @@ namespace core::media
     bool OpusDecoder::initialize() {
         std::lock_guard<std::mutex> lock(m_mutex);
         
-        // Find the Opus decoder
         m_codec = avcodec_find_decoder(AV_CODEC_ID_OPUS);
         if (!m_codec) {
             std::cerr << "Failed to find Opus decoder" << std::endl;
             return false;
         }
         
-        // Allocate codec context
         m_codecContext = avcodec_alloc_context3(m_codec);
         if (!m_codecContext) {
             std::cerr << "Failed to allocate codec context" << std::endl;
             return false;
         }
-        
-        // Set codec parameters
+
         m_codecContext->sample_fmt = AV_SAMPLE_FMT_FLT;
         m_codecContext->sample_rate = m_config.sampleRate;
         m_codecContext->ch_layout.nb_channels = m_config.channels;
         av_channel_layout_default(&m_codecContext->ch_layout, m_config.channels);
-        
-        // Open codec
+
         int ret = avcodec_open2(m_codecContext, m_codec, nullptr);
         if (ret < 0) {
             char errBuf[AV_ERROR_MAX_STRING_SIZE];
             std::cerr << "Failed to open codec: " << av_make_error_string(errBuf, AV_ERROR_MAX_STRING_SIZE, ret) << std::endl;
             return false;
         }
-        
-        // Allocate frame and packet
+
         m_frame = av_frame_alloc();
         m_packet = av_packet_alloc();
         
@@ -85,40 +80,34 @@ namespace core::media
     int OpusDecoder::decode(const unsigned char* data, int dataLength, float* pcm, int frameSize, int decodeFec) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (!m_initialized || !m_codecContext || !m_frame || !m_packet) return -1;
-        
-        // Set up packet with input data
+
         m_packet->data = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data));
         m_packet->size = dataLength;
-        
-        // Send packet to decoder
+
         int ret = avcodec_send_packet(m_codecContext, m_packet);
         if (ret < 0) {
             char errBuf[AV_ERROR_MAX_STRING_SIZE];
             std::cerr << "Failed to send packet to decoder: " << av_make_error_string(errBuf, AV_ERROR_MAX_STRING_SIZE, ret) << std::endl;
             return -1;
         }
-        
-        // Receive frame from decoder
+
         ret = avcodec_receive_frame(m_codecContext, m_frame);
         if (ret < 0) {
             char errBuf[AV_ERROR_MAX_STRING_SIZE];
             std::cerr << "Failed to receive frame from decoder: " << av_make_error_string(errBuf, AV_ERROR_MAX_STRING_SIZE, ret) << std::endl;
             return -1;
         }
-        
-        // Calculate how many samples to copy
+
         int samplesToCopy = (m_frame->nb_samples < frameSize) ? m_frame->nb_samples : frameSize;
         int channelsToCopy = (m_frame->ch_layout.nb_channels < m_config.channels) ? m_frame->ch_layout.nb_channels : m_config.channels;
-        
-        // Copy decoded PCM data to output buffer
+
         float* frameData = reinterpret_cast<float*>(m_frame->data[0]);
         for (int sample = 0; sample < samplesToCopy; ++sample) {
             for (int channel = 0; channel < channelsToCopy; ++channel) {
                 pcm[sample * m_config.channels + channel] = frameData[sample * m_frame->ch_layout.nb_channels + channel];
             }
         }
-        
-        // Unref frame for next use
+
         av_frame_unref(m_frame);
         
         return samplesToCopy;

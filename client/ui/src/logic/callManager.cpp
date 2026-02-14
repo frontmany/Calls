@@ -179,6 +179,12 @@ void CallManager::onAudioDevicePickerRequested()
         m_coreClient->getCurrentOutputDevice());
 }
 
+void CallManager::onAudioSettingsDialogClosed()
+{
+    if (m_callWidget)
+        m_callWidget->setAudioSettingsDialogOpen(false);
+}
+
 void CallManager::onCallWidgetAudioSettingsRequested()
 {
     if (!m_dialogsController || !m_coreClient) return;
@@ -191,6 +197,8 @@ void CallManager::onCallWidgetAudioSettingsRequested()
         m_coreClient->getOutputVolume(),
         m_coreClient->getCurrentInputDevice(),
         m_coreClient->getCurrentOutputDevice());
+    if (m_callWidget)
+        m_callWidget->setAudioSettingsDialogOpen(true);
 }
 
 void CallManager::onActivateCameraClicked(bool active)

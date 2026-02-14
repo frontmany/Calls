@@ -462,6 +462,7 @@ void DialogsController::hideAudioSettingsDialog()
     if (m_audioSettingsDialog) {
         m_audioSettingsDialog->setParent(nullptr);
     }
+    emit audioSettingsDialogClosed();
 }
 
 void DialogsController::showIncomingCallsDialog(const QString& friendNickname, int remainingTime)

@@ -85,6 +85,7 @@ public:
     void removeAdditionalScreen(const std::string& screenId);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
+    void setAudioSettingsDialogOpen(bool open);
 
 signals:
     void hangupClicked();
@@ -188,4 +189,5 @@ private:
     // States
     QString m_friendNickname;
     bool m_screenFullscreenActive = false;
+    bool m_audioSettingsDialogOpen = false;
 };

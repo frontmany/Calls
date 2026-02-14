@@ -385,6 +385,7 @@ void MainWindow::connectWidgetsToManagers() {
     if (m_dialogsController && m_callManager) {
         connect(m_dialogsController, &DialogsController::screenSelected, m_callManager, &CallManager::onScreenSelected);
         connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, m_callManager, &CallManager::onScreenShareDialogCancelled);
+        connect(m_dialogsController, &DialogsController::audioSettingsDialogClosed, m_callManager, &CallManager::onAudioSettingsDialogClosed);
     }
 
     // Audio settings dialog connections

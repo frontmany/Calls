@@ -74,7 +74,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     auto* devicesLayout = new QGridLayout();
     devicesLayout->setContentsMargins(scale(8), 0, scale(8), 0);
-    devicesLayout->setHorizontalSpacing(scale(10));
+    devicesLayout->setHorizontalSpacing(scale(28));
     devicesLayout->setVerticalSpacing(scale(10));
     devicesLayout->addWidget(inputLabel, 1, 0, 1, 1);
     devicesLayout->addWidget(m_inputDevicesArea, 2, 0, 1, 1);
@@ -153,7 +153,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
 
     containerLayout->addLayout(headerLayout);
     containerLayout->addLayout(devicesLayout);
-    containerLayout->addSpacing(scale(22));
+    containerLayout->addSpacing(scale(28));
     containerLayout->addWidget(m_slidersContainer);
     containerLayout->addSpacing(scale(8));
 

@@ -56,6 +56,7 @@ public:
     void setUpdateClient(std::shared_ptr<updater::Client> updaterClient);
 
 signals:
+    void audioSettingsDialogClosed();
     void inputDeviceSelected(int deviceIndex);
     void outputDeviceSelected(int deviceIndex);
     void inputVolumeChanged(int volume);
