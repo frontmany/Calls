@@ -602,6 +602,10 @@ void CallManager::onLocalScreenFrame(QByteArray data, int width, int height)
 {
     if (!m_callWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
+    if (!m_coreClient || !m_coreClient->isScreenSharing()) {
+        m_callWidget->hideMainScreen();
+        return;
+    }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.copy());
@@ -612,6 +616,14 @@ void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
 {
     if (!m_callWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
+    if (!m_coreClient || !m_coreClient->isCameraSharing()) {
+        m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
+        const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
+        if (!screenSharingActive) {
+            m_callWidget->hideMainScreen();
+        }
+        return;
+    }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.copy());
@@ -621,6 +633,8 @@ void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
     if (screenSharingActive || bothCameras) {
         m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
     } else {
+        // Ensure local camera is not duplicated in additionalScreens when it moves to mainScreen.
+        m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
         m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
     }
 }
@@ -629,6 +643,10 @@ void CallManager::onIncomingScreenFrame(QByteArray data, int width, int height)
 {
     if (!m_callWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
+    if (!m_coreClient || !m_coreClient->isViewingRemoteScreen()) {
+        m_callWidget->hideMainScreen();
+        return;
+    }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.copy());
@@ -639,6 +657,14 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
 {
     if (!m_callWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
+    if (!m_coreClient || !m_coreClient->isViewingRemoteCamera()) {
+        m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
+        const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
+        if (!screenSharingActive) {
+            m_callWidget->hideMainScreen();
+        }
+        return;
+    }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.copy());
@@ -647,6 +673,8 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
     if (screenSharingActive) {
         m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
     } else {
+        // Ensure remote camera is not duplicated in additionalScreens when it moves to mainScreen.
+        m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
         m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
     }
 }
@@ -656,6 +684,7 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
 void CallManager::onIncomingScreenSharingStarted()
 {
     if (m_callWidget) {
+        m_callWidget->setScreenShareButtonRestricted(true);
         m_callWidget->showEnterFullscreenButton();
     }
 }
@@ -664,6 +693,7 @@ void CallManager::onIncomingScreenSharingStopped()
 {
     if (m_callWidget) {
         m_callWidget->hideMainScreen();
+        m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->hideEnterFullscreenButton();
         if (m_callWidget->isFullScreen()) {
             m_callWidget->exitFullscreen();

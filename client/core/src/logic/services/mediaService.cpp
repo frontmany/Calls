@@ -69,7 +69,8 @@ namespace core::logic
         m_screenCaptureService.stop();
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_mediaProcessingService->cleanupVideo(MediaType::Screen);
+            // Do not cleanup Screen pipeline here: decoder is needed to display remote's screen when they share.
+            // Pipeline is reinitialized on next startScreenSharing().
             auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
             m_sendPacket(packet, PacketType::SCREEN_SHARING_END);
         }

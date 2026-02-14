@@ -651,7 +651,7 @@ QSize CallWidget::scaledScreenSize16by9(int baseWidth)
 
 void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode)
 {
-    if (frame.isNull()) return;
+    if (frame.isNull() || !m_mainScreen) return;
 
     m_mainScreen->setScaleMode(scaleMode);
     m_mainScreen->setPixmap(frame);
