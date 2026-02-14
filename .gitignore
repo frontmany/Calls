@@ -3,6 +3,7 @@
 build
 
 vendor/asio
+vendor/ffmpeg
 vendor/opus-main
 vendor/portaudio-master
 out/

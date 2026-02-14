@@ -24,6 +24,12 @@
   - Fedora/RHEL: `sudo dnf install mesa-libGL-devel mesa-libGLU-devel`
   - Arch: `sudo pacman -S mesa glu`
 
+- **FFmpeg** - Required for video encoding/decoding (H.264, screen and camera). Install with:
+  - Ubuntu/Debian: `sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev`
+  - Fedora/RHEL: `sudo dnf install ffmpeg-devel`
+  - Arch: `sudo pacman -S ffmpeg`
+  - Windows: build from source or use vcpkg; place in `vendor/ffmpeg` (see project CMake for expected layout).
+
 - **Python development headers** - Required for pybind11 (Python bindings). Install with:
   - Ubuntu/Debian: `sudo apt-get install python3-dev`
   - Fedora/RHEL: `sudo dnf install python3-devel`
