@@ -22,7 +22,6 @@ if(WIN32)
     target_compile_definitions(callsClientPy PRIVATE _WIN32_WINNT=0x0601)
 endif()
 
-set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
 set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
 
 if (WIN32) 
@@ -36,7 +35,6 @@ endif()
 set(FFMPEG_DIR "${ROOT_DIR}/vendor/ffmpeg")
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${PORTAUDIO_DIR}"
-    "${OPUS_DIR}"
     "${CRYPTOPP_DIR}"
     "${SPDLOG_DIR}"
     "${FFMPEG_DIR}/lib"
@@ -45,7 +43,6 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
-        "${OPUS_DIR}/$<CONFIG>/opus.lib"
         "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
         "${FFMPEG_DIR}/lib/avcodec.lib"
@@ -62,7 +59,6 @@ if(WIN32)
 else()
     target_link_libraries(${PROJECT_NAME} PRIVATE
         "${PORTAUDIO_DIR}/libportaudio.a"
-        "${OPUS_DIR}/libopus.a"
         "${CRYPTOPP_DIR}/libcryptopp.a"
         libspdlog.a
         calliforniaCore
@@ -71,7 +67,6 @@ endif()
 
 target_include_directories(callsClientPy PRIVATE
     ${ROOT_DIR}/client/core/src
-    ${ROOT_DIR}/vendor/opus/include     
     ${ROOT_DIR}/vendor/portaudio/include
     ${ROOT_DIR}/vendor/json/include                    
     ${ROOT_DIR}/vendor/cryptopp               

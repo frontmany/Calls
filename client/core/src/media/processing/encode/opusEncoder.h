@@ -1,6 +1,12 @@
 #pragma once
 
-#include <opus.h>
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/frame.h>
+}
 #include <vector>
 #include <mutex>
 #include <cstdint>
@@ -10,9 +16,9 @@ namespace core::media
     class OpusEncoder {
     public:
         enum class EncoderMode {
-            VOIP = OPUS_APPLICATION_VOIP,
-            AUDIO = OPUS_APPLICATION_AUDIO,
-            LOW_DELAY = OPUS_APPLICATION_RESTRICTED_LOWDELAY
+            VOIP = 2048,
+            AUDIO = 2049,
+            LOW_DELAY = 2051
         };
 
         struct Config {
@@ -35,7 +41,10 @@ namespace core::media
 
     private:
         Config m_config;
-        ::OpusEncoder* m_encoder;
+        AVCodecContext* m_codecContext = nullptr;
+        const AVCodec* m_codec = nullptr;
+        AVFrame* m_frame = nullptr;
+        AVPacket* m_packet = nullptr;
         bool m_initialized = false;
         mutable std::mutex m_mutex;
     };

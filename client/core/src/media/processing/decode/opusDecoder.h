@@ -1,6 +1,12 @@
 #pragma once
 
-#include <opus.h>
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/frame.h>
+}
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -26,7 +32,10 @@ namespace core::media
 
     private:
         Config m_config;
-        ::OpusDecoder* m_decoder = nullptr;
+        AVCodecContext* m_codecContext = nullptr;
+        const AVCodec* m_codec = nullptr;
+        AVFrame* m_frame = nullptr;
+        AVPacket* m_packet = nullptr;
         bool m_initialized = false;
         mutable std::mutex m_mutex;
     };

@@ -113,10 +113,8 @@ endif()
 
 if(WIN32)
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
-    set(OPENH264_DIR "${ROOT_DIR}/vendor/openh264/builddir")
 else()
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog")
-    set(OPENH264_DIR "${ROOT_DIR}/vendor/openh264")
 endif()
 
 if(WIN32)
@@ -128,13 +126,9 @@ if(WIN32)
         calliforniaUpdater
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
     )
-    target_link_directories(${PROJECT_NAME} PRIVATE
-        "${OPENH264_DIR}"
-    )
 else()
     target_link_directories(${PROJECT_NAME} PRIVATE
         "${SPDLOG_DIR}"
-        "${OPENH264_DIR}"
     )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calliforniaCore calliforniaUpdater libspdlog.a)
@@ -144,7 +138,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${ROOT_DIR}/client/core/src
     ${ROOT_DIR}/client/updater/src
-    ${ROOT_DIR}/vendor/opus/include     
     ${ROOT_DIR}/vendor/portaudio/include
     ${ROOT_DIR}/vendor/json/include                    
     ${ROOT_DIR}/vendor/cryptopp               
@@ -152,26 +145,4 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${ROOT_DIR}/vendor/spdlog/include
     ${ROOT_DIR}/vendor/ticTimer
     ${ROOT_DIR}/vendor/CrashCatch/include
-    ${ROOT_DIR}/vendor/openh264/codec/api/wels
-    ${ROOT_DIR}/vendor/openh264/codec/common/inc
     )
-
-if(WIN32)
-    # Windows: link against .lib files
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        openh264
-    )
-    
-    # Copy OpenH264 DLL to output directory
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ROOT_DIR}/vendor/openh264/builddir/openh264-8.dll"
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>
-        COMMENT "Copying OpenH264 DLL to output directory"
-    )
-else()
-    # Linux: link against shared libraries
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        openh264
-    )
-endif()

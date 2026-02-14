@@ -26,7 +26,6 @@ if(WIN32)
     )
 endif()
 
-set(OPUS_DIR "${ROOT_DIR}/vendor/opus/build")
 set(PORTAUDIO_DIR "${ROOT_DIR}/vendor/portaudio/build")
 set(FFMPEG_DIR "${ROOT_DIR}/vendor/ffmpeg")
 
@@ -40,7 +39,6 @@ endif()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     "${PORTAUDIO_DIR}"
-    "${OPUS_DIR}"
     "${FFMPEG_DIR}"
     "${CRYPTOPP_DIR}"
     "${SPDLOG_DIR}"
@@ -49,7 +47,6 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PUBLIC
         "${PORTAUDIO_DIR}/$<CONFIG>/portaudio_static_x64.lib"
-        "${OPUS_DIR}/$<CONFIG>/opus.lib"
         "${FFMPEG_DIR}/lib/avcodec.lib"
         "${FFMPEG_DIR}/lib/avformat.lib"
         "${FFMPEG_DIR}/lib/avdevice.lib"
@@ -65,7 +62,6 @@ if(WIN32)
 else()
     target_link_libraries(${PROJECT_NAME} PUBLIC
         "${PORTAUDIO_DIR}/libportaudio.a"
-        "${OPUS_DIR}/libopus.a"
         "${FFMPEG_DIR}/lib/libavcodec.a"
         "${FFMPEG_DIR}/lib/libavutil.a"
         "${FFMPEG_DIR}/lib/libswscale.a"
@@ -76,7 +72,6 @@ endif()
 
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${ROOT_DIR}/vendor/opus/include     
     ${ROOT_DIR}/vendor/portaudio/include
     ${ROOT_DIR}/vendor/ffmpeg/include
     ${ROOT_DIR}/vendor/json/include                    

@@ -69,20 +69,12 @@ The project requires Qt6 for building the UI components. The Qt path is configur
    mv vendor/json/include/nlohmann/json.hpp vendor/json/include/json.hpp
    ```
 
-2. **Build portaudio and opus libraries:**
+2. **Build portaudio library:**
    
    **For Linux:**
    ```bash
    # Build portaudio
    cd vendor/portaudio
-   mkdir -p build
-   cd build
-   cmake ..
-   cmake --build .
-   cd ../../..
-   
-   # Build opus
-   cd vendor/opus
    mkdir -p build
    cd build
    cmake ..
@@ -100,20 +92,10 @@ The project requires Qt6 for building the UI components. The Qt path is configur
    cmake --build . --config Debug
    cmake --build . --config Release
    cd ..\..\..
-   
-   # Build opus (Debug and Release)
-   cd vendor\opus
-   mkdir build
-   cd build
-   cmake .. -G "Visual Studio 17 2022" -A x64
-   cmake --build . --config Debug
-   cmake --build . --config Release
-   cd ..\..\..
    ```
    
    Libraries will be placed in:
    - `vendor/portaudio/build/Debug/portaudio_static_x64.lib` and `vendor/portaudio/build/Release/portaudio_static_x64.lib`
-   - `vendor/opus/build/Debug/opus.lib` and `vendor/opus/build/Release/opus.lib`
 
 3. **Build cryptopp library:**
    
@@ -200,7 +182,7 @@ cmake --build build --config Debug
 
 ## Build for Linux
 
-**Note:** It is recommended to exclude Python wrappers from the build on Linux to avoid issues with Position Independent Code (PIC) requirements. Python wrappers require all static libraries (opus, portaudio, cryptopp, spdlog) to be compiled with `-fPIC`, which may require rebuilding these dependencies.
+**Note:** It is recommended to exclude Python wrappers from the build on Linux to avoid issues with Position Independent Code (PIC) requirements. Python wrappers require all static libraries (portaudio, cryptopp, spdlog) to be compiled with `-fPIC`, which may require rebuilding these dependencies.
 
 To exclude Python wrappers, comment out the following lines in `CMakeLists.txt`:
 ```cmake

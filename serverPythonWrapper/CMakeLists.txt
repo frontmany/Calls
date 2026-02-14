@@ -59,7 +59,6 @@ endif()
 
 target_include_directories(callsServerPy PRIVATE
     ${ROOT_DIR}/server/src
-    ${ROOT_DIR}/vendor/opus/include     
     ${ROOT_DIR}/vendor/portaudio/include
     ${ROOT_DIR}/vendor/json/include                    
     ${ROOT_DIR}/vendor/cryptopp               

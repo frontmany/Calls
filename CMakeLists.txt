@@ -20,13 +20,6 @@ if(FETCH_DEPENDENCIES)
     include(FetchContent)
 
     FetchContent_Declare(
-        opus
-        GIT_REPOSITORY https://github.com/xiph/opus.git
-        GIT_TAG v1.4
-        SOURCE_DIR ${VENDOR_DIR}/opus
-    )
-
-    FetchContent_Declare(
         nlohmann_json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
         GIT_TAG v3.11.3
@@ -82,10 +75,6 @@ if(FETCH_DEPENDENCIES)
         SOURCE_DIR ${VENDOR_DIR}/CrashCatch
     )
 
-    set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "Build shared library" FORCE)
-    set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
-    set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build programs" FORCE)
-
     set(CRYPTOPP_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
     set(CRYPTOPP_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
     set(CRYPTOPP_BUILD_BENCHMARKS OFF CACHE BOOL "Build benchmarks" FORCE)
@@ -93,7 +82,7 @@ if(FETCH_DEPENDENCIES)
     set(PA_BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
     set(PA_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 
-    FetchContent_MakeAvailable(opus nlohmann_json cryptopp portaudio asio pybind11 spdlog ticTimer CrashCatch)
+    FetchContent_MakeAvailable(nlohmann_json cryptopp portaudio asio pybind11 spdlog ticTimer CrashCatch)
 
     message(STATUS "Dependencies fetched successfully")
 endif()
