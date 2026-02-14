@@ -31,6 +31,9 @@ namespace core::media
         void setEncodedDataCallback(EncodedDataCallback callback);
         bool isInitialized() const;
 
+        int getWidth() const { return m_width; }
+        int getHeight() const { return m_height; }
+
     private:
         AVCodecContext* m_codecContext;
         AVFrame* m_frame;
@@ -42,6 +45,7 @@ namespace core::media
         int m_width;
         int m_height;
         int m_fps;
+        int m_bitrate;
             
         bool convertFrame(const Frame& inputFrame);
     };

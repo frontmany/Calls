@@ -2,88 +2,49 @@
 #include "media/processing/encode/h264Encoder.h"
 #include "media/processing/decode/h264Decoder.h"
 #include "media/processing/encryption/mediaEncryptionService.h"
+#include "media/processing/encode/opusEncoder.h"
+#include "media/processing/decode/opusDecoder.h"
 #include <libavutil/pixfmt.h>
 #include <stdexcept>
-#include <opus.h>
 
 namespace core::media
 {
-    struct MediaProcessingService::Impl {
-        // Аудио компоненты (Opus)
-        OpusEncoder* audioEncoder = nullptr;
-        OpusDecoder* audioDecoder = nullptr;
-        bool audioEncoderInitialized = false;
-        bool audioDecoderInitialized = false;
-        mutable std::mutex audioEncoderMutex;
-        mutable std::mutex audioDecoderMutex;
-            
-        // Видео компоненты (существующие классы)
-        std::unique_ptr<H264Encoder> videoEncoder;
-        std::unique_ptr<H264Decoder> videoDecoder;
-        std::vector<unsigned char> lastEncodedVideoFrame;
-        std::vector<unsigned char> lastDecodedVideoFrame;
-            
-        // Компоненты шифрования
-        std::unique_ptr<MediaEncryptionService> encryptionService;
-        mutable std::mutex encryptionMutex;
-            
-        ~Impl() {
-            cleanupAll();
+    void MediaProcessingService::VideoPipeline::cleanup() {
+        if (encoder) {
+            encoder->cleanup();
+            encoder.reset();
         }
-            
-        void cleanupAudio() {
-            std::lock_guard<std::mutex> lock1(audioEncoderMutex);
-            std::lock_guard<std::mutex> lock2(audioDecoderMutex);
-                
-            if (audioEncoder) {
-                opus_encoder_destroy(audioEncoder);
-                audioEncoder = nullptr;
-            }
-                
-            if (audioDecoder) {
-                opus_decoder_destroy(audioDecoder);
-                audioDecoder = nullptr;
-            }
-                
-            audioEncoderInitialized = false;
-            audioDecoderInitialized = false;
+        if (decoder) {
+            decoder->cleanup();
+            decoder.reset();
         }
-            
-        void cleanupVideo() {
-            if (videoEncoder) {
-                videoEncoder->cleanup();
-                videoEncoder.reset();
-            }
-                
-            if (videoDecoder) {
-                videoDecoder->cleanup();
-                videoDecoder.reset();
-            }
-                
-            lastEncodedVideoFrame.clear();
-            lastDecodedVideoFrame.clear();
-        }
-            
-        void cleanupEncryption() {
-            std::lock_guard<std::mutex> lock(encryptionMutex);
-            encryptionService.reset();
-        }
-            
-        void cleanupAll() {
-            cleanupAudio();
-            cleanupVideo();
-            cleanupEncryption();
-        }
-    };
+        lastEncodedFrame.clear();
+        lastDecodedFrame.clear();
+        width = 0;
+        height = 0;
+        initialized = false;
+    }
 
     MediaProcessingService::MediaProcessingService()
-        : pImpl(std::make_unique<Impl>()), 
-            m_sampleRate(0), m_channels(0), m_frameSize(0), m_audioInitialized(false),
-            m_width(0), m_height(0), m_videoInitialized(false)
+        : m_sampleRate(0), m_channels(0), m_frameSize(0), m_audioInitialized(false)
     {
     }
 
-    MediaProcessingService::~MediaProcessingService() = default;
+    MediaProcessingService::~MediaProcessingService()
+    {
+        m_audioEncoder.reset();
+        m_audioDecoder.reset();
+        for (auto& [type, pipeline] : m_videoPipelines) {
+            pipeline.cleanup();
+        }
+
+        m_videoPipelines.clear();
+        m_encryptionService.reset();
+    }
+
+    MediaProcessingService::VideoPipeline& MediaProcessingService::getPipeline(MediaType type) {
+        return m_videoPipelines[type];
+    }
 
     bool MediaProcessingService::initializeAudioProcessing(int sampleRate, int channels, int frameSize)
     {
@@ -103,166 +64,173 @@ namespace core::media
         return true;
     }
 
-    bool MediaProcessingService::initializeVideoProcessing(int width, int height, int bitrate)
+    bool MediaProcessingService::initializeVideoProcessing(MediaType type, int bitrate)
     {
-        m_width = width;
-        m_height = height;
-            
-        // Создаем и инициализируем видео энкодер
-        pImpl->videoEncoder = std::make_unique<H264Encoder>();
-        if (!pImpl->videoEncoder->initialize(width, height, 30, bitrate)) {
-            pImpl->videoEncoder.reset();
+        auto& pipeline = getPipeline(type);
+        pipeline.cleanup();
+        pipeline.bitrate = bitrate;
+
+        pipeline.encoder = std::make_unique<H264Encoder>();
+        pipeline.decoder = std::make_unique<H264Decoder>();
+
+        if (!pipeline.decoder->initialize()) {
+            pipeline.encoder.reset();
+            pipeline.decoder.reset();
             return false;
         }
-            
-        // Создаем и инициализируем видео декодер
-        pImpl->videoDecoder = std::make_unique<H264Decoder>();
-        if (!pImpl->videoDecoder->initialize()) {
-            pImpl->videoEncoder.reset();
-            pImpl->videoDecoder.reset();
-            return false;
-        }
-            
-        // Decode to RGB24 because UI renders raw RGB frames.
-        pImpl->videoDecoder->setOutputFormat(width, height, AV_PIX_FMT_RGB24);
-            
-        m_videoInitialized = true;
+
+        pipeline.initialized = true;
         return true;
     }
 
     void MediaProcessingService::cleanupAudio()
     {
-        pImpl->cleanupAudio();
+        m_audioEncoder.reset();
+        m_audioDecoder.reset();
         m_audioInitialized = false;
     }
 
-    void MediaProcessingService::cleanupVideo()
+    void MediaProcessingService::cleanupVideo(MediaType type)
     {
-        pImpl->cleanupVideo();
-        m_videoInitialized = false;
+        auto it = m_videoPipelines.find(type);
+        if (it != m_videoPipelines.end()) {
+            it->second.cleanup();
+        }
     }
 
-    std::vector<unsigned char> MediaProcessingService::encodeAudioFrame(const float* pcmData, int frameSize)
+    bool MediaProcessingService::isVideoInitialized(MediaType type) const
     {
-        if (!m_audioInitialized || !pImpl->audioEncoderInitialized) {
+        auto it = m_videoPipelines.find(type);
+        return it != m_videoPipelines.end() && it->second.initialized;
+    }
+
+    int MediaProcessingService::getWidth(MediaType type) const
+    {
+        auto it = m_videoPipelines.find(type);
+        return (it != m_videoPipelines.end()) ? it->second.width : 0;
+    }
+
+    int MediaProcessingService::getHeight(MediaType type) const
+    {
+        auto it = m_videoPipelines.find(type);
+        return (it != m_videoPipelines.end()) ? it->second.height : 0;
+    }
+
+    std::vector<unsigned char> MediaProcessingService::encodeAudioFrame(const float* pcmData)
+    {
+        if (!m_audioInitialized || !m_audioEncoder || !m_audioEncoder->isInitialized()) {
             return {};
         }
-            
-        std::lock_guard<std::mutex> lock(pImpl->audioEncoderMutex);
-            
         const int maxOutputSize = 4000;
         std::vector<unsigned char> encodedData(maxOutputSize);
-            
-        int encodedBytes = opus_encode_float(pImpl->audioEncoder, pcmData, frameSize, 
-                                            encodedData.data(), maxOutputSize);
-            
+        int encodedBytes = m_audioEncoder->encode(pcmData, encodedData.data(), maxOutputSize);
         if (encodedBytes < 0) {
             return {};
         }
-            
         encodedData.resize(encodedBytes);
         return encodedData;
     }
 
     std::vector<float> MediaProcessingService::decodeAudioFrame(const unsigned char* opusData, int dataSize)
     {
-        if (!m_audioInitialized || !pImpl->audioDecoderInitialized) {
+        if (!m_audioInitialized || !m_audioDecoder || !m_audioDecoder->isInitialized()) {
             return {};
         }
-            
-        std::lock_guard<std::mutex> lock(pImpl->audioDecoderMutex);
-            
         std::vector<float> pcmData(m_frameSize * m_channels);
-            
-        int decodedSamples = opus_decode_float(pImpl->audioDecoder, opusData, dataSize,
-                                                pcmData.data(), m_frameSize, 0);
-            
+        int decodedSamples = m_audioDecoder->decode(opusData, dataSize, pcmData.data(), m_frameSize, 0);
         if (decodedSamples < 0) {
             return {};
         }
-            
         pcmData.resize(decodedSamples * m_channels);
         return pcmData;
     }
 
     bool MediaProcessingService::initializeAudioEncoder(int sampleRate, int channels, int frameSize)
     {
-        std::lock_guard<std::mutex> lock(pImpl->audioEncoderMutex);
-            
-        int error;
-        pImpl->audioEncoder = opus_encoder_create(sampleRate, channels, OPUS_APPLICATION_AUDIO, &error);
-        if (error != OPUS_OK) {
-            return false;
-        }
-            
-        opus_encoder_ctl(pImpl->audioEncoder, OPUS_SET_BITRATE(64000));
-        opus_encoder_ctl(pImpl->audioEncoder, OPUS_SET_COMPLEXITY(5));
-        opus_encoder_ctl(pImpl->audioEncoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
-            
-        pImpl->audioEncoderInitialized = true;
-        return true;
+        OpusEncoder::Config config;
+        config.sampleRate = sampleRate;
+        config.channels = channels;
+        config.frameSize = frameSize;
+        config.application = OpusEncoder::EncoderMode::AUDIO;
+        config.bitrate = 64000;
+        config.complexity = 5;
+        m_audioEncoder = std::make_unique<OpusEncoder>(config);
+        return m_audioEncoder->isInitialized();
     }
 
     bool MediaProcessingService::initializeAudioDecoder(int sampleRate, int channels)
     {
-        std::lock_guard<std::mutex> lock(pImpl->audioDecoderMutex);
-            
-        int error;
-        pImpl->audioDecoder = opus_decoder_create(sampleRate, channels, &error);
-        if (error != OPUS_OK) {
-            return false;
-        }
-            
-        pImpl->audioDecoderInitialized = true;
-        return true;
+        OpusDecoder::Config config;
+        config.sampleRate = sampleRate;
+        config.channels = channels;
+        m_audioDecoder = std::make_unique<OpusDecoder>(config);
+        return m_audioDecoder->isInitialized();
     }
 
-    std::vector<unsigned char> MediaProcessingService::encodeVideoFrame(const unsigned char* rawData, int width, int height)
+    std::vector<unsigned char> MediaProcessingService::encodeVideoFrame(MediaType type, const unsigned char* rawData, int width, int height)
     {
-        if (!m_videoInitialized || !pImpl->videoEncoder) {
+        auto it = m_videoPipelines.find(type);
+        if (it == m_videoPipelines.end() || !it->second.initialized || !it->second.encoder) {
             return {};
+        }
+
+        auto& pipeline = it->second;
+
+        // Ленивая инициализация энкодера при первом кадре или реинициализация при смене разрешения
+        // (H264Encoder::encodeFrame сам обнаружит смену разрешения и вызовет reinitialize)
+        if (!pipeline.encoder->isInitialized()) {
+            if (!pipeline.encoder->initialize(width, height, 30, pipeline.bitrate)) {
+                return {};
+            }
         }
             
         // Очищаем предыдущий результат
-        pImpl->lastEncodedVideoFrame.clear();
+        pipeline.lastEncodedFrame.clear();
             
         // Устанавливаем callback для получения закодированных данных
-        pImpl->videoEncoder->setEncodedDataCallback([this](const uint8_t* data, size_t size, int64_t pts) {
-            pImpl->lastEncodedVideoFrame.assign(data, data + size);
+        pipeline.encoder->setEncodedDataCallback([&pipeline](const uint8_t* data, size_t size, int64_t pts) {
+            pipeline.lastEncodedFrame.assign(data, data + size);
         });
             
         // Создаем FrameData (AV_PIX_FMT_RGB24 обязателен для sws_scale)
         Frame frame(rawData, width * height * 3, width, height, AV_PIX_FMT_RGB24);
             
-        // Кодируем кадр
-        if (!pImpl->videoEncoder->encodeFrame(frame)) {
+        // Кодируем кадр (энкодер сам реинициализируется при смене разрешения)
+        if (!pipeline.encoder->encodeFrame(frame)) {
             return {};
         }
+
+        // Обновляем текущие размеры из энкодера
+        pipeline.width = pipeline.encoder->getWidth();
+        pipeline.height = pipeline.encoder->getHeight();
              
-        return pImpl->lastEncodedVideoFrame;
+        return pipeline.lastEncodedFrame;
     }
 
-    std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(const unsigned char* h264Data, int dataSize)
+    std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize)
     {
-        if (!m_videoInitialized || !pImpl->videoDecoder) {
+        auto it = m_videoPipelines.find(type);
+        if (it == m_videoPipelines.end() || !it->second.initialized || !it->second.decoder) {
             return {};
         }
+
+        auto& pipeline = it->second;
             
-        pImpl->lastDecodedVideoFrame.clear();
+        pipeline.lastDecodedFrame.clear();
             
-        pImpl->videoDecoder->setDecodedFrameCallback([this](const Frame& frame) {
+        pipeline.decoder->setDecodedFrameCallback([&pipeline](const Frame& frame) {
             if (frame.isValid()) {
-                pImpl->lastDecodedVideoFrame.assign(frame.data, frame.data + frame.size);
-                m_width = frame.width;
-                m_height = frame.height;
+                pipeline.lastDecodedFrame.assign(frame.data, frame.data + frame.size);
+                pipeline.width = frame.width;
+                pipeline.height = frame.height;
             }
         });
             
-        if (!pImpl->videoDecoder->decodePacket(h264Data, dataSize, 0)) {
+        if (!pipeline.decoder->decodePacket(h264Data, dataSize, 0)) {
             return {};
         }
             
-        return pImpl->lastDecodedVideoFrame;
+        return pipeline.lastDecodedFrame;
     }
 
     std::vector<unsigned char> MediaProcessingService::encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key)
@@ -271,15 +239,14 @@ namespace core::media
             return {};
         }
             
-        std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
+        std::lock_guard<std::mutex> lock(m_encryptionMutex);
             
-        // Создаем сервис шифрования если нужен
-        if (!pImpl->encryptionService) {
-            pImpl->encryptionService = std::make_unique<MediaEncryptionService>();
+        if (!m_encryptionService) {
+            m_encryptionService = std::make_unique<MediaEncryptionService>();
         }
             
         CryptoPP::SecByteBlock encryptionKey(key.data(), key.size());
-        return pImpl->encryptionService->encryptMedia(data, size, encryptionKey);
+        return m_encryptionService->encryptMedia(data, size, encryptionKey);
     }
 
     std::vector<unsigned char> MediaProcessingService::decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key)
@@ -288,13 +255,12 @@ namespace core::media
             return {};
         }
             
-        std::lock_guard<std::mutex> lock(pImpl->encryptionMutex);
+        std::lock_guard<std::mutex> lock(m_encryptionMutex);
             
-        // Создаем сервис шифрования если нужен
-        if (!pImpl->encryptionService) {
-            pImpl->encryptionService = std::make_unique<MediaEncryptionService>();
+        if (!m_encryptionService) {
+            m_encryptionService = std::make_unique<MediaEncryptionService>();
         }
             
-        return pImpl->encryptionService->decryptMedia(encryptedData, size, key);
+        return m_encryptionService->decryptMedia(encryptedData, size, key);
     }
 }

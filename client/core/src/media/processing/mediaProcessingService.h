@@ -4,70 +4,84 @@
 #include <memory>
 #include <cstdint>
 #include <mutex>
+#include <unordered_map>
 
 #include "secblock.h"
+#include "media/mediaType.h"
 
 namespace core::media
 {
-    // Унифицированный процессор для H.264 кодирования/декодирование видео, Opus кодирования/декодирование аудио и шифрования
+    class H264Encoder;
+    class H264Decoder;
+    class MediaEncryptionService;
+    class OpusEncoder;
+    class OpusDecoder;
+
     class MediaProcessingService {
+    private:
+        struct VideoPipeline {
+            std::unique_ptr<H264Encoder> encoder;
+            std::unique_ptr<H264Decoder> decoder;
+            std::vector<unsigned char> lastEncodedFrame;
+            std::vector<unsigned char> lastDecodedFrame;
+            int width = 0;
+            int height = 0;
+            int bitrate = 1800000;
+            bool initialized = false;
+
+            void cleanup();
+        };
+
+        struct MediaTypeHash {
+            std::size_t operator()(MediaType t) const {
+                return std::hash<int>()(static_cast<int>(t));
+            }
+        };
+
     public:
         MediaProcessingService();
         ~MediaProcessingService();
 
-        // Инициализация процессоров
         bool initializeAudioProcessing(int sampleRate = 48000, int channels = 1, int frameSize = 960);
-        bool initializeVideoProcessing(int width = 1920, int height = 1080, int bitrate = 1800000);
+        bool initializeVideoProcessing(MediaType type, int bitrate);
             
-        // Очистка ресурсов
         void cleanupAudio();
-        void cleanupVideo();
+        void cleanupVideo(MediaType type);
 
-        // Кодирование/декодирование аудио
-        std::vector<unsigned char> encodeAudioFrame(const float* pcmData, int frameSize);
+        std::vector<unsigned char> encodeAudioFrame(const float* pcmData);
         std::vector<float> decodeAudioFrame(const unsigned char* opusData, int dataSize);
 
-        // Кодирование/декодирование видео
-        std::vector<unsigned char> encodeVideoFrame(const unsigned char* rawData, int width, int height);
-        std::vector<unsigned char> decodeVideoFrame(const unsigned char* h264Data, int dataSize);
-
-        // Шифрование/дешифрование медиа данных
+        std::vector<unsigned char> encodeVideoFrame(MediaType type, const unsigned char* rawData, int width, int height);
+        std::vector<unsigned char> decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize);
+        
         std::vector<unsigned char> encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key);
         std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key);
-            
-        // Получение информации о процессорах
-        bool isAudioInitialized() const { return m_audioInitialized; }
-        bool isVideoInitialized() const { return m_videoInitialized; }
 
-        // Аудио параметры
+        bool isAudioInitialized() const { return m_audioInitialized; }
+        bool isVideoInitialized(MediaType type) const;
+
         int getSampleRate() const { return m_sampleRate; }
         int getChannels() const { return m_channels; }
         int getFrameSize() const { return m_frameSize; }
 
-        // Видео параметры
-        int getWidth() const { return m_width; }
-        int getHeight() const { return m_height; }
-
+        int getWidth(MediaType type) const;
+        int getHeight(MediaType type) const;
 
     private:
-        struct Impl;
-        std::unique_ptr<Impl> pImpl;
+        std::unique_ptr<OpusEncoder> m_audioEncoder;
+        std::unique_ptr<OpusDecoder> m_audioDecoder;
+        std::unordered_map<MediaType, VideoPipeline, MediaTypeHash> m_videoPipelines;
+        std::unique_ptr<MediaEncryptionService> m_encryptionService;
+        mutable std::mutex m_encryptionMutex;
 
-        // Аудио параметры
         int m_sampleRate;
         int m_channels;
         int m_frameSize;
         bool m_audioInitialized;
 
-        // Видео параметры
-        int m_width;
-        int m_height;
-        bool m_videoInitialized;
-
-        // Вспомогательные методы
         bool initializeAudioEncoder(int sampleRate, int channels, int frameSize);
         bool initializeAudioDecoder(int sampleRate, int channels);
-        bool initializeVideoEncoder(int width, int height, int bitrate);
-        bool initializeVideoDecoder();
+
+        VideoPipeline& getPipeline(MediaType type);
     };
 }

@@ -615,7 +615,14 @@ void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.copy());
-    m_callWidget->showFrameInAdditionalScreen(pixmap, "localCamera");
+
+    const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
+    const bool bothCameras = m_coreClient && m_coreClient->isCameraSharing() && m_coreClient->isViewingRemoteCamera();
+    if (screenSharingActive || bothCameras) {
+        m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
+    } else {
+        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    }
 }
 
 void CallManager::onIncomingScreenFrame(QByteArray data, int width, int height)
@@ -635,7 +642,13 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.copy());
-    m_callWidget->showFrameInAdditionalScreen(pixmap, "remoteCamera");
+
+    const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
+    if (screenSharingActive) {
+        m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
+    } else {
+        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    }
 }
 
 // --- Media state slots ---
@@ -665,8 +678,11 @@ void CallManager::onIncomingCameraSharingStarted()
 
 void CallManager::onIncomingCameraSharingStopped()
 {
-    if (m_callWidget) {
-        m_callWidget->removeAdditionalScreen("remoteCamera");
+    if (!m_callWidget) return;
+    m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
+    const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
+    if (!screenSharingActive) {
+        m_callWidget->hideMainScreen();
     }
 }
 

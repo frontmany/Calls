@@ -1,5 +1,6 @@
 #include "cameraCaptureService.h"
 #include <iostream>
+#include <string>
 #include <thread>
 #include <chrono>
 
@@ -77,7 +78,6 @@ namespace core::media
         m_captureThread = new std::thread([this]() {
             while (!m_shouldStop && m_isRunning) {
                 captureFrame();
-                std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 FPS
             }
             });
 
@@ -227,16 +227,21 @@ namespace core::media
 #else
         inputFormat = av_find_input_format("v4l2");
 #endif
-
         if (!inputFormat) {
             std::cerr << "Failed to find camera input format" << std::endl;
             cleanup();
             return false;
         }
 
+        // Requested capture resolution when opening the device (driver may use this or nearest supported)
+        static constexpr int cameraDefaultWidth = 1280;
+        static constexpr int cameraDefaultHeight = 720;
+        static constexpr const char* cameraRequestedFramerate = "30";
+
+        std::string videoSizeStr = std::to_string(cameraDefaultWidth) + "x" + std::to_string(cameraDefaultHeight);
         AVDictionary* options = nullptr;
-        av_dict_set(&options, "framerate", "30", 0);
-        av_dict_set(&options, "video_size", "640x480", 0);
+        av_dict_set(&options, "framerate", cameraRequestedFramerate, 0);
+        av_dict_set(&options, "video_size", videoSizeStr.c_str(), 0);
 #ifdef __APPLE__
         av_dict_set(&options, "pixel_format", "bgr0", 0); // macOS uses BGRA
 #endif
@@ -313,8 +318,8 @@ namespace core::media
         }
 
         if (width <= 0 || height <= 0) {
-            width = 640;
-            height = 480;
+            width = cameraDefaultWidth;
+            height = cameraDefaultHeight;
             std::cout << "Using default dimensions: " << width << "x" << height << std::endl;
         }
 

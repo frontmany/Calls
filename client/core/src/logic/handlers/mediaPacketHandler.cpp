@@ -1,8 +1,10 @@
 #include "mediaPacketHandler.h"
 #include "logic/clientStateManager.h"
 #include "constants/jsonType.h"
+#include "media/mediaType.h"
 
 using namespace core::constant;
+using namespace core::media;
 
 namespace core::logic 
 {
@@ -96,9 +98,9 @@ namespace core::logic
 
         auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
         if (decryptedData.empty()) return;
-        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
+        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Screen, decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingScreen(videoFrame, m_mediaProcessingService->getWidth(), m_mediaProcessingService->getHeight());
+            m_eventListener->onIncomingScreen(videoFrame, m_mediaProcessingService->getWidth(MediaType::Screen), m_mediaProcessingService->getHeight(MediaType::Screen));
         }
     }
 
@@ -110,9 +112,9 @@ namespace core::logic
 
         auto decryptedData = m_mediaProcessingService->decryptData(data, length, m_stateManager->getActiveCall().getCallKey());
         if (decryptedData.empty()) return;
-        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
+        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Camera, decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingCamera(videoFrame, m_mediaProcessingService->getWidth(), m_mediaProcessingService->getHeight());
+            m_eventListener->onIncomingCamera(videoFrame, m_mediaProcessingService->getWidth(MediaType::Camera), m_mediaProcessingService->getHeight(MediaType::Camera));
         }
     }
 }

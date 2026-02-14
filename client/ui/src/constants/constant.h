@@ -53,3 +53,7 @@ constexpr const char* DEFAULT_DELETION_LIST_FILE_NAME = "remove.json"; // Update
 constexpr const char* IGNORED_DIRECTORY_LOGS = "logs";     // Logs directory name
 constexpr const char* IGNORED_DIRECTORY_CRASHES = "crashes"; // Crashes directory name
 
+// Call widget additional screen IDs
+constexpr const char* ADDITIONAL_SCREEN_ID_LOCAL_CAMERA = "localCamera";
+constexpr const char* ADDITIONAL_SCREEN_ID_REMOTE_CAMERA = "remoteCamera";
+

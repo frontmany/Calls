@@ -91,7 +91,8 @@ namespace core
 
         auto mediaProcessingService = std::make_shared<media::MediaProcessingService>();
         bool audioProcessingInitialized = mediaProcessingService->initializeAudioProcessing();
-        bool videoProcessingInitialized = mediaProcessingService->initializeVideoProcessing();
+        bool screenVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Screen, 1800000);
+        bool cameraVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Camera, 600000);
 
         if (!audioProcessingInitialized) {
             LOG_ERROR("audio processing service initialization error");
@@ -99,7 +100,7 @@ namespace core
 
             return false;
         }
-        if (!videoProcessingInitialized) {
+        if (!screenVideoInitialized || !cameraVideoInitialized) {
             LOG_ERROR("video processing service initialization error");
             stop();
 
@@ -319,10 +320,12 @@ namespace core
     }
 
     std::error_code Core::endCall() {
-        auto ec = m_callService->endCall();
-        if (!ec && m_mediaService) {
+        if (m_mediaService && m_stateManager->isActiveCall()) {
+            (void)m_mediaService->stopScreenSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
+            (void)m_mediaService->stopCameraSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
             m_mediaService->stopAudioSharing();
         }
+        auto ec = m_callService->endCall();
         return ec;
     }
 

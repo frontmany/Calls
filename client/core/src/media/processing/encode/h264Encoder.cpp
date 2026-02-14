@@ -12,6 +12,7 @@ namespace core::media
         , m_width(0)
         , m_height(0)
         , m_fps(30)
+        , m_bitrate(2000000)
     {
     }
 
@@ -29,6 +30,7 @@ namespace core::media
         m_width = width;
         m_height = height;
         m_fps = fps;
+        m_bitrate = bitrate;
 
         // Find H.264 encoder
         const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
@@ -54,7 +56,7 @@ namespace core::media
         m_codecContext->framerate.den = 1;
         m_codecContext->bit_rate = bitrate;
         m_codecContext->gop_size = 10;
-        m_codecContext->max_b_frames = 1;
+        m_codecContext->max_b_frames = 0;
         m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
 
         // H.264 specific options
@@ -131,6 +133,18 @@ namespace core::media
             return false;
         }
 
+        // Reinitialize encoder if input resolution changed
+        if (frame.width != m_width || frame.height != m_height) {
+            std::cout << "Encoder resolution changed from " << m_width << "x" << m_height
+                      << " to " << frame.width << "x" << frame.height << ", reinitializing" << std::endl;
+            auto callback = m_encodedCallback;
+            if (!initialize(frame.width, frame.height, m_fps, m_bitrate)) {
+                std::cerr << "Failed to reinitialize encoder for new resolution" << std::endl;
+                return false;
+            }
+            m_encodedCallback = callback;
+        }
+
         // Convert input frame to YUV420P if needed
         if (!convertFrame(frame)) {
             return false;
@@ -180,18 +194,10 @@ namespace core::media
         AVPixelFormat srcFormat = (inputFrame.format != 0) ?
             static_cast<AVPixelFormat>(inputFrame.format) : AV_PIX_FMT_RGB24;
 
-        // Recreate sws context when dimensions change
-        if (!m_swsContext ||
-            m_frame->width != inputFrame.width ||
-            m_frame->height != inputFrame.height) {
-
-            if (m_swsContext) {
-                sws_freeContext(m_swsContext);
-                m_swsContext = nullptr;
-            }
-
+        // Create sws context for pixel format conversion (1:1, no scaling)
+        if (!m_swsContext) {
             m_swsContext = sws_getContext(
-                inputFrame.width, inputFrame.height, srcFormat,
+                m_width, m_height, srcFormat,
                 m_width, m_height, AV_PIX_FMT_YUV420P,
                 SWS_BILINEAR, nullptr, nullptr, nullptr
             );
@@ -212,7 +218,7 @@ namespace core::media
         ret = sws_scale(
             m_swsContext,
             srcData, srcLinesize,
-            0, inputFrame.height,
+            0, m_height,
             m_frame->data, m_frame->linesize
         );
 

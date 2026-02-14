@@ -151,7 +151,7 @@ namespace core::logic
             return;
         }
 
-        auto encodedAudio = m_mediaProcessingService->encodeAudioFrame(data, length);
+        auto encodedAudio = m_mediaProcessingService->encodeAudioFrame(data);
         if (encodedAudio.empty()) {
             return;
         }
@@ -186,7 +186,7 @@ namespace core::logic
         }
 
         // Encode, encrypt, send
-        auto encodedVideo = m_mediaProcessingService->encodeVideoFrame(frame.data, frame.width, frame.height);
+        auto encodedVideo = m_mediaProcessingService->encodeVideoFrame(type, frame.data, frame.width, frame.height);
         if (encodedVideo.empty()) {
             return;
         }
