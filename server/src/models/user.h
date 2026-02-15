@@ -39,7 +39,7 @@ public:
 	const CryptoPP::RSA::PublicKey& getPublicKey() const;
 	const std::string& getNicknameHash() const;
 	const std::string& getToken() const;
-	const asio::ip::udp::endpoint& getEndpoint() const;
+	asio::ip::udp::endpoint getEndpoint() const;
 	CallPtr getCall() const;
 	PendingCallPtr getOutgoingPendingCall() const;
 	UserPtr getCallPartner() const;

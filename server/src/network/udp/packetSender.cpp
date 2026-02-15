@@ -122,12 +122,13 @@ namespace server::network::udp
             [this](std::error_code ec, std::size_t bytesTransferred) {
                 if (ec) {
                     LOG_ERROR("Failed to send datagram chunk: {}", server::utilities::errorCodeForLog(ec));
-                    m_isSending = false;
                     if (m_onErrorCallback) {
                         m_onErrorCallback();
                     }
-                    // Resume sending from queue; otherwise one send error permanently stops all sending
-                    // (pongs stop -> both clients see Reconnecting). Transient errors can recover.
+                    // Resume sending from queue; m_isSending stays true to prevent
+                    // a race where another thread enters processNextPacketFromQueue
+                    // concurrently. processNextPacketFromQueue will reset m_isSending
+                    // when the queue is empty.
                     processNextPacketFromQueue();
                     return;
                 }

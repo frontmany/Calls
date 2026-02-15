@@ -73,8 +73,9 @@ const std::string& User::getToken() const
 	return m_token;
 }
 
-const asio::ip::udp::endpoint& User::getEndpoint() const
+asio::ip::udp::endpoint User::getEndpoint() const
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
 	return m_endpoint;
 }
 

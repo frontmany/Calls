@@ -69,8 +69,6 @@ namespace server
             LOG_DEBUG("[UDP] Media from unknown endpoint {}:{}", endpointFrom.address().to_string(), endpointFrom.port());
             return;
         }
-        if (sender->getEndpoint().address() != endpointFrom.address() || sender->getEndpoint().port() != endpointFrom.port())
-            m_userRepository.updateUserUdpEndpoint(sender->getNicknameHash(), endpointFrom);
 
         UserPtr partner = sender->getCallPartner();
         if (!partner || !m_userRepository.containsUser(partner->getNicknameHash()))

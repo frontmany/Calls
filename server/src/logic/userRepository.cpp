@@ -34,7 +34,9 @@ namespace server::logic
 		if (!user) return;
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_nicknameHashToUser[user->getNicknameHash()] = user;
-		m_endpointToUser[user->getEndpoint()] = user;
+		auto ep = user->getEndpoint();
+		if (ep.port() != 0)
+			m_endpointToUser[ep] = user;
 	}
 
 	void UserRepository::removeUser(const std::string& nicknameHash) {
@@ -42,7 +44,8 @@ namespace server::logic
 		auto nicknameIt = m_nicknameHashToUser.find(nicknameHash);
 		if (nicknameIt != m_nicknameHashToUser.end()) {
 			auto endpoint = nicknameIt->second->getEndpoint();
-			m_endpointToUser.erase(endpoint);
+			if (endpoint.port() != 0)
+				m_endpointToUser.erase(endpoint);
 			m_nicknameHashToUser.erase(nicknameIt);
 		}
 	}
@@ -63,9 +66,11 @@ namespace server::logic
 		auto it = m_nicknameHashToUser.find(nicknameHash);
 		if (it != m_nicknameHashToUser.end()) {
 			auto oldEndpoint = it->second->getEndpoint();
-			m_endpointToUser.erase(oldEndpoint);
+			if (oldEndpoint.port() != 0)
+				m_endpointToUser.erase(oldEndpoint);
 			it->second->setEndpoint(newEndpoint);
-			m_endpointToUser[newEndpoint] = it->second;
+			if (newEndpoint.port() != 0)
+				m_endpointToUser[newEndpoint] = it->second;
 		}
 	}
 }
