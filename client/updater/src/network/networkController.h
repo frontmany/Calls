@@ -30,7 +30,7 @@ namespace updater
 		class NetworkController
 		{
 		public:
-			NetworkController(std::function<void(CheckResult)>&& onCheckResult,
+			NetworkController(std::function<void(CheckResult, const std::string&)>&& onCheckResult,
 				std::function<void(double)>&& onLoadingProgress,
 				std::function<void(bool)>&& onAllFilesLoaded,
 				std::function<void()>&& onNetworkError,
@@ -69,7 +69,7 @@ namespace updater
 			std::unique_ptr<FileReceiver> m_fileReceiver;
 
 			std::function<std::vector<FileMetadata>(Packet&)> m_onMetadata;
-			std::function<void(CheckResult)> m_onCheckResult;
+			std::function<void(CheckResult, const std::string&)> m_onCheckResult;
 			std::function<void(double)> m_onLoadingProgress;
 			std::function<void(bool)> m_onAllFilesLoaded;
 			std::function<void()> m_onNetworkError;

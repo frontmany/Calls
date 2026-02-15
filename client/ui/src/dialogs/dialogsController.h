@@ -51,7 +51,7 @@ public:
     void hideIncomingCallsDialog(const QString& friendNickname);
     void setIncomingCallButtonsActive(const QString& friendNickname, bool active);
 
-    void showUpdateAvailableDialog();
+    void showUpdateAvailableDialog(const QString& newVersion = QString());
     void hideUpdateAvailableDialog();
     void setUpdateClient(std::shared_ptr<updater::Client> updaterClient);
 

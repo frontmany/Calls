@@ -12,9 +12,9 @@ UpdaterEventListener::UpdaterEventListener(UpdateManager* updateManager, Updater
 {
 }
 
-void UpdaterEventListener::onUpdateCheckResult(updater::CheckResult updateCheckResult) {
+void UpdaterEventListener::onUpdateCheckResult(updater::CheckResult updateCheckResult, const std::string& newVersion) {
     QMetaObject::invokeMethod(m_updateManager, "onUpdateCheckResult",
-        Qt::QueuedConnection, Q_ARG(updater::CheckResult, updateCheckResult));
+        Qt::QueuedConnection, Q_ARG(updater::CheckResult, updateCheckResult), Q_ARG(QString, QString::fromStdString(newVersion)));
 }
 
 void UpdaterEventListener::onLoadingProgress(double progress) {

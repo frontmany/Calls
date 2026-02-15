@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QString>
 #include <memory>
 
 #include "updater.h"
@@ -20,12 +21,13 @@ public:
     bool shouldRestart();
     bool isUpdateNeeded() const;
     void launchUpdateApplier();
+    void showUpdateAvailableDialogIfNeeded();
 
 signals:
     void stopAllRingtonesRequested();
 
 public slots:
-    void onUpdateCheckResult(updater::CheckResult result);
+    void onUpdateCheckResult(updater::CheckResult result, const QString& newVersion = QString());
     void onUpdateLoaded(bool emptyUpdate);
     void onLoadingProgress(double progress);
     void onUpdateButtonClicked();
@@ -36,6 +38,7 @@ private:
 private:
     bool m_shouldRestart = false;
     bool m_updateNeeded = false;
+    QString m_pendingUpdateVersion;
 
     std::shared_ptr<core::Core> m_coreClient = nullptr;
     std::shared_ptr<updater::Client> m_updaterClient = nullptr;

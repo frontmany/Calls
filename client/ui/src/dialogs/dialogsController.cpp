@@ -521,10 +521,11 @@ void DialogsController::setIncomingCallButtonsActive(const QString& friendNickna
     }
 }
 
-void DialogsController::showUpdateAvailableDialog()
+void DialogsController::showUpdateAvailableDialog(const QString& newVersion)
 {
     if (m_updateAvailableDialog)
     {
+        m_updateAvailableDialog->setNewVersion(newVersion);
         m_updateAvailableDialog->raise();
         return;
     }
@@ -535,6 +536,7 @@ void DialogsController::showUpdateAvailableDialog()
     m_updateAvailableOverlay->hide();
 
     m_updateAvailableDialog = new UpdateAvailableDialog(m_parent);
+    m_updateAvailableDialog->setNewVersion(newVersion);
 
     auto positionDialog = [this]()
     {

@@ -150,6 +150,7 @@ namespace serverUpdater
 		LOG_INFO("Checking for updates, client version: {}", version.getAsString());
 
 		CheckResult checkResult;
+		std::string newVersionString;
 		nlohmann::json responseJson;
 
 		if (version != VERSION_LOST) {
@@ -187,19 +188,26 @@ namespace serverUpdater
 			}
 			else if (hasMajorUpdate) {
 				checkResult = CheckResult::REQUIRED_UPDATE;
+				newVersionString = latestVersion.getAsString();
 				LOG_INFO("Major update available for client (current: {}, latest: {})", version.getAsString(), latestVersion.getAsString());
 			}
 			else {
 				checkResult = CheckResult::POSSIBLE_UPDATE;
+				newVersionString = latestVersion.getAsString();
 				LOG_INFO("Minor update available for client (current: {}, latest: {})", version.getAsString(), latestVersion.getAsString());
 			}
 		}
 		else {
 			checkResult = CheckResult::REQUIRED_UPDATE;
+			auto [path, ver] = findLatestVersion();
+			newVersionString = ver;
 			LOG_WARN("Client has invalid version, requiring update");
 		}
 
 		responseJson[UPDATE_CHECK_RESULT] = static_cast<int>(checkResult);
+		if (!newVersionString.empty()) {
+			responseJson[VERSION] = newVersionString;
+		}
 
 		Packet packetResponse;
 		packetResponse.setType(static_cast<int>(PacketType::UPDATE_RESULT));

@@ -9,7 +9,7 @@ class UpdaterEventListener : public updater::EventListener {
 public:
     UpdaterEventListener(UpdateManager* updateManager, UpdaterNetworkErrorHandler* networkErrorHandler);
 
-	virtual void onUpdateCheckResult(updater::CheckResult updateCheckResult) override;
+	virtual void onUpdateCheckResult(updater::CheckResult updateCheckResult, const std::string& newVersion = {}) override;
 	virtual void onLoadingProgress(double progress) override;
 	virtual void onUpdateLoaded(bool emptyUpdate) override;
 	virtual void onNetworkError() override;

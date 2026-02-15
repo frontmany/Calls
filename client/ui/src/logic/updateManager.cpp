@@ -37,14 +37,21 @@ bool UpdateManager::isUpdateNeeded() const {
     return m_updateNeeded;
 }
 
+void UpdateManager::showUpdateAvailableDialogIfNeeded()
+{
+    if (m_updateNeeded && !m_pendingUpdateVersion.isEmpty() && m_dialogsController) {
+        m_dialogsController->showUpdateAvailableDialog(m_pendingUpdateVersion);
+    }
+}
 
-void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
+void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QString& newVersion)
 {
     if (result == updater::CheckResult::POSSIBLE_UPDATE) {
         m_updateNeeded = true;
+        m_pendingUpdateVersion = newVersion;
         // Показываем диалог только если пользователь не в звонке
         if (m_dialogsController && m_coreClient && !m_coreClient->isActiveCall()) {
-            m_dialogsController->showUpdateAvailableDialog();
+            m_dialogsController->showUpdateAvailableDialog(newVersion);
         }
     }
     else if (result == updater::CheckResult::REQUIRED_UPDATE) {
@@ -58,6 +65,7 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result)
     }
     else if (result == updater::CheckResult::UPDATE_NOT_NEEDED) {
         m_updateNeeded = false;
+        m_pendingUpdateVersion.clear();
     }
     else {
         LOG_ERROR("error: unknown CheckResult type");

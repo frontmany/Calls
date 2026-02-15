@@ -35,6 +35,7 @@
 	 <file>maximizeHover.png</file>
 	 <file>speakerMutedActiveHover.png</file>
 	 <file>arrowDown.png</file>
+	 <file>toRightArrow.png</file>
 	 <file>microphone.png</file>
 	 <file>microphoneHover.png</file>
 	 <file>mute-enabled-microphone.png</file>
@@ -51,6 +52,5 @@
 	 <file>settings.png</file>
 	 <file>settingsHover.png</file>
 	 <file>logo.png</file>
-	 <file>confetti.png</file>
     </qresource>
 </RCC>

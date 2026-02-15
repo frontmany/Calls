@@ -12,7 +12,7 @@ namespace updater
 	namespace network
 	{
 		NetworkController::NetworkController(
-			std::function<void(CheckResult)>&& onUpdateCheckResult,
+			std::function<void(CheckResult, const std::string&)>&& onUpdateCheckResult,
 			std::function<void(double)>&& onUpdateLoadingProgress,
 			std::function<void(bool)>&& onUpdateLoaded,
 			std::function<void()>&& onNetworkError,
@@ -123,7 +123,11 @@ namespace updater
 		{
 			nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
 			CheckResult result = static_cast<CheckResult>(jsonObject[UPDATE_CHECK_RESULT].get<int>());
-			m_onCheckResult(result);
+			std::string newVersion;
+			if (jsonObject.contains(VERSION) && jsonObject[VERSION].is_string()) {
+				newVersion = jsonObject[VERSION].get<std::string>();
+			}
+			m_onCheckResult(result, newVersion);
 		}
 
 		void NetworkController::handleMetadataPacket(Packet&& packet)

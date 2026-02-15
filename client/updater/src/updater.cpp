@@ -10,9 +10,9 @@ namespace updater
 {
 	Client::Client()
 		: m_networkController(
-			[this](CheckResult status) {
+			[this](CheckResult status, const std::string& newVersion) {
 				if (m_eventListener) {
-					m_eventListener->onUpdateCheckResult(status);
+					m_eventListener->onUpdateCheckResult(status, newVersion);
 				}
 			},
 			[this](double progress) {

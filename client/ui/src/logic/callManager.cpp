@@ -111,6 +111,7 @@ void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
         m_incomingCalls.remove(friendNickname);
         if (m_dialogsController) {
             m_dialogsController->hideIncomingCallsDialog(friendNickname);
+            m_dialogsController->hideUpdateAvailableDialog();
         }
         if (m_audioManager && m_incomingCalls.isEmpty()) {
             m_audioManager->stopIncomingCallRingtone();
@@ -316,6 +317,10 @@ void CallManager::onEndCallButtonClicked()
 
         if (m_navigationController) {
             m_navigationController->switchToMainMenuWidget();
+        }
+
+        if (m_updateManager) {
+            m_updateManager->showUpdateAvailableDialogIfNeeded();
         }
 
         if (m_audioManager) {
@@ -593,6 +598,10 @@ void CallManager::onRemoteUserEndedCall()
 
     if (m_navigationController) {
         m_navigationController->switchToMainMenuWidget();
+    }
+
+    if (m_updateManager) {
+        m_updateManager->showUpdateAvailableDialogIfNeeded();
     }
 
     if (m_coreClient && m_coreClient->isScreenSharing()) {

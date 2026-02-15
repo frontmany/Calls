@@ -538,6 +538,7 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_errorLabel);
     m_containerLayout->addWidget(m_friendNicknameEdit);
     m_containerLayout->addWidget(m_callButton);
+    m_containerLayout->addSpacing(scale(20));
     m_containerLayout->addWidget(m_settingsButton);
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
