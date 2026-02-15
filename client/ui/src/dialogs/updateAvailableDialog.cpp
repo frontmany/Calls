@@ -22,13 +22,13 @@ QString StyleUpdateAvailableDialog::buttonStyle()
         "   background-color: %6;"
         "   color: %7;"
         "}")
-        .arg(COLOR_UPDATE_DIALOG_BACKGROUND.name())        // %1 - background-color
-        .arg(COLOR_BACKGROUND_PURE.name())                 // %2 - color (белый текст)
-        .arg(scale(18))                                    // %3 - border-radius
-        .arg(COLOR_UPDATE_DIALOG_BACKGROUND_HOVER.name())  // %4 - hover background-color
-        .arg(COLOR_BACKGROUND_PURE.name())                 // %5 - hover color (белый текст)
-        .arg(COLOR_UPDATE_DIALOG_BACKGROUND_PRESSED.name()) // %6 - pressed background-color
-        .arg(COLOR_BACKGROUND_PURE.name());                // %7 - pressed color (белый текст)
+        .arg(COLOR_ACCENT.name())      
+        .arg(COLOR_BACKGROUND_PURE.name())         
+        .arg(scale(18))                           
+        .arg(COLOR_ACCENT_HOVER.name())  
+        .arg(COLOR_BACKGROUND_PURE.name())               
+        .arg(COLOR_ACCENT_PRESSED.name()) 
+        .arg(COLOR_BACKGROUND_PURE.name());             
 }
 
 QString StyleUpdateAvailableDialog::containerStyle()

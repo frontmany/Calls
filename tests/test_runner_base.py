@@ -7,101 +7,96 @@ import uuid
 import random
 from functools import partial
 
-# Try multiple possible paths for Python bindings
+# Project root (parent of tests/)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_OUT_RELEASE = os.path.join(_PROJECT_ROOT, 'out', 'build', 'x64-Release')
+_OUT_DEBUG = os.path.join(_PROJECT_ROOT, 'out', 'build', 'x64-Debug')
+
+# Paths to compiled Python modules (.pyd лежит прямо в этих папках)
 possible_client_paths = [
-    'C:/prj/Callifornia/out/build/x64-Release/clientCorePythonWrapper',
-    'C:/prj/Callifornia/out/build/x64-Debug/clientCorePythonWrapper',
-    'C:/prj/Callifornia/out/build/x64-Release/clientPy',
-    'C:/prj/Callifornia/out/build/x64-Debug/clientPy',
-    'C:/prj/Callifornia/build/clientPy/Release',
-    'C:/prj/Callifornia/build/clientPy/Debug',
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'clientCorePythonWrapper'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'clientCorePythonWrapper'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'clientPy'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'clientPy'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'clientPy', 'Release'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'clientPy', 'Debug'),
+    os.path.join(_OUT_RELEASE, 'clientCorePythonWrapper'),
+    os.path.join(_OUT_DEBUG, 'clientCorePythonWrapper'),
 ]
 
 possible_server_paths = [
-    'C:/prj/Callifornia/out/build/x64-Release/serverPythonWrapper',
-    'C:/prj/Callifornia/out/build/x64-Debug/serverPythonWrapper',
-    'C:/prj/Callifornia/out/build/x64-Release/serverPy',
-    'C:/prj/Callifornia/out/build/x64-Debug/serverPy',
-    'C:/prj/Callifornia/build/serverPy/Release',
-    'C:/prj/Callifornia/build/serverPy/Debug',
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'serverPythonWrapper'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'serverPythonWrapper'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Release', 'serverPy'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'out', 'build', 'x64-Debug', 'serverPy'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'serverPy', 'Release'),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'serverPy', 'Debug'),
+    os.path.join(_OUT_RELEASE, 'serverPythonWrapper'),
+    os.path.join(_OUT_DEBUG, 'serverPythonWrapper'),
 ]
 
+def _add_dll_directories_for_import():
+    """Add project DLL dirs to Windows loader so .pyd can find dependencies (FFmpeg etc.)."""
+    if sys.platform != 'win32' or not hasattr(os, 'add_dll_directory'):
+        return
+    dirs = [
+        os.path.join(_PROJECT_ROOT, 'vendor', 'ffmpeg', 'lib'),
+        os.path.join(_OUT_RELEASE, 'clientCorePythonWrapper'),
+        os.path.join(_OUT_DEBUG, 'clientCorePythonWrapper'),
+    ]
+    for d in dirs:
+        if os.path.isdir(d):
+            os.add_dll_directory(d)
+
+
 # Try to import callsClientPy
+_add_dll_directories_for_import()
+
 callsClientPy = None
 found_client_path = None
+last_client_import_error = None
 for path in possible_client_paths:
     abs_path = os.path.abspath(path)
     if os.path.exists(abs_path):
-        # Check for module files (.pyd on Windows, .so on Linux)
-        module_files = [f for f in os.listdir(abs_path) 
-                       if f.startswith('callsClientPy') and 
-                       (f.endswith('.pyd') or f.endswith('.so') or f.endswith('.dll'))]
-        if module_files or True:  # Try import even if file not found (might be in subdirectory)
-            if abs_path not in sys.path:
-                sys.path.insert(0, abs_path)
-            try:
-                import callsClientPy
-                found_client_path = abs_path
-                break
-            except ImportError as e:
-                # Remove path if import failed
-                if abs_path in sys.path:
-                    sys.path.remove(abs_path)
-                continue
+        if abs_path not in sys.path:
+            sys.path.insert(0, abs_path)
+        try:
+            import callsClientPy
+            found_client_path = abs_path
+            break
+        except ImportError as e:
+            last_client_import_error = e
+            if abs_path in sys.path:
+                sys.path.remove(abs_path)
+            continue
 
 if callsClientPy is None:
-    tried_paths_str = "\n".join(f"  - {os.path.abspath(p)} {'(exists)' if os.path.exists(os.path.abspath(p)) else '(not found)'}" 
+    tried_paths_str = "\n".join(f"  - {os.path.abspath(p)} {'(exists)' if os.path.exists(os.path.abspath(p)) else '(not found)'}"
                                for p in possible_client_paths)
+    err_detail = f"\n\nLast import error: {last_client_import_error}" if last_client_import_error else ""
     raise ImportError(
         f"Could not find callsClientPy module.\n\n"
         f"Tried paths:\n{tried_paths_str}\n\n"
         f"Please build the project first. The module should be a .pyd file (Windows) "
-        f"or .so file (Linux) in one of the above directories."
+        f"or .so file (Linux) in one of the above directories.{err_detail}"
     )
 
 # Try to import callsServerPy
 callsServerPy = None
 found_server_path = None
+last_server_import_error = None
 for path in possible_server_paths:
     abs_path = os.path.abspath(path)
     if os.path.exists(abs_path):
-        # Check for module files
-        module_files = [f for f in os.listdir(abs_path) 
-                       if f.startswith('callsServerPy') and 
-                       (f.endswith('.pyd') or f.endswith('.so') or f.endswith('.dll'))]
-        if module_files or True:  # Try import even if file not found
-            if abs_path not in sys.path:
-                sys.path.insert(0, abs_path)
-            try:
-                import callsServerPy
-                found_server_path = abs_path
-                break
-            except ImportError as e:
-                # Remove path if import failed
-                if abs_path in sys.path:
-                    sys.path.remove(abs_path)
-                continue
+        if abs_path not in sys.path:
+            sys.path.insert(0, abs_path)
+        try:
+            import callsServerPy
+            found_server_path = abs_path
+            break
+        except ImportError as e:
+            last_server_import_error = e
+            if abs_path in sys.path:
+                sys.path.remove(abs_path)
+            continue
 
 if callsServerPy is None:
-    tried_paths_str = "\n".join(f"  - {os.path.abspath(p)} {'(exists)' if os.path.exists(os.path.abspath(p)) else '(not found)'}" 
+    tried_paths_str = "\n".join(f"  - {os.path.abspath(p)} {'(exists)' if os.path.exists(os.path.abspath(p)) else '(not found)'}"
                                for p in possible_server_paths)
+    err_detail = f"\n\nLast import error: {last_server_import_error}" if last_server_import_error else ""
     raise ImportError(
         f"Could not find callsServerPy module.\n\n"
         f"Tried paths:\n{tried_paths_str}\n\n"
         f"Please build the project first. The module should be a .pyd file (Windows) "
-        f"or .so file (Linux) in one of the above directories."
+        f"or .so file (Linux) in one of the above directories.{err_detail}"
     )
 
 

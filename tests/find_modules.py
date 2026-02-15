@@ -7,35 +7,17 @@ import sys
 def find_modules():
     """Find where Python binding modules are located"""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
+    out_release = os.path.join(base_dir, 'out', 'build', 'x64-Release')
+    out_debug = os.path.join(base_dir, 'out', 'build', 'x64-Debug')
+
     possible_client_paths = [
-        os.path.join(base_dir, 'out', 'build', 'x64-Release', 'clientCorePythonWrapper'),
-        os.path.join(base_dir, 'out', 'build', 'x64-Debug', 'clientCorePythonWrapper'),
-        os.path.join(base_dir, 'out', 'build', 'x64-Release', 'clientPy'),
-        os.path.join(base_dir, 'out', 'build', 'x64-Debug', 'clientPy'),
-        os.path.join(base_dir, 'build', 'clientPy', 'Release'),
-        os.path.join(base_dir, 'build', 'clientPy', 'Debug'),
-        'C:/prj/Callifornia/out/build/x64-Release/clientCorePythonWrapper',
-        'C:/prj/Callifornia/out/build/x64-Debug/clientCorePythonWrapper',
-        'C:/prj/Callifornia/out/build/x64-Release/clientPy',
-        'C:/prj/Callifornia/out/build/x64-Debug/clientPy',
-        'C:/prj/Callifornia/build/clientPy/Release',
-        'C:/prj/Callifornia/build/clientPy/Debug',
+        os.path.join(out_release, 'clientCorePythonWrapper'),
+        os.path.join(out_debug, 'clientCorePythonWrapper'),
     ]
-    
+
     possible_server_paths = [
-        os.path.join(base_dir, 'out', 'build', 'x64-Release', 'serverPythonWrapper'),
-        os.path.join(base_dir, 'out', 'build', 'x64-Debug', 'serverPythonWrapper'),
-        os.path.join(base_dir, 'out', 'build', 'x64-Release', 'serverPy'),
-        os.path.join(base_dir, 'out', 'build', 'x64-Debug', 'serverPy'),
-        os.path.join(base_dir, 'build', 'serverPy', 'Release'),
-        os.path.join(base_dir, 'build', 'serverPy', 'Debug'),
-        'C:/prj/Callifornia/out/build/x64-Release/serverPythonWrapper',
-        'C:/prj/Callifornia/out/build/x64-Debug/serverPythonWrapper',
-        'C:/prj/Callifornia/out/build/x64-Release/serverPy',
-        'C:/prj/Callifornia/out/build/x64-Debug/serverPy',
-        'C:/prj/Callifornia/build/serverPy/Release',
-        'C:/prj/Callifornia/build/serverPy/Debug',
+        os.path.join(out_release, 'serverPythonWrapper'),
+        os.path.join(out_debug, 'serverPythonWrapper'),
     ]
     
     print("Searching for callsClientPy module...")

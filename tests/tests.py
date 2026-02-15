@@ -1,13 +1,9 @@
 import time
 import multiprocessing
-import sys
 import importlib
 import inspect
 
-from test_runner_base import TestRunner
-
-sys.path.append('C:/prj/Callifornia/out/build/x64-Release/clientPy')
-import callsClientPy
+from test_runner_base import TestRunner  # also imports callsClientPy, callsServerPy
 
 
 def discover_and_run_all_tests():

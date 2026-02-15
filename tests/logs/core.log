@@ -343,3 +343,51 @@
 [2026-01-24 15:08:37.312] [info] [core] [thread 27884] Network controller initialized, server: localhost:8081
 [2026-01-24 15:08:38.429] [info] [core] [thread 28464] Network controller initialized, server: localhost:8081
 [2026-01-24 15:08:39.582] [info] [core] [thread 3728] Network controller initialized, server: localhost:8081
+[2026-02-15 17:24:51.917] [error] [core] [thread 51436] Control resolve localhost:8081 failed: The I/O operation has been aborted
+[2026-02-15 17:24:51.918] [warning] [core] [thread 51436] TCP connection lost
+[2026-02-15 17:24:51.918] [error] [core] [thread 58404] Failed to connect TCP to localhost:8081
+[2026-02-15 17:24:51.923] [info] [core] [thread 58404] Media controller initialized, server: localhost:8082, local port 62037
+[2026-02-15 17:24:51.924] [info] [core] [thread 58404] NetworkController UDP running on localhost:8082
+[2026-02-15 17:24:51.924] [error] [core] [thread 58404] TCP client connect error
+[2026-02-15 17:24:51.989] [info] [core] [thread 58404] NetworkController TCP disconnected
+[2026-02-15 17:24:52.037] [info] [core] [thread 58404] NetworkController UDP stopped
+[2026-02-15 17:25:04.193] [error] [core] [thread 36820] Control resolve localhost:8081 failed: The I/O operation has been aborted
+[2026-02-15 17:25:04.193] [warning] [core] [thread 36820] TCP connection lost
+[2026-02-15 17:25:04.193] [error] [core] [thread 59696] Failed to connect TCP to localhost:8081
+[2026-02-15 17:25:04.198] [info] [core] [thread 59696] Media controller initialized, server: localhost:8082, local port 62550
+[2026-02-15 17:25:04.198] [info] [core] [thread 59696] NetworkController UDP running on localhost:8082
+[2026-02-15 17:25:04.198] [error] [core] [thread 59696] TCP client connect error
+[2026-02-15 17:25:04.250] [info] [core] [thread 59696] NetworkController TCP disconnected
+[2026-02-15 17:25:04.314] [info] [core] [thread 59696] NetworkController UDP stopped
+[2026-02-15 17:25:06.217] [error] [core] [thread 51896] Control resolve localhost:8081 failed: The I/O operation has been aborted
+[2026-02-15 17:25:06.218] [warning] [core] [thread 51896] TCP connection lost
+[2026-02-15 17:25:06.218] [error] [core] [thread 44844] Failed to connect TCP to localhost:8081
+[2026-02-15 17:25:06.221] [info] [core] [thread 44844] Media controller initialized, server: localhost:8082, local port 63132
+[2026-02-15 17:25:06.222] [info] [core] [thread 44844] NetworkController UDP running on localhost:8082
+[2026-02-15 17:25:06.222] [error] [core] [thread 44844] TCP client connect error
+[2026-02-15 17:25:06.273] [info] [core] [thread 44844] NetworkController TCP disconnected
+[2026-02-15 17:25:06.337] [info] [core] [thread 44844] NetworkController UDP stopped
+[2026-02-15 17:26:14.198] [error] [core] [thread 63032] Control resolve localhost:8081 failed: The I/O operation has been aborted
+[2026-02-15 17:26:14.198] [warning] [core] [thread 63032] TCP connection lost
+[2026-02-15 17:26:14.199] [error] [core] [thread 25396] Failed to connect TCP to localhost:8081
+[2026-02-15 17:26:14.202] [info] [core] [thread 25396] Media controller initialized, server: localhost:8082, local port 62746
+[2026-02-15 17:26:14.203] [info] [core] [thread 25396] NetworkController UDP running on localhost:8082
+[2026-02-15 17:26:14.203] [error] [core] [thread 25396] TCP client connect error
+[2026-02-15 17:26:14.254] [info] [core] [thread 25396] NetworkController TCP disconnected
+[2026-02-15 17:26:14.318] [info] [core] [thread 25396] NetworkController UDP stopped
+[2026-02-15 17:26:26.502] [error] [core] [thread 46240] Control resolve localhost:8081 failed: The I/O operation has been aborted
+[2026-02-15 17:26:26.502] [warning] [core] [thread 46240] TCP connection lost
+[2026-02-15 17:26:26.502] [error] [core] [thread 3348] Failed to connect TCP to localhost:8081
+[2026-02-15 17:26:26.506] [info] [core] [thread 3348] Media controller initialized, server: localhost:8082, local port 64053
+[2026-02-15 17:26:26.506] [info] [core] [thread 3348] NetworkController UDP running on localhost:8082
+[2026-02-15 17:26:26.507] [error] [core] [thread 3348] TCP client connect error
+[2026-02-15 17:26:26.557] [info] [core] [thread 3348] NetworkController TCP disconnected
+[2026-02-15 17:26:26.621] [info] [core] [thread 3348] NetworkController UDP stopped
+[2026-02-15 17:26:28.539] [error] [core] [thread 27728] Control resolve localhost:8081 failed: The I/O operation has been aborted
+[2026-02-15 17:26:28.540] [warning] [core] [thread 27728] TCP connection lost
+[2026-02-15 17:26:28.540] [error] [core] [thread 59836] Failed to connect TCP to localhost:8081
+[2026-02-15 17:26:28.544] [info] [core] [thread 59836] Media controller initialized, server: localhost:8082, local port 52242
+[2026-02-15 17:26:28.544] [info] [core] [thread 59836] NetworkController UDP running on localhost:8082
+[2026-02-15 17:26:28.545] [error] [core] [thread 59836] TCP client connect error
+[2026-02-15 17:26:28.596] [info] [core] [thread 59836] NetworkController TCP disconnected
+[2026-02-15 17:26:28.660] [info] [core] [thread 59836] NetworkController UDP stopped

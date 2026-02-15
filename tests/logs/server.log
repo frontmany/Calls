@@ -1,0 +1,20 @@
+[2026-02-15 17:24:48.616] [info] [server] [thread 59192] [UDP] Media server initialized on port 8082
+[2026-02-15 17:24:48.617] [info] [server] [thread 53876] [UDP] Media server starting on port 8082
+[2026-02-15 17:24:48.618] [info] [server] [thread 53876] [TCP] Control server starting on port 8081
+[2026-02-15 17:26:11.832] [info] [server] [thread 47504] [UDP] Media server initialized on port 8082
+[2026-02-15 17:26:11.834] [info] [server] [thread 62688] [UDP] Media server starting on port 8082
+[2026-02-15 17:26:11.834] [info] [server] [thread 62688] [TCP] Control server starting on port 8081
+[2026-02-15 17:26:13.763] [info] [server] [thread 54844] [TCP] New connection from 127.0.0.1:63892
+[2026-02-15 17:26:13.765] [debug] [server] [thread 54844] [TCP] Active connections: 1
+[2026-02-15 17:26:13.766] [error] [server] [thread 54844] [TCP] Handshake read error: Software caused connection abort
+[2026-02-15 17:26:13.767] [info] [server] [thread 54844] [TCP] Client disconnected (active: 0)
+[2026-02-15 17:26:13.768] [debug] [server] [thread 54844] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-02-15 17:44:00.328] [info] [server] [thread 37272] [UDP] Media server initialized on port 8082
+[2026-02-15 17:44:00.329] [info] [server] [thread 53540] [UDP] Media server starting on port 8082
+[2026-02-15 17:44:00.330] [info] [server] [thread 53540] [TCP] Control server starting on port 8081
+[2026-02-15 17:46:47.720] [info] [server] [thread 45504] [UDP] Media server initialized on port 8082
+[2026-02-15 17:46:47.721] [info] [server] [thread 10856] [UDP] Media server starting on port 8082
+[2026-02-15 17:46:47.721] [info] [server] [thread 10856] [TCP] Control server starting on port 8081
+[2026-02-15 17:52:05.043] [info] [server] [thread 23108] [UDP] Media server initialized on port 8082
+[2026-02-15 17:52:05.044] [info] [server] [thread 48580] [UDP] Media server starting on port 8082
+[2026-02-15 17:52:05.044] [info] [server] [thread 48580] [TCP] Control server starting on port 8081
