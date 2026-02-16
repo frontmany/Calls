@@ -32,9 +32,9 @@ namespace core::logic
             bool activeCall = jsonObject[IS_ACTIVE_CALL].get<bool>();
 
             if (!activeCall) {
-                m_stateManager->resetActiveCall();
-
                 bool hadActiveCall = m_stateManager->isActiveCall();
+                m_stateManager->resetActiveCall();
+                m_stateManager->setCallParticipantConnectionDown(false);
                 if (hadActiveCall) {
                     m_eventListener->onCallEndedByRemote({});
                 }

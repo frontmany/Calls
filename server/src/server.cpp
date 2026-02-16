@@ -516,16 +516,17 @@ namespace server
 
         if (user->isInCall()) {
             auto partner = user->getCallPartner();
-            m_callManager.endCall(user->getCall());
             if (partner && m_userRepository.containsUser(partner->getNicknameHash())) {
                 auto pInRepo = m_userRepository.findUserByNickname(partner->getNicknameHash());
                 if (pInRepo && !pInRepo->isConnectionDown()) {
                     auto [_, p] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
                     sendTcpToUserIfConnected(partner->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), p);
                 }
-                if (pInRepo) pInRepo->resetCall();
             }
-            user->resetCall();
+            // Keep call state while user is temporarily offline.
+            // Call is terminated only when:
+            // - user reconnects and peer ends call, or
+            // - reconnection timeout triggers logout flow.
         }
     }
 

@@ -234,7 +234,8 @@ namespace core::logic
 
         const std::string& userNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
 
-        if (m_stateManager->isActiveCall()) {
+        if (m_stateManager->isActiveCall()
+            && calculateHash(m_stateManager->getActiveCall().getNickname()) == userNicknameHash) {
             m_stateManager->setCallParticipantConnectionDown(false);
 
             m_eventListener->onCallParticipantConnectionRestored();
