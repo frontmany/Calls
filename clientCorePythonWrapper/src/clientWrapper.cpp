@@ -85,19 +85,9 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onStartCameraSharingError);
     }
 
-    void onOutgoingCallAccepted() override
+    void onOutgoingCallAccepted(const std::string& nickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onOutgoingCallAccepted);
-    }
-
-    void onOutgoingCallAcceptedWithNickname(const std::string& nickname) override
-    {
-        py::gil_scoped_acquire acquire;
-        if (auto py_func = py::get_override(this, "onOutgoingCallAcceptedWithNickname")) {
-            py_func(nickname);
-        } else if (auto py_func = py::get_override(this, "onOutgoingCallAccepted")) {
-            py_func();
-        }
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onOutgoingCallAccepted, nickname);
     }
 
     void onOutgoingCallDeclined() override
@@ -195,8 +185,7 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onLocalScreen", &core::EventListener::onLocalScreen)
         .def("onLocalCamera", &core::EventListener::onLocalCamera)
         .def("onStartCameraSharingError", &core::EventListener::onStartCameraSharingError)
-        .def("onOutgoingCallAccepted", &core::EventListener::onOutgoingCallAccepted)
-        .def("onOutgoingCallAcceptedWithNickname", &core::EventListener::onOutgoingCallAcceptedWithNickname)
+        .def("onOutgoingCallAccepted", &core::EventListener::onOutgoingCallAccepted, py::arg("nickname") = "")
         .def("onOutgoingCallDeclined", &core::EventListener::onOutgoingCallDeclined)
         .def("onOutgoingCallTimeout", [](core::EventListener& self, int ec_value) {
             self.onOutgoingCallTimeout(std::error_code(ec_value, core::constant::error_category()));
@@ -263,7 +252,7 @@ PYBIND11_MODULE(callsClientPy, m) {
             "Get list of callers")
         .def("get_my_nickname", &core::Core::getMyNickname,
             "Get my nickname")
-        .def("get_nickname_whom_calling", &core::Core::getNicknameWhomCalling,
+        .def("get_nickname_whom_outgoing_call", &core::Core::getNicknameWhomOutgoingCall,
             "Get nickname of person being called")
         .def("get_nickname_in_call_with", &core::Core::getNicknameInCallWith,
             "Get nickname of person in call with")

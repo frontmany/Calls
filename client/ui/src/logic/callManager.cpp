@@ -46,7 +46,7 @@ void CallManager::setNotificationController(NotificationController* notification
     m_notificationController = notificationController;
 }
 
-void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
+void CallManager::onStartOutgoingCallButtonClicked(const QString& friendNickname)
 {
     if (!m_mainMenuWidget) return;
 
@@ -68,7 +68,7 @@ void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
     }
     else if (ec) {
         if (!m_coreClient->isConnectionDown()) {
-            handleStartCallingErrorNotificationAppearance();
+            handleStartOutgoingCallErrorNotificationAppearance();
         }
     }
     else {
@@ -78,7 +78,7 @@ void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
     }
 }
 
-void CallManager::onStopCallingButtonClicked()
+void CallManager::onStopOutgoingCallButtonClicked()
 {
     if (!m_mainMenuWidget) return;
 
@@ -87,16 +87,16 @@ void CallManager::onStopCallingButtonClicked()
     std::error_code ec = m_coreClient->stopOutgoingCall();
     if (ec) {
         if (!m_coreClient->isConnectionDown()) {
-            handleStopCallingErrorNotificationAppearance();
+            handleStopOutgoingCallErrorNotificationAppearance();
         }
     }
     else {
         if (m_mainMenuWidget) {
-            m_mainMenuWidget->removeCallingPanel();
+            m_mainMenuWidget->removeOutgoingCallPanel();
             m_mainMenuWidget->setStatusLabelOnline();
         }
         if (m_audioManager) {
-            m_audioManager->stopCallingRingtone();
+            m_audioManager->stopOutgoingCallRingtone();
         }
     }
 }
@@ -118,7 +118,7 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
         m_coreClient->stopCameraSharing();
     }
     if (m_mainMenuWidget) {
-        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->removeOutgoingCallPanel();
     }
     updateIncomingCallsUi();
     if (m_callWidget) {
@@ -167,7 +167,7 @@ void CallManager::onDeclineCallButtonClicked(const QString& friendNickname)
         if (m_audioManager) {
             if (m_incomingCalls.isEmpty())
                 m_audioManager->stopIncomingCallRingtone();
-            m_audioManager->playCallingEndedEffect();
+            m_audioManager->playOutgoingCallEndedEffect();
         }
     }
 }
@@ -335,15 +335,15 @@ void CallManager::onEndCallButtonClicked()
     }
 }
 
-void CallManager::onStartCallingResult(std::error_code ec)
+void CallManager::onStartOutgoingCallResult(std::error_code ec)
 {
     if (!m_mainMenuWidget || !m_coreClient) return;
 
     if (!ec) {
-        m_mainMenuWidget->showCallingPanel(QString::fromStdString(m_coreClient->getNicknameWhomCalling()));
-        m_mainMenuWidget->setStatusLabelCalling();
+        m_mainMenuWidget->showOutgoingCallPanel(QString::fromStdString(m_coreClient->getNicknameWhomOutgoingCall()));
+        m_mainMenuWidget->setStatusLabelOutgoingCall();
         if (m_audioManager) {
-            m_audioManager->playCallingRingtone();
+            m_audioManager->playOutgoingCallRingtone();
         }
     }
     else {
@@ -354,11 +354,11 @@ void CallManager::onStartCallingResult(std::error_code ec)
             QString errorMessage;
             if (ec == core::constant::make_error_code(core::constant::ErrorCode::unexisting_user)) {
                 errorMessage = "User not found";
-                LOG_WARN("Start calling failed: user not found");
+                LOG_WARN("Start outgoing call failed: user not found");
             }
             else {
                 errorMessage = "Something went wrong please try again";
-                LOG_ERROR("Start calling failed: timeout or network error");
+                LOG_ERROR("Start outgoing call failed: timeout or network error");
             }
 
             if (!m_coreClient->isConnectionDown()) {
@@ -368,24 +368,18 @@ void CallManager::onStartCallingResult(std::error_code ec)
     }
 }
 
-void CallManager::onMaximumCallingTimeReached()
+void CallManager::onMaximumOutgoingCallTimeReached()
 {
     if (!m_mainMenuWidget) return;
 
-    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->removeOutgoingCallPanel();
     m_mainMenuWidget->setStatusLabelOnline();
     if (m_audioManager) {
-        m_audioManager->stopCallingRingtone();
+        m_audioManager->stopOutgoingCallRingtone();
     }
 }
 
-void CallManager::onCallingAccepted()
-{
-    if (!m_mainMenuWidget || !m_coreClient) return;
-    onCallingAcceptedWithNickname(QString::fromStdString(m_coreClient->getNicknameInCallWith()));
-}
-
-void CallManager::onCallingAcceptedWithNickname(const QString& nickname)
+void CallManager::onOutgoingCallAccepted(const QString& nickname)
 {
     if (!m_mainMenuWidget || !m_coreClient) return;
 
@@ -393,11 +387,11 @@ void CallManager::onCallingAcceptedWithNickname(const QString& nickname)
     updateIncomingCallsUi();
 
     if (m_audioManager) {
-        m_audioManager->stopCallingRingtone();
+        m_audioManager->stopOutgoingCallRingtone();
         m_audioManager->stopIncomingCallRingtone();
     }
 
-    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->removeOutgoingCallPanel();
     m_mainMenuWidget->setStatusLabelBusy();
 
     if (m_navigationController && !nickname.isEmpty()) {
@@ -413,19 +407,19 @@ void CallManager::onCallingAcceptedWithNickname(const QString& nickname)
     }
 }
 
-void CallManager::onCallingDeclined()
+void CallManager::onOutgoingCallDeclined()
 {
     if (!m_mainMenuWidget) return;
 
-    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->removeOutgoingCallPanel();
     m_mainMenuWidget->setStatusLabelOnline();
 
     if (m_audioManager) {
-        m_audioManager->stopCallingRingtone();
+        m_audioManager->stopOutgoingCallRingtone();
     }
 
     if (m_audioManager) {
-        m_audioManager->playCallingEndedEffect();
+        m_audioManager->playOutgoingCallEndedEffect();
     }
 }
 
@@ -451,7 +445,7 @@ void CallManager::onIncomingCallExpired(const QString& friendNickname)
     }
 
     if (m_audioManager) {
-        m_audioManager->playCallingEndedEffect();
+        m_audioManager->playOutgoingCallEndedEffect();
     }
 }
 
@@ -473,18 +467,18 @@ void CallManager::handleDeclineCallErrorNotificationAppearance()
     }
 }
 
-void CallManager::handleStartCallingErrorNotificationAppearance()
+void CallManager::handleStartOutgoingCallErrorNotificationAppearance()
 {
-    QString errorText = "Failed to start calling. Please try again";
+    QString errorText = "Failed to start outgoing call. Please try again";
 
     if (m_notificationController) {
         m_notificationController->showErrorNotification(errorText, 1500);
     }
 }
 
-void CallManager::handleStopCallingErrorNotificationAppearance()
+void CallManager::handleStopOutgoingCallErrorNotificationAppearance()
 {
-    QString errorText = "Failed to stop calling. Please try again";
+    QString errorText = "Failed to stop outgoing call. Please try again";
 
     if (m_notificationController) {
         m_notificationController->showErrorNotification(errorText, 1500);
@@ -574,7 +568,7 @@ void CallManager::onLocalConnectionDown()
     hideOperationDialog();
 
     if (m_mainMenuWidget) {
-        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->removeOutgoingCallPanel();
         m_mainMenuWidget->setStatusLabelOnline();
         m_mainMenuWidget->setCallButtonEnabled(true);
     }
@@ -584,7 +578,7 @@ void CallManager::onLocalConnectionDown()
 
     if (m_audioManager) {
         m_audioManager->stopIncomingCallRingtone();
-        m_audioManager->stopCallingRingtone();
+        m_audioManager->stopOutgoingCallRingtone();
     }
 }
 
@@ -613,11 +607,11 @@ void CallManager::onRemoteUserEndedCall()
 {
     if (!m_mainMenuWidget) return;
 
-    m_mainMenuWidget->removeCallingPanel();
+    m_mainMenuWidget->removeOutgoingCallPanel();
     m_mainMenuWidget->setStatusLabelOnline();
     
     if (m_audioManager) {
-        m_audioManager->stopCallingRingtone();
+        m_audioManager->stopOutgoingCallRingtone();
         m_audioManager->stopIncomingCallRingtone();
         m_audioManager->playEndCallEffect();
     }
@@ -749,10 +743,6 @@ void CallManager::onIncomingScreenSharingStopped()
         m_callWidget->hideEnterFullscreenButton();
         if (m_callWidget->isFullScreen()) {
             emit endCallFullscreenExitRequested();
-            QTimer::singleShot(0, this, [this]() {
-                if (m_callWidget)
-                    m_callWidget->hideEnterFullscreenButton();
-            });
         }
     }
 }

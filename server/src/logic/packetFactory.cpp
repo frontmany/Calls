@@ -114,4 +114,15 @@ std::pair<std::string, std::vector<unsigned char>> PacketFactory::getCallDecline
 
     return std::make_pair(uid, toBytes(jsonObject.dump()));
 }
+
+std::vector<unsigned char> PacketFactory::getCallEndPacket(const std::string& senderNicknameHash, const std::string& receiverNicknameHash) {
+    nlohmann::json jsonObject;
+    std::string uid = crypto::generateUID();
+
+    jsonObject[UID] = uid;
+    jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
+    jsonObject[RECEIVER_NICKNAME_HASH] = receiverNicknameHash;
+
+    return toBytes(jsonObject.dump());
+}
 } // namespace server

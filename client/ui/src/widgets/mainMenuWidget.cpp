@@ -19,7 +19,7 @@ const QColor StyleMainMenuWidget::m_backgroundColor = COLOR_BACKGROUND_MAIN;
 const QColor StyleMainMenuWidget::m_textColor = COLOR_TEXT_MAIN;
 const QColor StyleMainMenuWidget::m_onlineColor = COLOR_STATUS_ONLINE;
 const QColor StyleMainMenuWidget::m_offlineColor = COLOR_STATUS_OFFLINE;
-const QColor StyleMainMenuWidget::m_callingColor = COLOR_STATUS_CALLING;
+const QColor StyleMainMenuWidget::m_outgoingCallColor = COLOR_STATUS_OUTGOING_CALL;
 const QColor StyleMainMenuWidget::m_errorColor = COLOR_OVERLAY_ERROR_200;
 const QColor StyleMainMenuWidget::m_disabledColor = COLOR_STATE_DISABLED;
 const QColor StyleMainMenuWidget::m_settingsButtonColor = COLOR_OVERLAY_SETTINGS_190;
@@ -27,9 +27,9 @@ const QColor StyleMainMenuWidget::m_settingsButtonHoverColor = COLOR_OVERLAY_SET
 const QColor StyleMainMenuWidget::m_lineEditBackgroundColor = COLOR_OVERLAY_NEUTRAL_190;
 const QColor StyleMainMenuWidget::m_lineEditFocusBackgroundColor = COLOR_OVERLAY_PURE_190;
 const QColor StyleMainMenuWidget::m_placeholderColor = COLOR_INPUT_PLACEHOLDER;
-const QColor StyleMainMenuWidget::m_callingSectionBackgroundColor = COLOR_OVERLAY_CALLING_180;
-const QColor StyleMainMenuWidget::m_stopCallingButtonColor = COLOR_OVERLAY_ERROR_BANNER_180;
-const QColor StyleMainMenuWidget::m_stopCallingButtonHoverColor = COLOR_OVERLAY_ERROR_BANNER_220;
+const QColor StyleMainMenuWidget::m_outgoingCallSectionBackgroundColor = COLOR_OVERLAY_OUTGOING_CALL_180;
+const QColor StyleMainMenuWidget::m_stopOutgoingCallButtonColor = COLOR_OVERLAY_ERROR_BANNER_180;
+const QColor StyleMainMenuWidget::m_stopOutgoingCallButtonHoverColor = COLOR_OVERLAY_ERROR_BANNER_220;
 const QColor StyleMainMenuWidget::m_incomingCallBackgroundColor = COLOR_OVERLAY_NEUTRAL_200;
 const QColor StyleMainMenuWidget::m_settingsPanelBackgroundColor = QColor(240, 240, 240, 200);
 const QColor StyleMainMenuWidget::m_scrollBarColor = COLOR_SCROLLBAR_BACKGROUND;
@@ -285,14 +285,14 @@ QString StyleMainMenuWidget::scrollAreaStyle() {
         .arg(m_scrollBarPressedColor.name());
 }
 
-QString StyleMainMenuWidget::callingSectionStyle() {
+QString StyleMainMenuWidget::outgoingCallSectionStyle() {
     return QString("QWidget {"
         "   background-color: rgba(%1, %2, %3, %4);"
         "   border-radius: %5px;"
         "   padding: %6px %7px;"
         "   margin: %8px %9px;"
-        "}").arg(m_callingSectionBackgroundColor.red()).arg(m_callingSectionBackgroundColor.green())
-        .arg(m_callingSectionBackgroundColor.blue()).arg(m_callingSectionBackgroundColor.alpha())
+        "}").arg(m_outgoingCallSectionBackgroundColor.red()).arg(m_outgoingCallSectionBackgroundColor.green())
+        .arg(m_outgoingCallSectionBackgroundColor.blue()).arg(m_outgoingCallSectionBackgroundColor.alpha())
         .arg(QString::fromStdString(std::to_string(scale(15))))  // border-radius
         .arg(QString::fromStdString(std::to_string(scale(12))))  // padding vertical
         .arg(QString::fromStdString(std::to_string(scale(15))))  // padding horizontal
@@ -300,12 +300,12 @@ QString StyleMainMenuWidget::callingSectionStyle() {
         .arg(QString::fromStdString(std::to_string(scale(0))));  // margin horizontal
 }
 
-QString StyleMainMenuWidget::callingTextStyle() {
+QString StyleMainMenuWidget::outgoingCallTextStyle() {
     return QString("QLabel {"
         "   color: %1;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(m_callingColor.name());
+        "}").arg(m_outgoingCallColor.name());
 }
 
 QString StyleMainMenuWidget::incomingCallsHeaderStyle() {
@@ -316,7 +316,7 @@ QString StyleMainMenuWidget::incomingCallsHeaderStyle() {
         "}").arg(m_textColor.name());
 }
 
-QString StyleMainMenuWidget::stopCallingButtonStyle() {
+QString StyleMainMenuWidget::stopOutgoingCallButtonStyle() {
     return QString("QPushButton {"
         "   background-color: rgba(%1, %2, %3, %4);"
         "   color: white;"
@@ -325,10 +325,10 @@ QString StyleMainMenuWidget::stopCallingButtonStyle() {
         "   padding: %6px %7px;"
         "   font-size: %8px;"
         "   margin: %9px;"
-        "}").arg(m_stopCallingButtonColor.red())                // %1 - red
-        .arg(m_stopCallingButtonColor.green())                   // %2 - green
-        .arg(m_stopCallingButtonColor.blue())                    // %3 - blue
-        .arg(m_stopCallingButtonColor.alpha())                  // %4 - alpha
+        "}").arg(m_stopOutgoingCallButtonColor.red())                // %1 - red
+        .arg(m_stopOutgoingCallButtonColor.green())                   // %2 - green
+        .arg(m_stopOutgoingCallButtonColor.blue())                    // %3 - blue
+        .arg(m_stopOutgoingCallButtonColor.alpha())                  // %4 - alpha
         .arg(scale(11))                                          // %5 - border-radius
         .arg(scale(6))                                           // %6 - padding vertical
         .arg(scale(12))                                          // %7 - padding horizontal
@@ -336,14 +336,14 @@ QString StyleMainMenuWidget::stopCallingButtonStyle() {
         .arg(scale(8));                                          // %9 - margin
 }
 
-QString StyleMainMenuWidget::stopCallingButtonHoverStyle() {
+QString StyleMainMenuWidget::stopOutgoingCallButtonHoverStyle() {
     return QString("QPushButton:hover {"
         "   background-color: rgba(%1, %2, %3, %4);"
-        "}").arg(m_stopCallingButtonHoverColor.red()).arg(m_stopCallingButtonHoverColor.green())
-        .arg(m_stopCallingButtonHoverColor.blue()).arg(m_stopCallingButtonHoverColor.alpha());
+        "}").arg(m_stopOutgoingCallButtonHoverColor.red()).arg(m_stopOutgoingCallButtonHoverColor.green())
+        .arg(m_stopOutgoingCallButtonHoverColor.blue()).arg(m_stopOutgoingCallButtonHoverColor.alpha());
 }
 
-QString StyleMainMenuWidget::disabledStopCallingButtonStyle() {
+QString StyleMainMenuWidget::disabledStopOutgoingCallButtonStyle() {
     return QString("QPushButton {"
         "   background-color: rgba(%1, %2, %3, 120);"
         "   color: rgba(255, 255, 255, 150);"
@@ -353,7 +353,7 @@ QString StyleMainMenuWidget::disabledStopCallingButtonStyle() {
         "   font-size: %7px;"
         "   margin: %8px;"
         "   opacity: 0.6;"
-        "}").arg(m_stopCallingButtonColor.red()).arg(m_stopCallingButtonColor.green()).arg(m_stopCallingButtonColor.blue())
+        "}").arg(m_stopOutgoingCallButtonColor.red()).arg(m_stopOutgoingCallButtonColor.green()).arg(m_stopOutgoingCallButtonColor.blue())
         .arg(QString::fromStdString(std::to_string(scale(11))))  // border-radius
         .arg(QString::fromStdString(std::to_string(scale(6))))   // padding vertical
         .arg(QString::fromStdString(std::to_string(scale(12))))  // padding horizontal
@@ -433,35 +433,35 @@ void MainMenuWidget::setupUI() {
     m_userInfoLayout->addWidget(m_avatarLabel);
     m_userInfoLayout->addLayout(m_userTextLayout);
 
-    // Calling section (initially hidden)
-    m_callingSection = new QWidget(m_mainContainer);
-    m_callingSection->setStyleSheet(StyleMainMenuWidget::callingSectionStyle());
-    m_callingSection->setFixedHeight(scale(50));
-    m_callingSection->hide();
+    // Outgoing call section (initially hidden)
+    m_outgoingCallSection = new QWidget(m_mainContainer);
+    m_outgoingCallSection->setStyleSheet(StyleMainMenuWidget::outgoingCallSectionStyle());
+    m_outgoingCallSection->setFixedHeight(scale(50));
+    m_outgoingCallSection->hide();
 
-    m_callingLayout = new QHBoxLayout(m_callingSection);
-    m_callingLayout->setSpacing(scale(10));
-    m_callingLayout->setContentsMargins(0, 0, 0, 0);
-    m_callingLayout->setAlignment(Qt::AlignCenter);
+    m_outgoingCallLayout = new QHBoxLayout(m_outgoingCallSection);
+    m_outgoingCallLayout->setSpacing(scale(10));
+    m_outgoingCallLayout->setContentsMargins(0, 0, 0, 0);
+    m_outgoingCallLayout->setAlignment(Qt::AlignCenter);
 
-    // Calling text
-    m_callingText = new QLabel("Calling...", m_callingSection);
-    m_callingText->setStyleSheet(StyleMainMenuWidget::callingTextStyle());
-    QFont callingFont("Outfit", scale(12), QFont::Normal);
-    m_callingText->setFont(callingFont);
+    // Outgoing call text
+    m_outgoingCallText = new QLabel("Outgoing call...", m_outgoingCallSection);
+    m_outgoingCallText->setStyleSheet(StyleMainMenuWidget::outgoingCallTextStyle());
+    QFont outgoingCallFont("Outfit", scale(12), QFont::Normal);
+    m_outgoingCallText->setFont(outgoingCallFont);
 
     // Cancel call button
-    m_stopCallingButton = new QPushButton("Cancel", m_callingSection);
-    m_stopCallingButton->setStyleSheet(
-        StyleMainMenuWidget::stopCallingButtonStyle() +
-        StyleMainMenuWidget::stopCallingButtonHoverStyle()
+    m_stopOutgoingCallButton = new QPushButton("Cancel", m_outgoingCallSection);
+    m_stopOutgoingCallButton->setStyleSheet(
+        StyleMainMenuWidget::stopOutgoingCallButtonStyle() +
+        StyleMainMenuWidget::stopOutgoingCallButtonHoverStyle()
     );
-    m_stopCallingButton->setCursor(Qt::PointingHandCursor);
+    m_stopOutgoingCallButton->setCursor(Qt::PointingHandCursor);
 
-    m_callingLayout->addSpacing(scale(15));
-    m_callingLayout->addWidget(m_callingText);
-    m_callingLayout->addStretch();
-    m_callingLayout->addWidget(m_stopCallingButton);
+    m_outgoingCallLayout->addSpacing(scale(15));
+    m_outgoingCallLayout->addWidget(m_outgoingCallText);
+    m_outgoingCallLayout->addStretch();
+    m_outgoingCallLayout->addWidget(m_stopOutgoingCallButton);
 
     // Call section
     m_errorLabel = new QLabel("field cannot be empty", m_mainContainer);
@@ -534,7 +534,7 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addSpacing(scale(-4));
     m_containerLayout->addWidget(m_userInfoWidget);
     m_containerLayout->addSpacing(scale(12));
-    m_containerLayout->addWidget(m_callingSection);
+    m_containerLayout->addWidget(m_outgoingCallSection);
     m_containerLayout->addWidget(m_errorLabel);
     m_containerLayout->addWidget(m_friendNicknameEdit);
     m_containerLayout->addWidget(m_callButton);
@@ -548,7 +548,7 @@ void MainMenuWidget::setupUI() {
     // Connect signals
     connect(m_callButton, &QPushButton::clicked, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
-    connect(m_stopCallingButton, &QPushButton::clicked, this, &MainMenuWidget::onStopCallingButtonClicked);
+    connect(m_stopOutgoingCallButton, &QPushButton::clicked, this, &MainMenuWidget::onStopOutgoingCallButtonClicked);
     connect(m_friendNicknameEdit, &QLineEdit::textChanged, this, &MainMenuWidget::clearErrorMessage);
     connect(m_settingsPanel, &SettingsPanel::audioDevicePickerRequested, [this]() {emit audioDevicePickerRequested(); });
     connect(m_settingsPanel, &SettingsPanel::inputVolumeChanged, [this](int newVolume) {emit inputVolumeChanged(newVolume); });
@@ -578,16 +578,16 @@ void MainMenuWidget::setupAnimations() {
         }
         });
 
-    // Calling section animation
-    m_callingAnimation = new QPropertyAnimation(m_callingSection, "maximumHeight", this);
-    m_callingAnimation->setDuration(UI_ANIMATION_DURATION_MS);
-    m_callingAnimation->setEasingCurve(QEasingCurve::InOutQuad);
-    m_callingAnimation->setStartValue(0);
-    m_callingAnimation->setEndValue(scale(50));
+    // Outgoing call section animation
+    m_outgoingCallAnimation = new QPropertyAnimation(m_outgoingCallSection, "maximumHeight", this);
+    m_outgoingCallAnimation->setDuration(UI_ANIMATION_DURATION_MS);
+    m_outgoingCallAnimation->setEasingCurve(QEasingCurve::InOutQuad);
+    m_outgoingCallAnimation->setStartValue(0);
+    m_outgoingCallAnimation->setEndValue(scale(50));
 
-    connect(m_callingAnimation, &QPropertyAnimation::finished, this, [this]() {
-        if (m_callingAnimation->direction() == QAbstractAnimation::Backward) {
-            m_callingSection->hide();
+    connect(m_outgoingCallAnimation, &QPropertyAnimation::finished, this, [this]() {
+        if (m_outgoingCallAnimation->direction() == QAbstractAnimation::Backward) {
+            m_outgoingCallSection->hide();
         }
     });
 }
@@ -637,14 +637,14 @@ void MainMenuWidget::setStatusLabelOnline() {
     m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_primaryColor.name()));
 }
 
-void MainMenuWidget::setStatusLabelCalling() {
-    m_statusLabel->setText("Calling...");
-    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
+void MainMenuWidget::setStatusLabelOutgoingCall() {
+    m_statusLabel->setText("Outgoing call...");
+    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_outgoingCallColor.name()));
 }
 
 void MainMenuWidget::setStatusLabelBusy() {
     m_statusLabel->setText("Busy");
-    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_callingColor.name()));
+    m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_outgoingCallColor.name()));
 }
 
 void MainMenuWidget::setStatusLabelOffline() {
@@ -653,40 +653,40 @@ void MainMenuWidget::setStatusLabelOffline() {
 }
 
 
-void MainMenuWidget::showCallingPanel(const QString& friendNickname) {
-    m_callingFriend = friendNickname;
-    m_callingText->setText("Calling " + friendNickname + "...");
-    updateCallingState(true);
+void MainMenuWidget::showOutgoingCallPanel(const QString& friendNickname) {
+    m_outgoingCallFriend = friendNickname;
+    m_outgoingCallText->setText("Outgoing call to " + friendNickname + "...");
+    updateOutgoingCallState(true);
 
-    // Show calling section with animation
-    if (m_callingSection->isHidden()) {
-        m_callingSection->setMaximumHeight(0);
-        m_callingSection->show();
-        m_callingAnimation->setDirection(QAbstractAnimation::Forward);
-        m_callingAnimation->start();
+    // Show outgoing call section with animation
+    if (m_outgoingCallSection->isHidden()) {
+        m_outgoingCallSection->setMaximumHeight(0);
+        m_outgoingCallSection->show();
+        m_outgoingCallAnimation->setDirection(QAbstractAnimation::Forward);
+        m_outgoingCallAnimation->start();
     }
 }
 
-void MainMenuWidget::removeCallingPanel() {
-    m_callingFriend.clear();
-    updateCallingState(false);
+void MainMenuWidget::removeOutgoingCallPanel() {
+    m_outgoingCallFriend.clear();
+    updateOutgoingCallState(false);
 
-    // Hide calling section with animation
-    if (!m_callingSection->isHidden()) {
-        m_callingAnimation->setDirection(QAbstractAnimation::Backward);
-        m_callingAnimation->start();
+    // Hide outgoing call section with animation
+    if (!m_outgoingCallSection->isHidden()) {
+        m_outgoingCallAnimation->setDirection(QAbstractAnimation::Backward);
+        m_outgoingCallAnimation->start();
     }
 
     m_friendNicknameEdit->clear();
 }
 
-void MainMenuWidget::updateCallingState(bool calling) {
+void MainMenuWidget::updateOutgoingCallState(bool outgoingCall) {
     // Block/unblock input and call button
-    m_friendNicknameEdit->setEnabled(!calling);
-    m_callButton->setEnabled(!calling);
+    m_friendNicknameEdit->setEnabled(!outgoingCall);
+    m_callButton->setEnabled(!outgoingCall);
 
     // Visual feedback for disabled state
-    if (calling) {
+    if (outgoingCall) {
         m_friendNicknameEdit->setStyleSheet(StyleMainMenuWidget::disabledLineEditStyle());
         m_callButton->setStyleSheet(StyleMainMenuWidget::disabledButtonStyle());
     }
@@ -698,7 +698,7 @@ void MainMenuWidget::updateCallingState(bool calling) {
 
 void MainMenuWidget::onCallButtonClicked() {
     QString friendNickname = m_friendNicknameEdit->text().trimmed();
-    emit startCallingButtonClicked(friendNickname);
+    emit startOutgoingCallButtonClicked(friendNickname);
 }
 
 void MainMenuWidget::setErrorMessage(const QString& errorText) {
@@ -726,8 +726,8 @@ void MainMenuWidget::onSettingsButtonClicked() {
     }
 }
 
-void MainMenuWidget::onStopCallingButtonClicked() {
-    emit stopCallingButtonClicked();
+void MainMenuWidget::onStopOutgoingCallButtonClicked() {
+    emit stopOutgoingCallButtonClicked();
 }
 
 void MainMenuWidget::setInputVolume(int volume) {
@@ -763,18 +763,18 @@ void MainMenuWidget::setCallButtonEnabled(bool enabled)
     }
 }
 
-void MainMenuWidget::setStopCallingButtonEnabled(bool enabled)
+void MainMenuWidget::setStopOutgoingCallButtonEnabled(bool enabled)
 {
-    if (m_stopCallingButton) {
-        m_stopCallingButton->setEnabled(enabled);
+    if (m_stopOutgoingCallButton) {
+        m_stopOutgoingCallButton->setEnabled(enabled);
         if (enabled) {
-            m_stopCallingButton->setStyleSheet(
-                StyleMainMenuWidget::stopCallingButtonStyle() +
-                StyleMainMenuWidget::stopCallingButtonHoverStyle()
+            m_stopOutgoingCallButton->setStyleSheet(
+                StyleMainMenuWidget::stopOutgoingCallButtonStyle() +
+                StyleMainMenuWidget::stopOutgoingCallButtonHoverStyle()
             );
         }
         else {
-            m_stopCallingButton->setStyleSheet(StyleMainMenuWidget::disabledStopCallingButtonStyle());
+            m_stopOutgoingCallButton->setStyleSheet(StyleMainMenuWidget::disabledStopOutgoingCallButtonStyle());
         }
     }
 }

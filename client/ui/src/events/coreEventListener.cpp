@@ -25,7 +25,7 @@ void CoreEventListener::onAuthorizationResult(std::error_code ec)
 void CoreEventListener::onStartOutgoingCallResult(std::error_code ec)
 {
     if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onStartCallingResult",
+        QMetaObject::invokeMethod(m_callManager, "onStartonOutgoingCallResult",
             Qt::QueuedConnection, Q_ARG(std::error_code, ec));
     }
 }
@@ -104,19 +104,11 @@ void CoreEventListener::onLocalCamera(const std::vector<unsigned char>& data, in
     }
 }
 
-void CoreEventListener::onOutgoingCallAccepted()
-{
-    if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onCallingAccepted",
-            Qt::QueuedConnection);
-    }
-}
-
-void CoreEventListener::onOutgoingCallAcceptedWithNickname(const std::string& nickname)
+void CoreEventListener::onOutgoingCallAccepted(const std::string& nickname)
 {
     if (m_callManager) {
         QString qNickname = QString::fromStdString(nickname);
-        QMetaObject::invokeMethod(m_callManager, "onCallingAcceptedWithNickname",
+        QMetaObject::invokeMethod(m_callManager, "onOutgoingCallAccepted",
             Qt::QueuedConnection, Q_ARG(QString, qNickname));
     }
 }
@@ -124,7 +116,7 @@ void CoreEventListener::onOutgoingCallAcceptedWithNickname(const std::string& ni
 void CoreEventListener::onOutgoingCallDeclined()
 {
     if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onCallingDeclined",
+        QMetaObject::invokeMethod(m_callManager, "onOutgoingCallDeclined",
             Qt::QueuedConnection);
     }
 }
@@ -132,7 +124,7 @@ void CoreEventListener::onOutgoingCallDeclined()
 void CoreEventListener::onOutgoingCallTimeout(std::error_code ec)
 {
     if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onMaximumCallingTimeReached",
+        QMetaObject::invokeMethod(m_callManager, "onMaximumOutgoingCallTimeReached",
             Qt::QueuedConnection);
     }
 }

@@ -23,7 +23,7 @@ struct StyleMainMenuWidget {
     static const QColor m_textColor;
     static const QColor m_onlineColor;
     static const QColor m_offlineColor;
-    static const QColor m_callingColor;
+    static const QColor m_outgoingCallColor;
     static const QColor m_errorColor;
     static const QColor m_disabledColor;
     static const QColor m_settingsButtonColor;
@@ -31,9 +31,9 @@ struct StyleMainMenuWidget {
     static const QColor m_lineEditBackgroundColor;
     static const QColor m_lineEditFocusBackgroundColor;
     static const QColor m_placeholderColor;
-    static const QColor m_callingSectionBackgroundColor;
-    static const QColor m_stopCallingButtonColor;
-    static const QColor m_stopCallingButtonHoverColor;
+    static const QColor m_outgoingCallSectionBackgroundColor;
+    static const QColor m_stopOutgoingCallButtonColor;
+    static const QColor m_stopOutgoingCallButtonHoverColor;
     static const QColor m_incomingCallBackgroundColor;
     static const QColor m_settingsPanelBackgroundColor;
     static const QColor m_scrollBarColor;
@@ -52,13 +52,13 @@ struct StyleMainMenuWidget {
     static QString scrollAreaStyle();
     static QString incomingCallWidgetStyle();
     static QString settingsPanelStyle();
-    static QString callingSectionStyle();
-    static QString callingTextStyle();
+    static QString outgoingCallSectionStyle();
+    static QString outgoingCallTextStyle();
     static QString errorLabelStyle();
     static QString incomingCallsHeaderStyle();
-    static QString stopCallingButtonStyle();
-    static QString stopCallingButtonHoverStyle();
-    static QString disabledStopCallingButtonStyle();
+    static QString stopOutgoingCallButtonStyle();
+    static QString stopOutgoingCallButtonHoverStyle();
+    static QString disabledStopOutgoingCallButtonStyle();
     static QString notificationRedLabelStyle();
     static QString notificationBlueLabelStyle();
 };
@@ -70,11 +70,11 @@ public:
     MainMenuWidget(QWidget* parent = nullptr);
     void setNickname(const QString& nickname);
     void setStatusLabelOnline();
-    void setStatusLabelCalling();
+    void setStatusLabelOutgoingCall();
     void setStatusLabelBusy();
     void setStatusLabelOffline();
-    void showCallingPanel(const QString& friendNickname);
-    void removeCallingPanel();
+    void showOutgoingCallPanel(const QString& friendNickname);
+    void removeOutgoingCallPanel();
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
@@ -85,12 +85,12 @@ public:
     void setSpeakerMuted(bool muted);
     void setCameraActive(bool active);
     void setCallButtonEnabled(bool enabled);
-    void setStopCallingButtonEnabled(bool enabled);
+    void setStopOutgoingCallButtonEnabled(bool enabled);
 
 
 signals:
-    void startCallingButtonClicked(const QString& friendNickname);
-    void stopCallingButtonClicked();
+    void startOutgoingCallButtonClicked(const QString& friendNickname);
+    void stopOutgoingCallButtonClicked();
     void audioDevicePickerRequested();
     void inputVolumeChanged(int newVolume);
     void outputVolumeChanged(int newVolume);
@@ -101,13 +101,13 @@ signals:
 private slots:
     void onCallButtonClicked();
     void onSettingsButtonClicked();
-    void onStopCallingButtonClicked();
+    void onStopOutgoingCallButtonClicked();
 
 private:
     void setupUI();
     void setupAnimations();
     void paintEvent(QPaintEvent* event) override;
-    void updateCallingState(bool calling);
+    void updateOutgoingCallState(bool outgoingCall);
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
@@ -124,11 +124,11 @@ private:
     QLabel* m_nicknameLabel;
     QLabel* m_statusLabel;
 
-    // Calling section
-    QWidget* m_callingSection;
-    QHBoxLayout* m_callingLayout;
-    QLabel* m_callingText;
-    QPushButton* m_stopCallingButton;
+    // Outgoing call section
+    QWidget* m_outgoingCallSection;
+    QHBoxLayout* m_outgoingCallLayout;
+    QLabel* m_outgoingCallText;
+    QPushButton* m_stopOutgoingCallButton;
 
     // Call section
     QLabel* m_errorLabel;
@@ -141,8 +141,8 @@ private:
 
     // Animations
     QPropertyAnimation* m_settingsAnimation;
-    QPropertyAnimation* m_callingAnimation;
+    QPropertyAnimation* m_outgoingCallAnimation;
 
     QString m_currentNickname;
-    QString m_callingFriend;
+    QString m_outgoingCallFriend;
 };

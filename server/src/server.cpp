@@ -370,7 +370,7 @@ namespace server
                     removeIncomingPendingCall(receiver, out);
                     std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
                     std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                    LOG_INFO("Calling stopped: {} -> {}", sp, rp);
+                    LOG_INFO("Outgoing call stopped: {} -> {}", sp, rp);
                 }
             }
         }
@@ -400,7 +400,18 @@ namespace server
             if (!found) return;
 
             std::vector<unsigned char> body = toBytes(json.dump());
-            sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_ACCEPT), body);
+            bool delivered = sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_ACCEPT), body);
+
+            if (!delivered) {
+                resetOutgoingPendingCall(receiver);
+                removeIncomingPendingCall(sender, found);
+                std::vector<unsigned char> callEndBody = PacketFactory::getCallEndPacket(receiverNicknameHash, senderNicknameHash);
+                sendTcpToUserIfConnected(senderNicknameHash, static_cast<uint32_t>(PacketType::CALL_END), callEndBody);
+                std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                LOG_INFO("Call accept not delivered (caller {} unreachable), callee {} notified", rp, sp);
+                return;
+            }
 
             resetOutgoingPendingCall(receiver);
             removeIncomingPendingCall(sender, found);

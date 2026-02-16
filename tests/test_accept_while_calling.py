@@ -35,8 +35,8 @@ def accept_while_user_c_scenario(client, handler, target_a_nickname):
     handler.wait_for_event("call_result_OK", 10)
 
 
-class AcceptWhileCallingTest(TestRunner):
-    def test_accept_while_calling(self):
+class AcceptWhileOutgoingCallTest(TestRunner):
+    def test_accept_while_outgoing_call(self):
         """A calls B, at this time C calls A - A accepts call from C"""
         from test_runner_base import generate_unique_nickname
         b_events = multiprocessing.Manager().list()
@@ -82,10 +82,10 @@ class AcceptWhileCallingTest(TestRunner):
         return a_got_c_call or c_called_success
 
 if __name__ == "__main__":
-    test = AcceptWhileCallingTest("8081")
+    test = AcceptWhileOutgoingCallTest("8081")
     if test.start_server():
         try:
-            result = test.test_accept_while_calling()
-            print(f"Accept while calling test: {'PASSED' if result else 'FAILED'}")
+            result = test.test_accept_while_outgoing_call()
+            print(f"Accept while outgoing call test: {'PASSED' if result else 'FAILED'}")
         finally:
             test.stop_server()

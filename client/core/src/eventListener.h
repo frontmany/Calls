@@ -27,8 +27,7 @@ namespace core
         virtual void onStartCameraSharingError() = 0;
         virtual void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) = 0;
 
-        virtual void onOutgoingCallAccepted() = 0;
-        virtual void onOutgoingCallAcceptedWithNickname(const std::string& nickname) = 0;
+        virtual void onOutgoingCallAccepted(const std::string& nickname) = 0;
         virtual void onOutgoingCallDeclined() = 0;
         virtual void onOutgoingCallTimeout(std::error_code ec) = 0;
 

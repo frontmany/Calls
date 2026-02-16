@@ -14,7 +14,7 @@ def discover_and_run_all_tests():
         'test_incoming_call_accept',
         'test_incoming_call_decline',
         'test_audio_controls',
-        'test_accept_while_calling',
+        'test_accept_while_outgoing_call',
         'test_call_busy_user',
         'test_call_queue',
         'test_overlapping_calls',

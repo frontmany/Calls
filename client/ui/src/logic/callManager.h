@@ -36,8 +36,8 @@ public:
     void hideOperationDialog();
 
 public slots:
-    void onStartCallingButtonClicked(const QString& friendNickname);
-    void onStopCallingButtonClicked();
+    void onStartOutgoingCallButtonClicked(const QString& friendNickname);
+    void onStopOutgoingCallButtonClicked();
     void onAcceptCallButtonClicked(const QString& friendNickname);
     void onDeclineCallButtonClicked(const QString& friendNickname);
     void onEndCallButtonClicked();
@@ -50,11 +50,10 @@ public slots:
     void onScreenSelected(int screenIndex);
     void onScreenShareDialogCancelled();
     void onCallWidgetCameraClicked(bool toggled);
-    void onStartCallingResult(std::error_code ec);
-    void onMaximumCallingTimeReached();
-    void onCallingAccepted();
-    void onCallingAcceptedWithNickname(const QString& nickname);
-    void onCallingDeclined();
+    void onStartOutgoingCallResult(std::error_code ec);
+    void onMaximumOutgoingCallTimeReached();
+    void onOutgoingCallAccepted(const QString& nickname);
+    void onOutgoingCallDeclined();
     void onRemoteUserEndedCall();
     void onIncomingCall(const QString& friendNickname);
     void onIncomingCallExpired(const QString& friendNickname);
@@ -86,8 +85,8 @@ private slots:
 private:
     void handleAcceptCallErrorNotificationAppearance();
     void handleDeclineCallErrorNotificationAppearance();
-    void handleStartCallingErrorNotificationAppearance();
-    void handleStopCallingErrorNotificationAppearance();
+    void handleStartOutgoingCallErrorNotificationAppearance();
+    void handleStopOutgoingCallErrorNotificationAppearance();
     void handleEndCallErrorNotificationAppearance();
     void updateIncomingCallsUi();
     void resetCallWidgetState();

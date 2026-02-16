@@ -20,5 +20,6 @@ public:
     static std::pair<std::string, std::vector<unsigned char>> getConnectionRestoredWithUserPacket(const std::string& userNicknameHash);
     static std::pair<std::string, std::vector<unsigned char>> getUserLogoutPacket(const std::string& userNicknameHash);
     static std::pair<std::string, std::vector<unsigned char>> getCallDeclinedPacket(const std::string& senderNicknameHash, const std::string& receiverNicknameHash);
-    };
+    static std::vector<unsigned char> getCallEndPacket(const std::string& senderNicknameHash, const std::string& receiverNicknameHash);
+};
 }

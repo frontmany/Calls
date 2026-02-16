@@ -13,7 +13,7 @@ def end_call_caller_scenario(client, handler, target_nickname):
     handler.wait_for_event("call_result_OK", 10)
     
     # Wait for call to be accepted
-    if handler.wait_for_event("calling_accepted", 5):
+    if handler.wait_for_event("outgoing_call_accepted", 5):
         print(f"[{handler.name}] Call accepted, ending call")
         time.sleep(1)
         client.end_call()

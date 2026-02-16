@@ -68,12 +68,12 @@ void AudioEffectsManager::stopIncomingCallRingtone()
     stopRingtone();
 }
 
-void AudioEffectsManager::playCallingRingtone()
+void AudioEffectsManager::playOutgoingCallRingtone()
 {
     playRingtone(QUrl("qrc:/resources/calling.mp3"));
 }
 
-void AudioEffectsManager::stopCallingRingtone()
+void AudioEffectsManager::stopOutgoingCallRingtone()
 {
     stopRingtone();
 }
@@ -83,7 +83,7 @@ void AudioEffectsManager::playCallJoinedEffect()
     playSoundEffect(QUrl("qrc:/resources/callJoined.wav"));
 }
 
-void AudioEffectsManager::playCallingEndedEffect()
+void AudioEffectsManager::playOutgoingCallEndedEffect()
 {
     playSoundEffect(QUrl("qrc:/resources/callingEnded.wav"));
 }

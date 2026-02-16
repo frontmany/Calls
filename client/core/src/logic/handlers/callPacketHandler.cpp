@@ -168,7 +168,7 @@ namespace core::logic
 
         m_stateManager->setActiveCall(senderNickname, senderPublicKey, callKey);
 
-        m_eventListener->onOutgoingCallAccepted();
+        m_eventListener->onOutgoingCallAccepted("");
     }
 
     void CallPacketHandler::handleOutgoingCallDeclined(const nlohmann::json& jsonObject) {

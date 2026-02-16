@@ -121,12 +121,12 @@ class CallbacksHandler(callsClientPy.EventListener):
         self.events.append("max_time_reached")
         print(f"[{self.name}] Outgoing call timeout")
     
-    def onOutgoingCallAccepted(self):
-        self.events.append("calling_accepted")
-        print(f"[{self.name}] Outgoing call accepted")
+    def onOutgoingCallAccepted(self, nickname=""):
+        self.events.append("outgoing_call_accepted")
+        print(f"[{self.name}] Outgoing call accepted" + (f" (nickname: {nickname})" if nickname else ""))
     
     def onOutgoingCallDeclined(self):
-        self.events.append("calling_declined")
+        self.events.append("outgoing_call_declined")
         print(f"[{self.name}] Outgoing call declined")
     
     def onIncomingCall(self, friend_nickname):

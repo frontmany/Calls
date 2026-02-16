@@ -281,7 +281,7 @@ namespace core
         return m_stateManager ? m_stateManager->getMyNickname() : empty;
     }
 
-    const std::string& Core::getNicknameWhomCalling() const {
+    const std::string& Core::getNicknameWhomOutgoingCall() const {
         static const std::string empty;
         return m_stateManager ? m_stateManager->getOutgoingCall().getNickname() : empty;
     }

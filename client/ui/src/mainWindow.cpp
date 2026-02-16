@@ -350,8 +350,8 @@ void MainWindow::connectWidgetsToManagers() {
         }
         if (m_callManager) {
             connect(m_mainMenuWidget, &MainMenuWidget::audioDevicePickerRequested, m_callManager, &CallManager::onAudioDevicePickerRequested);
-            connect(m_mainMenuWidget, &MainMenuWidget::startCallingButtonClicked, m_callManager, &CallManager::onStartCallingButtonClicked);
-            connect(m_mainMenuWidget, &MainMenuWidget::stopCallingButtonClicked, m_callManager, &CallManager::onStopCallingButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::startOutgoingCallButtonClicked, m_callManager, &CallManager::onStartOutgoingCallButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::stopOutgoingCallButtonClicked, m_callManager, &CallManager::onStopOutgoingCallButtonClicked);
             connect(m_mainMenuWidget, &MainMenuWidget::activateCameraClicked, m_callManager, &CallManager::onActivateCameraClicked);
         }
     }
@@ -401,8 +401,8 @@ void MainWindow::connectWidgetsToManagers() {
 
     // Refresh audio settings dialog when system audio devices change (e.g. plug/unplug)
     if (m_audioDevicesWatcher && m_dialogsController && m_coreClient) {
-        connect(m_audioDevicesWatcher, &AudioDevicesWatcher::devicesChanged, this, [this]() {
-            m_dialogsController->refreshAudioSettingsDialogIfOpen(m_coreClient->getCurrentInputDevice(), m_coreClient->getCurrentOutputDevice());
+        connect(m_audioDevicesWatcher, &AudioDevicesWatcher::devicesChanged, [this]() {
+            m_dialogsController->refreshAudioSettingsDialogDevices(m_coreClient->getCurrentInputDevice(), m_coreClient->getCurrentOutputDevice());
         });
     }
 
@@ -547,7 +547,7 @@ void MainWindow::onEndCallFullscreenExitRequested()
 void MainWindow::onStopAllRingtonesRequested()
 {
     if (m_audioManager) {
-        m_audioManager->stopCallingRingtone();
+        m_audioManager->stopOutgoingCallRingtone();
         m_audioManager->stopIncomingCallRingtone();
     }
 }

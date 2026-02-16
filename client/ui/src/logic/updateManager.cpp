@@ -88,7 +88,7 @@ void UpdateManager::onUpdateButtonClicked()
     emit stopAllRingtonesRequested();
     
     if (m_mainMenuWidget) {
-        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->removeOutgoingCallPanel();
     }
 
     if (m_updaterClient) {

@@ -32,8 +32,7 @@ namespace core::logic
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
         m_callPacketHandler = std::make_unique<CallPacketHandler>(stateManager, keyManager, eventListener, std::move(sendPacket));
         m_mediaPacketHandler = std::make_unique<MediaPacketHandler>(stateManager, audioEngine, mediaProcessingService, eventListener);
-        m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener,
-            [this]() { if (m_startAudioSharing) m_startAudioSharing(); });
+        m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener);
 
         m_packetHandlers.emplace(PacketType::AUTHORIZATION_RESULT, [this](const nlohmann::json& json) { handleAuthorizationResult(json); });
         m_packetHandlers.emplace(PacketType::RECONNECT_RESULT, [this](const nlohmann::json& json) {handleReconnectResult(json); });

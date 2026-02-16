@@ -13,11 +13,9 @@ namespace core::logic
 {
     ReconnectionPacketHandler::ReconnectionPacketHandler(
         std::shared_ptr<ClientStateManager> stateManager,
-        std::shared_ptr<EventListener> eventListener,
-        std::function<void()> onRestoredToActiveCall)
+        std::shared_ptr<EventListener> eventListener)
         : m_stateManager(stateManager)
         , m_eventListener(eventListener)
-        , m_onRestoredToActiveCall(std::move(onRestoredToActiveCall))
     {
     }
     
@@ -36,18 +34,18 @@ namespace core::logic
             if (activeCall) {
                 if (!m_stateManager->isActiveCall() && m_stateManager->isOutgoingCall()) {
                     const auto& outgoingCall = m_stateManager->getOutgoingCall();
+
                     if (outgoingCall.hasCallContext()) {
                         std::string nickname = outgoingCall.getNickname();
+
                         m_stateManager->setActiveCall(
                             nickname,
                             outgoingCall.getPublicKey(),
                             outgoingCall.getCallKey());
-                        m_eventListener->onOutgoingCallAcceptedWithNickname(nickname);
-                        if (m_onRestoredToActiveCall) {
-                            m_onRestoredToActiveCall();
-                        }
+
+                        m_eventListener->onOutgoingCallAccepted(nickname);
                     }
-                }
+                } 
             }
 
             if (!activeCall) {

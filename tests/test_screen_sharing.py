@@ -13,7 +13,7 @@ def screen_sharing_caller_scenario(client, handler, target_nickname):
     handler.wait_for_event("call_result_OK", 10)
     
     # Wait for call to be accepted
-    if handler.wait_for_event("calling_accepted", 5):
+    if handler.wait_for_event("outgoing_call_accepted", 5):
         print(f"[{handler.name}] Call accepted, starting screen sharing")
         client.start_screen_sharing()
         handler.wait_for_event("start_screen_sharing_OK", 5)

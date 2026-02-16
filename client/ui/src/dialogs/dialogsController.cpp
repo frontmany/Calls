@@ -448,7 +448,7 @@ void DialogsController::showAudioSettingsDialog(bool showSliders, bool micMuted,
     }
 }
 
-void DialogsController::refreshAudioSettingsDialogIfOpen(int currentInputIndex, int currentOutputIndex)
+void DialogsController::refreshAudioSettingsDialogDevices(int currentInputIndex, int currentOutputIndex)
 {
     if (m_audioSettingsDialog && m_audioSettingsDialog->isVisible()) {
         m_audioSettingsDialog->refreshDevices(currentInputIndex, currentOutputIndex);

@@ -25,7 +25,7 @@ inline const QColor COLOR_STATUS_ERROR_BACKGROUND = QColor(255, 212, 212);
 inline const QColor COLOR_BANNER_ERROR = QColor(232, 53, 53);
 inline const QColor COLOR_BANNER_ERROR_HOVER = QColor(212, 43, 43);
 
-inline const QColor COLOR_STATUS_CALLING = QColor(255, 165, 0);
+inline const QColor COLOR_STATUS_OUTGOING_CALL = QColor(255, 165, 0);
 inline const QColor COLOR_ACCENT_PURPLE = QColor(140, 107, 199);
 
 // ============================================================================
@@ -98,7 +98,7 @@ inline const QColor COLOR_OVERLAY_ERROR_BANNER_220 = QColor(232, 53, 53, 220);
 inline const QColor COLOR_OVERLAY_SETTINGS_110 = QColor(235, 235, 235, 110);
 inline const QColor COLOR_OVERLAY_SETTINGS_120 = QColor(235, 235, 235, 120);
 inline const QColor COLOR_OVERLAY_SETTINGS_190 = QColor(235, 235, 235, 190);
-inline const QColor COLOR_OVERLAY_CALLING_180 = QColor(255, 245, 235, 180);
+inline const QColor COLOR_OVERLAY_OUTGOING_CALL_180 = QColor(255, 245, 235, 180);
 inline const QColor COLOR_OVERLAY_DISABLED_150 = QColor(160, 160, 160, 150);
 inline const QColor COLOR_OVERLAY_DISABLED_20 = QColor(150, 150, 150, 51);
 inline const QColor COLOR_OVERLAY_DISABLED_75 = QColor(90, 90, 90, 191);

@@ -18,10 +18,10 @@ public:
 
     void playIncomingCallRingtone();
     void stopIncomingCallRingtone();
-    void playCallingRingtone();
-    void stopCallingRingtone();
+    void playOutgoingCallRingtone();
+    void stopOutgoingCallRingtone();
     void playCallJoinedEffect();
-    void playCallingEndedEffect();
+    void playOutgoingCallEndedEffect();
     void playEndCallEffect();
 
 private slots:

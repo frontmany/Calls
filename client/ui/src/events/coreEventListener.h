@@ -30,8 +30,7 @@ public:
     void onStartCameraSharingError() override;
     void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) override;
 
-    void onOutgoingCallAccepted() override;
-    void onOutgoingCallAcceptedWithNickname(const std::string& nickname) override;
+    void onOutgoingCallAccepted(const std::string& nickname) override;
     void onOutgoingCallDeclined() override;
     void onOutgoingCallTimeout(std::error_code ec) override;
     void onIncomingCall(const std::string& friendNickname) override;

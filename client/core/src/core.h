@@ -69,7 +69,7 @@ namespace core
         int getIncomingCallsCount() const;
         std::vector<std::string> getCallers() const;
         const std::string& getMyNickname() const;
-        const std::string& getNicknameWhomCalling() const;
+        const std::string& getNicknameWhomOutgoingCall() const;
         const std::string& getNicknameInCallWith() const;
 
         std::error_code authorize(const std::string& nickname);

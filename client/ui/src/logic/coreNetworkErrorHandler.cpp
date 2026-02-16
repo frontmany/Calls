@@ -78,11 +78,11 @@ void CoreNetworkErrorHandler::onConnectionDown()
         else {
             if (m_audioManager) {
                 m_audioManager->stopIncomingCallRingtone();
-                m_audioManager->stopCallingRingtone();
+                m_audioManager->stopOutgoingCallRingtone();
             }
 
             if (m_mainMenuWidget) {
-                m_mainMenuWidget->removeCallingPanel();
+                m_mainMenuWidget->removeOutgoingCallPanel();
                 m_mainMenuWidget->setStatusLabelOnline();
             }
         }

@@ -16,8 +16,7 @@ namespace core::logic
     public:
         ReconnectionPacketHandler(
             std::shared_ptr<ClientStateManager> stateManager,
-            std::shared_ptr<EventListener> eventListener,
-            std::function<void()> onRestoredToActiveCall = nullptr
+            std::shared_ptr<EventListener> eventListener
         );
 
         void handleReconnectResult(const nlohmann::json& jsonObject);
@@ -25,6 +24,5 @@ namespace core::logic
     private:
         std::shared_ptr<ClientStateManager> m_stateManager;
         std::shared_ptr<EventListener> m_eventListener;
-        std::function<void()> m_onRestoredToActiveCall;
     };
 }
