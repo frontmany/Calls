@@ -105,10 +105,6 @@ void Client::runConnect(const std::string& host, uint16_t portNumber) {
             if (m_onConnectionDown) m_onConnectionDown();
             return;
         }
-        std::error_code optionError;
-        m_socket.set_option(asio::ip::tcp::socket::keep_alive(true), optionError);
-        if (optionError)
-            LOG_WARN("Control keepalive failed: {}", core::utilities::errorCodeForLog(optionError));
         readHandshake();
     };
 
