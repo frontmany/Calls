@@ -103,11 +103,14 @@ void CallManager::onStopOutgoingCallButtonClicked()
 
 void CallManager::switchToActiveCall(const QString& friendNickname)
 {
-    m_incomingCalls.remove(friendNickname);
+    hideOperationDialog();
     if (m_dialogsController) {
-        m_dialogsController->hideIncomingCallsDialog(friendNickname);
+        for (const QString& nickname : m_incomingCalls.keys()) {
+            m_dialogsController->hideIncomingCallsDialog(nickname);
+        }
         m_dialogsController->hideUpdateAvailableDialog();
     }
+    m_incomingCalls.clear();
     if (m_audioManager && m_incomingCalls.isEmpty()) {
         m_audioManager->stopIncomingCallRingtone();
     }
@@ -122,6 +125,8 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
     }
     updateIncomingCallsUi();
     if (m_callWidget) {
+        m_callWidget->setCameraButtonRestricted(false);
+        m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->show();
         m_callWidget->setCallInfo(friendNickname);
     }
@@ -617,6 +622,7 @@ void CallManager::onRemoteUserEndedCall()
 {
     if (!m_mainMenuWidget) return;
 
+    hideOperationDialog();
     m_mainMenuWidget->removeOutgoingCallPanel();
     m_mainMenuWidget->setStatusLabelOnline();
     

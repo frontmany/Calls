@@ -273,6 +273,15 @@ namespace server
                     }
                 }
             }
+
+            if (allowed) {
+                auto incomingPending = user->getIncomingPendingCalls();
+                for (const auto& pc : incomingPending) {
+                    if (pc && !pc->getCallingBeginBody().empty()) {
+                        sendTcp(conn, static_cast<uint32_t>(PacketType::CALLING_BEGIN), pc->getCallingBeginBody());
+                    }
+                }
+            }
         }
         catch (const std::exception& e) {
             LOG_ERROR("Reconnect error: {}", e.what());
@@ -333,17 +342,17 @@ namespace server
 
             std::string jsonStr = json.dump();
             std::vector<unsigned char> body = toBytes(jsonStr);
+            auto pending = std::make_shared<PendingCall>(sender, receiver, [this, receiver, sender]() {
+                auto out = sender->getOutgoingPendingCall();
+                if (out && out->getReceiver()->getNicknameHash() == receiver->getNicknameHash()) {
+                    resetOutgoingPendingCall(sender);
+                    removeIncomingPendingCall(receiver, out);
+                }
+            }, body);
+            m_callManager.addPendingCall(pending);
+            sender->setOutgoingPendingCall(pending);
+            receiver->addIncomingPendingCall(pending);
             if (sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALLING_BEGIN), body)) {
-                auto pending = std::make_shared<PendingCall>(sender, receiver, [this, receiver, sender]() {
-                    auto out = sender->getOutgoingPendingCall();
-                    if (out && out->getReceiver()->getNicknameHash() == receiver->getNicknameHash()) {
-                        resetOutgoingPendingCall(sender);
-                        removeIncomingPendingCall(receiver, out);
-                    }
-                });
-                m_callManager.addPendingCall(pending);
-                sender->setOutgoingPendingCall(pending);
-                receiver->addIncomingPendingCall(pending);
                 std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
                 std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
                 LOG_INFO("Call initiated from {} to {}", sp, rp);
