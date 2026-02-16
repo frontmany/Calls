@@ -89,6 +89,7 @@ private:
     void handleEndCallErrorNotificationAppearance();
     void updateIncomingCallsUi();
     void resetCallWidgetState();
+    void switchToActiveCall(const QString& friendNickname);
 
     std::shared_ptr<core::Core> m_coreClient = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;

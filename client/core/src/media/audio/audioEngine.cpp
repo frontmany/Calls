@@ -1,4 +1,5 @@
 #include "audioEngine.h"
+#include "utilities/logger.h"
 #include <iostream>
 #include <cmath>
 #include <cstring>
@@ -24,6 +25,48 @@ namespace core::media
         }
     }
 
+    namespace {
+        PaDeviceIndex resolveInputDevice(
+            std::optional<int>& storedIndex, int requiredChannels)
+        {
+            int deviceCount = Pa_GetDeviceCount();
+            if (deviceCount <= 0) return paNoDevice;
+
+            PaDeviceIndex device = paNoDevice;
+            if (storedIndex.has_value() && storedIndex.value() >= 0 && storedIndex.value() < deviceCount) {
+                const PaDeviceInfo* info = Pa_GetDeviceInfo(static_cast<PaDeviceIndex>(storedIndex.value()));
+                if (info && info->maxInputChannels >= requiredChannels) {
+                    device = static_cast<PaDeviceIndex>(storedIndex.value());
+                }
+            }
+            if (device == paNoDevice) {
+                storedIndex = std::nullopt;
+                device = Pa_GetDefaultInputDevice();
+            }
+            return device;
+        }
+
+        PaDeviceIndex resolveOutputDevice(
+            std::optional<int>& storedIndex, int requiredChannels)
+        {
+            int deviceCount = Pa_GetDeviceCount();
+            if (deviceCount <= 0) return paNoDevice;
+
+            PaDeviceIndex device = paNoDevice;
+            if (storedIndex.has_value() && storedIndex.value() >= 0 && storedIndex.value() < deviceCount) {
+                const PaDeviceInfo* info = Pa_GetDeviceInfo(static_cast<PaDeviceIndex>(storedIndex.value()));
+                if (info && info->maxOutputChannels >= requiredChannels) {
+                    device = static_cast<PaDeviceIndex>(storedIndex.value());
+                }
+            }
+            if (device == paNoDevice) {
+                storedIndex = std::nullopt;
+                device = Pa_GetDefaultOutputDevice();
+            }
+            return device;
+        }
+    }
+
     bool AudioEngine::initializeInternal() {
         m_lastError = Pa_Initialize();
         if (m_lastError != paNoError) {
@@ -35,28 +78,40 @@ namespace core::media
         memset(&outputParameters, 0, sizeof(outputParameters));
 
         if (m_inputChannels > 0) {
-            inputParameters.device = m_inputDeviceIndex.has_value() ? m_inputDeviceIndex.value() : Pa_GetDefaultInputDevice();
+            inputParameters.device = resolveInputDevice(m_inputDeviceIndex, m_inputChannels);
             if (inputParameters.device == paNoDevice) {
+                Pa_Terminate();
+                return false;
+            }
+
+            const PaDeviceInfo* inputInfo = Pa_GetDeviceInfo(inputParameters.device);
+            if (!inputInfo) {
                 Pa_Terminate();
                 return false;
             }
 
             inputParameters.channelCount = m_inputChannels;
             inputParameters.sampleFormat = paFloat32;
-            inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+            inputParameters.suggestedLatency = inputInfo->defaultLowInputLatency;
             inputParameters.hostApiSpecificStreamInfo = nullptr;
         }
 
         if (m_outputChannels > 0) {
-            outputParameters.device = m_outputDeviceIndex.has_value() ? m_outputDeviceIndex.value() : Pa_GetDefaultOutputDevice();
+            outputParameters.device = resolveOutputDevice(m_outputDeviceIndex, m_outputChannels);
             if (outputParameters.device == paNoDevice) {
+                Pa_Terminate();
+                return false;
+            }
+
+            const PaDeviceInfo* outputInfo = Pa_GetDeviceInfo(outputParameters.device);
+            if (!outputInfo) {
                 Pa_Terminate();
                 return false;
             }
 
             outputParameters.channelCount = m_outputChannels;
             outputParameters.sampleFormat = paFloat32;
-            outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+            outputParameters.suggestedLatency = outputInfo->defaultLowOutputLatency;
             outputParameters.hostApiSpecificStreamInfo = nullptr;
         }
 
@@ -92,8 +147,6 @@ namespace core::media
     }
 
     void AudioEngine::refreshAudioDevices() {
-        if (!m_isInitialized) return;
-
         bool wasStreaming = m_isStream;
         if (wasStreaming) {
             stopAudioCapture();
@@ -106,11 +159,19 @@ namespace core::media
         }
 
         if (m_isInitialized) {
+            if (m_stream) {
+                Pa_CloseStream(m_stream);
+                m_stream = nullptr;
+            }
             Pa_Terminate();
             m_isInitialized = false;
         }
 
-        initializeInternal();
+        if (!initializeInternal()) {
+            LOG_ERROR("AudioEngine refreshAudioDevices: initialize failed ({}), will retry on next device change",
+                Pa_GetErrorText(m_lastError));
+            return;
+        }
 
         if (wasStreaming) {
             startAudioCapture();

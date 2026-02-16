@@ -26,6 +26,6 @@ private:
 
     QPushButton* m_updateButton = nullptr;
     QLabel* m_buttonTextLabel = nullptr;
-    QLabel* m_confettiLabel = nullptr;
+    QLabel* m_arrowLabel = nullptr;
     QString m_newVersion;
 };

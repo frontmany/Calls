@@ -24,7 +24,8 @@ namespace core::constant
         screen_sharing_not_active,
         camera_sharing_not_active,
         viewing_remote_screen,
-        encryption_error
+        encryption_error,
+        accept_call_instead_of_start
     };
 
     class ErrorCategory : public std::error_category {
@@ -75,6 +76,8 @@ namespace core::constant
                 return "Viewing remote screen";
             case ErrorCode::encryption_error:
                 return "Encryption error";
+            case ErrorCode::accept_call_instead_of_start:
+                return "Incoming call accepted instead of starting outgoing";
             default:
                 return "Unknown error";
             }

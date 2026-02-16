@@ -66,16 +66,16 @@ UpdateAvailableDialog::UpdateAvailableDialog(QWidget* parent)
     m_buttonTextLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     updateButtonText();
 
-    m_confettiLabel = new QLabel(buttonWidget);
-    m_confettiLabel->setPixmap(QPixmap(":/resources/toRightArrow.png"));
-    m_confettiLabel->setScaledContents(true);
-    m_confettiLabel->setFixedSize(scale(26), scale(26));
-    m_confettiLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    m_confettiLabel->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    m_confettiLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_arrowLabel = new QLabel(buttonWidget);
+    m_arrowLabel->setPixmap(QPixmap(":/resources/toRightArrow.png"));
+    m_arrowLabel->setScaledContents(true);
+    m_arrowLabel->setFixedSize(scale(20), scale(20));
+    m_arrowLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_arrowLabel->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+    m_arrowLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     buttonLayout->addWidget(m_buttonTextLabel, 0, Qt::AlignVCenter);
-    buttonLayout->addWidget(m_confettiLabel, 0, Qt::AlignVCenter);
+    buttonLayout->addWidget(m_arrowLabel, 0, Qt::AlignVCenter);
 
     m_updateButton = new QPushButton(this);
     m_updateButton->setMinimumSize(scale(265), scale(38));

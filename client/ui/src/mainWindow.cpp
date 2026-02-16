@@ -399,6 +399,13 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_dialogsController, &DialogsController::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
     }
 
+    // Refresh audio settings dialog when system audio devices change (e.g. plug/unplug)
+    if (m_audioDevicesWatcher && m_dialogsController && m_coreClient) {
+        connect(m_audioDevicesWatcher, &AudioDevicesWatcher::devicesChanged, this, [this]() {
+            m_dialogsController->refreshAudioSettingsDialogIfOpen(m_coreClient->getCurrentInputDevice(), m_coreClient->getCurrentOutputDevice());
+        });
+    }
+
     // Update available dialog connections
     if (m_dialogsController && m_updateManager) {
         connect(m_dialogsController, &DialogsController::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);

@@ -62,7 +62,10 @@ void CallManager::onStartCallingButtonClicked(const QString& friendNickname)
     }
 
     std::error_code ec = m_coreClient->startOutgoingCall(friendNickname.toStdString());
-    if (ec) {
+    if (ec == core::constant::make_error_code(core::constant::ErrorCode::accept_call_instead_of_start)) {
+        switchToActiveCall(friendNickname);
+    }
+    else if (ec) {
         if (!m_coreClient->isConnectionDown()) {
             handleStartCallingErrorNotificationAppearance();
         }
@@ -97,6 +100,38 @@ void CallManager::onStopCallingButtonClicked()
     }
 }
 
+void CallManager::switchToActiveCall(const QString& friendNickname)
+{
+    m_incomingCalls.remove(friendNickname);
+    if (m_dialogsController) {
+        m_dialogsController->hideIncomingCallsDialog(friendNickname);
+        m_dialogsController->hideUpdateAvailableDialog();
+    }
+    if (m_audioManager && m_incomingCalls.isEmpty()) {
+        m_audioManager->stopIncomingCallRingtone();
+    }
+    if (m_coreClient && m_coreClient->isScreenSharing()) {
+        m_coreClient->stopScreenSharing();
+    }
+    if (m_coreClient && m_coreClient->isCameraSharing()) {
+        m_coreClient->stopCameraSharing();
+    }
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->removeCallingPanel();
+    }
+    updateIncomingCallsUi();
+    if (m_callWidget) {
+        m_callWidget->show();
+        m_callWidget->setCallInfo(friendNickname);
+    }
+    if (m_navigationController) {
+        m_navigationController->switchToCallWidget(friendNickname);
+    }
+    if (m_audioManager) {
+        m_audioManager->playCallJoinedEffect();
+    }
+}
+
 void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
 {
     if (!m_coreClient) return;
@@ -108,37 +143,7 @@ void CallManager::onAcceptCallButtonClicked(const QString& friendNickname)
         }
     }
     else {
-        m_incomingCalls.remove(friendNickname);
-        if (m_dialogsController) {
-            m_dialogsController->hideIncomingCallsDialog(friendNickname);
-            m_dialogsController->hideUpdateAvailableDialog();
-        }
-        if (m_audioManager && m_incomingCalls.isEmpty()) {
-            m_audioManager->stopIncomingCallRingtone();
-        }
-        if (m_coreClient && m_coreClient->isScreenSharing()) {
-            m_coreClient->stopScreenSharing();
-        }
-
-        if (m_coreClient && m_coreClient->isCameraSharing()) {
-            m_coreClient->stopCameraSharing();
-        }
-
-        m_mainMenuWidget->removeCallingPanel();
-        updateIncomingCallsUi();
-
-        if (m_callWidget) {
-            m_callWidget->show();
-            m_callWidget->setCallInfo(friendNickname);
-        }
-
-        if (m_navigationController) {
-            m_navigationController->switchToCallWidget(friendNickname);
-        }
-
-        if (m_audioManager) {
-            m_audioManager->playCallJoinedEffect();
-        }
+        switchToActiveCall(friendNickname);
     }
 }
 

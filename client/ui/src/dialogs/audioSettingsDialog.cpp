@@ -62,8 +62,8 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     m_outputButtonsGroup = new QButtonGroup(this);
     m_outputButtonsGroup->setExclusive(true);
 
-    QLabel* inputLabel = new QLabel("Input device", m_container);
-    QLabel* outputLabel = new QLabel("Output device", m_container);
+    QLabel* inputLabel = new QLabel("Microphone", m_container);
+    QLabel* outputLabel = new QLabel("Speaker", m_container);
     inputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_TEXT_MAIN.name()));
     outputLabel->setStyleSheet(QString("color: %1; font-weight: 600;").arg(COLOR_TEXT_MAIN.name()));
 

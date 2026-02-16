@@ -46,6 +46,7 @@ public:
 
     void showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice = -1, int currentOutputDevice = -1);
     void hideAudioSettingsDialog();
+    void refreshAudioSettingsDialogIfOpen(int currentInputIndex, int currentOutputIndex);
 
     void showIncomingCallsDialog(const QString& friendNickname, int remainingTime);
     void hideIncomingCallsDialog(const QString& friendNickname);

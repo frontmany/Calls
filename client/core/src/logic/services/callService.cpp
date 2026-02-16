@@ -38,7 +38,11 @@ namespace core::logic
         }
 
         if (incomingCallExists) {
-            return acceptCall(userNickname);
+            std::error_code ec = acceptCall(userNickname);
+            if (!ec) {
+                return make_error_code(ErrorCode::accept_call_instead_of_start);
+            }
+            return ec;
         }
         else {
             auto packet = PacketFactory::getRequestUserInfoPacket(m_stateManager->getMyNickname(), m_keyManager->getMyPublicKey(), userNickname);
