@@ -90,6 +90,16 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onOutgoingCallAccepted);
     }
 
+    void onOutgoingCallAcceptedWithNickname(const std::string& nickname) override
+    {
+        py::gil_scoped_acquire acquire;
+        if (auto py_func = py::get_override(this, "onOutgoingCallAcceptedWithNickname")) {
+            py_func(nickname);
+        } else if (auto py_func = py::get_override(this, "onOutgoingCallAccepted")) {
+            py_func();
+        }
+    }
+
     void onOutgoingCallDeclined() override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onOutgoingCallDeclined);
@@ -186,6 +196,7 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onLocalCamera", &core::EventListener::onLocalCamera)
         .def("onStartCameraSharingError", &core::EventListener::onStartCameraSharingError)
         .def("onOutgoingCallAccepted", &core::EventListener::onOutgoingCallAccepted)
+        .def("onOutgoingCallAcceptedWithNickname", &core::EventListener::onOutgoingCallAcceptedWithNickname)
         .def("onOutgoingCallDeclined", &core::EventListener::onOutgoingCallDeclined)
         .def("onOutgoingCallTimeout", [](core::EventListener& self, int ec_value) {
             self.onOutgoingCallTimeout(std::error_code(ec_value, core::constant::error_category()));

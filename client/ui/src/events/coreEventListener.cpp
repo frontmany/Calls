@@ -112,6 +112,15 @@ void CoreEventListener::onOutgoingCallAccepted()
     }
 }
 
+void CoreEventListener::onOutgoingCallAcceptedWithNickname(const std::string& nickname)
+{
+    if (m_callManager) {
+        QString qNickname = QString::fromStdString(nickname);
+        QMetaObject::invokeMethod(m_callManager, "onCallingAcceptedWithNickname",
+            Qt::QueuedConnection, Q_ARG(QString, qNickname));
+    }
+}
+
 void CoreEventListener::onOutgoingCallDeclined()
 {
     if (m_callManager) {

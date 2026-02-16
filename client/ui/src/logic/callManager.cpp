@@ -15,6 +15,7 @@
 #include <QImage>
 #include <QPixmap>
 #include <QGuiApplication>
+#include <QTimer>
 #include <cmath>
 
 CallManager::CallManager(std::shared_ptr<core::Core> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
@@ -381,6 +382,12 @@ void CallManager::onMaximumCallingTimeReached()
 void CallManager::onCallingAccepted()
 {
     if (!m_mainMenuWidget || !m_coreClient) return;
+    onCallingAcceptedWithNickname(QString::fromStdString(m_coreClient->getNicknameInCallWith()));
+}
+
+void CallManager::onCallingAcceptedWithNickname(const QString& nickname)
+{
+    if (!m_mainMenuWidget || !m_coreClient) return;
 
     m_incomingCalls.clear();
     updateIncomingCallsUi();
@@ -393,8 +400,8 @@ void CallManager::onCallingAccepted()
     m_mainMenuWidget->removeCallingPanel();
     m_mainMenuWidget->setStatusLabelBusy();
 
-    if (m_navigationController) {
-        m_navigationController->switchToCallWidget(QString::fromStdString(m_coreClient->getNicknameInCallWith()));
+    if (m_navigationController && !nickname.isEmpty()) {
+        m_navigationController->switchToCallWidget(nickname);
     }
 
     if (m_dialogsController) {
@@ -742,6 +749,10 @@ void CallManager::onIncomingScreenSharingStopped()
         m_callWidget->hideEnterFullscreenButton();
         if (m_callWidget->isFullScreen()) {
             emit endCallFullscreenExitRequested();
+            QTimer::singleShot(0, this, [this]() {
+                if (m_callWidget)
+                    m_callWidget->hideEnterFullscreenButton();
+            });
         }
     }
 }

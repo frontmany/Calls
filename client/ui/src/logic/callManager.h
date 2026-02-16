@@ -53,6 +53,7 @@ public slots:
     void onStartCallingResult(std::error_code ec);
     void onMaximumCallingTimeReached();
     void onCallingAccepted();
+    void onCallingAcceptedWithNickname(const QString& nickname);
     void onCallingDeclined();
     void onRemoteUserEndedCall();
     void onIncomingCall(const QString& friendNickname);
