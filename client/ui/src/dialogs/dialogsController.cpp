@@ -466,7 +466,7 @@ void DialogsController::hideAudioSettingsDialog()
         m_audioSettingsOverlay = nullptr;
     }
 
-    if (m_audioSettingsDialog) { 
+    if (m_audioSettingsDialog) {
         m_audioSettingsDialog->setParent(nullptr);
     }
     emit audioSettingsDialogClosed();
@@ -591,6 +591,23 @@ void DialogsController::hideUpdateAvailableDialog()
         m_updateAvailableOverlay->close();
         m_updateAvailableOverlay->deleteLater();
         m_updateAvailableOverlay = nullptr;
+    }
+}
+
+void DialogsController::hideUpdateAvailableDialogTemporarily()
+{
+    if (m_updateAvailableDialog)
+    {
+        m_updateAvailableDialog->hide();
+    }
+}
+
+void DialogsController::showUpdateAvailableDialogTemporarilyHidden()
+{
+    if (m_updateAvailableDialog)
+    {
+        m_updateAvailableDialog->show();
+        m_updateAvailableDialog->raise();
     }
 }
 

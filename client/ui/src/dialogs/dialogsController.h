@@ -54,6 +54,8 @@ public:
 
     void showUpdateAvailableDialog(const QString& newVersion = QString());
     void hideUpdateAvailableDialog();
+    void hideUpdateAvailableDialogTemporarily();
+    void showUpdateAvailableDialogTemporarilyHidden();
     void setUpdateClient(std::shared_ptr<updater::Client> updaterClient);
 
 signals:

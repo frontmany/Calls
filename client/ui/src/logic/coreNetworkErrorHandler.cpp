@@ -39,8 +39,19 @@ void CoreNetworkErrorHandler::setNotificationController(NotificationController* 
 
 void CoreNetworkErrorHandler::onConnectionRestored()
 {
+    const int connectionRestoredDurationMs = 1500;
+    if (m_dialogsController) {
+        m_dialogsController->hideUpdateAvailableDialogTemporarily();
+    }
     if (m_notificationController) {
-        m_notificationController->showConnectionRestored(1500);
+        m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
+    }
+    if (m_dialogsController) {
+        QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
+            if (m_dialogsController) {
+                m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
+            }
+        });
     }
 
     if (m_authorizationWidget) {
@@ -106,8 +117,19 @@ void CoreNetworkErrorHandler::onConnectionDown()
 
 void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
 {
+    const int connectionRestoredDurationMs = 1500;
+    if (m_dialogsController) {
+        m_dialogsController->hideUpdateAvailableDialogTemporarily();
+    }
     if (m_notificationController) {
-        m_notificationController->showConnectionRestored(1500);
+        m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
+    }
+    if (m_dialogsController) {
+        QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
+            if (m_dialogsController) {
+                m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
+            }
+        });
     }
 
     if (m_authorizationWidget && m_navigationController) {

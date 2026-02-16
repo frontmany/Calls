@@ -544,7 +544,17 @@ void CallManager::onCallParticipantConnectionRestored()
         m_notificationController->hideConnectionDownWithUser();
         
         const int restoredDurationMs = ERROR_MESSAGE_DURATION_MS;
+        if (m_dialogsController) {
+            m_dialogsController->hideUpdateAvailableDialogTemporarily();
+        }
         m_notificationController->showConnectionRestoredWithUser("Connection with participant restored", restoredDurationMs);
+        if (m_dialogsController) {
+            QTimer::singleShot(restoredDurationMs, this, [this]() {
+                if (m_dialogsController) {
+                    m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
+                }
+            });
+        }
     }
 }
 
