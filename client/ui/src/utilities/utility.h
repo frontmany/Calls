@@ -4,7 +4,7 @@
 #include <QApplication>
 #include <QScreen>
 #include "updater.h"
-#include <QDebug>
+#include "utilities/logger.h"
 #include "constants/constant.h"
 
 static qreal getDeviceScaleFactor() {
@@ -65,7 +65,7 @@ inline updater::OperationSystemType resolveOperationSystemType() {
 #elif defined(__APPLE__)
     return updater::OperationSystemType::MAC;
 #else
-    qWarning() << "Unknown operating system";
+    LOG_WARN("Unknown operating system, fallback to WINDOWS");
     return updater::OperationSystemType::WINDOWS;
 #endif
 #endif

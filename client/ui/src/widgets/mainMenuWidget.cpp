@@ -638,7 +638,7 @@ void MainMenuWidget::setStatusLabelOnline() {
 }
 
 void MainMenuWidget::setStatusLabelOutgoingCall() {
-    m_statusLabel->setText("Outgoing call...");
+    m_statusLabel->setText("calling...");
     m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_outgoingCallColor.name()));
 }
 
@@ -647,7 +647,7 @@ void MainMenuWidget::setStatusLabelBusy() {
     m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_outgoingCallColor.name()));
 }
 
-void MainMenuWidget::setStatusLabelOffline() {
+void MainMenuWidget::setStatusLabelOffline() { 
     m_statusLabel->setText("Offline");
     m_statusLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleMainMenuWidget::m_offlineColor.name()));
 }
@@ -655,7 +655,7 @@ void MainMenuWidget::setStatusLabelOffline() {
 
 void MainMenuWidget::showOutgoingCallPanel(const QString& friendNickname) {
     m_outgoingCallFriend = friendNickname;
-    m_outgoingCallText->setText("Outgoing call to " + friendNickname + "...");
+    m_outgoingCallText->setText("calling " + friendNickname + "...");
     updateOutgoingCallState(true);
 
     // Show outgoing call section with animation

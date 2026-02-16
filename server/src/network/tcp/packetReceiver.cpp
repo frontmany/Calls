@@ -1,4 +1,5 @@
 #include "network/tcp/packetReceiver.h"
+#include "constants/constant.h"
 #include "utilities/logger.h"
 #include "utilities/errorCodeForLog.h"
 
@@ -33,6 +34,14 @@ namespace server::network::tcp
                     return;
                 }
                 if (m_temporary.bodySize > 0) {
+                    if (m_temporary.bodySize > server::constant::MAX_TCP_PACKET_BODY_SIZE_BYTES) {
+                        LOG_WARN("[TCP] Packet body too large: {} bytes (max: {}), type: {} - disconnecting",
+                            m_temporary.bodySize,
+                            server::constant::MAX_TCP_PACKET_BODY_SIZE_BYTES,
+                            m_temporary.type);
+                        m_onDisconnect();
+                        return;
+                    }
                     m_temporary.body.resize(m_temporary.bodySize);
                     readBody();
                 } else {

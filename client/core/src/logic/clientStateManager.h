@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -95,10 +94,10 @@ namespace core::logic
     private:
         mutable std::mutex m_mutex;
         std::map<media::MediaType, media::MediaState> m_mediaState;
-        std::atomic_bool m_authorized;
-        std::atomic_bool m_connectionDown;
-        std::atomic_bool m_viewingRemoteScreen;
-        std::atomic_bool m_viewingRemoteCamera;
+        bool m_authorized = false;
+        bool m_connectionDown = false;
+        bool m_viewingRemoteScreen = false;
+        bool m_viewingRemoteCamera = false;
         std::string m_myNickname;
         std::string m_myToken;
 

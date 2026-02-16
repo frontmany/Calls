@@ -1,6 +1,7 @@
 #include "client.h"
 #include "network/tcp/packetReceiver.h"
 #include "network/tcp/packetSender.h"
+#include "constants/constant.h"
 #include "utilities/logger.h"
 #include "utilities/crypto.h"
 #include "utilities/errorCodeForLog.h"
@@ -8,7 +9,6 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <thread>
 
 #ifdef _WIN32
 #include <mstcpip.h>
@@ -280,7 +280,10 @@ void Client::disconnect() {
         m_processThread.join();
     }
 
-    asio::post(m_context, [this]() {
+    auto closePromise = std::make_shared<std::promise<void>>();
+    auto closeFuture = closePromise->get_future();
+
+    asio::post(m_context, [this, closePromise]() {
         if (m_socket.is_open()) {
             std::error_code errorCode;
             m_socket.shutdown(asio::ip::tcp::socket::shutdown_both, errorCode);
@@ -288,10 +291,17 @@ void Client::disconnect() {
             if (errorCode)
                 LOG_ERROR("Control socket close error: {}", core::utilities::errorCodeForLog(errorCode));
         }
+        try {
+            closePromise->set_value();
+        } catch (const std::future_error&) {
+            // Promise already satisfied — ignore
+        }
     });
 
-    // Give the posted close a moment to execute on the shared io thread
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    const auto closeTimeout = std::chrono::milliseconds(core::constant::SOCKET_CLOSE_CALLBACK_TIMEOUT_MS);
+    if (closeFuture.wait_for(closeTimeout) != std::future_status::ready) {
+        LOG_WARN("Control socket close callback timed out after {}ms", core::constant::SOCKET_CLOSE_CALLBACK_TIMEOUT_MS);
+    }
 
     m_receiver.reset();
     m_sender.reset();

@@ -213,12 +213,10 @@ void MainWindow::changeEvent(QEvent* event)
 void MainWindow::loadFonts() {
     if (QFontDatabase::addApplicationFont(":/resources/Pacifico-Regular.ttf") == -1) {
         LOG_ERROR("Failed to load font: Pacifico-Regular.ttf");
-        qWarning() << "Font load error:";
     }
 
     if (QFontDatabase::addApplicationFont(":/resources/Outfit-VariableFont_wght.ttf") == -1) {
         LOG_ERROR("Failed to load font: Outfit-VariableFont_wght.ttf");
-        qWarning() << "Font load error:";
     }
     else {
     }

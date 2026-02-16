@@ -1,7 +1,5 @@
 #include "audioDevicesWatcher.h"
 
-#include <QDebug>
-
 AudioDevicesWatcher::AudioDevicesWatcher(std::shared_ptr<core::Core> client, QObject* parent)
     : QObject(parent)
     , m_coreClient(std::move(client))

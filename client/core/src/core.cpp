@@ -91,8 +91,8 @@ namespace core
 
         auto mediaProcessingService = std::make_shared<media::MediaProcessingService>();
         bool audioProcessingInitialized = mediaProcessingService->initializeAudioProcessing();
-        bool screenVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Screen, 1800000);
-        bool cameraVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Camera, 600000);
+        bool screenVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Screen, 2400000);
+        bool cameraVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Camera, 900000);
 
         if (!audioProcessingInitialized) {
             LOG_ERROR("audio processing service initialization error");

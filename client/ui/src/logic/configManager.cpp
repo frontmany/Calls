@@ -11,7 +11,6 @@
 #include <QJsonArray>
 #include <QCoreApplication>
 #include <QDir>
-#include <QDebug>
 
 ConfigManager::ConfigManager(QString configPath)
     : m_configPath(configPath)

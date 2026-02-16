@@ -1,4 +1,5 @@
 #include "packetReceiver.h"
+#include "constants/constant.h"
 
 #include <chrono>
 #include <exception>
@@ -395,14 +396,18 @@ namespace server::network::udp
 
         if (ec.category() == asio::error::get_system_category()) {
             int errorCode = ec.value();
-            if (errorCode == 10038 || // WSAENOTSOCK - сокет не является сокетом
-                errorCode == 10057 || // WSAENOTCONN - сокет не подключен
-                errorCode == 10054 || // WSAECONNRESET - соединение сброшено
-                errorCode == 10058 || // WSAESHUTDOWN - сокет был закрыт
-                errorCode == 10053 || // WSAECONNABORTED - соединение прервано
-                errorCode == 10004) { // WSAEINTR - прерванный системный вызов
+#ifdef _WIN32
+            if (errorCode == server::constant::WSA_ERROR_NOT_SOCKET ||
+                errorCode == server::constant::WSA_ERROR_NOT_CONNECTED ||
+                errorCode == server::constant::WSA_ERROR_CONN_RESET ||
+                errorCode == server::constant::WSA_ERROR_SHUTDOWN ||
+                errorCode == server::constant::WSA_ERROR_CONN_ABORTED ||
+                errorCode == server::constant::WSA_ERROR_INTERRUPTED) {
                 return;
             }
+#else
+            (void)errorCode;
+#endif
         }
 
         if (ec == asio::error::connection_refused ||

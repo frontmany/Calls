@@ -3,9 +3,10 @@
 namespace core::logic 
 {
     ClientStateManager::ClientStateManager()
-        : m_connectionDown(false),
-        m_viewingRemoteScreen(false),
-        m_viewingRemoteCamera(false)
+        : m_authorized(false)
+        , m_connectionDown(false)
+        , m_viewingRemoteScreen(false)
+        , m_viewingRemoteCamera(false)
     {
         m_mediaState[media::MediaType::Screen] = media::MediaState::Stopped;
         m_mediaState[media::MediaType::Camera] = media::MediaState::Stopped;
@@ -14,11 +15,13 @@ namespace core::logic
 
     bool ClientStateManager::isOutgoingCall() const
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return m_outgoingCall.has_value();
     }
 
     bool ClientStateManager::isActiveCall() const
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return m_activeCall.has_value();
     }
 
@@ -35,7 +38,8 @@ namespace core::logic
 
     bool ClientStateManager::isConnectionDown() const
     {
-        return m_connectionDown.load();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_connectionDown;
     }
 
     bool ClientStateManager::isIncomingCalls() const {
@@ -43,33 +47,39 @@ namespace core::logic
     }
 
     const media::MediaState ClientStateManager::getMediaState(media::MediaType type) const {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_mediaState.find(type);
         return it == m_mediaState.end() ? media::MediaState::Stopped : it->second;
     }
 
     bool ClientStateManager::isViewingRemoteScreen() const
     {
-        return m_viewingRemoteScreen.load();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_viewingRemoteScreen;
     }
 
     bool ClientStateManager::isViewingRemoteCamera() const
     {
-        return m_viewingRemoteCamera.load();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_viewingRemoteCamera;
     }
 
     bool ClientStateManager::isAuthorized() const
     {
-        return m_authorized.load();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_authorized;
     }
 
     void ClientStateManager::setAuthorized(bool value)
     {
-        m_authorized.store(value);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_authorized = value;
     }
 
     void ClientStateManager::setConnectionDown(bool value)
     {
-        m_connectionDown.store(value);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_connectionDown = value;
     }
 
     void ClientStateManager::setCallParticipantConnectionDown(bool value)
@@ -82,17 +92,20 @@ namespace core::logic
     }
 
     void ClientStateManager::setMediaState(media::MediaType type, media::MediaState state) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_mediaState[type] = state;
     }
 
     void ClientStateManager::setViewingRemoteScreen(bool value)
     {
-        m_viewingRemoteScreen.store(value);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_viewingRemoteScreen = value;
     }
 
     void ClientStateManager::setViewingRemoteCamera(bool value)
     {
-        m_viewingRemoteCamera.store(value);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_viewingRemoteCamera = value;
     }
 
     const std::string& ClientStateManager::getMyNickname() const
@@ -220,10 +233,10 @@ namespace core::logic
         m_outgoingCall = std::nullopt;
         m_activeCall = std::nullopt;
 
-        m_authorized.store(false);
-        m_connectionDown.store(false);
-        m_viewingRemoteScreen.store(false);
-        m_viewingRemoteCamera.store(false);
+        m_authorized = false;
+        m_connectionDown = false;
+        m_viewingRemoteScreen = false;
+        m_viewingRemoteCamera = false;
 
         m_mediaState[media::MediaType::Screen] = media::MediaState::Stopped;
         m_mediaState[media::MediaType::Camera] = media::MediaState::Stopped;
