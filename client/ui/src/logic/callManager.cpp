@@ -552,7 +552,7 @@ void CallManager::onLocalConnectionDownInCall()
     if (!m_callWidget) return;
 
     if (m_callWidget->isFullScreen()) {
-        m_callWidget->exitFullscreen();
+        emit endCallFullscreenExitRequested();
     }
     m_callWidget->hideEnterFullscreenButton();
     m_callWidget->setCameraButtonActive(false);
@@ -560,6 +560,25 @@ void CallManager::onLocalConnectionDownInCall()
     m_callWidget->hideMainScreen();
     m_callWidget->hideAdditionalScreens();
     m_callWidget->hideEnterFullscreenButton();
+}
+
+void CallManager::onLocalConnectionDown()
+{
+    hideOperationDialog();
+
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->removeCallingPanel();
+        m_mainMenuWidget->setStatusLabelOnline();
+        m_mainMenuWidget->setCallButtonEnabled(true);
+    }
+
+    m_incomingCalls.clear();
+    updateIncomingCallsUi();
+
+    if (m_audioManager) {
+        m_audioManager->stopIncomingCallRingtone();
+        m_audioManager->stopCallingRingtone();
+    }
 }
 
 void CallManager::hideOperationDialog()
@@ -594,6 +613,10 @@ void CallManager::onRemoteUserEndedCall()
         m_audioManager->stopCallingRingtone();
         m_audioManager->stopIncomingCallRingtone();
         m_audioManager->playEndCallEffect();
+    }
+
+    if (m_callWidget && m_callWidget->isFullScreen()) {
+        emit endCallFullscreenExitRequested();
     }
 
     if (m_callWidget) {
@@ -718,7 +741,7 @@ void CallManager::onIncomingScreenSharingStopped()
         m_callWidget->setScreenShareButtonRestricted(false);
         m_callWidget->hideEnterFullscreenButton();
         if (m_callWidget->isFullScreen()) {
-            m_callWidget->exitFullscreen();
+            emit endCallFullscreenExitRequested();
         }
     }
 }

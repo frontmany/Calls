@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <functional>
+#include <optional>
 
 #include "models/call.h"
 #include "models/incomingCall.h"
@@ -54,13 +55,15 @@ namespace core::logic
         template <typename Rep, typename Period>
         void setOutgoingCall(const std::string& nickname,
             const std::chrono::duration<Rep, Period>& timeout,
-            std::function<void()> onTimeout)
+            std::function<void()> onTimeout,
+            std::optional<CryptoPP::RSA::PublicKey> publicKey = std::nullopt,
+            std::optional<CryptoPP::SecByteBlock> callKey = std::nullopt)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_outgoingCall.has_value()) {
                 m_outgoingCall->stop();
             }
-            m_outgoingCall.emplace(nickname, timeout, std::move(onTimeout));
+            m_outgoingCall.emplace(nickname, timeout, std::move(onTimeout), std::move(publicKey), std::move(callKey));
         }
 
         void setActiveCall(const std::string& nickname,

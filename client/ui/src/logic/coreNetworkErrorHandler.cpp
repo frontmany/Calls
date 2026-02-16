@@ -52,6 +52,10 @@ void CoreNetworkErrorHandler::onConnectionRestored()
 void CoreNetworkErrorHandler::onConnectionDown()
 {
     if (m_callManager) {
+        m_callManager->onLocalConnectionDown();
+    }
+
+    if (m_callManager) {
         m_callManager->hideOperationDialog();
     }
 
@@ -79,6 +83,7 @@ void CoreNetworkErrorHandler::onConnectionDown()
 
             if (m_mainMenuWidget) {
                 m_mainMenuWidget->removeCallingPanel();
+                m_mainMenuWidget->setStatusLabelOnline();
             }
         }
 

@@ -51,9 +51,12 @@ namespace core::logic
 
             if (!ec) {
                 m_stateManager->setOutgoingCall(userNickname, 32s, [this]() {
+                    if (m_stateManager->isConnectionDown()) {
+                        return;
+                    }
                     m_stateManager->resetOutgoingCall();
                     m_eventListener->onOutgoingCallTimeout({});
-                });
+                }, userPublicKey, callKey);
             }
 
             if (m_eventListener) {

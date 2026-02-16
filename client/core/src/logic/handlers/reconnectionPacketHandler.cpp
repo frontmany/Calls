@@ -31,7 +31,25 @@ namespace core::logic
 
             bool activeCall = jsonObject[IS_ACTIVE_CALL].get<bool>();
 
+            if (activeCall) {
+                if (!m_stateManager->isActiveCall() && m_stateManager->isOutgoingCall()) {
+                    const auto& outgoingCall = m_stateManager->getOutgoingCall();
+                    if (outgoingCall.hasCallContext()) {
+                        m_stateManager->setActiveCall(
+                            outgoingCall.getNickname(),
+                            outgoingCall.getPublicKey(),
+                            outgoingCall.getCallKey());
+                        m_eventListener->onOutgoingCallAccepted();
+                    }
+                }
+            }
+
             if (!activeCall) {
+                if (m_stateManager->isOutgoingCall()) {
+                    m_stateManager->resetOutgoingCall();
+                    m_eventListener->onOutgoingCallTimeout({});
+                }
+
                 bool hadActiveCall = m_stateManager->isActiveCall();
                 m_stateManager->resetActiveCall();
                 m_stateManager->setCallParticipantConnectionDown(false);

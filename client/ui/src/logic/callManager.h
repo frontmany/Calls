@@ -59,6 +59,7 @@ public slots:
     void onIncomingCallExpired(const QString& friendNickname);
     void onCallParticipantConnectionDown();
     void onCallParticipantConnectionRestored();
+    void onLocalConnectionDown();
     void onLocalConnectionDownInCall();
 
     // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
