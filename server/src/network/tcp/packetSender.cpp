@@ -20,8 +20,8 @@ namespace server::network::tcp
 
     void PacketSender::writeHeader() {
         const Packet* p = m_queue.front_ptr() ? &m_queue.unsafe_front() : nullptr;
-        if (!p)
-            return;
+        if (!p) return;
+
         PacketHeader hdr;
         hdr.type = p->type;
         hdr.bodySize = static_cast<uint32_t>(p->body.size());
