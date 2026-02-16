@@ -6,12 +6,51 @@
 #include <random>
 #include <cstdint>
 
-#if defined(_MSC_VER)
-#include <cstdlib>
+#ifdef _WIN32
+#include <mstcpip.h>
+#elif defined(__linux__) || defined(__APPLE__)
+#include <netinet/tcp.h>
 #endif
 
 namespace server::network::tcp
 {
+    static void configureKeepalive(asio::ip::tcp::socket& socket) {
+        std::error_code ec;
+        socket.set_option(asio::ip::tcp::socket::keep_alive(true), ec);
+        if (ec) {
+            LOG_WARN("[TCP] Failed to enable keepalive: {}", server::utilities::errorCodeForLog(ec));
+            return;
+        }
+
+#ifdef _WIN32
+        struct tcp_keepalive ka{};
+        ka.onoff = 1;
+        ka.keepalivetime = 10000;
+        ka.keepaliveinterval = 5000;
+        DWORD bytesReturned = 0;
+        WSAIoctl(socket.native_handle(), SIO_KEEPALIVE_VALS,
+                 &ka, sizeof(ka), nullptr, 0, &bytesReturned, nullptr, nullptr);
+#elif defined(__linux__)
+        int fd = socket.native_handle();
+        int idle = 10;
+        int intvl = 5;
+        int cnt = 3;
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl));
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt));
+#elif defined(__APPLE__)
+        int fd = socket.native_handle();
+        int idle = 10;
+        int intvl = 5;
+        int cnt = 3;
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle));
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl));
+        setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt));
+#endif
+
+        LOG_DEBUG("[TCP] Keepalive enabled (idle=10s, interval=5s, probes=3)");
+    }
+
     Connection::Connection(
         asio::io_context& ctx,
         asio::ip::tcp::socket&& socket,
@@ -32,6 +71,8 @@ namespace server::network::tcp
         , m_onPacket(std::move(onPacket))
         , m_onDisconnected(std::move(onDisconnected))
     {
+        configureKeepalive(m_socket);
+
         std::random_device rd;
         std::mt19937_64 gen(rd());
         std::uniform_int_distribution<uint64_t> dis;
