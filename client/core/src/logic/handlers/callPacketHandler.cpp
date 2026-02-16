@@ -56,7 +56,7 @@ namespace core::logic
                     }
                     m_stateManager->resetOutgoingCall();
                     m_eventListener->onOutgoingCallTimeout({});
-                }, userPublicKey, callKey);
+                });
             }
 
             if (m_eventListener) {
@@ -168,7 +168,7 @@ namespace core::logic
 
         m_stateManager->setActiveCall(senderNickname, senderPublicKey, callKey);
 
-        m_eventListener->onOutgoingCallAccepted("");
+        m_eventListener->onOutgoingCallAccepted(senderNickname);
     }
 
     void CallPacketHandler::handleOutgoingCallDeclined(const nlohmann::json& jsonObject) {

@@ -40,6 +40,15 @@ namespace core::logic
         return toBytes(jsonObject.dump());
     }
 
+    std::vector<unsigned char> PacketFactory::getCallEndPacketWithHashes(const std::string& senderNicknameHash, const std::string& receiverNicknameHash) {
+        std::string uid = generateUID();
+        nlohmann::json jsonObject;
+        jsonObject[UID] = uid;
+        jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
+        jsonObject[RECEIVER_NICKNAME_HASH] = receiverNicknameHash;
+        return toBytes(jsonObject.dump());
+    }
+
     std::vector<unsigned char> PacketFactory::getAuthorizationPacket(const std::string& myNickname, const CryptoPP::RSA::PublicKey& myPublicKey, uint16_t myUdpPort) {
         CryptoPP::SecByteBlock packetKey;
         generateAESKey(packetKey);

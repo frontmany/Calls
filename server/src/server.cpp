@@ -247,8 +247,13 @@ namespace server
                 }
             }
 
+            std::string callPartnerHash;
+            if (allowed && user->isInCall()) {
+                auto partner = user->getCallPartner();
+                if (partner) callPartnerHash = partner->getNicknameHash();
+            }
             std::vector<unsigned char> packet = PacketFactory::getReconnectionResultPacket(
-                allowed, uid, senderNicknameHash, token, allowed && user->isInCall());
+                allowed, uid, senderNicknameHash, token, allowed && user->isInCall(), callPartnerHash);
             sendTcp(conn, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), packet);
 
             if (allowed) {

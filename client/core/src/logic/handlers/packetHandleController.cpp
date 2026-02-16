@@ -26,13 +26,17 @@ namespace core::logic
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket,
         std::function<void()> startAudioSharing,
         std::function<void()> stopAudioSharing)
-        : m_startAudioSharing(std::move(startAudioSharing))
+        : m_sendPacket(std::move(sendPacket))
+        , m_startAudioSharing(std::move(startAudioSharing))
         , m_stopAudioSharing(std::move(stopAudioSharing))
     {
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
-        m_callPacketHandler = std::make_unique<CallPacketHandler>(stateManager, keyManager, eventListener, std::move(sendPacket));
+        m_callPacketHandler = std::make_unique<CallPacketHandler>(stateManager, keyManager, eventListener,
+            [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
         m_mediaPacketHandler = std::make_unique<MediaPacketHandler>(stateManager, audioEngine, mediaProcessingService, eventListener);
-        m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener);
+        m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener,
+            [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); },
+            m_startAudioSharing);
 
         m_packetHandlers.emplace(PacketType::AUTHORIZATION_RESULT, [this](const nlohmann::json& json) { handleAuthorizationResult(json); });
         m_packetHandlers.emplace(PacketType::RECONNECT_RESULT, [this](const nlohmann::json& json) {handleReconnectResult(json); });

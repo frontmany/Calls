@@ -43,7 +43,7 @@ std::vector<unsigned char> PacketFactory::getAuthorizationResultPacket(bool auth
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool reconnectedSuccessfully, const std::string& uid, const std::string& receiverNicknameHash, const std::string& receiverToken, std::optional<bool> activeCall) {
+std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool reconnectedSuccessfully, const std::string& uid, const std::string& receiverNicknameHash, const std::string& receiverToken, std::optional<bool> activeCall, const std::string& callPartnerNicknameHash) {
     nlohmann::json jsonObject;
 
     jsonObject[UID] = uid;
@@ -51,8 +51,11 @@ std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool recon
     jsonObject[NICKNAME_HASH] = receiverNicknameHash;
     jsonObject[TOKEN] = receiverToken;
 
-    if (reconnectedSuccessfully && activeCall.has_value())
+    if (reconnectedSuccessfully && activeCall.has_value()) {
         jsonObject[IS_ACTIVE_CALL] = activeCall.value();
+        if (activeCall.value() && !callPartnerNicknameHash.empty())
+            jsonObject[CALL_PARTNER_NICKNAME_HASH] = callPartnerNicknameHash;
+    }
 
     return toBytes(jsonObject.dump());
 }

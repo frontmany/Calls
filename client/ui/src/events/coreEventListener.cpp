@@ -25,7 +25,7 @@ void CoreEventListener::onAuthorizationResult(std::error_code ec)
 void CoreEventListener::onStartOutgoingCallResult(std::error_code ec)
 {
     if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onStartonOutgoingCallResult",
+        QMetaObject::invokeMethod(m_callManager, "onStartOutgoingCallResult",
             Qt::QueuedConnection, Q_ARG(std::error_code, ec));
     }
 }

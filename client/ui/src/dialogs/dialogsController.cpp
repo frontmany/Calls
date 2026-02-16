@@ -466,7 +466,7 @@ void DialogsController::hideAudioSettingsDialog()
         m_audioSettingsOverlay = nullptr;
     }
 
-    if (m_audioSettingsDialog) {
+    if (m_audioSettingsDialog) { 
         m_audioSettingsDialog->setParent(nullptr);
     }
     emit audioSettingsDialogClosed();

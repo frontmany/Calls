@@ -16,4 +16,5 @@ namespace server::constant
     static constexpr const char* ENCRYPTED_CALL_KEY = "encrypted_call_key";
     static constexpr const char* PACKET_KEY = "packetKey";
     static constexpr const char* IS_ACTIVE_CALL = "is_active_call";
+    static constexpr const char* CALL_PARTNER_NICKNAME_HASH = "call_partner_nickname_hash";
 }

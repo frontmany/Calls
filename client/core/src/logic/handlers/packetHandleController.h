@@ -58,6 +58,7 @@ namespace core::logic
         void handleRemoteUserLogout(const nlohmann::json& jsonObject);
 
     private:
+        std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
         std::function<void()> m_startAudioSharing;
         std::function<void()> m_stopAudioSharing;
         std::unique_ptr<AuthorizationPacketHandler> m_authorizationPacketHandler;
