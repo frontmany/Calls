@@ -100,6 +100,7 @@ namespace core
 
             return false;
         }
+
         if (!screenVideoInitialized || !cameraVideoInitialized) {
             LOG_ERROR("video processing service initialization error");
             stop();
