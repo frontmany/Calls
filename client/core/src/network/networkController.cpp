@@ -28,8 +28,7 @@ namespace core::network
     }
 
     NetworkController::~NetworkController() {
-        disconnectTCP();
-        stopUDP();
+        disconnect();
 
         m_workGuard.reset();
         if (m_ioThread.joinable()) {
@@ -56,6 +55,27 @@ namespace core::network
             m_networkConfig.resetTcpParameters();
             return false;
         }
+    }
+
+    bool NetworkController::establishConnection(const std::string& tcpHost, const std::string& tcpPort,
+        const std::string& udpHost, const std::string& udpPort)
+    {
+        if (isTCPConnected()) {
+            return true;
+        }
+        const auto& savedHost = m_networkConfig.getTcpHost();
+        const auto& savedPort = m_networkConfig.getTcpPort();
+        if (!savedHost.empty() && !savedPort.empty()) {
+            return tryReconnectTCP(5);
+        }
+        return connectTCP(tcpHost, tcpPort) && runUDP(udpHost, udpPort);
+    }
+
+    void NetworkController::disconnect() {
+        disconnectTCP();
+        stopUDP();
+        m_networkConfig.resetTcpParameters();
+        m_networkConfig.resetUdpParameters();
     }
 
     bool NetworkController::tryReconnectTCP(int attempts) {

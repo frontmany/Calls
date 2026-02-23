@@ -2,7 +2,10 @@
 #include "utilities/logger.h"
 #include "utilities/crashCatchInitializer.h"
 #include "constants/errorCode.h"
+#include "logic/packetFactory.h"
+#include "constants/packetType.h"
 
+#include <chrono>
 #include <filesystem>
 
 using namespace core::utilities;
@@ -55,9 +58,12 @@ namespace core
         std::shared_ptr<EventListener> eventListener)
     {
         m_stateManager = std::make_shared<logic::ClientStateManager>();
+        m_stateManager->setConnectionDown(true);
 
-        auto keyManager = std::make_shared<logic::KeyManager>();
-        keyManager->generateKeys();
+        m_tcpHost = tcpHost;
+        m_udpHost = udpHost;
+        m_tcpPort = tcpPort;
+        m_udpPort = udpPort;
 
         m_networkController = std::make_unique<network::NetworkController>(
             [this](const unsigned char* data, int size, constant::PacketType type) {
@@ -67,27 +73,51 @@ namespace core
             [this, eventListener]() {
                 if (m_stateManager)
                     m_stateManager->setConnectionDown(true);
-                if (m_reconnectionService)
-                    m_reconnectionService->startReconnectionAttempts();
+                if (m_connectionEstablishService)
+                    m_connectionEstablishService->startConnectionAttempts();
                 if (eventListener)
                     eventListener->onConnectionDown();
             }
         );
-        bool tcpConnected = m_networkController->connectTCP(tcpHost, tcpPort);
-        bool udpStarted = m_networkController->runUDP(udpHost, udpPort);
 
-        if (!tcpConnected) {
-            LOG_ERROR("TCP client connect error");
+        if (!initializeServices(eventListener)) {
             stop();
+            if (eventListener)
+                eventListener->onConnectionDown();
 
             return false;
         }
-        if (!udpStarted) {
-            LOG_ERROR("UDP client starting error");
-            stop();
 
-            return false;
-        }
+        auto attemptEstablishConnection = [this]() {
+            return m_networkController->establishConnection(m_tcpHost, m_tcpPort, m_udpHost, m_udpPort);
+        };
+
+        auto onConnectionEstablished = [this, eventListener]() {
+            m_stateManager->setConnectionDown(false);
+            if (m_stateManager->isAuthorized()) {
+                sendReconnectPacket();
+            }
+            else if (eventListener) {
+                eventListener->onConnectionRestoredAuthorizationNeeded();
+            }
+        };
+
+        m_connectionEstablishService = std::make_unique<logic::ConnectionEstablishService>(
+            m_stateManager,
+            std::move(attemptEstablishConnection),
+            std::move(onConnectionEstablished),
+            std::chrono::milliseconds(2000)
+        );
+
+        m_connectionEstablishService->startConnectionAttempts();
+        
+        return true;
+    }
+
+    bool Core::initializeServices(std::shared_ptr<EventListener> eventListener)
+    {
+        auto keyManager = std::make_shared<logic::KeyManager>();
+        keyManager->generateKeys();
 
         auto mediaProcessingService = std::make_shared<media::MediaProcessingService>();
         bool audioProcessingInitialized = mediaProcessingService->initializeAudioProcessing();
@@ -96,14 +126,10 @@ namespace core
 
         if (!audioProcessingInitialized) {
             LOG_ERROR("audio processing service initialization error");
-            stop();
-
             return false;
         }
         if (!screenVideoInitialized || !cameraVideoInitialized) {
             LOG_ERROR("video processing service initialization error");
-            stop();
-
             return false;
         }
 
@@ -111,9 +137,7 @@ namespace core
         bool audioInitialized = m_audioEngine->initialize();
 
         if (!audioInitialized) {
-            LOG_ERROR("AudioEngine nitialization error");
-            stop();
-
+            LOG_ERROR("AudioEngine initialization error");
             return false;
         }
 
@@ -140,12 +164,6 @@ namespace core
             [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
             [sendUdp](const std::vector<unsigned char>& d, constant::PacketType t) { return sendUdp(d, t); });
 
-        m_reconnectionService = std::make_unique<logic::ReconnectionService>(m_stateManager, eventListener,
-            [this]() { return m_networkController->getUDPLocalPort(); },
-            [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
-            [this]() { return m_networkController->tryReconnectTCP(5); }
-        );
-
         m_packetHandleController = std::make_unique<logic::PacketHandleController>(m_stateManager, keyManager, m_audioEngine, mediaProcessingService, eventListener,
             [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
             [this]() { if (m_mediaService) m_mediaService->startAudioSharing(); },
@@ -154,9 +172,20 @@ namespace core
         return true;
     }
 
+    void Core::sendReconnectPacket() {
+        if (!m_stateManager->isAuthorized() || !m_networkController)
+            return;
+        auto packet = logic::PacketFactory::getReconnectPacket(
+            m_stateManager->getMyNickname(),
+            m_stateManager->getMyToken(),
+            m_networkController->getUDPLocalPort()
+        );
+        m_networkController->sendTCP(packet, PacketType::RECONNECT);
+    }
+
     void Core::stop() {
-        if (m_reconnectionService) {
-            m_reconnectionService->stopReconnectionAttempts();
+        if (m_connectionEstablishService) {
+            m_connectionEstablishService->stopConnectionAttempts();
         }
 
         if (m_audioEngine && m_audioEngine->isStream()) {
@@ -164,7 +193,7 @@ namespace core
         }
 
         m_packetHandleController.reset();
-        m_reconnectionService.reset();
+        m_connectionEstablishService.reset();
         m_mediaService.reset();
         m_callService.reset();
         m_authorizationService.reset();
@@ -351,5 +380,9 @@ namespace core
         if (!m_stateManager->isActiveCall()) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
 
         return m_mediaService->stopCameraSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
+    }
+
+    bool Core::isCameraAvailable() const {
+        return m_mediaService && m_mediaService->hasCameraAvailable();
     }
 }

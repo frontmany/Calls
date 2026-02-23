@@ -12,6 +12,7 @@ namespace server::constant
     LOGOUT,
     RECONNECT,
     GET_USER_INFO,
+    GET_METRICS,
 
     // redirect
     CONFIRMATION,
@@ -32,6 +33,7 @@ namespace server::constant
     AUTHORIZATION_RESULT,
     RECONNECT_RESULT,
     GET_USER_INFO_RESULT,
+    GET_METRICS_RESULT,
     CONNECTION_DOWN_WITH_USER,
     CONNECTION_RESTORED_WITH_USER,
     USER_LOGOUT

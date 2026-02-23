@@ -1,8 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <cstdint>
+#include <thread>
 #include "../frame.h"
 
 extern "C" {
@@ -18,6 +20,7 @@ namespace core::media
     {
     public:
         using FrameCallback = std::function<void(const Frame&)>;
+        using ErrorCallback = std::function<void()>;
 
         CameraCaptureService();
         ~CameraCaptureService();
@@ -26,6 +29,7 @@ namespace core::media
         void stop();
         bool isRunning() const;
         void setFrameCallback(FrameCallback callback);
+        void setErrorCallback(ErrorCallback callback);
         static bool getAvailableDevices(char devices[][256], int maxDevices, int& deviceCount);
 
     private:
@@ -41,12 +45,13 @@ namespace core::media
         uint8_t* m_buffer;
             
         FrameCallback m_frameCallback;
-        bool m_isRunning;
-        bool m_shouldStop;
+        ErrorCallback m_errorCallback;
+        std::atomic_bool m_isRunning;
+        std::atomic_bool m_shouldStop;
+        std::atomic_bool m_threadSelfDeleted;
         int m_frameWidth;
         int m_frameHeight;
             
-        // Platform-specific handle for capture thread
-        void* m_captureThread;
+        std::thread* m_captureThread;
     };
 }

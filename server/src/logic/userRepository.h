@@ -24,6 +24,7 @@ namespace server::logic
 		bool containsUser(const std::string& nicknameHash) const;
 		bool containsUser(const asio::ip::udp::endpoint& endpoint) const;
 		void updateUserUdpEndpoint(const std::string& nicknameHash, const asio::ip::udp::endpoint& newEndpoint);
+		size_t getActiveUsersCount() const;
 
 	private:
 		mutable std::mutex m_mutex;

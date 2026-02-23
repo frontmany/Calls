@@ -124,8 +124,8 @@ namespace core::media
         m_isRunning = false;
 
         if (m_captureThread) {
-            static_cast<std::thread*>(m_captureThread)->join();
-            delete static_cast<std::thread*>(m_captureThread);
+            m_captureThread->join();
+            delete m_captureThread;
             m_captureThread = nullptr;
         }
 

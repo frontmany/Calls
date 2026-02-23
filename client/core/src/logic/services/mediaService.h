@@ -38,6 +38,7 @@ namespace core::logic
 
         std::error_code startCameraSharing(const std::string& myNickname, const std::string& userNickname, std::string deviceName = "");
         std::error_code stopCameraSharing(const std::string& myNickname, const std::string& userNickname);
+        bool hasCameraAvailable() const;
 
         std::error_code startAudioSharing();
         std::error_code stopAudioSharing();

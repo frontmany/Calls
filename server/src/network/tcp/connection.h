@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -27,12 +28,17 @@ namespace server::network::tcp
     private:
         void readHandshake();
         void writeHandshake();
+        void onHandshakeTimeout(std::error_code ec, ConnectionPtr self);
+
+        static constexpr std::chrono::seconds HANDSHAKE_TIMEOUT_SEC{15};
 
         asio::io_context& m_ctx;
         asio::ip::tcp::socket m_socket;
+        asio::steady_timer m_handshakeTimer;
         utilities::SafeQueue<Packet> m_outQueue;
         uint64_t m_handshakeOut = 0;
         uint64_t m_handshakeIn = 0;
+        bool m_handshakeCompleted = false;
 
         PacketsReceiver m_receiver;
         PacketSender m_sender;

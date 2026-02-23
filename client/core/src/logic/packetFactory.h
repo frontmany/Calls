@@ -25,5 +25,6 @@ namespace core::logic
             const CryptoPP::RSA::PublicKey& userPublicKey,
             const CryptoPP::SecByteBlock& callKey
         );
+        static std::vector<unsigned char> getGetMetricsPacket(const std::string& myNickname);
     };
 }

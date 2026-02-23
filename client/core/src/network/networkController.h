@@ -23,11 +23,10 @@ namespace core::network
         NetworkController(OnPacketReceived onPacketReceived, OnConnectionDown onConnectionDown);
         ~NetworkController();
 
-        bool connectTCP(const std::string& tcpHost, const std::string& tcpPort);
-        bool runUDP(const std::string& udpHost, const std::string& udpPort);
-        void disconnectTCP();
-        void stopUDP();
-        bool tryReconnectTCP(int attempts);
+        bool establishConnection(const std::string& tcpHost, const std::string& tcpPort,
+            const std::string& udpHost, const std::string& udpPort);
+
+        void disconnect();
 
         bool sendTCP(const std::vector<unsigned char>& data, core::constant::PacketType type);
         bool sendUDP(const std::vector<unsigned char>& data, core::constant::PacketType type);
@@ -38,6 +37,12 @@ namespace core::network
         uint16_t getUDPLocalPort() const;
 
     private:
+        bool connectTCP(const std::string& tcpHost, const std::string& tcpPort);
+        bool runUDP(const std::string& udpHost, const std::string& udpPort);
+        void disconnectTCP();
+        void stopUDP();
+        bool tryReconnectTCP(int attempts);
+
         void onTCPPacketReceived(uint32_t type, const unsigned char* data, size_t size);
         void onUDPPacketReceived(const unsigned char* data, int size, uint32_t type);
         void onTCPConnectionDownInternal();

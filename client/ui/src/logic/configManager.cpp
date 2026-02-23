@@ -36,6 +36,7 @@ void ConfigManager::loadConfig() {
             m_updaterHost = getUpdaterHostFromConfig();
             m_isSpeakerMuted = isSpeakerMutedFromConfig();
             m_isCameraActive = isCameraActiveFromConfig();
+            m_startCameraWithCall = isStartCameraWithCallFromConfig();
             m_isMicrophoneMuted = isMicrophoneMutedFromConfig();
             m_outputVolume = getOutputVolumeFromConfig();
             m_inputVolume = getInputVolumeFromConfig();
@@ -83,6 +84,7 @@ void ConfigManager::saveConfig() {
         configObject[MICROPHONE_MUTED] = m_isMicrophoneMuted ? "1" : "0";
         configObject[SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
         configObject[CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
+        configObject[START_CAMERA_WITH_CALL] = m_startCameraWithCall ? "1" : "0";
         configObject[FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
         configObject[LOG_DIRECTORY] = m_logDirectory;
         configObject[CRASH_DUMP_DIRECTORY] = m_crashDumpDirectory;
@@ -130,6 +132,7 @@ void ConfigManager::setDefaultValues() {
     m_isMicrophoneMuted = false;
     m_isMultiInstanceAllowed = false;
     m_isCameraActive = false;
+    m_startCameraWithCall = false;
     m_outputVolume = DEFAULT_VOLUME;
     m_inputVolume = DEFAULT_VOLUME;
     m_mainServerTcpPort = DEFAULT_MAIN_SERVER_TCP_PORT;
@@ -179,6 +182,10 @@ bool ConfigManager::isSpeakerMuted() const {
 
 bool ConfigManager::isCameraActive() const {
     return m_isCameraActive;
+}
+
+bool ConfigManager::isStartCameraWithCall() const {
+    return m_startCameraWithCall;
 }
 
 bool ConfigManager::isMicrophoneMuted() const {
@@ -233,6 +240,11 @@ void ConfigManager::setMicrophoneMuted(bool muted) {
 
 void ConfigManager::setCameraActive(bool active) {
     m_isCameraActive = active;
+    saveConfig();
+}
+
+void ConfigManager::setStartCameraWithCall(bool startWithCall) {
+    m_startCameraWithCall = startWithCall;
     saveConfig();
 }
 
@@ -723,6 +735,47 @@ bool ConfigManager::isCameraActiveFromConfig() {
     else {
         return false;
     }
+}
+
+bool ConfigManager::isStartCameraWithCallFromConfig() {
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        return false;
+    }
+
+    if (!doc.isObject()) {
+        return false;
+    }
+
+    QJsonObject jsonObj = doc.object();
+
+    if (!jsonObj.contains(START_CAMERA_WITH_CALL)) {
+        return false;
+    }
+
+    QJsonValue value = jsonObj[START_CAMERA_WITH_CALL];
+
+    if (value.isString()) {
+        QString str = value.toString().toLower().trimmed();
+        return (str == "1" || str == "true" || str == "yes" || str == "on");
+    }
+    if (value.isBool()) {
+        return value.toBool();
+    }
+    if (value.isDouble()) {
+        return (value.toInt() == 1);
+    }
+    return false;
 }
 
 const QString& ConfigManager::getLogDirectoryPath() const {

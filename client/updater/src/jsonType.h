@@ -2,13 +2,13 @@
 
 namespace updater
 {
-	static constexpr const char* RELATIVE_FILE_PATH = "RelativeFilePath";
+	static constexpr const char* RELATIVE_FILE_PATH = "relative_file_path";
 	static constexpr const char* FILES = "files";
-	static constexpr const char* FILE_SIZE = "fileSize";
-	static constexpr const char* FILE_HASH = "fileHash";
+	static constexpr const char* FILE_SIZE = "file_size";
+	static constexpr const char* FILE_HASH = "file_hash";
 	static constexpr const char* VERSION = "version";
-	static constexpr const char* UPDATE_CHECK_RESULT = "updateCheckResult";
-	static constexpr const char* OPERATION_SYSTEM = "osType";
-	static constexpr const char* FILES_TO_DOWNLOAD = "filesToDownload";
-	static constexpr const char* FILES_TO_DELETE = "filesToDelete";
+	static constexpr const char* UPDATE_CHECK_RESULT = "update_check_result";
+	static constexpr const char* OPERATION_SYSTEM = "os_type";
+	static constexpr const char* FILES_TO_DOWNLOAD = "files_to_download";
+	static constexpr const char* FILES_TO_DELETE = "files_to_delete";
 }

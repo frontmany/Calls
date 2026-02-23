@@ -49,10 +49,6 @@ void MainWindow::init() {
 
     m_updaterClient = std::make_shared<updater::Client>();
 
-    m_initialConnectionRetryTimer = new QTimer(this);
-    m_initialConnectionRetryTimer->setSingleShot(true);
-    connect(m_initialConnectionRetryTimer, &QTimer::timeout, this, &MainWindow::onInitialConnectionRetry);
-
     loadFonts();
 
     initializeCentralStackedWidget();
@@ -72,7 +68,8 @@ void MainWindow::init() {
     initializeCoreNetworkErrorHandler();
     initializeUpdaterNetworkErrorHandler();
 
-        connectWidgetsToManagers();
+    connectWidgetsToManagers();
+
     // Apply UI-only settings (widgets); Core audio settings applied after Core::start()
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
@@ -82,12 +79,15 @@ void MainWindow::init() {
         m_callWidget->setInputVolume(m_configManager->getInputVolume());
         m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
     }
+
     showMaximized();
 
     QCoreApplication::postEvent(this, new StartupEvent());
 }
 
 void MainWindow::customEvent(QEvent* event) {
+
+
     if (!isFirstInstance() && !m_configManager->isMultiInstanceAllowed()) {
         m_dialogsController->showAlreadyRunningDialog();
 
@@ -122,19 +122,17 @@ void MainWindow::customEvent(QEvent* event) {
         );
 
         if (coreStarted) {
-            applyAudioSettings();  // Apply to Core (m_audioEngine now exists)
+            applyAudioSettings();
         }
 
         if (!coreStarted) {
-            LOG_ERROR("Core client failed to start (check server {} TCP {} UDP {}, network, and core.log). Will retry every {} s.",
+            LOG_ERROR("Core client failed to start (check server {} TCP {} UDP {}, network, and core.log). Retrying in background.",
                 m_configManager->getServerHost().toStdString(),
                 m_configManager->getMainServerTcpPort().toStdString(),
-                m_configManager->getMainServerUdpPort().toStdString(),
-                INITIAL_CONNECTION_RETRY_INTERVAL_MS / 1000);
+                m_configManager->getMainServerUdpPort().toStdString());
+
             if (m_coreNetworkErrorHandler)
                 m_coreNetworkErrorHandler->onConnectionDown();
-            if (m_initialConnectionRetryTimer)
-                m_initialConnectionRetryTimer->start(INITIAL_CONNECTION_RETRY_INTERVAL_MS);
         }
 
         m_updaterClient->start(m_configManager->getUpdaterHost().toStdString(),
@@ -145,33 +143,7 @@ void MainWindow::customEvent(QEvent* event) {
     QMainWindow::customEvent(event);
 }
 
-void MainWindow::onInitialConnectionRetry() {
-    const bool coreStarted = m_coreClient->start(
-        m_configManager->getServerHost().toStdString(),
-        m_configManager->getServerHost().toStdString(),
-        m_configManager->getMainServerTcpPort().toStdString(),
-        m_configManager->getMainServerUdpPort().toStdString(),
-        std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
-    );
-
-    if (coreStarted) {
-        if (m_initialConnectionRetryTimer && m_initialConnectionRetryTimer->isActive())
-            m_initialConnectionRetryTimer->stop();
-        if (m_coreNetworkErrorHandler)
-            m_coreNetworkErrorHandler->onConnectionRestored();
-        applyAudioSettings();
-        LOG_INFO("Core connected to server after retry.");
-    }
-    else {
-        if (m_initialConnectionRetryTimer)
-            m_initialConnectionRetryTimer->start(INITIAL_CONNECTION_RETRY_INTERVAL_MS);
-    }
-}
-
 void MainWindow::closeEvent(QCloseEvent* event) {
-    if (m_initialConnectionRetryTimer && m_initialConnectionRetryTimer->isActive())
-        m_initialConnectionRetryTimer->stop();
-
     if (m_updaterClient) {
         m_updaterClient->stop();
     }
@@ -287,6 +259,9 @@ void MainWindow::initializeCallManager() {
     if (m_callManager && m_notificationController) {
         m_callManager->setNotificationController(m_notificationController);
     }
+    if (m_callManager && m_configManager) {
+        m_callManager->setConfigManager(m_configManager);
+    }
 }
 
 void MainWindow::initializeCoreNetworkErrorHandler() {
@@ -316,7 +291,7 @@ void MainWindow::applyAudioSettings() {
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
         m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
-        m_mainMenuWidget->setCameraActive(m_configManager->isCameraActive());
+        m_mainMenuWidget->setCameraActive(m_configManager->isStartCameraWithCall());
     }
 
     if (m_callWidget) {

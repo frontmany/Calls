@@ -102,4 +102,10 @@ namespace core::logic
 
         return toBytes(jsonObject.dump());
     }
+
+    std::vector<unsigned char> PacketFactory::getGetMetricsPacket(const std::string& myNickname) {
+        std::string uid = generateUID();
+        nlohmann::json jsonObject = createBasePacket(uid, myNickname);
+        return toBytes(jsonObject.dump());
+    }
 }

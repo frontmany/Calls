@@ -3,11 +3,13 @@
 #include "constants/jsonType.h"
 #include "utilities/crypto.h"
 #include "utilities/logger.h"
+#include "utilities/metrics.h"
 #include "models/pendingCall.h"
 #include "network/tcp/packet.h"
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -40,6 +42,7 @@ namespace server
         m_packetHandlers.emplace(PacketType::RECONNECT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleReconnect(json, conn); });
         m_packetHandlers.emplace(PacketType::LOGOUT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleLogout(json, conn); });
         m_packetHandlers.emplace(PacketType::GET_USER_INFO, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleGetFriendInfo(json, conn); });
+        m_packetHandlers.emplace(PacketType::GET_METRICS, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleGetMetrics(json, conn); });
         m_packetHandlers.emplace(PacketType::CALLING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleStartOutgoingCall(json, conn); });
         m_packetHandlers.emplace(PacketType::CALLING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleStopOutgoingCall(json, conn); });
         m_packetHandlers.emplace(PacketType::CALL_ACCEPT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleAcceptCall(json, conn); });
@@ -84,27 +87,27 @@ namespace server
         network::tcp::Packet& p = owned.packet;
         uint32_t rawType = p.type;
 
-        if (p.body.empty()) {
-            LOG_WARN("[TCP] Control packet type {} has empty body", rawType);
-            return;
-        }
-
-        std::string jsonStr(p.body.begin(), p.body.end());
         nlohmann::json json;
-        try {
-            json = nlohmann::json::parse(jsonStr);
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("[TCP] Invalid JSON in control packet type {}: {}", rawType, e.what());
-            return;
+        if (!p.body.empty()) {
+            std::string jsonStr(p.body.begin(), p.body.end());
+            try {
+                json = nlohmann::json::parse(jsonStr);
+            }
+            catch (const std::exception& e) {
+                LOG_ERROR("[TCP] Invalid JSON in control packet type {}: {}", rawType, e.what());
+                return;
+            }
         }
 
         PacketType type = static_cast<PacketType>(rawType);
+
         auto it = m_packetHandlers.find(type);
-        if (it != m_packetHandlers.end())
+        if (it != m_packetHandlers.end()) {
             it->second(json, conn);
-        else
+        }
+        else {
             LOG_WARN("[TCP] Unknown control packet type {}", rawType);
+        }
     }
 
     void Server::handleConnectionWithUserDown(network::tcp::ConnectionPtr conn) {
@@ -298,7 +301,7 @@ namespace server
         }
         catch (const std::exception& e) {
             LOG_ERROR("Logout error: {}", e.what());
-        }
+        } 
     }
 
     void Server::handleGetFriendInfo(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
@@ -326,6 +329,22 @@ namespace server
         catch (const std::exception& e) {
             LOG_ERROR("Get user info error: {}", e.what());
         }
+    }
+
+    void Server::handleGetMetrics(const nlohmann::json&, network::tcp::ConnectionPtr conn) {
+        try {
+            double cpuUsage = getCpuUsagePercent();
+            auto [memoryUsed, memoryAvailable] = getMemoryUsedAndAvailable();
+            size_t activeUsers = m_userRepository.getActiveUsersCount();
+
+            auto packet = PacketFactory::getMetricsResultPacket(
+                cpuUsage, static_cast<uint64_t>(memoryUsed), static_cast<uint64_t>(memoryAvailable), activeUsers);
+            
+            sendTcp(conn, static_cast<uint32_t>(PacketType::GET_METRICS_RESULT), packet);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Get metrics error: {}", e.what());
+        }  
     }
 
     void Server::handleStartOutgoingCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {

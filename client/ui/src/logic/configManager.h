@@ -16,6 +16,7 @@ public:
 
     bool isFirstLaunch() const;
     bool isCameraActive() const;
+    bool isStartCameraWithCall() const;
     bool isSpeakerMuted() const;
     bool isMicrophoneMuted() const;
     int getOutputVolume() const; // speaker
@@ -43,11 +44,13 @@ public:
     void setInputVolume(int volume);
     void setMultiInstanceAllowed(bool allowed);
     void setCameraActive(bool active);
+    void setStartCameraWithCall(bool startWithCall);
     void setFirstLaunch(bool firstLaunch);
 
 private:
     bool isFirstLaunchFromConfig();
     bool isCameraActiveFromConfig();
+    bool isStartCameraWithCallFromConfig();
     bool isSpeakerMutedFromConfig();
     bool isMicrophoneMutedFromConfig();
     int getOutputVolumeFromConfig();
@@ -75,6 +78,7 @@ private:
 
     bool m_firstLaunch;
     bool m_isCameraActive;
+    bool m_startCameraWithCall;
     bool m_isSpeakerMuted;
     bool m_isMicrophoneMuted;
     bool m_isMultiInstanceAllowed;

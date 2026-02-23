@@ -17,6 +17,7 @@ class NavigationController;
 class DialogsController;
 class NotificationController;
 class UpdateManager;
+class ConfigManager;
 
 class CallManager : public QObject {
     Q_OBJECT
@@ -33,6 +34,7 @@ public:
     
     void setWidgets(MainMenuWidget* mainMenuWidget, CallWidget* callWidget, QStackedLayout* stackedLayout);
     void setNotificationController(NotificationController* notificationController);
+    void setConfigManager(ConfigManager* configManager);
     void hideOperationDialog();
 
 public slots:
@@ -98,6 +100,7 @@ private:
     DialogsController* m_dialogsController = nullptr;
     NotificationController* m_notificationController = nullptr;
     UpdateManager* m_updateManager = nullptr;
+    ConfigManager* m_configManager = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
     QStackedLayout* m_stackedLayout = nullptr;

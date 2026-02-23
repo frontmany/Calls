@@ -361,11 +361,11 @@
             <p>Each version directory must contain a <code>version.json</code> file with the following structure:</p>
             <pre>{
   "version": "1.2.3",
-  "updateType": "major"
+  "update_type": "major"
 }</pre>
             <ul>
                 <li><code>version</code> - Version string (e.g., "1.2.3", "2.0.0")</li>
-                <li><code>updateType</code> - Either <code>"major"</code> or <code>"minor"</code>
+                <li><code>update_type</code> - Either <code>"major"</code> or <code>"minor"</code>
                     <ul>
                         <li><code>"major"</code> - Forces <code>REQUIRED_UPDATE</code> response</li>
                         <li><code>"minor"</code> - Results in <code>POSSIBLE_UPDATE</code> response</li>
@@ -440,7 +440,7 @@
             <h3>Update Type Detection</h3>
             <p>When checking for updates, the server determines the response type:</p>
             <ul>
-                <li>If any available version has <code>"updateType": "major"</code> and is newer → <code>REQUIRED_UPDATE</code></li>
+                <li>If any available version has <code>"update_type": "major"</code> and is newer → <code>REQUIRED_UPDATE</code></li>
                 <li>If only minor updates are available → <code>POSSIBLE_UPDATE</code></li>
                 <li>If client version matches or exceeds latest → <code>UPDATE_NOT_NEEDED</code></li>
                 <li>If client version is invalid/lost → <code>REQUIRED_UPDATE</code></li>

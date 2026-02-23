@@ -62,5 +62,6 @@ private:
     QWidget* m_slidersContainer = nullptr;
     QSlider* m_micSlider = nullptr;
     QSlider* m_speakerSlider = nullptr;
+    int m_deviceNameMaxWidth = 0;
     bool m_blockDeviceSignals = false;
 };

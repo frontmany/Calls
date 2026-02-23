@@ -2,6 +2,11 @@
 #include "constants/jsonType.h"
 #include "json.hpp"
 
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+
 using namespace server::utilities;
 using namespace server::constant;
 
@@ -12,6 +17,17 @@ namespace
 {
     std::vector<unsigned char> toBytes(const std::string& value) {
         return std::vector<unsigned char>(value.begin(), value.end());
+    }
+
+    std::string utcTimestampIso8601() {
+        using namespace std::chrono;
+        const auto now = system_clock::now();
+        const auto time = system_clock::to_time_t(now);
+        const auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+        std::ostringstream oss;
+        oss << std::put_time(std::gmtime(&time), "%Y-%m-%dT%H:%M:%S")
+            << '.' << std::setfill('0') << std::setw(3) << ms.count() << 'Z';
+        return oss.str();
     }
 }
 
@@ -110,7 +126,7 @@ std::pair<std::string, std::vector<unsigned char>> PacketFactory::getUserLogoutP
 std::pair<std::string, std::vector<unsigned char>> PacketFactory::getCallDeclinedPacket(const std::string& senderNicknameHash, const std::string& receiverNicknameHash) {
     nlohmann::json jsonObject;
     std::string uid = crypto::generateUID();
-
+     
     jsonObject[UID] = uid;
     jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
     jsonObject[RECEIVER_NICKNAME_HASH] = receiverNicknameHash;
@@ -125,6 +141,18 @@ std::vector<unsigned char> PacketFactory::getCallEndPacket(const std::string& se
     jsonObject[UID] = uid;
     jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
     jsonObject[RECEIVER_NICKNAME_HASH] = receiverNicknameHash;
+
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMetricsResultPacket(double cpuUsagePercent, uint64_t memoryUsedBytes, uint64_t memoryAvailableBytes, size_t activeUsers) {
+    nlohmann::json jsonObject;
+
+    jsonObject[CPU_USAGE] = cpuUsagePercent;
+    jsonObject[MEMORY_USED] = memoryUsedBytes;
+    jsonObject[MEMORY_AVAILABLE] = memoryAvailableBytes;
+    jsonObject[ACTIVE_USERS] = activeUsers;
+    jsonObject[RECORDED_AT] = utcTimestampIso8601();
 
     return toBytes(jsonObject.dump());
 }

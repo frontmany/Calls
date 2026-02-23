@@ -6,7 +6,7 @@
 #include <optional>
 #include <unordered_map>
 #include <thread>
-#pragma once
+#include <atomic>
 
 #include <string>
 #include <memory>
@@ -16,7 +16,7 @@
 #include "logic/services/authorizationService.h"
 #include "logic/services/callService.h"
 #include "logic/services/mediaService.h"
-#include "logic/services/reconnectionService.h"
+#include "logic/services/connectionEstablishService.h"
 #include "logic/handlers/packetHandleController.h"
 #include "logic/clientStateManager.h"
 
@@ -61,6 +61,7 @@ namespace core
         bool isConnectionDown() const;
         bool isOutgoingCall() const;
         bool isActiveCall() const;
+        bool isCameraAvailable() const;
 
         int getInputVolume() const;
         int getOutputVolume() const;
@@ -85,13 +86,21 @@ namespace core
         std::error_code stopCameraSharing();
 
     private:
+        bool initializeServices(std::shared_ptr<EventListener> eventListener);
+        void sendReconnectPacket();
+
         std::shared_ptr<logic::ClientStateManager> m_stateManager;
         std::shared_ptr<media::AudioEngine> m_audioEngine;
         std::unique_ptr<logic::AuthorizationService> m_authorizationService;
         std::unique_ptr<logic::CallService> m_callService;
         std::unique_ptr<logic::MediaService> m_mediaService;
-        std::unique_ptr<logic::ReconnectionService> m_reconnectionService;
+        std::unique_ptr<logic::ConnectionEstablishService> m_connectionEstablishService;
         std::unique_ptr<logic::PacketHandleController> m_packetHandleController;
         std::unique_ptr<network::NetworkController> m_networkController;
+
+        std::string m_tcpHost;
+        std::string m_udpHost;
+        std::string m_tcpPort;
+        std::string m_udpPort;
     };
 }

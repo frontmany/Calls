@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <cstddef>
+#include <cstdint>
 
 #include "utilities/crypto.h"
 
@@ -21,5 +23,6 @@ public:
     static std::pair<std::string, std::vector<unsigned char>> getUserLogoutPacket(const std::string& userNicknameHash);
     static std::pair<std::string, std::vector<unsigned char>> getCallDeclinedPacket(const std::string& senderNicknameHash, const std::string& receiverNicknameHash);
     static std::vector<unsigned char> getCallEndPacket(const std::string& senderNicknameHash, const std::string& receiverNicknameHash);
+    static std::vector<unsigned char> getMetricsResultPacket(double cpuUsagePercent, uint64_t memoryUsedBytes, uint64_t memoryAvailableBytes, size_t activeUsers);
 };
 }

@@ -89,7 +89,6 @@ namespace server::network::tcp
             std::move(socket),
             [this](OwnedPacket&& p) { m_queue.push(std::move(p)); },
             [this](ConnectionPtr c) { handleDisconnect(c); });
-
         {
             std::lock_guard<std::mutex> lock(m_connMutex);
             m_connections.insert(conn);
@@ -98,7 +97,7 @@ namespace server::network::tcp
     }
 
     void Server::processQueue() {
-        while (m_running.load()) {
+        while (m_running.load()) { 
             auto item = m_queue.pop_for(100ms);
             if (item && m_onPacket)
                 m_onPacket(std::move(*item));

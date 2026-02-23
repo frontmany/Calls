@@ -58,6 +58,7 @@ namespace server::network::tcp
         std::function<void(ConnectionPtr)> onDisconnected)
         : m_ctx(ctx)
         , m_socket(std::move(socket))
+        , m_handshakeTimer(ctx)
         , m_receiver(
             m_socket,
             [this](Packet&& p) {
@@ -121,32 +122,51 @@ namespace server::network::tcp
     }
 
     void Connection::readHandshake() {
+        ConnectionPtr self = shared_from_this();
+        m_handshakeTimer.expires_after(HANDSHAKE_TIMEOUT_SEC);
+        m_handshakeTimer.async_wait([this, self](std::error_code ec) { onHandshakeTimeout(ec, self); });
+
         asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
-            [this](std::error_code ec, std::size_t) {
+            [this, self](std::error_code ec, std::size_t) {
                 if (ec) {
+                    m_handshakeTimer.cancel();
                     if (ec == asio::error::operation_aborted)
                         return;
                     LOG_ERROR("[TCP] Handshake read error: {}", server::utilities::errorCodeForLog(ec));
-                    m_onDisconnected(shared_from_this());
+                    m_onDisconnected(self);
                     return;
                 }
                 if (server::utilities::crypto::scramble(m_handshakeOut) != m_handshakeIn) {
+                    m_handshakeTimer.cancel();
                     LOG_WARN("[TCP] Handshake validation failed");
-                    m_onDisconnected(shared_from_this());
+                    m_onDisconnected(self);
                     return;
                 }
 
                 asio::async_write(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
-                    [this](std::error_code ec2, std::size_t) {
+                    [this, self](std::error_code ec2, std::size_t) {
+                        m_handshakeTimer.cancel();
                         if (ec2) {
                             if (ec2 == asio::error::operation_aborted)
                                 return;
                             LOG_ERROR("[TCP] Handshake confirmation write error: {}", server::utilities::errorCodeForLog(ec2));
-                            m_onDisconnected(shared_from_this());
+                            m_onDisconnected(self);
                             return;
                         }
+                        m_handshakeCompleted = true;
                         m_receiver.startReceiving();
                     });
             });
+    }
+
+    void Connection::onHandshakeTimeout(std::error_code ec, ConnectionPtr self) {
+        if (ec == asio::error::operation_aborted)
+            return;
+        if (m_handshakeCompleted)
+            return;
+        LOG_WARN("[TCP] Handshake timeout, closing connection");
+        std::error_code closeEc;
+        m_socket.close(closeEc);
+        m_onDisconnected(self);
     }
 }

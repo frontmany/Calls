@@ -14,6 +14,7 @@ const QString OUTPUT_VOLUME = "outputVolume";
 const QString MICROPHONE_MUTED = "microphoneMuted";
 const QString SPEAKER_MUTED = "speakerMuted";
 const QString CAMERA_ENABLED = "cameraEnabled";
+const QString START_CAMERA_WITH_CALL = "startCameraWithCall";
 const QString FIRST_LAUNCH = "firstLaunch";
 const QString LOG_DIRECTORY = "logDirectory";
 const QString CRASH_DUMP_DIRECTORY = "crashDumpDirectory";

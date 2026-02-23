@@ -35,31 +35,6 @@ void CoreNetworkErrorHandler::setNotificationController(NotificationController* 
     m_notificationController = notificationController;
 }
 
-
-
-void CoreNetworkErrorHandler::onConnectionRestored()
-{
-    const int connectionRestoredDurationMs = 1500;
-    if (m_dialogsController) {
-        m_dialogsController->hideUpdateAvailableDialogTemporarily();
-    }
-    if (m_notificationController) {
-        m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
-    }
-    if (m_dialogsController) {
-        QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
-            if (m_dialogsController) {
-                m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
-            }
-        });
-    }
-
-    if (m_authorizationWidget) {
-        m_authorizationWidget->resetBlur();
-        m_authorizationWidget->setAuthorizationDisabled(false);
-    }
-}
-
 void CoreNetworkErrorHandler::onConnectionDown()
 {
     if (m_callManager) {
@@ -74,7 +49,6 @@ void CoreNetworkErrorHandler::onConnectionDown()
 
     if (m_coreClient->isAuthorized()) {
         if (m_coreClient && m_coreClient->isActiveCall()) {
-            // Останавливаем трансляции через core
             if (m_coreClient->isScreenSharing()) {
                 m_coreClient->stopScreenSharing();
             }
@@ -112,6 +86,29 @@ void CoreNetworkErrorHandler::onConnectionDown()
         {
             m_notificationController->showConnectionDown();
         }
+    }
+}
+
+void CoreNetworkErrorHandler::onConnectionRestored()
+{
+    const int connectionRestoredDurationMs = 1500;
+    if (m_dialogsController) {
+        m_dialogsController->hideUpdateAvailableDialogTemporarily();
+    }
+    if (m_notificationController) {
+        m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
+    }
+    if (m_dialogsController) {
+        QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
+            if (m_dialogsController) {
+                m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
+            }
+        });
+    }
+
+    if (m_authorizationWidget) {
+        m_authorizationWidget->resetBlur();
+        m_authorizationWidget->setAuthorizationDisabled(false);
     }
 }
 

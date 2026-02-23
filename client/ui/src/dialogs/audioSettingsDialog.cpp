@@ -1,5 +1,6 @@
 #include "audioSettingsDialog.h"
 
+#include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QSizePolicy>
@@ -82,8 +83,18 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     devicesLayout->addWidget(m_outputDevicesArea, 2, 1, 1, 1);
     devicesLayout->setColumnStretch(0, 1);
     devicesLayout->setColumnStretch(1, 1);
-    devicesLayout->setColumnMinimumWidth(0, scale(200));
-    devicesLayout->setColumnMinimumWidth(1, scale(200));
+
+    const int listMinWidth = scale(220);
+    const int minContent = listMinWidth - scale(24) - scale(6) - scale(20) - scale(8) - scale(8) - scale(10) - scale(10);
+    m_deviceNameMaxWidth = minContent * scale(2);
+
+    devicesLayout->setColumnMinimumWidth(0, listMinWidth);
+    devicesLayout->setColumnMinimumWidth(1, listMinWidth);
+
+    m_inputDevicesArea->setMinimumWidth(listMinWidth);
+    m_outputDevicesArea->setMinimumWidth(listMinWidth);
+    m_inputDevicesArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_outputDevicesArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     m_micToggle = new ToggleButtonIcon(m_container,
         QIcon(":/resources/microphone.png"),
@@ -97,7 +108,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     m_speakerToggle = new ToggleButtonIcon(m_container,
         QIcon(":/resources/speaker.png"),
         QIcon(":/resources/speakerHover.png"),
-        QIcon(":/resources/speakerMutedActive.png"),
+        QIcon(":/resources/speakerMutedActive.png"), 
         QIcon(":/resources/speakerMutedActiveHover.png"),
         scale(20), scale(20));
     m_speakerToggle->setSize(scale(20), scale(20));
@@ -415,7 +426,10 @@ void AudioSettingsDialog::buildDeviceList(QVBoxLayout* layout, QButtonGroup* gro
             label += " (default)";
         }
 
-        QPushButton* btn = new QPushButton(label);
+        QFontMetrics fm(font());
+        QString displayText = fm.elidedText(label, Qt::ElideRight, m_deviceNameMaxWidth);
+        QPushButton* btn = new QPushButton(displayText);
+        btn->setToolTip(label);
         btn->setCheckable(true);
         btn->setCursor(Qt::PointingHandCursor);
         btn->setStyleSheet(

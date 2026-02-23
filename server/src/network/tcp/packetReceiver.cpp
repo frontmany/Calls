@@ -22,7 +22,7 @@ namespace server::network::tcp
     void PacketsReceiver::readHeader() {
         m_temporary.type = 0;
         m_temporary.bodySize = 0;
-        m_temporary.body.clear();
+        m_temporary.body.clear(); 
         PacketHeader* hdr = m_temporary.headerPtrMut();
         asio::async_read(m_socket, asio::buffer(hdr, sizeof(PacketHeader)),
             [this](std::error_code ec, std::size_t) {

@@ -49,6 +49,7 @@ namespace core::media
         , m_buffer(nullptr)
         , m_isRunning(false)
         , m_shouldStop(false)
+        , m_threadSelfDeleted(false)
         , m_frameWidth(0)
         , m_frameHeight(0)
         , m_captureThread(nullptr)
@@ -63,55 +64,99 @@ namespace core::media
 
     bool CameraCaptureService::start(const char* deviceName)
     {
-        if (m_isRunning) {
+        if (m_captureThread || m_isRunning.load()) {
             std::cerr << "Camera capture is already running" << std::endl;
             return false;
         }
 
-        if (!initializeCamera(deviceName)) {
-            return false;
-        }
+        m_shouldStop.store(false);
+        m_isRunning.store(false);
+        m_threadSelfDeleted.store(false);
 
-        m_shouldStop = false;
-        m_isRunning = true;
+        const std::string deviceNameCopy = deviceName ? std::string(deviceName) : std::string();
 
-        m_captureThread = new std::thread([this]() {
-            while (!m_shouldStop && m_isRunning) {
+        m_captureThread = new std::thread([this, deviceNameCopy]() {
+#ifdef _WIN32
+            // COM initialization is per-thread; camera init can use DirectShow.
+            (void)CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+#endif
+            if (m_shouldStop.load()) { 
+#ifdef _WIN32
+                CoUninitialize();
+#endif
+                return;
+            }
+
+            if (!initializeCamera(deviceNameCopy.empty() ? nullptr : deviceNameCopy.c_str())) {
+                std::cerr << "Failed to initialize camera" << std::endl;
+                if (m_errorCallback) {
+                    m_errorCallback();
+                }
+#ifdef _WIN32
+                CoUninitialize();
+#endif
+                return;
+            }
+
+            m_isRunning.store(true);
+
+            while (!m_shouldStop.load() && m_isRunning.load()) {
                 captureFrame();
             }
-            });
 
-        std::cout << "Camera capture started successfully" << std::endl;
+#ifdef _WIN32
+            CoUninitialize();
+#endif
+        });
+
         return true;
     }
 
     void CameraCaptureService::stop()
     {
-        if (!m_isRunning) {
-            return;
-        }
-
-        m_shouldStop = true;
-        m_isRunning = false;
+        m_shouldStop.store(true);
+        m_isRunning.store(false);
 
         if (m_captureThread) {
-            static_cast<std::thread*>(m_captureThread)->join();
-            delete static_cast<std::thread*>(m_captureThread);
-            m_captureThread = nullptr;
+            if (m_captureThread->joinable()) {
+                m_captureThread->join();
+
+                if (m_threadSelfDeleted.load()) {
+                    m_captureThread = nullptr;
+                    m_threadSelfDeleted.store(false);
+                } else {
+                    delete m_captureThread;
+                    m_captureThread = nullptr;
+                }
+            } 
+            else {
+                delete m_captureThread;
+                m_captureThread = nullptr;
+            }
+        } 
+        else {
+            m_threadSelfDeleted.store(false);
         }
 
+        m_shouldStop.store(false);
+        m_isRunning.store(false);
+
         cleanup();
-        std::cout << "Camera capture stopped" << std::endl;
     }
 
     bool CameraCaptureService::isRunning() const
     {
-        return m_isRunning;
+        return m_isRunning.load();
     }
 
     void CameraCaptureService::setFrameCallback(FrameCallback callback)
     {
         m_frameCallback = callback;
+    }
+
+    void CameraCaptureService::setErrorCallback(ErrorCallback callback)
+    {
+        m_errorCallback = std::move(callback);
     }
 
     bool CameraCaptureService::getAvailableDevices(char devices[][256], int maxDevices, int& deviceCount)

@@ -43,6 +43,7 @@ namespace server
         void handleReconnect(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleLogout(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleGetFriendInfo(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleGetMetrics(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleStartOutgoingCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleStopOutgoingCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleAcceptCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn);

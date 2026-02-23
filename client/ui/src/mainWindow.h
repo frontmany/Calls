@@ -47,7 +47,6 @@ private slots:
     void onWindowMaximizedRequested();
     void onEndCallFullscreenExitRequested(); 
     void onStopAllRingtonesRequested();
-    void onInitialConnectionRetry();
 
 private:
     void initializeCentralStackedWidget();
@@ -96,6 +95,4 @@ private:
     CallManager* m_callManager = nullptr;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler = nullptr;
     UpdaterNetworkErrorHandler* m_updaterNetworkErrorHandler = nullptr;
-
-    QTimer* m_initialConnectionRetryTimer = nullptr;  // Retries Core::start() when server was down at startup
 };

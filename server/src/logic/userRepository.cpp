@@ -73,4 +73,14 @@ namespace server::logic
 				m_endpointToUser[newEndpoint] = it->second;
 		}
 	}
+
+	size_t UserRepository::getActiveUsersCount() const {
+		std::lock_guard<std::mutex> lock(m_mutex);
+		size_t count = 0;
+		for (const auto& [_, user] : m_nicknameHashToUser) {
+			if (user && !user->isConnectionDown())
+				++count;
+		}
+		return count;
+	}
 }

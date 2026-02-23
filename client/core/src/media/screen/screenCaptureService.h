@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <cstdint>
+#include <thread>
 #include <string>
 #include "media/frame.h"
 
@@ -59,7 +60,6 @@ namespace core::media
         int m_frameWidth;
         int m_frameHeight;
             
-        // Platform-specific handle for capture thread
-        void* m_captureThread;
+        std::thread* m_captureThread;
     };
 }
