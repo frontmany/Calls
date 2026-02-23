@@ -33,7 +33,7 @@ namespace core::logic
         if (reconnected) {
             LOG_INFO("Connection restored successfully");
 
-            m_eventListener->onConnectionRestored();
+            m_eventListener->onConnectionEstablished();
 
             bool activeCall = jsonObject[IS_ACTIVE_CALL].get<bool>();
 
@@ -88,7 +88,7 @@ namespace core::logic
         }
         else {
             LOG_INFO("Connection restored but authorization needed again");
-            m_eventListener->onConnectionRestoredAuthorizationNeeded();
+            m_eventListener->onConnectionEstablishedAuthorizationNeeded();
         }
     }
 }

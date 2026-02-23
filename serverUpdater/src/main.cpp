@@ -13,7 +13,8 @@ namespace serverUpdater
 int main()
 {
     std::filesystem::create_directories("logs");
-    
+    std::filesystem::create_directories("versions");
+
     LOG_INFO("=== Server Updater Starting ===");
     
     try {

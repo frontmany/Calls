@@ -143,9 +143,13 @@ class CallbacksHandler(callsClientPy.EventListener):
         self.events.append("network_error")
         print(f"[{self.name}] Connection down")
     
-    def onConnectionRestored(self):
-        self.events.append("connection_restored")
-        print(f"[{self.name}] Connection restored")
+    def onConnectionEstablished(self):
+        self.events.append("connection_established")
+        print(f"[{self.name}] Connection established")
+
+    def onConnectionEstablishedAuthorizationNeeded(self):
+        self.events.append("connection_established_auth_needed")
+        print(f"[{self.name}] Connection established, authorization needed")
     
     def onCallEndedByRemote(self, ec_value):
         self.events.append("remote_ended_call")

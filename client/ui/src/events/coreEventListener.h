@@ -41,8 +41,8 @@ public:
     void onCallParticipantConnectionRestored() override;
 
     void onConnectionDown() override;
-    void onConnectionRestored() override;
-    void onConnectionRestoredAuthorizationNeeded() override;
+    void onConnectionEstablished() override;
+    void onConnectionEstablishedAuthorizationNeeded() override;
 
 private:
     AuthorizationManager* m_authorizationManager;

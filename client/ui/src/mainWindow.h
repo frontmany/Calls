@@ -47,6 +47,7 @@ private slots:
     void onWindowMaximizedRequested();
     void onEndCallFullscreenExitRequested(); 
     void onStopAllRingtonesRequested();
+    void onCoreRestartRequested();
 
 private:
     void initializeCentralStackedWidget();

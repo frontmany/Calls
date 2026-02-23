@@ -37,6 +37,8 @@ void CoreNetworkErrorHandler::setNotificationController(NotificationController* 
 
 void CoreNetworkErrorHandler::onConnectionDown()
 {
+    m_connectionWasDown = true;
+
     if (m_callManager) {
         m_callManager->onLocalConnectionDown();
     }
@@ -89,15 +91,16 @@ void CoreNetworkErrorHandler::onConnectionDown()
     }
 }
 
-void CoreNetworkErrorHandler::onConnectionRestored()
+void CoreNetworkErrorHandler::onConnectionEstablished()
 {
     const int connectionRestoredDurationMs = 1500;
     if (m_dialogsController) {
         m_dialogsController->hideUpdateAvailableDialogTemporarily();
     }
-    if (m_notificationController) {
+    if (m_notificationController && m_connectionWasDown) {
         m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
     }
+    m_connectionWasDown = false;
     if (m_dialogsController) {
         QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
             if (m_dialogsController) {
@@ -112,15 +115,16 @@ void CoreNetworkErrorHandler::onConnectionRestored()
     }
 }
 
-void CoreNetworkErrorHandler::onConnectionRestoredAuthorizationNeeded()
+void CoreNetworkErrorHandler::onConnectionEstablishedAuthorizationNeeded()
 {
     const int connectionRestoredDurationMs = 1500;
     if (m_dialogsController) {
         m_dialogsController->hideUpdateAvailableDialogTemporarily();
     }
-    if (m_notificationController) {
+    if (m_notificationController && m_connectionWasDown) {
         m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
     }
+    m_connectionWasDown = false;
     if (m_dialogsController) {
         QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
             if (m_dialogsController) {

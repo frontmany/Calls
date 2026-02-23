@@ -26,8 +26,8 @@ public:
 
 public slots:
     void onConnectionDown();
-    void onConnectionRestored();
-    void onConnectionRestoredAuthorizationNeeded();
+    void onConnectionEstablished();
+    void onConnectionEstablishedAuthorizationNeeded();
 
 private:
     std::shared_ptr<core::Core> m_coreClient = nullptr;
@@ -39,4 +39,5 @@ private:
     NotificationController* m_notificationController = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     CallManager* m_callManager = nullptr;
+    bool m_connectionWasDown = false;
 };

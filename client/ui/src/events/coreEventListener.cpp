@@ -171,18 +171,18 @@ void CoreEventListener::onConnectionDown()
     }
 }
 
-void CoreEventListener::onConnectionRestored()
+void CoreEventListener::onConnectionEstablished()
 {
     if (m_coreNetworkErrorHandler) {
-        QMetaObject::invokeMethod(static_cast<QObject*>(m_coreNetworkErrorHandler), "onConnectionRestored",
+        QMetaObject::invokeMethod(static_cast<QObject*>(m_coreNetworkErrorHandler), "onConnectionEstablished",
             Qt::QueuedConnection);
     }
 }
 
-void CoreEventListener::onConnectionRestoredAuthorizationNeeded()
+void CoreEventListener::onConnectionEstablishedAuthorizationNeeded()
 {
     if (m_coreNetworkErrorHandler) {
-        QMetaObject::invokeMethod(static_cast<QObject*>(m_coreNetworkErrorHandler), "onConnectionRestoredAuthorizationNeeded",
+        QMetaObject::invokeMethod(static_cast<QObject*>(m_coreNetworkErrorHandler), "onConnectionEstablishedAuthorizationNeeded",
             Qt::QueuedConnection);
     }
 }

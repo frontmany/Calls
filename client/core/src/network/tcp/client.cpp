@@ -31,14 +31,14 @@ static void configureKeepalive(asio::ip::tcp::socket& socket) {
 #ifdef _WIN32
     struct tcp_keepalive ka{};
     ka.onoff = 1;
-    ka.keepalivetime = 2000;
+    ka.keepalivetime = 3000;
     ka.keepaliveinterval = 1000;
     DWORD bytesReturned = 0;
     WSAIoctl(socket.native_handle(), SIO_KEEPALIVE_VALS,
              &ka, sizeof(ka), nullptr, 0, &bytesReturned, nullptr, nullptr);
 #elif defined(__linux__)
     int fd = socket.native_handle();
-    int idle = 2;
+    int idle = 3;
     int intvl = 1;
     int cnt = 3;
     setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
@@ -46,7 +46,7 @@ static void configureKeepalive(asio::ip::tcp::socket& socket) {
     setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt));
 #elif defined(__APPLE__)
     int fd = socket.native_handle();
-    int idle = 2;
+    int idle = 3;
     int intvl = 1;
     int cnt = 3;
     setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle));
@@ -54,7 +54,7 @@ static void configureKeepalive(asio::ip::tcp::socket& socket) {
     setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt));
 #endif
 
-    LOG_DEBUG("Control keepalive enabled (idle=2s, interval=1s, probes=3)");
+    LOG_DEBUG("Control keepalive enabled (idle=3s, interval=1s, probes=3)");
 }
 
 Client::Client(asio::io_context& context,

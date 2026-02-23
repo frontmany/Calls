@@ -39,7 +39,7 @@ namespace core
         virtual void onCallParticipantConnectionRestored() = 0;
 
         virtual void onConnectionDown() = 0;
-        virtual void onConnectionRestored() = 0;
-        virtual void onConnectionRestoredAuthorizationNeeded() = 0;
+        virtual void onConnectionEstablished() = 0;
+        virtual void onConnectionEstablishedAuthorizationNeeded() = 0;
     };
 }

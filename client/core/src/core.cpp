@@ -98,7 +98,7 @@ namespace core
                 sendReconnectPacket();
             }
             else if (eventListener) {
-                eventListener->onConnectionRestoredAuthorizationNeeded();
+                eventListener->onConnectionEstablishedAuthorizationNeeded();
             }
         };
 

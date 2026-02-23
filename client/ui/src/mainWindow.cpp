@@ -393,6 +393,7 @@ void MainWindow::connectWidgetsToManagers() {
     }
     if (m_updateManager) {
         connect(m_updateManager, &UpdateManager::stopAllRingtonesRequested, this, &MainWindow::onStopAllRingtonesRequested);
+        connect(m_updateManager, &UpdateManager::coreRestartRequested, this, &MainWindow::onCoreRestartRequested);
     }
     if (m_callManager) {
         connect(m_callManager, &CallManager::endCallFullscreenExitRequested, this, &MainWindow::onEndCallFullscreenExitRequested);
@@ -522,6 +523,28 @@ void MainWindow::onStopAllRingtonesRequested()
     if (m_audioManager) {
         m_audioManager->stopOutgoingCallRingtone();
         m_audioManager->stopIncomingCallRingtone();
+    }
+}
+
+void MainWindow::onCoreRestartRequested()
+{
+    if (!m_coreClient || !m_configManager || !m_authorizationManager || !m_callManager || !m_coreNetworkErrorHandler) {
+        return;
+    }
+
+    const bool coreStarted = m_coreClient->start(
+        m_configManager->getServerHost().toStdString(),
+        m_configManager->getServerHost().toStdString(),
+        m_configManager->getMainServerTcpPort().toStdString(),
+        m_configManager->getMainServerUdpPort().toStdString(),
+        std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
+    );
+
+    if (coreStarted) {
+        applyAudioSettings();
+    }
+    else if (m_coreNetworkErrorHandler) {
+        m_coreNetworkErrorHandler->onConnectionDown();
     }
 }
 

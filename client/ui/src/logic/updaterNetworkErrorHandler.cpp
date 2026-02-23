@@ -48,6 +48,10 @@ void UpdaterNetworkErrorHandler::onNetworkError()
             m_notificationController->showUpdateError(1500);
         }
     }
+
+    if (m_updateManager) {
+        m_updateManager->onUpdateAborted();
+    }
 } 
 
 void UpdaterNetworkErrorHandler::onConnected()

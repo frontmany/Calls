@@ -142,14 +142,14 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionDown);
     }
 
-    void onConnectionRestored() override
+    void onConnectionEstablished() override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionRestored);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionEstablished);
     }
 
-    void onConnectionRestoredAuthorizationNeeded() override
+    void onConnectionEstablishedAuthorizationNeeded() override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionRestoredAuthorizationNeeded);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionEstablishedAuthorizationNeeded);
     }
 };
 
@@ -200,8 +200,8 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onCallParticipantConnectionDown", &core::EventListener::onCallParticipantConnectionDown)
         .def("onCallParticipantConnectionRestored", &core::EventListener::onCallParticipantConnectionRestored)
         .def("onConnectionDown", &core::EventListener::onConnectionDown)
-        .def("onConnectionRestored", &core::EventListener::onConnectionRestored)
-        .def("onConnectionRestoredAuthorizationNeeded", &core::EventListener::onConnectionRestoredAuthorizationNeeded);
+        .def("onConnectionEstablished", &core::EventListener::onConnectionEstablished)
+        .def("onConnectionEstablishedAuthorizationNeeded", &core::EventListener::onConnectionEstablishedAuthorizationNeeded);
 
     // Core (Client) class
     py::class_<core::Core>(m, "Client")

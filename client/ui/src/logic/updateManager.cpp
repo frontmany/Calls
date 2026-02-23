@@ -56,6 +56,9 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QStri
     }
     else if (result == updater::CheckResult::REQUIRED_UPDATE) {
         m_updateNeeded = true;
+        if (m_coreClient) {
+            m_coreClient->stop();
+        }
         if (m_updaterClient) {
             m_updaterClient->startUpdate(resolveOperationSystemType());
         }
@@ -74,19 +77,12 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QStri
 
 void UpdateManager::onUpdateButtonClicked()
 {
-    if (m_coreClient && m_coreClient->isOutgoingCall()) {
-        m_coreClient->stopOutgoingCall();
-    }
+    emit stopAllRingtonesRequested();
 
     if (m_coreClient) {
-        auto callers = m_coreClient->getCallers();
-        for (const auto& nickname : callers) {
-            m_coreClient->declineCall(nickname);
-        }
+        m_coreClient->stop();
     }
 
-    emit stopAllRingtonesRequested();
-    
     if (m_mainMenuWidget) {
         m_mainMenuWidget->removeOutgoingCallPanel();
     }
@@ -123,7 +119,13 @@ void UpdateManager::onUpdateLoaded(bool emptyUpdate)
     else {
         m_dialogsController->setUpdateDialogStatus("Already up to date");
         m_dialogsController->hideUpdatingDialog();
+        onUpdateAborted();
     }
+}
+
+void UpdateManager::onUpdateAborted()
+{
+    emit coreRestartRequested();
 }
 
 void UpdateManager::onLoadingProgress(double progress)

@@ -144,7 +144,19 @@ namespace serverUpdater
 
 	void ServerUpdater::onUpdatesCheck(ConnectionPtr connection, Packet&& packet)
 	{
-		nlohmann::json jsonObject = nlohmann::json::parse(packet.data());
+		nlohmann::json jsonObject;
+		try {
+			jsonObject = nlohmann::json::parse(packet.data());
+		}
+		catch (const std::exception& e) {
+			LOG_ERROR("Failed to parse UPDATE_CHECK packet: {}", e.what());
+			return;
+		}
+
+		if (!jsonObject.contains(VERSION) || !jsonObject[VERSION].is_string()) {
+			LOG_ERROR("UPDATE_CHECK packet missing VERSION field");
+			return;
+		}
 
 		Version version(jsonObject[VERSION].get<std::string>());
 		LOG_INFO("Checking for updates, client version: {}", version.getAsString());
@@ -157,29 +169,42 @@ namespace serverUpdater
 			bool hasMajorUpdate = false;
 			Version latestVersion = version;
 
+			if (!std::filesystem::exists(m_versionsDirectory) || !std::filesystem::is_directory(m_versionsDirectory)) {
+				LOG_ERROR("Versions directory does not exist or is not a directory: {}", m_versionsDirectory.string());
+				checkResult = CheckResult::UPDATE_NOT_NEEDED;
+			}
+			else {
 			for (const auto& entry : std::filesystem::directory_iterator(m_versionsDirectory)) {
 				if (entry.is_directory()) {
 					std::filesystem::path versionJsonPath = entry.path() / "version.json";
 
 					if (std::filesystem::exists(versionJsonPath) &&
 						std::filesystem::is_regular_file(versionJsonPath)) {
-						std::ifstream file(versionJsonPath);
-						nlohmann::json versionJson = nlohmann::json::parse(file);
+						try {
+							std::ifstream file(versionJsonPath);
+							nlohmann::json versionJson = nlohmann::json::parse(file);
 
-						Version currentVersion(versionJson[VERSION].get<std::string>());
-						std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
+							if (!versionJson.contains(VERSION) || !versionJson.contains(UPDATE_TYPE))
+								continue;
 
-						if (currentVersion > version) {
-							if (updateType == MAJOR_UPDATE) {
-								hasMajorUpdate = true;
+							Version currentVersion(versionJson[VERSION].get<std::string>());
+							std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
+
+							if (currentVersion > version) {
+								if (updateType == MAJOR_UPDATE) {
+									hasMajorUpdate = true;
+								}
+								if (currentVersion > latestVersion) {
+									latestVersion = currentVersion;
+								}
 							}
-
-							if (currentVersion > latestVersion) {
-								latestVersion = currentVersion;
-							}
+						}
+						catch (const std::exception& e) {
+							LOG_DEBUG("Error parsing version.json in {}: {}", entry.path().string(), e.what());
 						}
 					}
 				}
+			}
 			}
 
 			if (latestVersion == version) {
