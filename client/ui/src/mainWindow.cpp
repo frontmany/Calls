@@ -80,8 +80,6 @@ void MainWindow::init() {
         m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
     }
 
-    showMaximized();
-
     QCoreApplication::postEvent(this, new StartupEvent());
 }
 
