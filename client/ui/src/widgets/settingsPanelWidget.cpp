@@ -108,7 +108,7 @@ QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
         "   border-color: %13;"
         "}"
     )
-        .arg(COLOR_OVERLAY_SETTINGS_190.name())    // %1 - background-color
+        .arg(COLOR_OVERLAY_SETTINGS_190.name())   // %1 - background-color
         .arg(COLOR_TEXT_SECONDARY.name())         // %2 - color
         .arg(scale(8))                            // %3 - border-radius
         .arg(scale(8))                            // %4 - padding vertical
@@ -117,7 +117,7 @@ QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
         .arg(scale(0))                            // %7 - margin right
         .arg(scale(8))                            // %8 - margin bottom
         .arg(scale(0))                            // %9 - margin left
-        .arg(COLOR_BORDER_NEUTRAL.name())                // %10 - border color
+        .arg(COLOR_BORDER_NEUTRAL.name())           // %10 - border color
         .arg(COLOR_OVERLAY_SETTINGS_110.name())     // %11 - hover background-color
         .arg(COLOR_OVERLAY_SETTINGS_110.name())     // %12 - pressed background-color
         .arg(COLOR_OVERLAY_SETTINGS_110.name());    // %13 - focus border-color
@@ -174,7 +174,7 @@ void SettingsPanel::setupUI() {
     m_devicePickerButton = new QPushButton("Audio devices", this);
     m_devicePickerButton->setFixedHeight(scale(60));
     m_devicePickerButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
-    QFont refreshButtonFont("Outfit", scale(13), QFont::Medium);
+    QFont refreshButtonFont("Outfit", scale(13), QFont::Light);
     m_devicePickerButton->setFont(refreshButtonFont);
     m_devicePickerButton->setToolTip("Select input/output devices");
     m_devicePickerButton->setCursor(Qt::PointingHandCursor);
