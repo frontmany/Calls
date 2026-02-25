@@ -18,6 +18,9 @@ int main(int argc, char* argv[])
     MainWindow* mainWindow = new MainWindow();
     mainWindow->init();
 
+    mainWindow->resize(800, 600);
+    mainWindow->show();
+
     // 192.168.1.44 local machine 
     // 192.168.1.48 server internal ip
     // 92.255.165.77 server global ip

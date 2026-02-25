@@ -352,6 +352,10 @@ void MainWindow::connectWidgetsToManagers() {
     }
 
 
+    if (m_mainMenuWidget && m_dialogsController) {
+        connect(m_mainMenuWidget, &MainMenuWidget::meetingButtonClicked, m_dialogsController, &DialogsController::showGroupCallManagementDialog);
+    }
+
     // DialogsController connections
     if (m_dialogsController && m_callManager) {
         connect(m_dialogsController, &DialogsController::screenSelected, m_callManager, &CallManager::onScreenSelected);

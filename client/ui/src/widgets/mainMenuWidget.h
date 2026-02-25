@@ -14,6 +14,7 @@
 #include <QGraphicsBlurEffect>
 #include <QSpacerItem>
 #include "settingsPanelWidget.h"
+#include "widgets/components/button.h"
 
 struct StyleMainMenuWidget {
     static const QColor m_primaryColor;
@@ -89,6 +90,7 @@ public:
 
 
 signals:
+    void meetingButtonClicked();
     void startOutgoingCallButtonClicked(const QString& friendNickname);
     void stopOutgoingCallButtonClicked();
     void audioDevicePickerRequested();
@@ -99,6 +101,7 @@ signals:
     void activateCameraClicked(bool activateD);
 
 private slots:
+    void onMeetingButtonClicked();
     void onCallButtonClicked();
     void onSettingsButtonClicked();
     void onStopOutgoingCallButtonClicked();
@@ -116,6 +119,9 @@ private:
     QPixmap m_backgroundTexture;
 
     // Header section
+    QWidget* m_headerWidget;
+    QHBoxLayout* m_headerLayout;
+    ButtonIcon* m_meetingButton;
     QLabel* m_titleLabel;
     QWidget* m_userInfoWidget;
     QHBoxLayout* m_userInfoLayout;

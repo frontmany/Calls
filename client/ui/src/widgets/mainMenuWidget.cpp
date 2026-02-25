@@ -395,6 +395,20 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->setSpacing(scale(20));
     m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
 
+    // Header with meeting button (top right above title)
+    m_headerWidget = new QWidget(m_mainContainer);
+    m_headerLayout = new QHBoxLayout(m_headerWidget);
+    m_headerLayout->setContentsMargins(0, 0, 0, 0);
+    m_headerLayout->setSpacing(0);
+    m_headerLayout->addStretch();
+
+    m_meetingButton = new ButtonIcon(m_headerWidget,
+        QIcon(":/resources/meeting.png"),
+        QIcon(":/resources/meetingHover.png"),
+        scale(32), scale(32));
+    m_meetingButton->setCursor(Qt::PointingHandCursor);
+    m_headerLayout->addWidget(m_meetingButton);
+
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
     m_titleLabel->setAlignment(Qt::AlignCenter);
@@ -530,6 +544,7 @@ void MainMenuWidget::setupUI() {
     m_settingsPanel->hide();
 
     // Add widgets to layout
+    m_containerLayout->addWidget(m_headerWidget);
     m_containerLayout->addWidget(m_titleLabel);
     m_containerLayout->addSpacing(scale(-4));
     m_containerLayout->addWidget(m_userInfoWidget);
@@ -546,6 +561,7 @@ void MainMenuWidget::setupUI() {
     m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
 
     // Connect signals
+    connect(m_meetingButton, &ButtonIcon::clicked, this, &MainMenuWidget::onMeetingButtonClicked);
     connect(m_callButton, &QPushButton::clicked, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
     connect(m_stopOutgoingCallButton, &QPushButton::clicked, this, &MainMenuWidget::onStopOutgoingCallButtonClicked);
@@ -711,6 +727,10 @@ void MainMenuWidget::setErrorMessage(const QString& errorText) {
 
 void MainMenuWidget::clearErrorMessage() {
     m_errorLabel->hide();
+}
+
+void MainMenuWidget::onMeetingButtonClicked() {
+    emit meetingButtonClicked();
 }
 
 void MainMenuWidget::onSettingsButtonClicked() {

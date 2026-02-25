@@ -43,6 +43,8 @@
 	 <file>multipleInstancesError.png</file>
 	 <file>camera.png</file>
 	 <file>cameraHover.png</file>
+ 	 <file>meeting.png</file>
+	 <file>meetingHover.png</file>
 	 <file>cameraActive.png</file>
 	 <file>cameraActiveHover.png</file>
 	 <file>cameraDisabled.png</file>
