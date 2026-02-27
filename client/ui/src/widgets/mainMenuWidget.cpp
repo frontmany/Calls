@@ -517,7 +517,7 @@ void MainMenuWidget::setupUI() {
         scale(20), scale(20));
     leftIcon->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
-    QLabel* textLabel = new QLabel("Audio Controls");
+    QLabel* textLabel = new QLabel("Device Controls");
     textLabel->setStyleSheet("color: inherit; background: transparent;");
     QFont textLabelFont("Outfit", scale(12), QFont::Light);
     textLabel->setFont(textLabelFont);

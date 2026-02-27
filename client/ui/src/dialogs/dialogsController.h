@@ -15,7 +15,7 @@ class AlreadyRunningDialog;
 class FirstLaunchDialog;
 class IncomingCallDialog;
 class UpdateAvailableDialog;
-class GroupCallManagementDialog;
+class MeetingManagementDialog;
 
 namespace updater {
     class Client;
@@ -53,11 +53,10 @@ public:
     void hideIncomingCallsDialog(const QString& friendNickname);
     void setIncomingCallButtonsActive(const QString& friendNickname, bool active);
 
-    void showGroupCallManagementDialog();
-    void hideGroupCallManagementDialog();
-    void showGroupCallConnectingState(const QString& roomId);
-    void setGroupCallJoinProgress(int percent);
-    void setGroupCallJoinStatus(const QString& status);
+    void showMeetingsManagementDialog();
+    void hideMeetingsManagementDialog();
+    void showMeetingsConnectingState(const QString& roomId);
+    void setMeetingsJoinStatus(const QString& status);
 
     void showUpdateAvailableDialog(const QString& newVersion = QString());
     void hideUpdateAvailableDialog();
@@ -83,9 +82,9 @@ signals:
     void incomingCallDeclined(const QString& friendNickname);
     void incomingCallsDialogClosed(const QList<QString>& pendingCalls);
     void updateButtonClicked();
-    void groupCallCreateRequested(const QString& uid);
-    void groupCallJoinRequested(const QString& uid);
-    void groupCallJoinCancelled();
+    void meetingCreateRequested(const QString& uid);
+    void meetingJoinRequested(const QString& uid);
+    void meetingJoinCancelled();
 
 private:
     QWidget* m_parent;
@@ -109,8 +108,8 @@ private:
     OverlayWidget* m_updateAvailableOverlay = nullptr;
     UpdateAvailableDialog* m_updateAvailableDialog = nullptr;
 
-    OverlayWidget* m_groupCallManagementOverlay = nullptr;
-    GroupCallManagementDialog* m_groupCallManagementDialog = nullptr;
+    OverlayWidget* m_meetingsManagementOverlay = nullptr;
+    MeetingManagementDialog* m_meetingsManagementDialog = nullptr;
 
     std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 };

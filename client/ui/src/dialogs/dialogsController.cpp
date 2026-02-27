@@ -23,7 +23,7 @@
 #include "dialogs/audioSettingsDialog.h"
 #include "dialogs/updatingDialog.h"
 #include "dialogs/updateAvailableDialog.h"
-#include "dialogs/groupCallManagementDialog.h"
+#include "dialogs/meetingManagementDialog.h"
 #include "updater.h"
 #include <algorithm>
 
@@ -42,8 +42,8 @@ DialogsController::DialogsController(QWidget* parent)
     , m_audioSettingsDialog(nullptr)
     , m_updateAvailableOverlay(nullptr)
     , m_updateAvailableDialog(nullptr)
-    , m_groupCallManagementOverlay(nullptr)
-    , m_groupCallManagementDialog(nullptr)
+    , m_meetingsManagementOverlay(nullptr)
+    , m_meetingsManagementDialog(nullptr)
 {
 }
 
@@ -55,7 +55,7 @@ DialogsController::~DialogsController()
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
     hideAudioSettingsDialog();
-    hideGroupCallManagementDialog();
+    hideMeetingsManagementDialog();
     hideUpdateAvailableDialog();
 
     for (IncomingCallDialog* dialog : m_incomingCallDialogs)
@@ -532,96 +532,88 @@ void DialogsController::setIncomingCallButtonsActive(const QString& friendNickna
     }
 }
 
-void DialogsController::showGroupCallManagementDialog()
+void DialogsController::showMeetingsManagementDialog()
 {
-    if (m_groupCallManagementDialog)
+    if (m_meetingsManagementDialog)
     {
-        m_groupCallManagementDialog->showInitialState();
-        m_groupCallManagementDialog->raise();
+        m_meetingsManagementDialog->showInitialState();
+        m_meetingsManagementDialog->raise();
         return;
     }
 
-    m_groupCallManagementOverlay = new OverlayWidget(m_parent);
-    m_groupCallManagementOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    m_groupCallManagementOverlay->show();
-    m_groupCallManagementOverlay->raise();
+    m_meetingsManagementOverlay = new OverlayWidget(m_parent);
+    m_meetingsManagementOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_meetingsManagementOverlay->show();
+    m_meetingsManagementOverlay->raise();
 
-    m_groupCallManagementDialog = new GroupCallManagementDialog(m_groupCallManagementOverlay);
+    m_meetingsManagementDialog = new MeetingManagementDialog(m_meetingsManagementOverlay);
 
     auto centerDialog = [this]()
     {
-        if (!m_groupCallManagementDialog || !m_groupCallManagementOverlay)
+        if (!m_meetingsManagementDialog || !m_meetingsManagementOverlay)
             return;
 
-        m_groupCallManagementDialog->adjustSize();
-        QSize dialogSize = m_groupCallManagementDialog->size();
-        QRect overlayRect = m_groupCallManagementOverlay->rect();
+        m_meetingsManagementDialog->adjustSize();
+        QSize dialogSize = m_meetingsManagementDialog->size();
+        QRect overlayRect = m_meetingsManagementOverlay->rect();
         int x = overlayRect.center().x() - dialogSize.width() / 2;
         int y = overlayRect.center().y() - dialogSize.height() / 2;
-        m_groupCallManagementDialog->move(x, y);
-        m_groupCallManagementDialog->raise();
+        m_meetingsManagementDialog->move(x, y);
+        m_meetingsManagementDialog->raise();
     };
 
     centerDialog();
-    m_groupCallManagementDialog->show();
+    m_meetingsManagementDialog->show();
     QTimer::singleShot(0, this, centerDialog);
-    QObject::connect(m_groupCallManagementOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
+    QObject::connect(m_meetingsManagementOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
 
-    connect(m_groupCallManagementDialog, &GroupCallManagementDialog::closeRequested, this, &DialogsController::hideGroupCallManagementDialog);
-    connect(m_groupCallManagementDialog, &GroupCallManagementDialog::createCallRequested, this, [this](const QString& uid) {
-        emit groupCallCreateRequested(uid);
+    connect(m_meetingsManagementDialog, &MeetingManagementDialog::closeRequested, this, &DialogsController::hideMeetingsManagementDialog);
+    connect(m_meetingsManagementDialog, &MeetingManagementDialog::createMeetingRequested, this, [this](const QString& uid) {
+        emit meetingCreateRequested(uid);
     });
-    connect(m_groupCallManagementDialog, &GroupCallManagementDialog::joinCallRequested, this, [this](const QString& uid) {
-        emit groupCallJoinRequested(uid);
-        m_groupCallManagementDialog->showConnectingState(uid);
+    connect(m_meetingsManagementDialog, &MeetingManagementDialog::joinMeetingRequested, this, [this](const QString& uid) {
+        emit meetingJoinRequested(uid);
+        m_meetingsManagementDialog->showConnectingState(uid);
     });
-    connect(m_groupCallManagementDialog, &GroupCallManagementDialog::joinCancelled, this, [this]() {
-        emit groupCallJoinCancelled();
-        if (m_groupCallManagementDialog) {
-            m_groupCallManagementDialog->showInitialState();
+    connect(m_meetingsManagementDialog, &MeetingManagementDialog::joinCancelled, this, [this]() {
+        emit meetingJoinCancelled();
+        if (m_meetingsManagementDialog) {
+            m_meetingsManagementDialog->showInitialState();
         }
     });
 }
 
-void DialogsController::hideGroupCallManagementDialog()
+void DialogsController::hideMeetingsManagementDialog()
 {
-    if (m_groupCallManagementDialog)
+    if (m_meetingsManagementDialog)
     {
-        m_groupCallManagementDialog->disconnect();
-        m_groupCallManagementDialog->hide();
-        m_groupCallManagementDialog->deleteLater();
-        m_groupCallManagementDialog = nullptr;
+        m_meetingsManagementDialog->disconnect();
+        m_meetingsManagementDialog->hide();
+        m_meetingsManagementDialog->deleteLater();
+        m_meetingsManagementDialog = nullptr;
     }
 
-    if (m_groupCallManagementOverlay)
+    if (m_meetingsManagementOverlay)
     {
-        m_groupCallManagementOverlay->close();
-        m_groupCallManagementOverlay->deleteLater();
-        m_groupCallManagementOverlay = nullptr;
-    }
-}
-
-void DialogsController::showGroupCallConnectingState(const QString& roomId)
-{
-    if (m_groupCallManagementDialog)
-    {
-        m_groupCallManagementDialog->showConnectingState(roomId);
+        m_meetingsManagementOverlay->close();
+        m_meetingsManagementOverlay->deleteLater();
+        m_meetingsManagementOverlay = nullptr;
     }
 }
 
-void DialogsController::setGroupCallJoinProgress(int percent)
+void DialogsController::showMeetingsConnectingState(const QString& roomId)
 {
-    if (m_groupCallManagementDialog)
+    if (m_meetingsManagementDialog)
     {
-        m_groupCallManagementDialog->setJoinProgress(percent);
+        m_meetingsManagementDialog->showConnectingState(roomId);
     }
 }
 
-void DialogsController::setGroupCallJoinStatus(const QString& status)
+void DialogsController::setMeetingsJoinStatus(const QString& status)
 {
-    if (m_groupCallManagementDialog)
+    if (m_meetingsManagementDialog)
     {
-        m_groupCallManagementDialog->setJoinStatus(status);
+        m_meetingsManagementDialog->setJoinStatus(status);
     }
 }
 

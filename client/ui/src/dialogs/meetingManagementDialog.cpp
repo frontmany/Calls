@@ -1,31 +1,28 @@
-#include "groupCallManagementDialog.h"
+#include "meetingManagementDialog.h"
 #include "utilities/utility.h"
 #include "constants/color.h"
 #include "widgets/mainMenuWidget.h"
+#include "widgets/components/button.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
 #include <QFont>
-#include <QRegularExpressionValidator>
 #include <QShortcut>
 #include <QRandomGenerator>
 #include <QIcon>
+#include <QMovie>
+#include <QPixmap>
 
-GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
+MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
 
-    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-    shadowEffect->setBlurRadius(scale(30));
-    shadowEffect->setXOffset(0);
-    shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
+    const int shadowMargin = scale(24);
 
     QWidget* mainWidget = new QWidget(this);
-    mainWidget->setGraphicsEffect(shadowEffect);
     mainWidget->setObjectName("mainWidget");
     mainWidget->setStyleSheet(QString(
         "QWidget#mainWidget {"
@@ -35,58 +32,73 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
         "}")
         .arg(scale(16))
         .arg(scale(1)));
+    mainWidget->setAutoFillBackground(true);
+
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(scale(30));
+    shadowEffect->setXOffset(0);
+    shadowEffect->setYOffset(0);
+    shadowEffect->setColor(COLOR_SHADOW_STRONG_150);
+    mainWidget->setGraphicsEffect(shadowEffect);
 
     m_stackedWidget = new QStackedWidget(mainWidget);
 
     // ========== Initial state ==========
     m_initialWidget = new QWidget();
     QVBoxLayout* initialLayout = new QVBoxLayout(m_initialWidget);
-    initialLayout->setContentsMargins(scale(32), scale(32), scale(32), scale(32));
-    initialLayout->setSpacing(scale(24));
+    initialLayout->setContentsMargins(scale(32), scale(20), scale(32), scale(20));
+    initialLayout->setSpacing(0);
 
     QFont titleFont("Outfit", scale(18), QFont::Bold);
     QFont sectionFont("Outfit", scale(12), QFont::Normal);
 
-    QHBoxLayout* headerLayout = new QHBoxLayout();
-    headerLayout->addStretch();
-    QPushButton* closeButton = new QPushButton();
-    closeButton->setFixedSize(scale(32), scale(32));
-    closeButton->setCursor(Qt::PointingHandCursor);
-    closeButton->setStyleSheet(QString(
-        "QPushButton {"
-        "   background-color: transparent;"
-        "   border: none;"
-        "   border-radius: %1px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(0, 0, 0, 0.08);"
-        "}")
-        .arg(scale(8)));
-    closeButton->setIcon(QIcon(":/resources/close.png"));
-    closeButton->setIconSize(QSize(scale(16), scale(16)));
-    headerLayout->addWidget(closeButton);
+    QWidget* headerWidget = new QWidget();
+    QVBoxLayout* headerBlockLayout = new QVBoxLayout(headerWidget);
+    headerBlockLayout->setContentsMargins(0, 0, 0, 0);
+    headerBlockLayout->setSpacing(scale(2));
 
-    QLabel* titleLabel = new QLabel("Call Management");
-    titleLabel->setAlignment(Qt::AlignCenter);
+    QHBoxLayout* headerLayout = new QHBoxLayout();
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(scale(6));
+    QLabel* titleLabel = new QLabel("Meetings");
+    titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     titleLabel->setStyleSheet(QString(
         "color: rgb(60, 60, 60);"
         "font-size: %1px;"
         "font-family: 'Outfit';"
         "font-weight: bold;"
-        "padding: %2px;")
-        .arg(scale(18)).arg(scale(5)));
+        "padding: 0px;"
+        "margin: 0px;")
+        .arg(scale(18)));
     titleLabel->setFont(titleFont);
 
+    m_meetingHeartsIcon = new QLabel();
+    m_meetingHeartsIcon->setPixmap(QPixmap(":/resources/meetingHearts.png").scaled(scale(24), scale(24), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+    ButtonIcon* closeButton = new ButtonIcon(headerWidget, scale(28), scale(28));
+    closeButton->setIcons(QIcon(":/resources/close.png"), QIcon(":/resources/closeHover.png"));
+    closeButton->setSize(scale(28), scale(28));
+    closeButton->setCursor(Qt::PointingHandCursor);
+
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addWidget(m_meetingHeartsIcon);
+    headerLayout->addStretch();
+    headerLayout->addWidget(closeButton);
+
     QLabel* subtitleLabel = new QLabel("Start or join a video conference session.");
-    subtitleLabel->setAlignment(Qt::AlignCenter);
+    subtitleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     subtitleLabel->setStyleSheet(QString(
         "color: rgb(100, 100, 100);"
         "font-size: %1px;"
-        "font-family: 'Outfit';")
+        "font-family: 'Outfit';"
+        "padding: 0px;"
+        "margin: 0px;")
         .arg(scale(12)));
+    headerBlockLayout->addLayout(headerLayout);
+    headerBlockLayout->addWidget(subtitleLabel);
 
-    // START NEW CALL section
-    QLabel* createSectionTitle = new QLabel("START NEW CALL");
+    // START NEW MEETING section
+    QLabel* createSectionTitle = new QLabel("START NEW MEETING");
     createSectionTitle->setStyleSheet(QString(
         "color: rgb(80, 80, 80);"
         "font-size: %1px;"
@@ -96,7 +108,7 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     createSectionTitle->setFont(sectionFont);
 
     QLabel* createDescription = new QLabel(
-        "Create a new group call. Instantly generate a unique meeting ID and start a secure session for your team.");
+        "Create a new meeting. Instantly generate a unique meeting ID and start a secure session for your team.");
     createDescription->setWordWrap(true);
     createDescription->setStyleSheet(QString(
         "color: rgb(100, 100, 100);"
@@ -104,51 +116,39 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
         "font-family: 'Outfit';")
         .arg(scale(12)));
 
-    m_createCallButton = new QPushButton("Create Call");
-    m_createCallButton->setCursor(Qt::PointingHandCursor);
-    m_createCallButton->setFixedHeight(scale(44));
-    m_createCallButton->setStyleSheet(QString(
+    m_createMeetingButton = new QPushButton("Create Meeting");
+    m_createMeetingButton->setCursor(Qt::PointingHandCursor);
+    m_createMeetingButton->setFixedHeight(scale(44));
+    m_createMeetingButton->setStyleSheet(QString(
         "QPushButton {"
-        "   background-color: rgb(21, 119, 232);"
+        "   background-color: %1;"
         "   color: white;"
         "   border: none;"
-        "   border-radius: %1px;"
-        "   padding: %2px %3px;"
-        "   font-family: 'Outfit';"
-        "   font-size: %4px;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
+        "   margin: 0px;"
         "   font-weight: bold;"
         "}"
-        "QPushButton:hover {"
-        "   background-color: rgb(18, 113, 222);"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: rgb(16, 103, 202);"
-        "}")
-        .arg(scale(10)).arg(scale(12)).arg(scale(24)).arg(scale(14)));
+        "QPushButton:focus { outline: none; border: none; }"
+        "QPushButton:hover { background-color: %2; }")
+        .arg(COLOR_ACCENT.name())
+        .arg(COLOR_ACCENT_HOVER.name())
+        .arg(scale(8))
+        .arg(scale(12))
+        .arg(scale(24)));
 
     QHBoxLayout* createRow = new QHBoxLayout();
+    createRow->setSpacing(scale(18));
     createRow->addWidget(createDescription, 1);
-    createRow->addWidget(m_createCallButton, 0, Qt::AlignRight);
+    createRow->addWidget(m_createMeetingButton, 0, Qt::AlignRight);
 
     QVBoxLayout* createSection = new QVBoxLayout();
     createSection->setSpacing(scale(8));
     createSection->addWidget(createSectionTitle);
     createSection->addLayout(createRow);
 
-    // Separator
-    QFrame* separator = new QFrame();
-    separator->setFrameShape(QFrame::HLine);
-    separator->setStyleSheet("background-color: rgb(210, 210, 210); max-height: 1px;");
-    QLabel* orLabel = new QLabel("OR JOIN EXISTING");
-    orLabel->setAlignment(Qt::AlignCenter);
-    orLabel->setStyleSheet(QString(
-        "color: rgb(120, 120, 120);"
-        "font-size: %1px;"
-        "font-family: 'Outfit';")
-        .arg(scale(11)));
-
-    // JOIN EXISTING CALL section
-    QLabel* joinSectionTitle = new QLabel("JOIN EXISTING CALL");
+    // JOIN EXISTING MEETING section
+    QLabel* joinSectionTitle = new QLabel("JOIN EXISTING MEETING");
     joinSectionTitle->setStyleSheet(QString(
         "color: rgb(80, 80, 80);"
         "font-size: %1px;"
@@ -160,10 +160,7 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     m_meetingIdEdit = new QLineEdit();
     m_meetingIdEdit->setPlaceholderText("Paste meeting ID (e.g., abc-defg-hij)");
     m_meetingIdEdit->setFixedHeight(scale(50));
-    QString lineEditStyle = StyleMainMenuWidget::lineEditStyle();
-    QRegularExpression re("(QLineEdit \\{[^}]*background-color: )rgba\\([^)]+\\)(;[^}]*\\})");
-    lineEditStyle.replace(re, "\\1rgba(255, 255, 255, 0.9)\\2");
-    m_meetingIdEdit->setStyleSheet(lineEditStyle);
+    m_meetingIdEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
     m_meetingIdEdit->setMaxLength(32);
 
     m_joinMeetingButton = new QPushButton("Join Meeting");
@@ -171,22 +168,21 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     m_joinMeetingButton->setFixedHeight(scale(44));
     m_joinMeetingButton->setStyleSheet(QString(
         "QPushButton {"
-        "   background-color: white;"
-        "   color: rgb(60, 60, 60);"
-        "   border: 1px solid rgb(210, 210, 210);"
-        "   border-radius: %1px;"
-        "   padding: %2px %3px;"
-        "   font-family: 'Outfit';"
-        "   font-size: %4px;"
+        "   background-color: %1;"
+        "   color: white;"
+        "   border: none;"
+        "   border-radius: %3px;"
+        "   padding: %4px %5px;"
+        "   margin: 0px;"
+        "   font-weight: bold;"
         "}"
-        "QPushButton:hover {"
-        "   background-color: rgb(245, 245, 245);"
-        "   border-color: rgb(180, 180, 180);"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: rgb(235, 235, 235);"
-        "}")
-        .arg(scale(10)).arg(scale(12)).arg(scale(24)).arg(scale(14)));
+        "QPushButton:focus { outline: none; border: none; }"
+        "QPushButton:hover { background-color: %2; }")
+        .arg(COLOR_ACCENT.name())
+        .arg(COLOR_ACCENT_HOVER.name())
+        .arg(scale(8))
+        .arg(scale(12))
+        .arg(scale(24)));
 
     QVBoxLayout* joinSection = new QVBoxLayout();
     joinSection->setSpacing(scale(8));
@@ -194,26 +190,31 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     joinSection->addWidget(m_meetingIdEdit);
     joinSection->addWidget(m_joinMeetingButton);
 
-    connect(closeButton, &QPushButton::clicked, this, [this]() { emit closeRequested(); });
+    connect(closeButton, &ButtonIcon::clicked, this, [this]() { emit closeRequested(); });
 
-    initialLayout->addLayout(headerLayout);
-    initialLayout->addWidget(titleLabel);
-    initialLayout->addWidget(subtitleLabel);
-    initialLayout->addSpacing(scale(8));
+    QFrame* separator = new QFrame();
+    separator->setFrameShape(QFrame::HLine);
+    separator->setStyleSheet("background-color: rgb(210, 210, 210); max-height: 1px;");
+
+    initialLayout->addWidget(headerWidget);
+    initialLayout->addSpacing(scale(32));
+    initialLayout->addStretch(1);
     initialLayout->addLayout(createSection);
+    initialLayout->addSpacing(scale(32));
     initialLayout->addWidget(separator);
-    initialLayout->addWidget(orLabel);
+    initialLayout->addSpacing(scale(32));
     initialLayout->addLayout(joinSection);
+    initialLayout->addStretch(1);
 
-    connect(m_createCallButton, &QPushButton::clicked, this, [this]() {
-        emit createCallRequested(generateCallUid());
+    connect(m_createMeetingButton, &QPushButton::clicked, this, [this]() {
+        emit createMeetingRequested(generateMeetingUid());
     });
     connect(m_joinMeetingButton, &QPushButton::clicked, this, [this]() {
         QString uid = m_meetingIdEdit->text().trimmed();
         if (uid.isEmpty()) {
             return;
         }
-        emit joinCallRequested(uid);
+        emit joinMeetingRequested(uid);
     });
     connect(m_meetingIdEdit, &QLineEdit::returnPressed, m_joinMeetingButton, &QPushButton::click);
 
@@ -223,7 +224,7 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     connectingLayout->setContentsMargins(scale(32), scale(32), scale(32), scale(32));
     connectingLayout->setSpacing(scale(20));
 
-    QLabel* joiningTitle = new QLabel("Joining Call");
+    QLabel* joiningTitle = new QLabel("Joining Meeting");
     joiningTitle->setAlignment(Qt::AlignCenter);
     joiningTitle->setStyleSheet(QString(
         "color: rgb(60, 60, 60);"
@@ -233,6 +234,17 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
         .arg(scale(18)));
     joiningTitle->setFont(titleFont);
 
+    m_joinMeetingHeartsIcon = new QLabel();
+    m_joinMeetingHeartsIcon->setPixmap(QPixmap(":/resources/joinMeetingHearts.png").scaled(scale(28), scale(28), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+    QHBoxLayout* joiningHeaderLayout = new QHBoxLayout();
+    joiningHeaderLayout->setContentsMargins(0, 0, 0, 0);
+    joiningHeaderLayout->setSpacing(scale(6));
+    joiningHeaderLayout->addStretch();
+    joiningHeaderLayout->addWidget(joiningTitle);
+    joiningHeaderLayout->addWidget(m_joinMeetingHeartsIcon);
+    joiningHeaderLayout->addStretch();
+
     m_roomIdLabel = new QLabel("Room ID: ");
     m_roomIdLabel->setAlignment(Qt::AlignCenter);
     m_roomIdLabel->setStyleSheet(QString(
@@ -241,26 +253,19 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
         "font-family: 'Outfit';")
         .arg(scale(14)));
 
-    m_progressBar = new QProgressBar();
-    m_progressBar->setRange(0, 100);
-    m_progressBar->setValue(0);
-    m_progressBar->setTextVisible(true);
-    m_progressBar->setFormat("%p%");
-    m_progressBar->setFixedHeight(scale(12));
-    m_progressBar->setStyleSheet(QString(
-        "QProgressBar {"
-        "   border: none;"
-        "   border-radius: %1px;"
-        "   background-color: rgb(230, 230, 230);"
-        "   text-align: center;"
-        "}"
-        "QProgressBar::chunk {"
-        "   background-color: rgb(21, 119, 232);"
-        "   border-radius: %1px;"
-        "}")
-        .arg(scale(6)));
+    m_waitingGifLabel = new QLabel();
+    m_waitingGifLabel->setAlignment(Qt::AlignCenter);
+    m_waitingGifLabel->setFixedSize(scale(40), scale(40));
+    m_waitingGifLabel->setScaledContents(true);
+    QMovie* waitingMovie = new QMovie(":/resources/waiting.gif");
+    if (waitingMovie->isValid())
+    {
+        m_waitingGifLabel->setMovie(waitingMovie);
+        waitingMovie->start();
+    }
 
-    m_statusLabel = new QLabel("Connecting to call...");
+    m_statusLabel = new QLabel("Waiting for host's approval...");
+    m_statusLabel->setAlignment(Qt::AlignCenter);
     m_statusLabel->setStyleSheet(QString(
         "color: rgb(100, 100, 100);"
         "font-size: %1px;"
@@ -268,7 +273,7 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
         .arg(scale(12)));
 
     QLabel* waitLabel = new QLabel(
-        "Please wait while we establish a secure end-to-end encrypted connection. This usually takes a few seconds.");
+        "Your request to join has been sent. The meeting host will allow you to enter when ready.");
     waitLabel->setWordWrap(true);
     waitLabel->setAlignment(Qt::AlignCenter);
     waitLabel->setStyleSheet(QString(
@@ -279,13 +284,14 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
 
     m_cancelRequestButton = new QPushButton("Cancel Request");
     m_cancelRequestButton->setCursor(Qt::PointingHandCursor);
-    m_cancelRequestButton->setFixedHeight(scale(44));
+    m_cancelRequestButton->setFixedHeight(scale(56));
     m_cancelRequestButton->setStyleSheet(QString(
         "QPushButton {"
-        "   background-color: white;"
-        "   color: rgb(100, 100, 100);"
-        "   border: 1px solid rgb(210, 210, 210);"
-        "   border-radius: %1px;"
+        "   background-color: rgb(235, 238, 242);"
+        "   color: rgb(80, 80, 80);"
+        "   border: none;"
+        "   border-bottom-left-radius: %1px;"
+        "   border-bottom-right-radius: %1px;"
         "   padding: %2px %3px;"
         "   font-family: 'Outfit';"
         "   font-size: %4px;"
@@ -293,21 +299,20 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
         "QPushButton:hover {"
         "   background-color: rgb(250, 240, 240);"
         "   color: rgb(180, 60, 60);"
-        "   border-color: rgb(220, 180, 180);"
         "}"
         "QPushButton:pressed {"
         "   background-color: rgb(245, 235, 235);"
         "}")
-        .arg(scale(10)).arg(scale(12)).arg(scale(24)).arg(scale(14)));
+        .arg(scale(16)).arg(scale(12)).arg(scale(24)).arg(scale(14)));
+    m_cancelRequestButton->hide();
 
-    connectingLayout->addWidget(joiningTitle);
+    connectingLayout->addLayout(joiningHeaderLayout);
     connectingLayout->addWidget(m_roomIdLabel);
-    connectingLayout->addSpacing(scale(8));
-    connectingLayout->addWidget(m_progressBar);
+    connectingLayout->addSpacing(scale(16));
+    connectingLayout->addWidget(m_waitingGifLabel, 0, Qt::AlignHCenter);
     connectingLayout->addWidget(m_statusLabel);
     connectingLayout->addWidget(waitLabel);
     connectingLayout->addStretch();
-    connectingLayout->addWidget(m_cancelRequestButton);
 
     connect(m_cancelRequestButton, &QPushButton::clicked, this, [this]() {
         emit joinCancelled();
@@ -320,12 +325,15 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     QVBoxLayout* mainWidgetLayout = new QVBoxLayout(mainWidget);
     mainWidgetLayout->setContentsMargins(0, 0, 0, 0);
     mainWidgetLayout->addWidget(m_stackedWidget);
+    mainWidgetLayout->addWidget(m_cancelRequestButton);
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setContentsMargins(shadowMargin, shadowMargin, shadowMargin, shadowMargin);
     mainLayout->addWidget(mainWidget);
 
-    setFixedSize(scale(520), scale(480));
+    m_initialHeight = scale(440) + shadowMargin * 2;
+    m_connectingHeight = scale(320) + shadowMargin * 2;
+    setFixedSize(scale(520) + shadowMargin * 2, m_initialHeight);
 
     auto* escShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this, [this]() {
         if (m_stackedWidget->currentWidget() == m_connectingWidget) {
@@ -337,7 +345,7 @@ GroupCallManagementDialog::GroupCallManagementDialog(QWidget* parent)
     escShortcut->setContext(Qt::ApplicationShortcut);
 }
 
-QString GroupCallManagementDialog::generateCallUid() const
+QString MeetingManagementDialog::generateMeetingUid() const
 {
     const QString chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     auto randomChar = [&chars]() {
@@ -349,26 +357,28 @@ QString GroupCallManagementDialog::generateCallUid() const
         .arg(randomChar()).arg(randomChar()).arg(randomChar());
 }
 
-void GroupCallManagementDialog::showConnectingState(const QString& roomId)
+void MeetingManagementDialog::showConnectingState(const QString& roomId)
 {
     m_roomIdLabel->setText("Room ID: " + roomId);
-    m_progressBar->setValue(0);
-    m_statusLabel->setText("Connecting to call...");
+    m_statusLabel->setText("Waiting for host's approval...");
+    if (m_waitingGifLabel && m_waitingGifLabel->movie())
+    {
+        m_waitingGifLabel->movie()->start();
+    }
+    m_cancelRequestButton->show();
     m_stackedWidget->setCurrentWidget(m_connectingWidget);
+    setFixedHeight(m_connectingHeight);
 }
 
-void GroupCallManagementDialog::showInitialState()
+void MeetingManagementDialog::showInitialState()
 {
     m_meetingIdEdit->clear();
+    m_cancelRequestButton->hide();
     m_stackedWidget->setCurrentWidget(m_initialWidget);
+    setFixedHeight(m_initialHeight);
 }
 
-void GroupCallManagementDialog::setJoinProgress(int percent)
-{
-    m_progressBar->setValue(qBound(0, percent, 100));
-}
-
-void GroupCallManagementDialog::setJoinStatus(const QString& status)
+void MeetingManagementDialog::setJoinStatus(const QString& status)
 {
     m_statusLabel->setText(status);
 }

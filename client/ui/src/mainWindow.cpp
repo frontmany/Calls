@@ -353,7 +353,7 @@ void MainWindow::connectWidgetsToManagers() {
 
 
     if (m_mainMenuWidget && m_dialogsController) {
-        connect(m_mainMenuWidget, &MainMenuWidget::meetingButtonClicked, m_dialogsController, &DialogsController::showGroupCallManagementDialog);
+        connect(m_mainMenuWidget, &MainMenuWidget::meetingButtonClicked, m_dialogsController, &DialogsController::showMeetingsManagementDialog);
     }
 
     // DialogsController connections
