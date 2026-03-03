@@ -27,7 +27,8 @@ namespace core::logic
         m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Camera); });
         m_cameraCaptureService.setErrorCallback([this]() {
             // Called from camera thread when camera initialization fails.
-            // Keep it non-blocking for UI; notify via EventListener.
+            // Do NOT call stop() here - it would deadlock (stop joins the thread we're in).
+            // UI will call stopCameraSharing via onStartCameraSharingError to clean up.
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_stateManager && m_stateManager->getMediaState(MediaType::Camera) != MediaState::Stopped) {
@@ -42,9 +43,6 @@ namespace core::logic
                     }
                 }
             }
-
-            // Ensure capture is fully stopped to allow retry.
-            m_cameraCaptureService.stop();
 
             if (m_eventListener) {
                 m_eventListener->onStartCameraSharingError();
@@ -118,9 +116,6 @@ namespace core::logic
         if (!m_cameraCaptureService.start(deviceName.empty() ? nullptr : deviceName.c_str())) {
             m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
             m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
-
-            m_stateManager->setMediaState(MediaType::Camera, MediaState::Active);
-            
             return make_error_code(ErrorCode::network_error);
         }
 

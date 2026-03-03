@@ -247,14 +247,8 @@ namespace core::media
                 std::cout << "Auto-detected camera: " << device << std::endl;
             }
             else {
-
-#ifdef _WIN32
-                device = "default";
-#elif defined(__APPLE__)
-                device = "0";
-#else
-                device = "/dev/video0";
-#endif
+                std::cerr << "No camera devices available" << std::endl;
+                return false;
             }
         }
 

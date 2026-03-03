@@ -140,12 +140,16 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
         m_navigationController->switchToCallWidget(friendNickname);
     }
     if (m_configManager && m_configManager->isStartCameraWithCall() && m_coreClient && m_callWidget) {
-        std::error_code ec = m_coreClient->startCameraSharing("");
-        if (ec) {
-            onStartCameraSharingError();
+        if (m_coreClient->isCameraAvailable()) {
+            std::error_code ec = m_coreClient->startCameraSharing("");
+            if (ec) {
+                onStartCameraSharingError();
+            } else {
+                m_callWidget->setCameraButtonActive(true);
+                m_configManager->setCameraActive(true);
+            }
         } else {
-            m_callWidget->setCameraButtonActive(true);
-            m_configManager->setCameraActive(true);
+            m_configManager->setStartCameraWithCall(false);
         }
     }
     if (m_audioManager) {
@@ -317,6 +321,15 @@ void CallManager::onCallWidgetCameraClicked(bool toggled)
     if (!m_coreClient) return;
 
     if (toggled) {
+        if (!m_coreClient->isCameraAvailable()) {
+            if (m_callWidget) {
+                m_callWidget->setCameraButtonActive(false);
+            }
+            if (m_notificationController) {
+                m_notificationController->showErrorNotification("Failed to start camera sharing", 1500);
+            }
+            return;
+        }
         std::error_code ec = m_coreClient->startCameraSharing("");
         if (ec) {
             onStartCameraSharingError();
@@ -439,12 +452,16 @@ void CallManager::onOutgoingCallAccepted(const QString& nickname)
         m_navigationController->switchToCallWidget(nickname);
     }
     if (m_configManager && m_configManager->isStartCameraWithCall() && m_coreClient && m_callWidget) {
-        std::error_code ec = m_coreClient->startCameraSharing("");
-        if (ec) {
-            onStartCameraSharingError();
+        if (m_coreClient->isCameraAvailable()) {
+            std::error_code ec = m_coreClient->startCameraSharing("");
+            if (ec) {
+                onStartCameraSharingError();
+            } else {
+                m_callWidget->setCameraButtonActive(true);
+                m_configManager->setCameraActive(true);
+            }
         } else {
-            m_callWidget->setCameraButtonActive(true);
-            m_configManager->setCameraActive(true);
+            m_configManager->setStartCameraWithCall(false);
         }
     }
     if (m_dialogsController) {
@@ -837,6 +854,9 @@ void CallManager::onStartScreenSharingError()
 
 void CallManager::onStartCameraSharingError()
 {
+    if (m_coreClient) {
+        m_coreClient->stopCameraSharing();
+    }
     if (m_callWidget) {
         m_callWidget->setCameraButtonActive(false);
     }
