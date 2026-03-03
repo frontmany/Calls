@@ -8,8 +8,8 @@
 #include <QProcess>
 #include <QObject>
 #include <QDir>
-#include <QJsonObject>
 #include <QFileInfo>
+#include <QJsonObject>
 
 #include "../utilities/logger.h"
 #include "constants/constant.h"
@@ -59,11 +59,12 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QStri
         if (m_coreClient) {
             m_coreClient->stop();
         }
-        if (m_updaterClient) {
-            m_updaterClient->startUpdate(resolveOperationSystemType());
-        }
         if (m_dialogsController) {
             m_dialogsController->showUpdatingDialog();
+            m_dialogsController->setUpdateDialogStatus(QStringLiteral("Preparing update..."), true);
+        }
+        if (m_updaterClient) {
+            m_updaterClient->startUpdateAsync(resolveOperationSystemType(), m_updaterClient);
         }
     }
     else if (result == updater::CheckResult::UPDATE_NOT_NEEDED) {
@@ -87,11 +88,27 @@ void UpdateManager::onUpdateButtonClicked()
         m_mainMenuWidget->removeOutgoingCallPanel();
     }
 
-    if (m_updaterClient) {
-        m_updaterClient->startUpdate(resolveOperationSystemType());
-    }
     if (m_dialogsController) {
         m_dialogsController->showUpdatingDialog();
+        m_dialogsController->setUpdateDialogStatus(QStringLiteral("Preparing update..."), true);
+    }
+    if (m_updaterClient) {
+        m_updaterClient->startUpdateAsync(resolveOperationSystemType(), m_updaterClient);
+    }
+}
+
+void UpdateManager::onManifestProgress(qulonglong filesProcessed, qulonglong totalFiles, const QString& currentFilePath)
+{
+    if (!m_dialogsController) return;
+    if (totalFiles > 0) {
+        QString status = QStringLiteral("Preparing update... %1/%2 files").arg(filesProcessed).arg(totalFiles);
+        if (!currentFilePath.isEmpty()) {
+            const QString fileName = QFileInfo(currentFilePath).fileName();
+            if (!fileName.isEmpty()) {
+                status += QStringLiteral(" (%1)").arg(fileName);
+            }
+        }
+        m_dialogsController->setUpdateDialogStatus(status, true);
     }
 }
 
@@ -130,7 +147,12 @@ void UpdateManager::onUpdateAborted()
 
 void UpdateManager::onLoadingProgress(double progress)
 {
-    m_dialogsController->setUpdateLoadingProgress(progress);
+    if (m_dialogsController && progress > 0) {
+        m_dialogsController->setUpdateDialogStatus(QStringLiteral("Downloading..."), false);
+    }
+    if (m_dialogsController) {
+        m_dialogsController->setUpdateLoadingProgress(progress);
+    }
 }
 
 updater::OperationSystemType UpdateManager::resolveOperationSystemType()

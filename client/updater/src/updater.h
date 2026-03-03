@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <future>
 #include <unordered_set>
+#include <cstddef>
 
 #include "utilities/utilities.h"
 #include "eventListener.h"
@@ -26,6 +27,9 @@
 
 namespace updater
 {
+	/// Optional progress callback for manifest preparation: (filesProcessed, totalFiles, currentFilePath). Called from worker thread.
+	using ManifestProgressCallback = std::function<void(std::size_t, std::size_t, const std::string&)>;
+
 	class Client {
 	public:
 		Client();
@@ -41,13 +45,18 @@ namespace updater
 		void start( const std::string& host, const std::string& port);
 		void stop();
 		bool checkUpdates(const std::string& currentVersionNumber);
+		/// Synchronous: hashes all files on calling thread (blocks). Prefer startUpdateAsync for UI.
 		bool startUpdate(OperationSystemType type);
+		/// Non-blocking: runs manifest preparation in a background thread, then sends UPDATE_ACCEPT. Progress via EventListener::onManifestProgress. Caller must pass shared_ptr to this so the thread keeps Client alive.
+		void startUpdateAsync(OperationSystemType type, std::shared_ptr<Client> self);
 		bool isConnected();
 		bool isLoadingUpdate();
 
 	private:
 		std::string normalizePath(const std::filesystem::path& path);
-		std::vector<std::pair<std::filesystem::path, std::string>> getFilePathsWithHashes();
+		/// Collects paths (same rules as full scan), then hashes each; optionally calls progressCallback(filesProcessed, totalFiles, currentPath) from calling thread.
+		std::vector<std::pair<std::filesystem::path, std::string>> getFilePathsWithHashes(ManifestProgressCallback progressCallback = nullptr);
+		void sendUpdateAcceptPacket(OperationSystemType type, const std::vector<std::pair<std::filesystem::path, std::string>>& pathsWithHashes);
 		void deleteTempDirectory();
 		std::vector<network::FileMetadata> parseMetadata(network::Packet& packet);
 		void reconnectLoop();

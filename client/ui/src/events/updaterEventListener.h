@@ -14,6 +14,7 @@ public:
 	virtual void onUpdateLoaded(bool emptyUpdate) override;
 	virtual void onNetworkError() override;
 	virtual void onConnected() override;
+	virtual void onManifestProgress(std::size_t filesProcessed, std::size_t totalFiles, const std::string& currentFilePath) override;
 
 private:
     UpdateManager* m_updateManager;

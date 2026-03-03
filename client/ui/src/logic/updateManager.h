@@ -31,6 +31,7 @@ public slots:
     void onUpdateCheckResult(updater::CheckResult result, const QString& newVersion = QString());
     void onUpdateLoaded(bool emptyUpdate);
     void onLoadingProgress(double progress);
+    void onManifestProgress(qulonglong filesProcessed, qulonglong totalFiles, const QString& currentFilePath);
     void onUpdateButtonClicked();
     void onUpdateAborted();
 

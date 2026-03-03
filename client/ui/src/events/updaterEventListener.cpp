@@ -38,3 +38,11 @@ void UpdaterEventListener::onConnected() {
         QMetaObject::invokeMethod(static_cast<QObject*>(m_networkErrorHandler), "onConnected", Qt::QueuedConnection);
     }
 }
+
+void UpdaterEventListener::onManifestProgress(std::size_t filesProcessed, std::size_t totalFiles, const std::string& currentFilePath) {
+    QMetaObject::invokeMethod(m_updateManager, "onManifestProgress",
+        Qt::QueuedConnection,
+        Q_ARG(qulonglong, static_cast<qulonglong>(filesProcessed)),
+        Q_ARG(qulonglong, static_cast<qulonglong>(totalFiles)),
+        Q_ARG(QString, QString::fromStdString(currentFilePath)));
+}

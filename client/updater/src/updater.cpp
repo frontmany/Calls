@@ -137,7 +137,7 @@ namespace updater
 		nlohmann::json jsonObject;
 		jsonObject[OPERATION_SYSTEM] = static_cast<int>(type);
 
-		auto pathsWithHashes = getFilePathsWithHashes();
+		auto pathsWithHashes = getFilePathsWithHashes(nullptr);
 
 		nlohmann::json filesArray = nlohmann::json::array();
 		for (const auto& [path, hash] : pathsWithHashes) {
@@ -156,6 +156,25 @@ namespace updater
 		m_networkController.sendPacket(packet);
 
 		return true;
+	}
+
+	void Client::startUpdateAsync(OperationSystemType type, std::shared_ptr<Client> self)
+	{
+		if (!isConnected() || !self) return;
+
+		m_loadingUpdate = true;
+
+		std::shared_ptr<EventListener> listener = m_eventListener;
+		std::thread([type, self = std::move(self), listener = std::move(listener)]() {
+			ManifestProgressCallback progressCb;
+			if (listener) {
+				progressCb = [listener](std::size_t current, std::size_t total, const std::string& path) {
+					listener->onManifestProgress(current, total, path);
+				};
+			}
+			auto pathsWithHashes = self->getFilePathsWithHashes(progressCb);
+			self->sendUpdateAcceptPacket(type, pathsWithHashes);
+		}).detach();
 	}
 
 	bool Client::isConnected()
@@ -178,7 +197,51 @@ namespace updater
 		return normalized;
 	}
 
-	std::vector<std::pair<std::filesystem::path, std::string>> Client::getFilePathsWithHashes() {
+	namespace
+	{
+		struct PathFilterContext {
+			std::filesystem::path basePath;
+			std::filesystem::path tempDirectoryPath;
+			const std::unordered_set<std::string>& ignoredFiles;
+			const std::unordered_set<std::string>& ignoredDirectories;
+		};
+
+		bool shouldIncludeFile(const std::filesystem::path& absolutePath, const std::filesystem::path& relativePath, const PathFilterContext& ctx) {
+			if (!ctx.tempDirectoryPath.empty()) {
+				std::string tempDirStr = ctx.tempDirectoryPath.generic_string();
+				if (!tempDirStr.empty()) {
+					if (tempDirStr.back() != '/') tempDirStr.push_back('/');
+					std::string entryPathStr = absolutePath.generic_string();
+					if (entryPathStr.rfind(tempDirStr, 0) == 0) return false;
+				}
+			}
+			std::string filename = absolutePath.filename().string();
+			if (ctx.ignoredFiles.find(filename) != ctx.ignoredFiles.end()) return false;
+			std::string relativePathStr = relativePath.generic_string();
+			for (const auto& excludedDir : ctx.ignoredDirectories) {
+				if (relativePathStr.find(excludedDir) == 0) return false;
+			}
+			return true;
+		}
+	}
+
+	void Client::sendUpdateAcceptPacket(OperationSystemType type, const std::vector<std::pair<std::filesystem::path, std::string>>& pathsWithHashes)
+	{
+		nlohmann::json jsonObject;
+		jsonObject[OPERATION_SYSTEM] = static_cast<int>(type);
+		nlohmann::json filesArray = nlohmann::json::array();
+		for (const auto& [path, hash] : pathsWithHashes) {
+			nlohmann::json fileInfo;
+			fileInfo[RELATIVE_FILE_PATH] = path.string();
+			fileInfo[FILE_HASH] = hash;
+			filesArray.push_back(fileInfo);
+		}
+		jsonObject[FILES] = filesArray;
+		network::Packet packet(static_cast<uint32_t>(PacketType::UPDATE_ACCEPT), jsonObject.dump());
+		m_networkController.sendPacket(packet);
+	}
+
+	std::vector<std::pair<std::filesystem::path, std::string>> Client::getFilePathsWithHashes(ManifestProgressCallback progressCallback) {
 		std::vector<std::pair<std::filesystem::path, std::string>> result;
 
 		try {
@@ -192,50 +255,30 @@ namespace updater
 				tempDirectoryPath = std::filesystem::absolute(std::filesystem::path(m_tempDirectory));
 			}
 
+			PathFilterContext ctx{ basePath, tempDirectoryPath, m_ignoredFiles, m_ignoredDirectories };
+
+			// First pass: collect all paths to hash (so we can report total and progress)
+			std::vector<std::pair<std::filesystem::path, std::filesystem::path>> pathsToHash; // absolute, relative
 			for (const auto& entry : std::filesystem::recursive_directory_iterator(basePath)) {
 				if (entry.is_regular_file()) {
-					if (!tempDirectoryPath.empty()) {
-						std::string tempDirStr = tempDirectoryPath.generic_string();
-						if (!tempDirStr.empty()) {
-							if (tempDirStr.back() != '/') {
-								tempDirStr.push_back('/');
-							}
-							std::string entryPathStr = std::filesystem::absolute(entry.path()).generic_string();
-							if (entryPathStr.rfind(tempDirStr, 0) == 0) {
-								continue;
-							}
-						}
-					}
-
 					std::filesystem::path relativePath = std::filesystem::relative(entry.path(), basePath);
-					std::string filename = entry.path().filename().string();
-
-					if (m_ignoredFiles.find(filename) != m_ignoredFiles.end()) {
-						continue;
-					}
-
-					std::string relativePathStr = relativePath.generic_string();
-
-					bool isExcluded = false;
-					for (const auto& excludedDir : m_ignoredDirectories) {
-						if (relativePathStr.find(excludedDir) == 0) {
-							isExcluded = true;
-							break;
-						}
-					}
-					if (isExcluded) {
-						continue;
-					}
-
-					std::string hash = utilities::calculateFileHash(entry.path());
-					std::string normalizedPathStr = normalizePath(relativePath);
-					std::filesystem::path normalizedPath(normalizedPathStr);
-
-					result.emplace_back(normalizedPath, std::move(hash));
+					if (!shouldIncludeFile(entry.path(), relativePath, ctx)) continue;
+					pathsToHash.emplace_back(entry.path(), std::move(relativePath));
 				}
 			}
+
+			const std::size_t total = pathsToHash.size();
+			for (std::size_t i = 0; i < total; ++i) {
+				const auto& [absolutePath, relativePath] = pathsToHash[i];
+				if (progressCallback) {
+					progressCallback(i, total, absolutePath.generic_string());
+				}
+				std::string hash = utilities::calculateFileHash(absolutePath);
+				std::string normalizedPathStr = normalizePath(relativePath);
+				result.emplace_back(std::filesystem::path(normalizedPathStr), std::move(hash));
+			}
 		}
-		catch (const std::filesystem::filesystem_error& e) {
+		catch (const std::filesystem::filesystem_error&) {
 			if (m_eventListener) {
 				m_eventListener->onNetworkError();
 			}

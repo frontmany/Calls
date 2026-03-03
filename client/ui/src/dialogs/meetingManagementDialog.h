@@ -30,14 +30,12 @@ private:
 
     // Initial state
     QWidget* m_initialWidget = nullptr;
-    QLabel* m_meetingHeartsIcon = nullptr;
     QLineEdit* m_meetingIdEdit = nullptr;
     QPushButton* m_createMeetingButton = nullptr;
     QPushButton* m_joinMeetingButton = nullptr;
 
     // Connecting state
     QWidget* m_connectingWidget = nullptr;
-    QLabel* m_joinMeetingHeartsIcon = nullptr;
     QLabel* m_roomIdLabel = nullptr;
     QLabel* m_waitingGifLabel = nullptr;
     QLabel* m_statusLabel = nullptr;

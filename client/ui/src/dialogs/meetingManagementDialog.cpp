@@ -13,7 +13,6 @@
 #include <QRandomGenerator>
 #include <QIcon>
 #include <QMovie>
-#include <QPixmap>
 
 MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     : QWidget(parent)
@@ -72,16 +71,12 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         .arg(scale(18)));
     titleLabel->setFont(titleFont);
 
-    m_meetingHeartsIcon = new QLabel();
-    m_meetingHeartsIcon->setPixmap(QPixmap(":/resources/meetingHearts.png").scaled(scale(24), scale(24), Qt::KeepAspectRatio, Qt::SmoothTransformation));
-
     ButtonIcon* closeButton = new ButtonIcon(headerWidget, scale(28), scale(28));
     closeButton->setIcons(QIcon(":/resources/close.png"), QIcon(":/resources/closeHover.png"));
     closeButton->setSize(scale(28), scale(28));
     closeButton->setCursor(Qt::PointingHandCursor);
 
     headerLayout->addWidget(titleLabel);
-    headerLayout->addWidget(m_meetingHeartsIcon);
     headerLayout->addStretch();
     headerLayout->addWidget(closeButton);
 
@@ -234,15 +229,11 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         .arg(scale(18)));
     joiningTitle->setFont(titleFont);
 
-    m_joinMeetingHeartsIcon = new QLabel();
-    m_joinMeetingHeartsIcon->setPixmap(QPixmap(":/resources/joinMeetingHearts.png").scaled(scale(28), scale(28), Qt::KeepAspectRatio, Qt::SmoothTransformation));
-
     QHBoxLayout* joiningHeaderLayout = new QHBoxLayout();
     joiningHeaderLayout->setContentsMargins(0, 0, 0, 0);
     joiningHeaderLayout->setSpacing(scale(6));
     joiningHeaderLayout->addStretch();
     joiningHeaderLayout->addWidget(joiningTitle);
-    joiningHeaderLayout->addWidget(m_joinMeetingHeartsIcon);
     joiningHeaderLayout->addStretch();
 
     m_roomIdLabel = new QLabel("Room ID: ");
