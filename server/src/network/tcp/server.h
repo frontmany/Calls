@@ -35,6 +35,7 @@ namespace server::network::tcp
         std::atomic<bool> m_running{ false };
         uint16_t m_port;
         utilities::SafeQueue<OwnedPacket> m_queue;
+        static constexpr size_t m_maxQueueSize = 1024;
         std::mutex m_connMutex;
         std::unordered_set<ConnectionPtr> m_connections;
 

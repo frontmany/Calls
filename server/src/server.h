@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -31,7 +32,8 @@ namespace server
 
         void registerHandlers();
 
-        void handleReceiveUdp(const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& endpointFrom);
+        void handleReceiveUdp(const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& endpointFrom,
+            const std::array<unsigned char, 32>& senderNicknameHash);
         void handleReceiveTcp(network::tcp::OwnedPacket&& owned);
         void handleConnectionWithUserDown(network::tcp::ConnectionPtr conn);
 

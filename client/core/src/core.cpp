@@ -1,6 +1,7 @@
 #include "core.h"
 #include "utilities/logger.h"
 #include "utilities/crashCatchInitializer.h"
+#include "utilities/crypto.h"
 #include "constants/errorCode.h"
 #include "logic/packetFactory.h"
 #include "constants/packetType.h"
@@ -146,8 +147,19 @@ namespace core
                 ? std::error_code{}
                 : core::constant::make_error_code(core::constant::ErrorCode::network_error);
         };
+
         auto sendUdp = [this](const std::vector<unsigned char>& data, constant::PacketType type) -> std::error_code {
-            return m_networkController->sendUDP(data, type)
+            if (!m_stateManager->isAuthorized()) {
+                return core::constant::make_error_code(core::constant::ErrorCode::network_error);
+            }
+            auto hashOpt = core::utilities::crypto::hashToBinary(
+                core::utilities::crypto::calculateHash(m_stateManager->getMyNickname()));
+            
+            if (!hashOpt) {
+                return core::constant::make_error_code(core::constant::ErrorCode::network_error);
+            }
+
+            return m_networkController->sendUDP(data, type, *hashOpt)
                 ? std::error_code{}
                 : core::constant::make_error_code(core::constant::ErrorCode::network_error);
         };

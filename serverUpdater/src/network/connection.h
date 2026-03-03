@@ -37,6 +37,7 @@ private:
 
 private:
 	utilities::SafeQueue<std::variant<Packet, std::filesystem::path>> m_queue;
+	static constexpr size_t m_maxQueueSize = 512;
 
 	uint64_t m_handshakeOut;
 	uint64_t m_handshakeIn;

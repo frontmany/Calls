@@ -28,7 +28,7 @@ namespace server::network::udp
 
     void PacketSender::send(const Packet& packet) {
         bool wasEmpty = m_packetQueue.empty();
-        m_packetQueue.push(packet);
+        m_packetQueue.push_with_limit(packet, m_maxPacketQueueSize);
 
         if (wasEmpty && !m_isSending.load()) {
             startSendingIfIdle();

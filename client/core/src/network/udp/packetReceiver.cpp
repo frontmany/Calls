@@ -153,7 +153,7 @@ void PacketReceiver::processDatagram(std::size_t bytesTransferred) {
         ReceivedPacket receivedPacket;
         receivedPacket.data.clear();
         receivedPacket.type = packetType;
-        m_receivedPacketsQueue.push(std::move(receivedPacket));
+        m_receivedPacketsQueue.push_with_limit(std::move(receivedPacket), m_maxReceivedPacketsQueueSize);
         return;
     }
 
@@ -212,7 +212,7 @@ void PacketReceiver::processDatagram(std::size_t bytesTransferred) {
     }
 
     if (packetComplete)
-        m_assemblyQueue.push(std::move(jobToPush));
+        m_assemblyQueue.push_with_limit(std::move(jobToPush), m_maxAssemblyQueueSize);
 }
 
 void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
@@ -284,7 +284,7 @@ void PacketReceiver::processReceivedPackets() {
                 receivedPacket.data.reserve(totalSize);
                 for (const auto& chunk : jobOptional->chunks)
                     receivedPacket.data.insert(receivedPacket.data.end(), chunk.begin(), chunk.end());
-                m_receivedPacketsQueue.push(std::move(receivedPacket));
+                m_receivedPacketsQueue.push_with_limit(std::move(receivedPacket), m_maxReceivedPacketsQueueSize);
             }
             catch (const std::exception& exception) {
                 LOG_ERROR("Media assembly failed: {}", exception.what());

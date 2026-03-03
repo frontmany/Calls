@@ -27,6 +27,7 @@ namespace updater
 
 		private:
 			utilities::SafeQueue<Packet> m_queue;
+			static constexpr size_t m_maxQueueSize = 512;
 			asio::ip::tcp::socket& m_socket;
 			std::function<void()> m_onError;
 		};

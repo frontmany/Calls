@@ -95,7 +95,7 @@ void NetworkController::createConnection(asio::ip::tcp::socket socket)
     ConnectionPtr connection = std::make_shared<Connection>(
         m_context,
         std::move(socket),
-        [this](OwnedPacket&& packet) {m_queue.push(std::move(packet));  },
+        [this](OwnedPacket&& packet) { m_queue.push_with_limit(std::move(packet), m_maxQueueSize); },
         [this](ConnectionPtr connection) { onDisconnect(connection); }
     );
 

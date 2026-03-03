@@ -61,6 +61,7 @@ namespace updater
 
 			utilities::SafeQueue<Packet> m_packetQueue;
 			std::thread m_packetQueueThread;
+			static constexpr size_t m_maxPacketQueueSize = 512;
 
 			std::optional<UpdateSession> m_updateSession;
 			std::unique_ptr<ConnectionResolver> m_connectionResolver;

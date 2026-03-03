@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -9,6 +10,7 @@ struct Packet {
     uint64_t id;
     uint32_t type;
     std::vector<unsigned char> data;
+    std::array<unsigned char, 32> senderNicknameHash{};
 };
 
 }

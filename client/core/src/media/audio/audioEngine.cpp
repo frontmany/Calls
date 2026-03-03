@@ -225,6 +225,9 @@ namespace core::media
         packet.samples = length;
 
         std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
+        while (m_outputAudioQueue.size() >= m_maxOutputAudioQueueSize) {
+            m_outputAudioQueue.pop();
+        }
         m_outputAudioQueue.push(std::move(packet));
     }
 

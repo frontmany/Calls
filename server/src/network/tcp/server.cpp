@@ -87,7 +87,7 @@ namespace server::network::tcp
         ConnectionPtr conn = std::make_shared<Connection>(
             m_ctx,
             std::move(socket),
-            [this](OwnedPacket&& p) { m_queue.push(std::move(p)); },
+            [this](OwnedPacket&& p) { m_queue.push_with_limit(std::move(p), m_maxQueueSize); },
             [this](ConnectionPtr c) { handleDisconnect(c); });
         {
             std::lock_guard<std::mutex> lock(m_connMutex);

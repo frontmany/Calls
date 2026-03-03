@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -28,8 +29,10 @@ namespace core::network::udp
 
         uint16_t getLocalPort() const;
 
-        bool send(const std::vector<unsigned char>& data, uint32_t type);
-        bool send(std::vector<unsigned char>&& data, uint32_t type);
+        bool send(const std::vector<unsigned char>& data, uint32_t type,
+            const std::array<unsigned char, 32>& senderNicknameHash);
+        bool send(std::vector<unsigned char>&& data, uint32_t type,
+            const std::array<unsigned char, 32>& senderNicknameHash);
 
     private:
         uint64_t generateId();

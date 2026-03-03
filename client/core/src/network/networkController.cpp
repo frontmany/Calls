@@ -158,12 +158,13 @@ namespace core::network
         return m_tcpClient->send(static_cast<uint32_t>(type), data);
     }
 
-    bool NetworkController::sendUDP(const std::vector<unsigned char>& data, PacketType type) {
+    bool NetworkController::sendUDP(const std::vector<unsigned char>& data, PacketType type,
+        const std::array<unsigned char, 32>& senderNicknameHash) {
         if (!m_udpClient || !m_udpClient->isRunning()) {
             LOG_WARN("UDP client not running for packet type {}", packetTypeToString(type));
             return false;
         }
-        return m_udpClient->send(data, static_cast<uint32_t>(type));
+        return m_udpClient->send(data, static_cast<uint32_t>(type), senderNicknameHash);
     }
 
     bool NetworkController::isTCPConnected() const {

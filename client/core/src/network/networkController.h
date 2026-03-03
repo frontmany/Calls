@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -29,7 +30,8 @@ namespace core::network
         void disconnect();
 
         bool sendTCP(const std::vector<unsigned char>& data, core::constant::PacketType type);
-        bool sendUDP(const std::vector<unsigned char>& data, core::constant::PacketType type);
+        bool sendUDP(const std::vector<unsigned char>& data, core::constant::PacketType type,
+            const std::array<unsigned char, 32>& senderNicknameHash);
 
         bool isTCPConnected() const;
         bool isUDPRunning() const;

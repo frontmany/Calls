@@ -27,7 +27,7 @@ void PacketSender::initialize(asio::ip::udp::socket& socket, asio::ip::udp::endp
 
 void PacketSender::send(const Packet& packet) {
     bool wasEmpty = m_packetQueue.empty();
-    m_packetQueue.push(packet);
+    m_packetQueue.push_with_limit(packet, m_maxPacketQueueSize);
     if (wasEmpty && !m_isSending.load())
         startSendingIfIdle();
 }
@@ -122,22 +122,23 @@ std::vector<std::vector<unsigned char>> PacketSender::splitPacket(const Packet& 
     std::vector<std::vector<unsigned char>> packets;
     packets.reserve(totalChunks);
 
-    for (std::size_t chunkIndex = 0; chunkIndex < totalChunks; ++chunkIndex) {
-        const std::size_t offset = chunkIndex * m_maxPayloadSize;
-        const std::size_t payloadSize = hasPayload
-            ? std::min(m_maxPayloadSize, packetData.data.size() - offset)
-            : 0U;
+        for (std::size_t chunkIndex = 0; chunkIndex < totalChunks; ++chunkIndex) {
+            const std::size_t offset = chunkIndex * m_maxPayloadSize;
+            const std::size_t payloadSize = hasPayload
+                ? std::min(m_maxPayloadSize, packetData.data.size() - offset)
+                : 0U;
 
         std::vector<unsigned char> datagram;
         datagram.reserve(m_headerSize + payloadSize);
 
-        writeUint64(datagram, packetData.id);
-        writeUint16(datagram, static_cast<uint16_t>(chunkIndex));
-        writeUint16(datagram, static_cast<uint16_t>(totalChunks));
-        writeUint16(datagram, static_cast<uint16_t>(payloadSize));
-        writeUint32(datagram, static_cast<uint32_t>(packetData.type));
+            datagram.insert(datagram.end(), packetData.senderNicknameHash.begin(), packetData.senderNicknameHash.end());
+            writeUint64(datagram, packetData.id);
+            writeUint16(datagram, static_cast<uint16_t>(chunkIndex));
+            writeUint16(datagram, static_cast<uint16_t>(totalChunks));
+            writeUint16(datagram, static_cast<uint16_t>(payloadSize));
+            writeUint32(datagram, static_cast<uint32_t>(packetData.type));
 
-        if (payloadSize > 0) {
+            if (payloadSize > 0) {
             datagram.insert(datagram.end(),
                 packetData.data.begin() + static_cast<std::ptrdiff_t>(offset),
                 packetData.data.begin() + static_cast<std::ptrdiff_t>(offset + payloadSize));

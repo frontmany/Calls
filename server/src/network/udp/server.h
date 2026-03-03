@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -19,7 +20,7 @@ namespace server::network::udp
         ~Server();
 
         bool init(const std::string& port,
-            std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> onReceive);
+            std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&, const std::array<unsigned char, 32>&)> onReceive);
 
         void start();
         void stop();
@@ -47,7 +48,7 @@ namespace server::network::udp
         std::atomic<uint64_t> m_nextPacketId;
 
         std::string m_port;
-        std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> m_onReceive;
+        std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&, const std::array<unsigned char, 32>&)> m_onReceive;
         std::thread m_ctxThread;
     };
 }

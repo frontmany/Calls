@@ -81,8 +81,7 @@ Connection::~Connection()
 }
 
 void Connection::sendPacket(const Packet& packet) {
-	m_queue.push(packet);
-	
+	m_queue.push_with_limit(packet, m_maxQueueSize);
 	if (m_queue.size() == 1) {
 		m_packetsSender.send();
 	}
@@ -90,8 +89,7 @@ void Connection::sendPacket(const Packet& packet) {
 
 void Connection::sendFile(const std::filesystem::path& path) {
 	bool wasEmpty = m_queue.empty();
-	m_queue.push(path);
-	
+	m_queue.push_with_limit(path, m_maxQueueSize);
 	if (wasEmpty) {
 		m_filesSender.sendFile();
 	}

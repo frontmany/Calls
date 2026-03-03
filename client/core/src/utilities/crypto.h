@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <optional>
 #include <string>
 #include "rsa.h" 
 #include "hex.h" 
@@ -30,6 +32,8 @@ namespace core
         CryptoPP::SecByteBlock deserializeAESKey(const std::string& keyStr);
 
         std::string calculateHash(const std::string& text);
+        /// Converts SHA256 hex digest (64 chars) to 32 bytes. Returns nullopt if invalid.
+        std::optional<std::array<unsigned char, 32>> hashToBinary(const std::string& hexHash);
         std::string generateUID();
         uint64_t scramble(uint64_t inputNumber);
         }

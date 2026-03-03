@@ -13,8 +13,7 @@ namespace updater
 
 		void PacketSender::sendPacket(const Packet& packet)
 		{
-			m_queue.push(packet);
-			
+			m_queue.push_with_limit(packet, m_maxQueueSize);
 			if (m_queue.size() == 1) {
 				writeHeader();
 			}

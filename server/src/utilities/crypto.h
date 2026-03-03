@@ -31,6 +31,8 @@ namespace server
         CryptoPP::SecByteBlock deserializeAESKey(const std::string& keyStr);
 
         std::string calculateHash(const std::string& text);
+        /// Converts 32 bytes to hex string (64 chars).
+        std::string binaryToHex(const unsigned char* data, size_t size);
         std::string generateUID();
         uint64_t scramble(uint64_t inputNumber);
         }

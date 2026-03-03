@@ -77,6 +77,8 @@ private:
     std::thread m_processingThread;
     const std::size_t m_headerSize = 18;
     const std::size_t m_maxPendingPackets = 8;
+    static constexpr std::size_t m_maxAssemblyQueueSize = 64;
+    static constexpr std::size_t m_maxReceivedPacketsQueueSize = 64;
     const std::chrono::milliseconds m_pendingPacketTimeout{3000};
     std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
     asio::ip::udp::endpoint m_serverEndpoint;

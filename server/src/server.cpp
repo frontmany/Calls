@@ -32,7 +32,7 @@ namespace server
             udpPort,
             [this](network::tcp::OwnedPacket&& packet) {handleReceiveTcp(std::move(packet)); },
             [this](network::tcp::ConnectionPtr connection) {handleConnectionWithUserDown(connection); },
-            [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& ep) {handleReceiveUdp(data, size, type, ep);})
+            [this](const unsigned char* data, int size, uint32_t type, const asio::ip::udp::endpoint& ep, const std::array<unsigned char, 32>& senderHash) {handleReceiveUdp(data, size, type, ep, senderHash);})
     {
         registerHandlers();
     }
@@ -62,16 +62,20 @@ namespace server
         m_networkController.stop();
     }
 
-    void Server::handleReceiveUdp(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom) {
+    void Server::handleReceiveUdp(const unsigned char* data, int size, uint32_t rawType, const asio::ip::udp::endpoint& endpointFrom,
+        const std::array<unsigned char, 32>& senderNicknameHash) {
         PacketType type = static_cast<PacketType>(rawType);
         if (type != PacketType::VOICE && type != PacketType::SCREEN && type != PacketType::CAMERA)
             return;
 
-        UserPtr sender = m_userRepository.findUserByEndpoint(endpointFrom);
+        std::string senderHashHex = utilities::crypto::binaryToHex(senderNicknameHash.data(), senderNicknameHash.size());
+        UserPtr sender = m_userRepository.findUserByNickname(senderHashHex);
         if (!sender) {
-            LOG_DEBUG("[UDP] Media from unknown endpoint {}:{}", endpointFrom.address().to_string(), endpointFrom.port());
+            LOG_DEBUG("[UDP] Media from unknown sender hash {}:{}", senderHashHex.substr(0, 10), endpointFrom.address().to_string());
             return;
         }
+
+        m_userRepository.updateUserUdpEndpoint(senderHashHex, endpointFrom);
 
         UserPtr partner = sender->getCallPartner();
         if (!partner || !m_userRepository.containsUser(partner->getNicknameHash()))

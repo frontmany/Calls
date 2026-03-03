@@ -1,5 +1,7 @@
 #include "network/networkController.h"
 
+#include <array>
+
 namespace server::network
 {
 	NetworkController::NetworkController(
@@ -7,7 +9,7 @@ namespace server::network
 		const std::string& udpPort,
 		tcp::Server::OnPacket onTcpPacket,
 		tcp::Server::OnDisconnect onTcpDisconnect,
-		std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> onUdpReceive)
+		std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&, const std::array<unsigned char, 32>&)> onUdpReceive)
 		: m_tcpServer(tcpPort, std::move(onTcpPacket), std::move(onTcpDisconnect))
 	{
 		m_udpServer.init(udpPort, std::move(onUdpReceive));

@@ -37,7 +37,8 @@ private:
     std::vector<std::vector<unsigned char>> m_currentDatagrams;
     std::size_t m_currentDatagramIndex;
     const std::size_t m_maxPayloadSize = 1300;
-    const std::size_t m_headerSize = 18;
+    const std::size_t m_headerSize = 50;  // 32 (senderNicknameHash) + 18 (packetId, chunkIndex, etc.)
+    static constexpr std::size_t m_maxPacketQueueSize = 256;  // ~2-5 sec buffer at 50-100 pkt/s
 };
 
 }

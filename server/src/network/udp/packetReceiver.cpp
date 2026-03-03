@@ -2,6 +2,7 @@
 #include "constants/constant.h"
 
 #include <chrono>
+#include <cstring>
 #include <exception>
 #include <system_error>
 #include <string>
@@ -21,7 +22,7 @@ namespace server::network::udp
     }
 
     bool PacketReceiver::init(asio::ip::udp::socket& socket,
-        std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> onPacketReceived,
+        std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&, const std::array<unsigned char, 32>&)> onPacketReceived,
         std::function<void()> onErrorCallback,
         std::function<void(uint32_t, const asio::ip::udp::endpoint&)> onPingReceived)
     {
@@ -167,11 +168,14 @@ namespace server::network::udp
         const unsigned char* data = m_buffer.data();
         const std::string endpointKey = makeEndpointKey(m_remoteEndpoint);
 
-        const uint64_t packetId = readUint64(data);
-        const uint16_t chunkIndex = readUint16(data + 8);
-        const uint16_t totalChunks = readUint16(data + 10);
-        const uint16_t payloadLength = readUint16(data + 12);
-        const uint32_t packetType = readUint32(data + 14);
+        std::array<unsigned char, 32> senderNicknameHash;
+        std::memcpy(senderNicknameHash.data(), data, 32);
+
+        const uint64_t packetId = readUint64(data + 32);
+        const uint16_t chunkIndex = readUint16(data + 40);
+        const uint16_t totalChunks = readUint16(data + 42);
+        const uint16_t payloadLength = readUint16(data + 44);
+        const uint32_t packetType = readUint32(data + 46);
 
         const std::size_t actualPayload = bytesTransferred - m_headerSize;
         if (payloadLength > actualPayload) {
@@ -191,7 +195,8 @@ namespace server::network::udp
             job.chunks.clear();
             job.type = packetType;
             job.endpoint = m_remoteEndpoint;
-            m_assemblyQueue.push(std::move(job));
+            job.senderNicknameHash = senderNicknameHash;
+            m_assemblyQueue.push_with_limit(std::move(job), m_maxAssemblyQueueSize);
             return;
         }
 
@@ -224,21 +229,21 @@ namespace server::network::udp
                     evictOldestPacket(pendingPackets);
                 }
                 packetIt = pendingPackets.emplace(packetId, PendingPacket{}).first;
-                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
+                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, senderNicknameHash, now);
             }
             else if (packetIt->second.totalChunks != totalChunks) {
                 LOG_WARN("Total chunks mismatch for packet {}: expected {}, got {}",
                     packetId,
                     packetIt->second.totalChunks,
                     totalChunks);
-                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
+                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, senderNicknameHash, now);
             }
             else if (packetIt->second.type != packetType) {
                 LOG_WARN("Packet type mismatch for packet {}: expected {}, got {}",
                     packetId,
                     static_cast<uint32_t>(packetIt->second.type),
                     static_cast<uint32_t>(packetType));
-                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, now);
+                initPendingPacket(packetIt->second, packetId, totalChunks, packetType, senderNicknameHash, now);
             }
 
             auto& pendingPacket = packetIt->second;
@@ -258,6 +263,7 @@ namespace server::network::udp
                 packetComplete = true;
                 completedType = pendingPacket.type;
                 chunksToAssemble = std::move(pendingPacket.chunks);
+                senderNicknameHash = pendingPacket.senderNicknameHash;
                 pendingPackets.erase(packetIt);
                 if (pendingPackets.empty()) {
                     m_pendingPackets.erase(endpointKey);
@@ -273,11 +279,12 @@ namespace server::network::udp
         job.chunks = std::move(chunksToAssemble);
         job.type = completedType;
         job.endpoint = m_remoteEndpoint;
-        m_assemblyQueue.push(std::move(job));
+        job.senderNicknameHash = senderNicknameHash;
+        m_assemblyQueue.push_with_limit(std::move(job), m_maxAssemblyQueueSize);
     }
 
     void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
-        std::chrono::steady_clock::time_point now)
+        const std::array<unsigned char, 32>& senderNicknameHash, std::chrono::steady_clock::time_point now)
     {
         packet = PendingPacket{};
         packet.packetId = packetId;
@@ -285,6 +292,7 @@ namespace server::network::udp
         packet.chunks.resize(totalChunks);
         packet.receivedChunks = 0;
         packet.type = packetType;
+        packet.senderNicknameHash = senderNicknameHash;
         packet.lastUpdated = now;
     }
 
@@ -354,10 +362,11 @@ namespace server::network::udp
                     ReceivedPacket packet;
                     packet.type = jobOpt->type;
                     packet.endpoint = jobOpt->endpoint;
+                    packet.senderNicknameHash = jobOpt->senderNicknameHash;
                     for (const auto& chunk : jobOpt->chunks) {
                         packet.data.insert(packet.data.end(), chunk.begin(), chunk.end());
                     }
-                    m_receivedPacketsQueue.push(std::move(packet));
+                    m_receivedPacketsQueue.push_with_limit(std::move(packet), m_maxReceivedPacketsQueueSize);
                 }
                 catch (const std::exception& e) {
                     LOG_ERROR("Assembly failed: {}", e.what());
@@ -376,10 +385,10 @@ namespace server::network::udp
             try {
                 const auto& packet = packetOpt.value();
                 if (packet.data.empty()) {
-                    m_onPacketReceived(nullptr, 0, packet.type, packet.endpoint);
+                    m_onPacketReceived(nullptr, 0, packet.type, packet.endpoint, packet.senderNicknameHash);
                 }
                 else {
-                    m_onPacketReceived(packet.data.data(), static_cast<int>(packet.data.size()), packet.type, packet.endpoint);
+                    m_onPacketReceived(packet.data.data(), static_cast<int>(packet.data.size()), packet.type, packet.endpoint, packet.senderNicknameHash);
                 }
             }
             catch (const std::exception& e) {

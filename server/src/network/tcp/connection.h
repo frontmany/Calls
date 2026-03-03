@@ -36,6 +36,7 @@ namespace server::network::tcp
         asio::ip::tcp::socket m_socket;
         asio::steady_timer m_handshakeTimer;
         utilities::SafeQueue<Packet> m_outQueue;
+        static constexpr size_t m_maxOutQueueSize = 512;
         uint64_t m_handshakeOut = 0;
         uint64_t m_handshakeIn = 0;
         bool m_handshakeCompleted = false;

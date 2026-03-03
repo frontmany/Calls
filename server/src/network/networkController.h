@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <functional>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ namespace server
                 const std::string& udpPort,
                 tcp::Server::OnPacket onTcpPacket,
                 tcp::Server::OnDisconnect onTcpDisconnect,
-                std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> onUdpReceive);
+                std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&, const std::array<unsigned char, 32>&)> onUdpReceive);
 
             ~NetworkController();
 

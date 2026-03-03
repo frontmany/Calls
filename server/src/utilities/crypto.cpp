@@ -276,6 +276,13 @@ namespace server
                 return digest;
             }
 
+            std::string binaryToHex(const unsigned char* data, size_t size) {
+                std::string result;
+                CryptoPP::StringSource ss(data, size, true,
+                    new CryptoPP::HexEncoder(new CryptoPP::StringSink(result)));
+                return result;
+            }
+
             std::string generateUID() {
                 try {
                     CryptoPP::AutoSeededRandomPool rng;

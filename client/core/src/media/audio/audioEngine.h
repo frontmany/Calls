@@ -75,6 +75,7 @@ namespace core::media
         PaError m_lastError = paNoError;
         std::queue<AudioPacket> m_outputAudioQueue;
         std::mutex m_outputAudioQueueMutex;
+        static constexpr size_t m_maxOutputAudioQueueSize = 128;  // ~2.5 sec at 50 pkt/s
         std::mutex m_inputAudioMutex;
         std::function<void(const float* data, int length)> m_inputCallback;
 

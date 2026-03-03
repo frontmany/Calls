@@ -120,20 +120,24 @@ namespace core::network::udp
         return m_localPort;
     }
 
-    bool Client::send(const std::vector<unsigned char>& data, uint32_t type) {
+    bool Client::send(const std::vector<unsigned char>& data, uint32_t type,
+        const std::array<unsigned char, 32>& senderNicknameHash) {
         Packet packet;
         packet.id = generateId();
         packet.type = type;
         packet.data = data;
+        packet.senderNicknameHash = senderNicknameHash;
         m_packetSender.send(packet);
         return true;
     }
 
-    bool Client::send(std::vector<unsigned char>&& data, uint32_t type) {
+    bool Client::send(std::vector<unsigned char>&& data, uint32_t type,
+        const std::array<unsigned char, 32>& senderNicknameHash) {
         Packet packet;
         packet.id = generateId();
         packet.type = type;
         packet.data = std::move(data);
+        packet.senderNicknameHash = senderNicknameHash;
         m_packetSender.send(packet);
         return true;
     }

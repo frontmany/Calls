@@ -83,7 +83,7 @@ namespace server::network::tcp
     }
 
     void Connection::send(const Packet& packet) {
-        m_outQueue.push(packet);
+        m_outQueue.push_with_limit(packet, m_maxOutQueueSize);
         if (m_outQueue.size() == 1)
             m_sender.send();
     }

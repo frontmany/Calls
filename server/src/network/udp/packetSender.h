@@ -45,6 +45,7 @@ namespace server::network::udp
 
         const std::size_t m_maxPayloadSize = 1300;
         const std::size_t m_headerSize = 18;
+        static constexpr std::size_t m_maxPacketQueueSize = 256;  // ~2-5 sec buffer at 50-100 pkt/s
     };
 }
 

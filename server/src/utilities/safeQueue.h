@@ -35,6 +35,25 @@ namespace server
             m_cond.notify_one();
         }
 
+        /// Pushes item, evicting oldest if queue size >= maxSize. For media: drop oldest to keep latest.
+        void push_with_limit(const T& item, size_t maxSize) {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            while (m_queue.size() >= maxSize && !m_queue.empty()) {
+                m_queue.pop();
+            }
+            m_queue.push(item);
+            m_cond.notify_one();
+        }
+        
+        void push_with_limit(T&& item, size_t maxSize) {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            while (m_queue.size() >= maxSize && !m_queue.empty()) {
+                m_queue.pop();
+            }
+            m_queue.push(std::move(item));
+            m_cond.notify_one();
+        }
+
         template<typename... Args>
         void emplace(Args&&... args) {
             {

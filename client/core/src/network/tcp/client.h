@@ -45,6 +45,7 @@ private:
 
     core::utilities::SafeQueue<Packet> m_inQueue;
     core::utilities::SafeQueue<Packet> m_outQueue;
+    static constexpr size_t m_maxQueueSize = 512;
 
     std::unique_ptr<PacketsReceiver> m_receiver;
     std::unique_ptr<PacketsSender> m_sender;

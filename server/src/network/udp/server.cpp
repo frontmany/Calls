@@ -24,7 +24,7 @@ namespace server::network::udp
     }
 
     bool Server::init(const std::string& port,
-        std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&)> onReceive)
+        std::function<void(const unsigned char*, int, uint32_t, const asio::ip::udp::endpoint&, const std::array<unsigned char, 32>&)> onReceive)
     {
         m_port = port;
         m_onReceive = std::move(onReceive);

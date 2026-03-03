@@ -37,6 +37,7 @@ private:
 private:
     std::atomic<bool> m_running;
     utilities::SafeQueue<OwnedPacket> m_queue;
+    static constexpr size_t m_maxQueueSize = 1024;
 
     std::mutex m_connectionsMutex;
     std::unordered_set<ConnectionPtr> m_setConnections;

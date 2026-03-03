@@ -232,7 +232,7 @@ void Client::initializeAfterHandshake() {
     configureKeepalive(m_socket);
 
     m_receiver = std::make_unique<PacketsReceiver>(m_socket,
-        [this](Packet&& packet) { m_inQueue.push(std::move(packet)); },
+        [this](Packet&& packet) { m_inQueue.push_with_limit(std::move(packet), m_maxQueueSize); },
         [this]() {
             if (!m_shuttingDown && m_connected.exchange(false)) {
                 LOG_WARN("Control disconnected (receive)");
@@ -329,7 +329,7 @@ bool Client::send(uint32_t type, const void* data, size_t size) {
         packet.body.assign(bytes, bytes + size);
     }
     bool wasEmpty = m_outQueue.empty();
-    m_outQueue.push(std::move(packet));
+    m_outQueue.push_with_limit(std::move(packet), m_maxQueueSize);
     if (wasEmpty)
         m_sender->send();
     return true;

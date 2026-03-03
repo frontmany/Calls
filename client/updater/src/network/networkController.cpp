@@ -265,7 +265,7 @@ namespace updater
 
 			m_packetReceiver = std::make_unique<PacketReceiver>(m_socket,
 				[this](Packet&& packet) {
-					m_packetQueue.push(std::move(packet));
+					m_packetQueue.push_with_limit(std::move(packet), m_maxPacketQueueSize);
 				},
 				[this]() {
 					m_connectionDown = true;

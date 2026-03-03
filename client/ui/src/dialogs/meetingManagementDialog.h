@@ -24,7 +24,7 @@ signals:
     void joinCancelled();
 
 private:
-    QString generateMeetingUid() const;
+    QString generateMeetingUid() const; 
 
     QStackedWidget* m_stackedWidget = nullptr;
 

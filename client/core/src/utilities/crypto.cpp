@@ -276,6 +276,22 @@ namespace core
         return digest;
     }
 
+    std::optional<std::array<unsigned char, 32>> hashToBinary(const std::string& hexHash) {
+        if (hexHash.size() != 64) return std::nullopt;
+        std::string decoded;
+        try {
+            CryptoPP::StringSource ss(hexHash, true,
+                new CryptoPP::HexDecoder(new CryptoPP::StringSink(decoded)));
+        }
+        catch (...) {
+            return std::nullopt;
+        }
+        if (decoded.size() != 32) return std::nullopt;
+        std::array<unsigned char, 32> result;
+        std::memcpy(result.data(), decoded.data(), 32);
+        return result;
+    }
+
     std::string generateUID() {
         try {
             CryptoPP::AutoSeededRandomPool rng;
