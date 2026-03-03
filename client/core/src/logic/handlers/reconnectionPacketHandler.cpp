@@ -88,6 +88,7 @@ namespace core::logic
         }
         else {
             LOG_INFO("Connection restored but authorization needed again");
+            m_stateManager->reset();
             m_eventListener->onConnectionEstablishedAuthorizationNeeded();
         }
     }
