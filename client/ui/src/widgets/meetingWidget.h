@@ -57,6 +57,7 @@ struct StyleMeetingWidget
     static QString timerStyle();
     static QString controlButtonStyle();
     static QString hangupButtonStyle();
+    static QString disabledHangupButtonStyle();
     static QString panelStyle();
     static QString volumeLabelStyle();
     static QString scrollAreaStyle();
@@ -108,15 +109,17 @@ public:
     void enterFullscreen();
     void exitFullscreen();
     void updateMainScreenSize();
-    void showFrameInMainScreen(const QPixmap& frame);
+    void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode = Screen::ScaleMode::KeepAspectRatio);
     void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id);
     void removeAdditionalScreen(const std::string& id);
-    void restrictScreenShareButton();
+    void setHangupButtonRestricted(bool restricted);
+    void setScreenShareButtonRestricted(bool restricted);
     void setScreenShareButtonActive(bool active);
-    void restrictCameraButton();
+    void setCameraButtonRestricted(bool restricted);
     void setCameraButtonActive(bool active);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();
+    void setAudioSettingsDialogOpen(bool open);
     void showErrorNotification(const QString& text, int durationMs);
     void addJoinRequest(const QString& nickname);
     void removeJoinRequest(const QString& nickname);
@@ -129,6 +132,7 @@ signals:
     void outputVolumeChanged(int newVolume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
+    void audioSettingsRequested();
     void requestEnterFullscreen();
     void requestExitFullscreen();
     void screenShareClicked(bool toggled);
@@ -144,7 +148,6 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private slots:
-    void onSlidersClicked(bool toggled);
     void updateCallTimer();
     void setupElementShadow(QWidget* widget, int blurRadius, const QColor& color);
     void onExitFullscreenHideTimerTimeout();
@@ -155,10 +158,9 @@ private slots:
 private:
     void setupUI();
     void setupShadowEffect();
-    void updateExitFullscreenButtonPosition();
+    void updateOverlayButtonsPosition();
     void applyStandardSize();
     void applyDecreasedSize();
-    void applyExtraDecreasedSize();
     void applyFullscreenSize();
     QSize scaledScreenSize16by9(int baseWidth);
     void updateParticipantsContainerSize();
@@ -194,27 +196,13 @@ private:
 
     QWidget* m_buttonsPanel = nullptr;
     QHBoxLayout* m_buttonsLayout = nullptr;
-    QWidget* m_slidersContainer = nullptr;
-    QVBoxLayout* m_slidersLayout = nullptr;
-
-    QWidget* m_micSliderWidget = nullptr;
-    QVBoxLayout* m_micSliderLayout = nullptr;
-    QHBoxLayout* m_micLabelSliderLayout = nullptr;
-    ToggleButtonIcon* m_micLabel = nullptr;
-    QSlider* m_micVolumeSlider = nullptr;
-
-    QWidget* m_speakerSliderWidget = nullptr;
-    QVBoxLayout* m_speakerSliderLayout = nullptr;
-    QHBoxLayout* m_speakerLabelSliderLayout = nullptr;
-    ToggleButtonIcon* m_speakerLabel = nullptr;
-    QSlider* m_speakerVolumeSlider = nullptr;
 
     ButtonIcon* m_enterFullscreenButton = nullptr;
     ButtonIcon* m_exitFullscreenButton = nullptr;
+    ButtonIcon* m_settingsButton = nullptr;
     ToggleButtonIcon* m_microphoneButton = nullptr;
     ToggleButtonIcon* m_screenShareButton = nullptr;
     ToggleButtonIcon* m_cameraButton = nullptr;
-    ToggleButtonIcon* m_slidersButton = nullptr;
     QPushButton* m_hangupButton = nullptr;
 
     QWidget* m_joinRequestsPanel = nullptr;
@@ -249,8 +237,8 @@ private:
     QTime* m_callDuration = nullptr;
     QTimer* m_exitFullscreenHideTimer = nullptr;
 
-    bool m_slidersVisible = false;
     bool m_screenFullscreenActive = false;
+    bool m_audioSettingsDialogOpen = false;
     bool m_hasScreenSharing = false;
 
     QString m_callName;

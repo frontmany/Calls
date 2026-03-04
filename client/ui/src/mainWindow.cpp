@@ -366,6 +366,35 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_mainMenuWidget, &MainMenuWidget::meetingButtonClicked, m_dialogsController, &DialogsController::showMeetingsManagementDialog);
     }
 
+    // MeetingWidget connections
+    if (m_meetingWidget && m_dialogsController) {
+        connect(m_meetingWidget, &MeetingWidget::hangupConfirmationRequested, m_dialogsController, &DialogsController::showEndMeetingConfirmationDialog);
+    }
+    if (m_meetingWidget && m_navigationController) {
+        connect(m_meetingWidget, &MeetingWidget::hangupClicked, this, &MainWindow::onEndMeetingRequested);
+    }
+    if (m_meetingWidget && m_dialogsController && m_coreClient) {
+        connect(m_meetingWidget, &MeetingWidget::audioSettingsRequested, this, [this]() {
+            m_dialogsController->showAudioSettingsDialog(
+                true,
+                m_coreClient->isMicrophoneMuted(),
+                m_coreClient->isSpeakerMuted(),
+                m_coreClient->getInputVolume(),
+                m_coreClient->getOutputVolume(),
+                m_coreClient->getCurrentInputDevice(),
+                m_coreClient->getCurrentOutputDevice());
+            if (m_meetingWidget)
+                m_meetingWidget->setAudioSettingsDialogOpen(true);
+        });
+    }
+    if (m_dialogsController) {
+        connect(m_dialogsController, &DialogsController::endMeetingConfirmed, this, &MainWindow::onEndMeetingRequested);
+        connect(m_dialogsController, &DialogsController::audioSettingsDialogClosed, this, [this]() {
+            if (m_meetingWidget)
+                m_meetingWidget->setAudioSettingsDialogOpen(false);
+        });
+    }
+
     // DialogsController connections
     if (m_dialogsController && m_callManager) {
         connect(m_dialogsController, &DialogsController::screenSelected, m_callManager, &CallManager::onScreenSelected);
@@ -533,6 +562,16 @@ void MainWindow::onEndCallFullscreenExitRequested()
         m_callWidget->exitFullscreen();
     }
     showMaximized();
+}
+
+void MainWindow::onEndMeetingRequested()
+{
+    if (m_meetingWidget && m_meetingWidget->isFullScreen()) {
+        m_meetingWidget->exitFullscreen();
+    }
+    if (m_navigationController) {
+        m_navigationController->switchToMainMenuWidget();
+    }
 }
 
 void MainWindow::onStopAllRingtonesRequested()

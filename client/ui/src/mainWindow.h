@@ -49,6 +49,7 @@ private slots:
     void onEndCallFullscreenExitRequested(); 
     void onStopAllRingtonesRequested();
     void onCoreRestartRequested();
+    void onEndMeetingRequested();
 
 private:
     void initializeCentralStackedWidget();

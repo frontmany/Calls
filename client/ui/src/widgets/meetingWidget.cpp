@@ -117,6 +117,20 @@ QString StyleMeetingWidget::hangupButtonStyle() {
         .arg(QString::fromStdString(std::to_string(scale(5))));
 }
 
+QString StyleMeetingWidget::disabledHangupButtonStyle() {
+    return QString("QPushButton {"
+        "   background-color: rgba(%1, %2, %3, 120);"
+        "   border: none;"
+        "   border-radius: %4px;"
+        "   padding: %5px;"
+        "   margin: %6px;"
+        "   opacity: 0.6;"
+        "}").arg(m_hangupButtonColor.red()).arg(m_hangupButtonColor.green()).arg(m_hangupButtonColor.blue())
+        .arg(QString::fromStdString(std::to_string(scale(25))))
+        .arg(QString::fromStdString(std::to_string(scale(15))))
+        .arg(QString::fromStdString(std::to_string(scale(5))));
+}
+
 QString StyleMeetingWidget::panelStyle() {
     return QString("QWidget {"
         "   background-color: transparent;"
@@ -649,16 +663,6 @@ void MeetingWidget::setupUI() {
     m_enterFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_enterFullscreenButton->hide();
 
-    m_slidersButton = new ToggleButtonIcon(m_buttonsPanel,
-        QIcon(":/resources/sliders.png"),
-        QIcon(":/resources/slidersHover.png"),
-        QIcon(":/resources/slidersActive.png"),
-        QIcon(":/resources/slidersActiveHover.png"),
-        scale(40), scale(40));
-    m_slidersButton->setSize(scale(37), scale(37));
-    m_slidersButton->setToolTip("Show volume controls");
-    m_slidersButton->setCursor(Qt::PointingHandCursor);
-
     m_hangupButton = new QPushButton(m_buttonsPanel);
     m_hangupButton->setFixedSize(scale(60), scale(60));
     m_hangupButton->setStyleSheet(StyleMeetingWidget::hangupButtonStyle());
@@ -672,7 +676,6 @@ void MeetingWidget::setupUI() {
     m_buttonsLayout->addWidget(m_microphoneButton);
     m_buttonsLayout->addWidget(m_screenShareButton);
     m_buttonsLayout->addWidget(m_enterFullscreenButton);
-    m_buttonsLayout->addWidget(m_slidersButton);
     m_buttonsLayout->addWidget(m_hangupButton);
 
     // Exit fullscreen button
@@ -685,88 +688,12 @@ void MeetingWidget::setupUI() {
     m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_exitFullscreenButton->hide();
 
-    // Sliders container
-    m_slidersContainer = new QWidget(this);
-    m_slidersContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    m_slidersContainer->setFixedSize(scale(400), scale(110));
-    m_slidersContainer->setObjectName("slidersContainer");
-    m_slidersContainer->setStyleSheet(StyleMeetingWidget::sliderContainerStyle());
-    m_slidersContainer->hide();
-
-    // Microphone slider
-    m_micSliderWidget = new QWidget(m_slidersContainer);
-    m_micSliderWidget->setAttribute(Qt::WA_TranslucentBackground);
-
-    m_micLabel = new ToggleButtonIcon(m_micSliderWidget,
-        QIcon(":/resources/microphone.png"),
-        QIcon(":/resources/microphoneHover.png"),
-        QIcon(":/resources/mute-enabled-microphone.png"),
-        QIcon(":/resources/mute-enabled-microphoneHover.png"),
-        scale(24), scale(24));
-    m_micLabel->setSize(scale(24), scale(24));
-    m_micLabel->setToolTip("Microphone mute");
-    m_micLabel->setCursor(Qt::PointingHandCursor);
-
-    m_micVolumeSlider = new QSlider(Qt::Horizontal, m_micSliderWidget);
-    m_micVolumeSlider->setRange(0, 200);
-    m_micVolumeSlider->setValue(100);
-    m_micVolumeSlider->setStyleSheet(StyleMeetingWidget::volumeSliderStyle());
-    m_micVolumeSlider->setToolTip("Adjust microphone volume");
-    m_micVolumeSlider->setTracking(false);
-    m_micVolumeSlider->setCursor(Qt::PointingHandCursor);
-
-    m_micLabelSliderLayout = new QHBoxLayout();
-    m_micLabelSliderLayout->setSpacing(scale(10));
-    m_micLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_micLabelSliderLayout->setAlignment(Qt::AlignCenter);
-    m_micLabelSliderLayout->addWidget(m_micLabel);
-    m_micLabelSliderLayout->addWidget(m_micVolumeSlider);
-
-    m_micSliderLayout = new QVBoxLayout(m_micSliderWidget);
-    m_micSliderLayout->setSpacing(scale(8));
-    m_micSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_micSliderLayout->addLayout(m_micLabelSliderLayout);
-
-    // Speaker slider
-    m_speakerSliderWidget = new QWidget(m_slidersContainer);
-    m_speakerSliderLayout = new QVBoxLayout(m_speakerSliderWidget);
-    m_speakerSliderLayout->setSpacing(scale(8));
-    m_speakerSliderLayout->setContentsMargins(0, 0, 0, 0);
-
-    m_speakerLabelSliderLayout = new QHBoxLayout();
-    m_speakerLabelSliderLayout->setSpacing(scale(10));
-    m_speakerLabelSliderLayout->setContentsMargins(0, 0, 0, 0);
-    m_speakerLabelSliderLayout->setAlignment(Qt::AlignCenter);
-
-    m_speakerLabel = new ToggleButtonIcon(m_speakerSliderWidget,
-        QIcon(":/resources/speaker.png"),
-        QIcon(":/resources/speakerHover.png"),
-        QIcon(":/resources/speakerMutedActive.png"),
-        QIcon(":/resources/speakerMutedActiveHover.png"),
-        scale(22), scale(22));
-    m_speakerLabel->setSize(scale(22), scale(22));
-    m_speakerLabel->setToolTip("Speaker mute");
-    m_speakerLabel->setCursor(Qt::PointingHandCursor);
-
-    m_speakerVolumeSlider = new QSlider(Qt::Horizontal, m_speakerSliderWidget);
-    m_speakerVolumeSlider->setRange(0, 200);
-    m_speakerVolumeSlider->setValue(100);
-    m_speakerVolumeSlider->setStyleSheet(StyleMeetingWidget::volumeSliderStyle());
-    m_speakerVolumeSlider->setToolTip("Adjust speaker volume");
-    m_speakerVolumeSlider->setTracking(false);
-    m_speakerVolumeSlider->setCursor(Qt::PointingHandCursor);
-
-    m_speakerLabelSliderLayout->addWidget(m_speakerLabel);
-    m_speakerLabelSliderLayout->addWidget(m_speakerVolumeSlider);
-    m_speakerSliderLayout->addLayout(m_speakerLabelSliderLayout);
-
-    m_slidersLayout = new QVBoxLayout(m_slidersContainer);
-    m_slidersLayout->setSpacing(scale(20));
-    m_slidersLayout->setContentsMargins(scale(20), scale(20), scale(20), scale(20));
-    m_slidersLayout->setAlignment(Qt::AlignCenter);
-    m_slidersLayout->addWidget(m_micSliderWidget);
-    m_slidersLayout->addSpacing(scale(4));
-    m_slidersLayout->addWidget(m_speakerSliderWidget);
+    m_settingsButton = new ButtonIcon(this, scale(28), scale(28));
+    m_settingsButton->setIcons(QIcon(":/resources/settings.png"), QIcon(":/resources/settingsHover.png"));
+    m_settingsButton->setSize(scale(38), scale(38));
+    m_settingsButton->setToolTip("Audio settings");
+    m_settingsButton->setCursor(Qt::PointingHandCursor);
+    m_settingsButton->hide();
 
     // Notification widget
     m_notificationWidget = new QWidget(this);
@@ -905,7 +832,6 @@ void MeetingWidget::setupUI() {
     m_mainLayout->addWidget(m_additionalScreensContainer);
     m_mainLayout->addWidget(m_mainScreen, 0, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_buttonsPanel);
-    m_mainLayout->addWidget(m_slidersContainer, 0, Qt::AlignHCenter);
 
     // Ensure initial positioning of floating panels
     QTimer::singleShot(0, this, [this]()
@@ -916,22 +842,18 @@ void MeetingWidget::setupUI() {
 
     // Connect signals
     connect(m_exitFullscreenButton, &ButtonIcon::clicked, [this]() { showCallNamePanelIfAvailable(); emit requestExitFullscreen(); });
+    connect(m_settingsButton, &ButtonIcon::clicked, [this]() { emit audioSettingsRequested(); });
     connect(m_enterFullscreenButton, &ButtonIcon::clicked, [this]() { showCallNamePanelIfAvailable(); emit requestEnterFullscreen(); });
     connect(m_microphoneButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
         showCallNamePanelIfAvailable();
-        if (m_micLabel->isToggled() != toggled) {
-            m_micLabel->setToggled(toggled);
-        }
-        m_micVolumeSlider->setEnabled(!toggled);
         emit muteMicrophoneClicked(toggled);
-        });
+    });
     connect(m_screenShareButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
         showCallNamePanelIfAvailable();
         m_hasScreenSharing = toggled;
         emit screenShareClicked(toggled);
-        });
+    });
     connect(m_cameraButton, &ToggleButtonIcon::toggled, [this](bool toggled) { showCallNamePanelIfAvailable(); emit cameraClicked(toggled); });
-    connect(m_slidersButton, &ToggleButtonIcon::toggled, this, [this](bool toggled) { showCallNamePanelIfAvailable(); onSlidersClicked(toggled); });
     connect(m_hangupButton, &QPushButton::clicked, [this]() 
     { 
         showCallNamePanelIfAvailable(); 
@@ -946,21 +868,6 @@ void MeetingWidget::setupUI() {
             emit hangupClicked();
         }
     });
-    connect(m_micLabel, &ToggleButtonIcon::toggled, [this](bool toggled) {
-        showCallNamePanelIfAvailable();
-        if (m_microphoneButton->isToggled() != toggled) {
-            m_microphoneButton->setToggled(toggled);
-        }
-        m_micVolumeSlider->setEnabled(!toggled);
-        emit muteMicrophoneClicked(toggled);
-        });
-    connect(m_speakerLabel, &ToggleButtonIcon::toggled, [this](bool toggled) {
-        showCallNamePanelIfAvailable();
-        m_speakerVolumeSlider->setEnabled(!toggled);
-        emit muteSpeakerClicked(toggled);
-        });
-    connect(m_micVolumeSlider, &QSlider::valueChanged, [this](int volume) { emit inputVolumeChanged(volume); });
-    connect(m_speakerVolumeSlider, &QSlider::valueChanged, [this](int volume) { emit outputVolumeChanged(volume); });
     connect(m_copyCallNameButton, &ToggleButtonIcon::toggled, this, [this](bool toggled) {
         if (!toggled)
         {
@@ -991,12 +898,11 @@ void MeetingWidget::setupUI() {
 
 void MeetingWidget::setupShadowEffect() {
     setupElementShadow(m_enterFullscreenButton, 10, QColor(0, 0, 0, 30));
+    setupElementShadow(m_settingsButton, 10, QColor(0, 0, 0, 30));
     setupElementShadow(m_microphoneButton, 10, QColor(0, 0, 0, 30));
     setupElementShadow(m_screenShareButton, 10, QColor(0, 0, 0, 30));
     setupElementShadow(m_cameraButton, 10, QColor(0, 0, 0, 30));
-    setupElementShadow(m_slidersButton, 10, QColor(0, 0, 0, 30));
     setupElementShadow(m_hangupButton, 10, QColor(0, 0, 0, 30));
-    setupElementShadow(m_slidersContainer, 10, QColor(0, 0, 0, 30));
 }
 
 void MeetingWidget::setupElementShadow(QWidget* widget, int blurRadius, const QColor& color) {
@@ -1022,7 +928,7 @@ void MeetingWidget::paintEvent(QPaintEvent* event) {
 
 void MeetingWidget::resizeEvent(QResizeEvent* event) {
     updateParticipantsContainerSize();
-    updateExitFullscreenButtonPosition();
+    updateOverlayButtonsPosition();
     updateParticipantPanels();
 
     if (m_mainScreen->isVisible())
@@ -1103,36 +1009,22 @@ bool MeetingWidget::isAdditionalScreenVisible(const std::string& id) const {
     return m_additionalScreens.contains(id);
 }
 
-void MeetingWidget::onSlidersClicked(bool toggled) {
-    m_slidersVisible = toggled;
-    m_slidersContainer->setVisible(toggled);
-
-    updateMainScreenSize();
-}
-
 void MeetingWidget::setInputVolume(int newVolume) {
-    m_micVolumeSlider->setValue(newVolume);
+    Q_UNUSED(newVolume);
 }
 
 void MeetingWidget::setOutputVolume(int newVolume) {
-    m_speakerVolumeSlider->setValue(newVolume);
+    Q_UNUSED(newVolume);
 }
 
 void MeetingWidget::setMicrophoneMuted(bool muted) {
     if (m_microphoneButton && m_microphoneButton->isToggled() != muted) {
         m_microphoneButton->setToggled(muted);
     }
-    if (m_micLabel && m_micLabel->isToggled() != muted) {
-        m_micLabel->setToggled(muted);
-    }
-    m_micVolumeSlider->setEnabled(!muted);
 }
 
 void MeetingWidget::setSpeakerMuted(bool muted) {
-    if (m_speakerLabel && m_speakerLabel->isToggled() != muted) {
-        m_speakerLabel->setToggled(muted);
-    }
-    m_speakerVolumeSlider->setEnabled(!muted);
+    Q_UNUSED(muted);
 }
 
 void MeetingWidget::addParticipant(const QString& nickname) {
@@ -1809,15 +1701,10 @@ void MeetingWidget::applyStandardSize() {
     QSize targetSize;
 
     if (m_hasScreenSharing || !m_participantWidgets.isEmpty()) {
-        // When screen sharing or participants visible, use decreased size
-        if (m_slidersVisible) {
-            applyExtraDecreasedSize();
-        }
-        else {
-            applyDecreasedSize();
-        }
+        applyDecreasedSize();
+        return;
     }
-    else { 
+    { 
         QSize availableSize = size();
         targetSize = scaledScreenSize16by9(1440);
 
@@ -1853,25 +1740,6 @@ void MeetingWidget::applyDecreasedSize() {
     m_mainScreen->setMaximumSize(targetSize);
 }
 
-void MeetingWidget::applyExtraDecreasedSize() {
-    QSize targetSize = scaledScreenSize16by9(scale(820));
-
-    QSize availableSize = size();
-    int reservedHeight = scale(100) + scale(154);
-    if (!m_participantWidgets.isEmpty()) {
-        int participantsHeight = m_participantsContainer->isVisible() ? m_participantsContainer->height() : 0;
-        reservedHeight += participantsHeight > 0 ? participantsHeight : scale(120);
-    }
-    int availableHeight = availableSize.height() - reservedHeight;
-    if (availableHeight > 0 && targetSize.height() > availableHeight) {
-        int adjustedWidth = static_cast<int>(availableHeight * 16.0 / 9.0);
-        targetSize = QSize(adjustedWidth, availableHeight);
-    }
-
-    m_mainScreen->setMinimumSize(100, 100);
-    m_mainScreen->setMaximumSize(targetSize);
-}
-
 void MeetingWidget::applyFullscreenSize() {
     QSize availableSize = size();
     auto width = availableSize.width();
@@ -1884,12 +1752,6 @@ void MeetingWidget::applyFullscreenSize() {
 void MeetingWidget::updateMainScreenSize() {
     if (m_screenFullscreenActive) {
         applyFullscreenSize();
-    }
-    else if (m_slidersVisible) {
-        if (m_additionalScreens.isEmpty() && m_participantWidgets.isEmpty())
-            applyDecreasedSize();
-        else
-            applyExtraDecreasedSize();
     }
     else {
         if (m_additionalScreens.isEmpty() && m_participantWidgets.isEmpty())
@@ -1907,10 +1769,10 @@ QSize MeetingWidget::scaledScreenSize16by9(int baseWidth) {
     return QSize(scaledWidth, scaledHeight);
 }
 
-void MeetingWidget::showFrameInMainScreen(const QPixmap& frame) {
+void MeetingWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode) {
     if (frame.isNull()) return;
 
-    m_mainScreen->setScaleMode(Screen::ScaleMode::KeepAspectRatio);
+    m_mainScreen->setScaleMode(scaleMode);
     m_mainScreen->setPixmap(frame);
 
     if (!m_mainScreen->isVisible()) {
@@ -1978,11 +1840,29 @@ void MeetingWidget::removeAdditionalScreen(const std::string& id) {
     }
 }
 
-void MeetingWidget::restrictScreenShareButton() {
-    m_screenShareButton->setDisabled(true);
-    m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
-    m_screenShareButton->setIcons(m_screenShareIconRestricted, m_screenShareIconRestricted,
-        m_screenShareIconRestricted, m_screenShareIconRestricted);
+void MeetingWidget::setHangupButtonRestricted(bool restricted) {
+    if (!m_hangupButton) return;
+    m_hangupButton->setEnabled(!restricted);
+    if (restricted) {
+        m_hangupButton->setStyleSheet(StyleMeetingWidget::disabledHangupButtonStyle());
+    } else {
+        m_hangupButton->setStyleSheet(StyleMeetingWidget::hangupButtonStyle());
+    }
+}
+
+void MeetingWidget::setScreenShareButtonRestricted(bool restricted) {
+    if (restricted) {
+        m_screenShareButton->setDisabled(true);
+        m_screenShareButton->setToolTip("Share disabled: remote screen is being shared");
+        m_screenShareButton->setIcons(m_screenShareIconRestricted, m_screenShareIconRestricted,
+            m_screenShareIconRestricted, m_screenShareIconRestricted);
+    } else {
+        m_screenShareButton->setDisabled(false);
+        m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover,
+            m_screenShareIconActive, m_screenShareIconActiveHover);
+        m_screenShareButton->setToggled(false);
+        m_screenShareButton->setToolTip("Start screen share");
+    }
 }
 
 void MeetingWidget::setScreenShareButtonActive(bool active) {
@@ -2019,20 +1899,25 @@ void MeetingWidget::enterFullscreen() {
     m_enterFullscreenButton->hide();
     m_buttonsPanel->hide();
 
-    m_slidersButton->setToggled(false);
-    m_slidersContainer->hide();
-
     m_additionalScreensContainer->hide();
     m_participantsContainer->hide();
 
     m_exitFullscreenButton->show();
-    updateExitFullscreenButtonPosition();
+    updateOverlayButtonsPosition();
 
     setMouseTracking(true);
     m_exitFullscreenHideTimer->start();
 
     m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
     applyFullscreenSize();
+}
+
+void MeetingWidget::setAudioSettingsDialogOpen(bool open) {
+    m_audioSettingsDialogOpen = open;
+    if (!open && !m_screenFullscreenActive && m_settingsButton) {
+        m_settingsButton->show();
+    }
+    updateOverlayButtonsPosition();
 }
 
 void MeetingWidget::exitFullscreen() {
@@ -2051,6 +1936,7 @@ void MeetingWidget::exitFullscreen() {
     m_buttonsPanel->show();
 
     m_exitFullscreenButton->hide();
+    updateOverlayButtonsPosition();
 
     setMouseTracking(false);
     m_exitFullscreenHideTimer->stop();
@@ -2090,15 +1976,26 @@ void MeetingWidget::hideMainScreen() {
     updateMainScreenSize();
 }
 
-void MeetingWidget::updateExitFullscreenButtonPosition() {
-    if (!m_exitFullscreenButton->isVisible()) return;
-
+void MeetingWidget::updateOverlayButtonsPosition() {
     int buttonSize = scale(38);
     int margin = scale(10);
     int x = width() - buttonSize - margin;
     int y = margin;
 
-    m_exitFullscreenButton->move(x, y);
+    if (m_exitFullscreenButton) {
+        m_exitFullscreenButton->move(x, y);
+    }
+    if (m_settingsButton) {
+        m_settingsButton->move(x, y);
+    }
+
+    if (m_screenFullscreenActive) {
+        if (m_settingsButton) m_settingsButton->hide();
+        if (m_exitFullscreenButton) m_exitFullscreenButton->show();
+    } else {
+        if (m_exitFullscreenButton) m_exitFullscreenButton->hide();
+        if (m_settingsButton && !m_audioSettingsDialogOpen) m_settingsButton->show();
+    }
 }
 
 void MeetingWidget::keyPressEvent(QKeyEvent* event) {
@@ -2133,13 +2030,20 @@ void MeetingWidget::onExitFullscreenHideTimerTimeout() {
         m_exitFullscreenButton->hide();
 }
 
-void MeetingWidget::restrictCameraButton() {
+void MeetingWidget::setCameraButtonRestricted(bool restricted) {
     if (!m_cameraButton) return;
-
-    m_cameraButton->setDisabled(true);
-    m_cameraButton->setToolTip("Camera disabled: screen is being shared or camera is active");
-    m_cameraButton->setIcons(m_cameraIconRestricted, m_cameraIconRestricted,
-        m_cameraIconRestricted, m_cameraIconRestricted);
+    if (restricted) {
+        m_cameraButton->setDisabled(true);
+        m_cameraButton->setToolTip("Camera disabled: screen is being shared or camera is active");
+        m_cameraButton->setIcons(m_cameraIconRestricted, m_cameraIconRestricted,
+            m_cameraIconRestricted, m_cameraIconRestricted);
+    } else {
+        m_cameraButton->setDisabled(false);
+        m_cameraButton->setIcons(m_cameraIconDisabled, m_cameraIconDisabledHover,
+            m_cameraIconActive, m_cameraIconActiveHover);
+        m_cameraButton->setToggled(false);
+        m_cameraButton->setToolTip("Enable camera");
+    }
 }
 
 void MeetingWidget::showErrorNotification(const QString& text, int durationMs) {
