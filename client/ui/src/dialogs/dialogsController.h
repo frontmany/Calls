@@ -16,6 +16,7 @@ class FirstLaunchDialog;
 class IncomingCallDialog;
 class UpdateAvailableDialog;
 class MeetingManagementDialog;
+class EndMeetingConfirmationDialog;
 
 namespace updater {
     class Client;
@@ -58,6 +59,9 @@ public:
     void showMeetingsConnectingState(const QString& roomId);
     void setMeetingsJoinStatus(const QString& status);
 
+    void showEndMeetingConfirmationDialog();
+    void hideEndMeetingConfirmationDialog();
+
     void showUpdateAvailableDialog(const QString& newVersion = QString());
     void hideUpdateAvailableDialog();
     void hideUpdateAvailableDialogTemporarily();
@@ -85,6 +89,8 @@ signals:
     void meetingCreateRequested(const QString& uid);
     void meetingJoinRequested(const QString& uid);
     void meetingJoinCancelled();
+    void endMeetingConfirmed();
+    void endMeetingCancelled();
 
 private:
     QWidget* m_parent;
@@ -110,6 +116,9 @@ private:
 
     OverlayWidget* m_meetingsManagementOverlay = nullptr;
     MeetingManagementDialog* m_meetingsManagementDialog = nullptr;
+
+    OverlayWidget* m_endMeetingConfirmationOverlay = nullptr;
+    EndMeetingConfirmationDialog* m_endMeetingConfirmationDialog = nullptr;
 
     std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 };

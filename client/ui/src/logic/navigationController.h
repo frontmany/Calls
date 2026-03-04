@@ -10,18 +10,20 @@
 class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
+class MeetingWidget;
 
 class NavigationController : public QObject {
     Q_OBJECT
 
 public:
     explicit NavigationController(std::shared_ptr<core::Core> client, QObject* parent = nullptr);
-    
-    void setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget);
+
+    void setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget, MeetingWidget* meetingWidget = nullptr);
 
     void switchToAuthorizationWidget();
     void switchToMainMenuWidget();
     void switchToCallWidget(const QString& friendNickname);
+    void switchToMeetingWidget();
 
 public slots:
     void onCallWidgetEnterFullscreenRequested();
@@ -39,4 +41,5 @@ private:
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
+    MeetingWidget* m_meetingWidget = nullptr;
 };

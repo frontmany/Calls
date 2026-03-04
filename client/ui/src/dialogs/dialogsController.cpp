@@ -24,6 +24,7 @@
 #include "dialogs/updatingDialog.h"
 #include "dialogs/updateAvailableDialog.h"
 #include "dialogs/meetingManagementDialog.h"
+#include "dialogs/endMeetingConfirmationDialog.h"
 #include "updater.h"
 #include <algorithm>
 
@@ -44,6 +45,8 @@ DialogsController::DialogsController(QWidget* parent)
     , m_updateAvailableDialog(nullptr)
     , m_meetingsManagementOverlay(nullptr)
     , m_meetingsManagementDialog(nullptr)
+    , m_endMeetingConfirmationOverlay(nullptr)
+    , m_endMeetingConfirmationDialog(nullptr)
 {
 }
 
@@ -56,6 +59,7 @@ DialogsController::~DialogsController()
     hideFirstLaunchDialog();
     hideAudioSettingsDialog();
     hideMeetingsManagementDialog();
+    hideEndMeetingConfirmationDialog();
     hideUpdateAvailableDialog();
 
     for (IncomingCallDialog* dialog : m_incomingCallDialogs)
@@ -614,6 +618,67 @@ void DialogsController::setMeetingsJoinStatus(const QString& status)
     if (m_meetingsManagementDialog)
     {
         m_meetingsManagementDialog->setJoinStatus(status);
+    }
+}
+
+void DialogsController::showEndMeetingConfirmationDialog()
+{
+    if (m_endMeetingConfirmationDialog)
+    {
+        m_endMeetingConfirmationDialog->raise();
+        return;
+    }
+
+    m_endMeetingConfirmationOverlay = new OverlayWidget(m_parent);
+    m_endMeetingConfirmationOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_endMeetingConfirmationOverlay->show();
+    m_endMeetingConfirmationOverlay->raise();
+
+    m_endMeetingConfirmationDialog = new EndMeetingConfirmationDialog(m_endMeetingConfirmationOverlay);
+
+    auto centerDialog = [this]()
+    {
+        if (!m_endMeetingConfirmationDialog || !m_endMeetingConfirmationOverlay)
+            return;
+        m_endMeetingConfirmationDialog->adjustSize();
+        QSize dialogSize = m_endMeetingConfirmationDialog->size();
+        QRect overlayRect = m_endMeetingConfirmationOverlay->rect();
+        int x = overlayRect.center().x() - dialogSize.width() / 2;
+        int y = overlayRect.center().y() - dialogSize.height() / 2;
+        m_endMeetingConfirmationDialog->move(x, y);
+        m_endMeetingConfirmationDialog->raise();
+    };
+
+    centerDialog();
+    m_endMeetingConfirmationDialog->show();
+    QTimer::singleShot(0, this, centerDialog);
+    QObject::connect(m_endMeetingConfirmationOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
+
+    connect(m_endMeetingConfirmationDialog, &EndMeetingConfirmationDialog::endMeetingConfirmed, this, [this]() {
+        emit endMeetingConfirmed();
+        hideEndMeetingConfirmationDialog();
+    });
+    connect(m_endMeetingConfirmationDialog, &EndMeetingConfirmationDialog::endMeetingCancelled, this, [this]() {
+        emit endMeetingCancelled();
+        hideEndMeetingConfirmationDialog();
+    });
+}
+
+void DialogsController::hideEndMeetingConfirmationDialog()
+{
+    if (m_endMeetingConfirmationDialog)
+    {
+        m_endMeetingConfirmationDialog->disconnect();
+        m_endMeetingConfirmationDialog->hide();
+        m_endMeetingConfirmationDialog->deleteLater();
+        m_endMeetingConfirmationDialog = nullptr;
+    }
+
+    if (m_endMeetingConfirmationOverlay)
+    {
+        m_endMeetingConfirmationOverlay->close();
+        m_endMeetingConfirmationOverlay->deleteLater();
+        m_endMeetingConfirmationOverlay = nullptr;
     }
 }
 

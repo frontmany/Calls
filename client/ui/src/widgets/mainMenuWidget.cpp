@@ -383,20 +383,12 @@ void MainMenuWidget::setupUI() {
     m_backgroundTexture = QPixmap(":/resources/blur.png");
 
     m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setAlignment(Qt::AlignCenter);
-    m_mainLayout->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
+    m_mainLayout->setAlignment(Qt::AlignTop);
+    m_mainLayout->setContentsMargins(scale(30), scale(24), scale(30), scale(32));
+    m_mainLayout->setSpacing(scale(24));
 
-    // Main container
-    m_mainContainer = new QWidget(this);
-    m_mainContainer->setFixedWidth(scale(500));
-    m_mainContainer->setStyleSheet(StyleMainMenuWidget::containerStyle());
-
-    m_containerLayout = new QVBoxLayout(m_mainContainer);
-    m_containerLayout->setSpacing(scale(20));
-    m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-
-    // Header with meeting button (top right above title)
-    m_headerWidget = new QWidget(m_mainContainer);
+    // Header bar with meeting button pinned to top-right of the window
+    m_headerWidget = new QWidget(this);
     m_headerLayout = new QHBoxLayout(m_headerWidget);
     m_headerLayout->setContentsMargins(0, 0, 0, 0);
     m_headerLayout->setSpacing(0);
@@ -408,6 +400,19 @@ void MainMenuWidget::setupUI() {
         scale(32), scale(32));
     m_meetingButton->setCursor(Qt::PointingHandCursor);
     m_headerLayout->addWidget(m_meetingButton);
+
+    m_mainLayout->addWidget(m_headerWidget, 0, Qt::AlignRight | Qt::AlignTop);
+    m_mainLayout->addSpacing(scale(20));
+
+    // Main content container, centered in the window with stable, slightly narrower width
+    m_mainContainer = new QWidget(this);
+    m_mainContainer->setFixedWidth(scale(460));
+    m_mainContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
+    m_mainContainer->setStyleSheet(StyleMainMenuWidget::containerStyle());
+
+    m_containerLayout = new QVBoxLayout(m_mainContainer);
+    m_containerLayout->setSpacing(scale(20));
+    m_containerLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
 
     // Title
     m_titleLabel = new QLabel("Callifornia", m_mainContainer);
@@ -543,8 +548,7 @@ void MainMenuWidget::setupUI() {
     m_settingsPanel = new SettingsPanel(m_mainContainer);
     m_settingsPanel->hide();
 
-    // Add widgets to layout
-    m_containerLayout->addWidget(m_headerWidget);
+    // Add widgets to layout (main content only, header is separate at the top)
     m_containerLayout->addWidget(m_titleLabel);
     m_containerLayout->addSpacing(scale(-4));
     m_containerLayout->addWidget(m_userInfoWidget);
@@ -558,7 +562,11 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
-    m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignCenter);
+    // Center the main content vertically в оставшемся пространстве
+    // с лёгким смещением вверх (чуть больше места снизу).
+    m_mainLayout->addStretch(2);
+    m_mainLayout->addWidget(m_mainContainer, 0, Qt::AlignHCenter);
+    m_mainLayout->addStretch(3);
 
     // Connect signals
     connect(m_meetingButton, &ButtonIcon::clicked, this, &MainMenuWidget::onMeetingButtonClicked);
@@ -623,15 +631,9 @@ void MainMenuWidget::paintEvent(QPaintEvent* event) {
     gradient.setColorAt(1.0, COLOR_GRADIENT_END);
     painter.fillRect(rect(), gradient);
 
-    // Draw the main container background with texture if loaded
+    // Draw background texture over the whole window if loaded
     if (!m_backgroundTexture.isNull()) {
-        QPainterPath path;
-        QRect containerRect = m_mainContainer->geometry();
-        path.addRoundedRect(containerRect, 20, 20);
-
-        painter.setClipPath(path);
-        painter.drawPixmap(containerRect, m_backgroundTexture);
-        painter.setClipping(false);
+        painter.drawPixmap(rect(), m_backgroundTexture);
     }
 
     QWidget::paintEvent(event);

@@ -2,6 +2,7 @@
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
+#include "widgets/meetingWidget.h"
 
 NavigationController::NavigationController(std::shared_ptr<core::Core> client, QObject* parent)
     : QObject(parent)
@@ -9,12 +10,13 @@ NavigationController::NavigationController(std::shared_ptr<core::Core> client, Q
 {
 }
 
-void NavigationController::setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget)
+void NavigationController::setWidgets(QStackedLayout* stackedLayout, AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, CallWidget* callWidget, MeetingWidget* meetingWidget)
 {
     m_stackedLayout = stackedLayout;
     m_authorizationWidget = authWidget;
     m_mainMenuWidget = mainMenuWidget;
     m_callWidget = callWidget;
+    m_meetingWidget = meetingWidget;
 }
 
 void NavigationController::switchToAuthorizationWidget()
@@ -76,6 +78,13 @@ void NavigationController::switchToCallWidget(const QString& friendNickname)
     emit windowTitleChanged("Call In Progress - Callifornia");
     m_callWidget->setCallInfo(friendNickname);
     emit callWidgetShown();
+}
+
+void NavigationController::switchToMeetingWidget()
+{
+    if (!m_stackedLayout || !m_meetingWidget) return;
+    m_stackedLayout->setCurrentWidget(m_meetingWidget);
+    emit windowTitleChanged("Meeting - Callifornia");
 }
 
 void NavigationController::onCallWidgetEnterFullscreenRequested()

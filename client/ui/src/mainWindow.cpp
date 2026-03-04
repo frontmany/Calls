@@ -11,6 +11,7 @@
 #include "widgets/authorizationWidget.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
+#include "widgets/meetingWidget.h"
 #include "dialogs/dialogsController.h"
 #include "notifications/notificationController.h"
 #include "logic/configManager.h"
@@ -55,6 +56,7 @@ void MainWindow::init() {
     initializeAuthorizationWidget();
     initializeMainMenuWidget();
     initializeCallWidget();
+    initializeMeetingWidget();
 
     initializeDialogsController();
     initializeNotificationController();
@@ -78,6 +80,10 @@ void MainWindow::init() {
     if (m_callWidget) {
         m_callWidget->setInputVolume(m_configManager->getInputVolume());
         m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
+    }
+    if (m_meetingWidget) {
+        m_meetingWidget->setInputVolume(m_configManager->getInputVolume());
+        m_meetingWidget->setOutputVolume(m_configManager->getOutputVolume());
     }
 
     QCoreApplication::postEvent(this, new StartupEvent());
@@ -219,7 +225,7 @@ void MainWindow::initializeNotificationController() {
 void MainWindow::initializeNavigationController() {
     m_navigationController = new NavigationController(m_coreClient, this);
     if (m_stackedLayout && m_authorizationWidget && m_mainMenuWidget && m_callWidget) {
-        m_navigationController->setWidgets(m_stackedLayout, m_authorizationWidget, m_mainMenuWidget, m_callWidget);
+        m_navigationController->setWidgets(m_stackedLayout, m_authorizationWidget, m_mainMenuWidget, m_callWidget, m_meetingWidget);
     }
 }
 
@@ -295,6 +301,10 @@ void MainWindow::applyAudioSettings() {
     if (m_callWidget) {
         m_callWidget->setInputVolume(m_configManager->getInputVolume());
         m_callWidget->setOutputVolume(m_configManager->getOutputVolume());
+    }
+    if (m_meetingWidget) {
+        m_meetingWidget->setInputVolume(m_configManager->getInputVolume());
+        m_meetingWidget->setOutputVolume(m_configManager->getOutputVolume());
     }
 
     m_coreClient->setInputVolume(m_configManager->getInputVolume());
@@ -415,6 +425,11 @@ void MainWindow::initializeMainMenuWidget() {
 void MainWindow::initializeCallWidget() {
     m_callWidget = new CallWidget(this);
     m_stackedLayout->addWidget(m_callWidget);
+}
+
+void MainWindow::initializeMeetingWidget() {
+    m_meetingWidget = new MeetingWidget(this);
+    m_stackedLayout->addWidget(m_meetingWidget);
 }
 
 void MainWindow::replaceUpdateApplier() {

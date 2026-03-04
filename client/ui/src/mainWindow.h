@@ -14,6 +14,7 @@
 class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
+class MeetingWidget;
  
 class ConfigManager;
 class AudioEffectsManager;
@@ -65,6 +66,7 @@ private:
     void initializeAuthorizationWidget();
     void initializeMainMenuWidget();
     void initializeCallWidget();
+    void initializeMeetingWidget();
     void initializeDiagnostics();
     void replaceUpdateApplier();
     void loadFonts();
@@ -80,6 +82,7 @@ private:
     AuthorizationWidget* m_authorizationWidget = nullptr;
     MainMenuWidget* m_mainMenuWidget = nullptr;
     CallWidget* m_callWidget = nullptr;
+    MeetingWidget* m_meetingWidget = nullptr;
     DialogsController* m_dialogsController = nullptr;
     NotificationController* m_notificationController = nullptr;
     ConfigManager* m_configManager = nullptr;
