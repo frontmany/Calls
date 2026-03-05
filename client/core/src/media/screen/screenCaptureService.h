@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <thread>
 #include <string>
+#include <vector>
 #include "media/frame.h"
 
 extern "C" {
@@ -16,7 +17,7 @@ struct SwsContext;
 
 namespace core::media
 {
-    struct ScreenCaptureTarget
+    struct Screen
     {
         int index = -1;
         std::string osId;
@@ -35,14 +36,16 @@ namespace core::media
         ScreenCaptureService();
         ~ScreenCaptureService();
 
-        bool start(const ScreenCaptureTarget& target);
+        bool start(const Screen& target);
         void stop();
         bool isRunning() const;
         void setFrameCallback(FrameCallback callback);
 
+        static std::vector<Screen> getAvailableTargets();
+
     private:
         void cleanup();
-        bool initializeScreenCapture(const ScreenCaptureTarget& target);
+        bool initializeScreenCapture(const Screen& target);
         void captureFrame();
 
         AVFormatContext* m_formatContext;
@@ -56,7 +59,7 @@ namespace core::media
         bool m_isRunning;
         bool m_shouldStop;
         int m_screenIndex;
-        ScreenCaptureTarget m_target;
+        Screen m_target;
         int m_frameWidth;
         int m_frameHeight;
             

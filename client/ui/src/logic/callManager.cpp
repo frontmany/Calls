@@ -294,7 +294,7 @@ void CallManager::onScreenSelected(int screenIndex)
     const QRect geometry = selectedScreen->geometry();
     const double dpr = selectedScreen->devicePixelRatio();
 
-    core::media::ScreenCaptureTarget target;
+    core::media::Screen target;
     target.index = screenIndex;
     target.osId = selectedScreen->name().toStdString();
     target.x = static_cast<int>(std::lround(geometry.x() * dpr));
@@ -302,7 +302,6 @@ void CallManager::onScreenSelected(int screenIndex)
     target.width = static_cast<int>(std::lround(geometry.width() * dpr));
     target.height = static_cast<int>(std::lround(geometry.height() * dpr));
     target.dpr = dpr;
-
     std::error_code ec = m_coreClient->startScreenSharing(target);
     if (ec) {
         onStartScreenSharingError();

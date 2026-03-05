@@ -217,7 +217,7 @@ ScreenShareDialog::ScreenShareDialog(QWidget* parent)
 
     m_scrollArea = new QScrollArea();
     m_scrollArea->setWidgetResizable(true);
-    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_scrollArea->setStyleSheet(StyleScreenShareDialog::scrollAreaStyle(scale(6), scale(3), scale(20)));
 
@@ -289,7 +289,6 @@ void ScreenShareDialog::setScreens(const QList<QScreen*>& screens)
 void ScreenShareDialog::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    // Recalculate column layout when dialog width changes
     if (!m_screens.isEmpty())
     {
         refreshScreenSharePreviews();
@@ -324,24 +323,23 @@ void ScreenShareDialog::refreshScreenSharePreviews()
         return;
     }
 
-    // Calculate optimal column count based on dialog width, like in old implementation
     int maxCols = 3;
     const int width = this->width();
     if (width < scale(700))
-    {
         maxCols = 1;
-    }
     else if (width < scale(1000))
-    {
         maxCols = 2;
-    }
 
     int row = 0;
     int col = 0;
 
     for (int i = 0; i < m_screens.size(); ++i)
     {
-        ScreenPreviewWidget* preview = new ScreenPreviewWidget(i, m_screens[i], m_screensContainer);
+        QScreen* screen = m_screens[i];
+        if (!screen) {
+            continue;
+        }
+        ScreenPreviewWidget* preview = new ScreenPreviewWidget(i, screen, m_screensContainer);
         m_screensLayout->addWidget(preview, row, col, Qt::AlignCenter);
         m_previewWidgets.append(preview);
 

@@ -30,7 +30,7 @@ namespace core::media
 {
     namespace
     {
-        bool hasGeometry(const ScreenCaptureTarget& t)
+        bool hasGeometry(const Screen& t)
         {
             return t.width > 0 && t.height > 0;
         }
@@ -85,7 +85,7 @@ namespace core::media
         stop();
     }
 
-    bool ScreenCaptureService::start(const ScreenCaptureTarget& target)
+    bool ScreenCaptureService::start(const Screen& target)
     {
         if (m_isRunning) {
             std::cerr << "Screen capture is already running" << std::endl;
@@ -143,7 +143,89 @@ namespace core::media
         m_frameCallback = callback;
     }
 
-    bool ScreenCaptureService::initializeScreenCapture(const ScreenCaptureTarget& target)
+    std::vector<Screen> ScreenCaptureService::getAvailableTargets()
+    {
+        std::vector<Screen> result;
+
+#ifdef _WIN32
+        std::vector<MonitorCandidate> monitors;
+        EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hMonitor, HDC, LPRECT, LPARAM dwData) -> BOOL {
+            auto* monitorList = reinterpret_cast<std::vector<MonitorCandidate>*>(dwData);
+            MONITORINFOEX mi;
+            mi.cbSize = sizeof(MONITORINFOEX);
+            if (GetMonitorInfo(hMonitor, &mi)) {
+                MonitorCandidate candidate;
+                candidate.index = static_cast<int>(monitorList->size());
+                candidate.rect = mi.rcMonitor;
+                candidate.deviceName = mi.szDevice;
+                monitorList->push_back(candidate);
+            }
+            return TRUE;
+        }, reinterpret_cast<LPARAM>(&monitors));
+
+        for (const auto& m : monitors) {
+            Screen t;
+            t.index = m.index;
+            t.osId = m.deviceName;
+            t.x = m.rect.left;
+            t.y = m.rect.top;
+            t.width = m.rect.right - m.rect.left;
+            t.height = m.rect.bottom - m.rect.top;
+            t.dpr = 1.0;
+            result.push_back(t);
+        }
+
+#elif defined(__APPLE__)
+        CGDirectDisplayID displays[32];
+        uint32_t displayCount = 0;
+        CGError error = CGGetActiveDisplayList(32, displays, &displayCount);
+        if (error != kCGErrorSuccess || displayCount == 0) {
+            return result;
+        }
+        result.reserve(displayCount);
+        for (uint32_t i = 0; i < displayCount; ++i) {
+            CGDirectDisplayID displayID = displays[i];
+            CGRect bounds = CGDisplayBounds(displayID);
+            int width = CGDisplayPixelsWide(displayID);
+            int height = CGDisplayPixelsHigh(displayID);
+            Screen t;
+            t.index = static_cast<int>(i);
+            t.osId = "display:" + std::to_string(i);
+            t.x = static_cast<int>(bounds.origin.x);
+            t.y = static_cast<int>(bounds.origin.y);
+            t.width = width;
+            t.height = height;
+            t.dpr = (bounds.size.width > 0 && width > 0) ? static_cast<double>(width) / bounds.size.width : 1.0;
+            result.push_back(t);
+        }
+
+#else
+        Display* display = XOpenDisplay(nullptr);
+        if (!display) {
+            return result;
+        }
+        int screenCount = ScreenCount(display);
+        result.reserve(static_cast<size_t>(screenCount));
+        for (int i = 0; i < screenCount; ++i) {
+            Screen* screen = ScreenOfDisplay(display, i);
+            int x = i > 0 ? screen->x : 0;
+            int y = i > 0 ? screen->y : 0;
+            Screen t;
+            t.index = i;
+            t.osId = "screen:" + std::to_string(i);
+            t.x = x;
+            t.y = y;
+            t.width = screen->width;
+            t.height = screen->height;
+            t.dpr = 1.0;
+            result.push_back(t);
+        }
+        XCloseDisplay(display);
+#endif
+        return result;
+    }
+
+    bool ScreenCaptureService::initializeScreenCapture(const Screen& target)
     {
         const int screenIndex = target.index;
         int width = 0, height = 0;

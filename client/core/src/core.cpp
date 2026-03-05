@@ -370,7 +370,7 @@ namespace core
         return ec;
     }
 
-    std::error_code Core::startScreenSharing(const media::ScreenCaptureTarget& target) {
+    std::error_code Core::startScreenSharing(const media::Screen& target) {
         if (!m_stateManager->isActiveCall()) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
 
         return m_mediaService->startScreenSharing(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname(), target);
@@ -396,5 +396,15 @@ namespace core
 
     bool Core::isCameraAvailable() const {
         return m_mediaService && m_mediaService->hasCameraAvailable();
+    }
+
+    std::vector<media::Camera> Core::getCameraDevices() const {
+        if (!m_mediaService) return {};
+        return m_mediaService->getCameraDevices();
+    }
+
+    std::vector<media::Screen> Core::getScreens() const {
+        if (!m_mediaService) return {};
+        return m_mediaService->getScreens();
     }
 }

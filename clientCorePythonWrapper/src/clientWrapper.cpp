@@ -278,7 +278,7 @@ PYBIND11_MODULE(callsClientPy, m) {
             return static_cast<int>(self.endCall().value());
         }, "End current call")
         .def("start_screen_sharing", [](core::Core& self, int screen_index) -> int {
-            core::media::ScreenCaptureTarget target;
+            core::media::Screen target;
             target.index = screen_index;
             return static_cast<int>(self.startScreenSharing(target).value());
         }, "Start screen sharing", py::arg("screen_index") = 0)

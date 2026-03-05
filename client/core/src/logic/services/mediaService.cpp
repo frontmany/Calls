@@ -50,7 +50,7 @@ namespace core::logic
         });
     }
 
-    std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, const media::ScreenCaptureTarget& target)
+    std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, const media::Screen& target)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -129,19 +129,31 @@ namespace core::logic
         return media::CameraCaptureService::getAvailableDevices(devices, 10, deviceCount) && deviceCount > 0;
     }
 
+    std::vector<media::Camera> MediaService::getCameraDevices() const
+    {
+        return media::CameraCaptureService::getCameraDevices();
+    }
+
+    std::vector<media::Screen> MediaService::getScreens() const
+    {
+        return media::ScreenCaptureService::getAvailableTargets();
+    }
+
     std::error_code MediaService::stopCameraSharing(const std::string& myNickname, const std::string& userNickname)
     {
+        MediaState previousState = MediaState::Stopped;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_stateManager->getMediaState(MediaType::Camera) == MediaState::Stopped) {
-                return {};
+            if (m_stateManager) {
+                previousState = m_stateManager->getMediaState(MediaType::Camera);
+                if (previousState != MediaState::Stopped) {
+                    m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
+                }
             }
         }
-
-        m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
         m_cameraCaptureService.stop();
 
-        {
+        if (previousState != MediaState::Stopped) {
             std::lock_guard<std::mutex> lock(m_mutex);
             auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
             m_sendPacket(packet, PacketType::CAMERA_SHARING_END);

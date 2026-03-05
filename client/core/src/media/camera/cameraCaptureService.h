@@ -5,6 +5,8 @@
 #include <memory>
 #include <cstdint>
 #include <thread>
+#include <vector>
+#include "cameraDeviceInfo.h"
 #include "../frame.h"
 
 extern "C" {
@@ -31,6 +33,7 @@ namespace core::media
         void setFrameCallback(FrameCallback callback);
         void setErrorCallback(ErrorCallback callback);
         static bool getAvailableDevices(char devices[][256], int maxDevices, int& deviceCount);
+        static std::vector<Camera> getCameraDevices();
 
     private:
         void cleanup();

@@ -6,6 +6,8 @@
 #include <QMouseEvent>
 #include <QGraphicsDropShadowEffect>
 
+class QScreen;
+
 class ScreenPreviewWidget : public QWidget
 {
     Q_OBJECT

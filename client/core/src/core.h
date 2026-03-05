@@ -67,6 +67,8 @@ namespace core
         int getOutputVolume() const;
         int getCurrentInputDevice() const;
         int getCurrentOutputDevice() const;
+        std::vector<media::Camera> getCameraDevices() const;
+        std::vector<media::Screen> getScreens() const;
         int getIncomingCallsCount() const;
         std::vector<std::string> getCallers() const;
         const std::string& getMyNickname() const;
@@ -80,7 +82,7 @@ namespace core
         std::error_code acceptCall(const std::string& friendNickname);
         std::error_code declineCall(const std::string& friendNickname);
         std::error_code endCall();
-        std::error_code startScreenSharing(const media::ScreenCaptureTarget& target);
+        std::error_code startScreenSharing(const media::Screen& target);
         std::error_code stopScreenSharing();
         std::error_code startCameraSharing(std::string deviceName);
         std::error_code stopCameraSharing();

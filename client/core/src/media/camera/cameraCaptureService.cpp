@@ -3,6 +3,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -233,6 +234,29 @@ namespace core::media
 #endif
 
         return deviceCount > 0;
+    }
+
+    std::vector<Camera> CameraCaptureService::getCameraDevices()
+    {
+        std::vector<Camera> result;
+        char devices[32][256];
+        int deviceCount = 0;
+        if (!getAvailableDevices(devices, 32, deviceCount)) {
+            return result;
+        }
+        result.reserve(static_cast<size_t>(deviceCount));
+        for (int i = 0; i < deviceCount; ++i) {
+            Camera info;
+            info.deviceId = devices[i];
+            const std::string& id = info.deviceId;
+            if (id.size() > 6 && id.compare(0, 6, "video=") == 0) {
+                info.displayName = id.substr(6);
+            } else {
+                info.displayName = id;
+            }
+            result.push_back(std::move(info));
+        }
+        return result;
     }
 
     bool CameraCaptureService::initializeCamera(const char* deviceName)

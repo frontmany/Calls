@@ -23,7 +23,7 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
 
     m_previewLabel = new QLabel();
     m_previewLabel->setAlignment(Qt::AlignCenter);
-    m_previewLabel->setMinimumSize(previewSize.width() - 16, previewSize.height() - 16); // ????????? margins
+    m_previewLabel->setMinimumSize(previewSize.width() - 16, previewSize.height() - 16);
     m_previewLabel->setStyleSheet(QString(
         "background-color: %1;"
         "border: %2px solid %1;"
@@ -42,11 +42,10 @@ ScreenPreviewWidget::ScreenPreviewWidget(int screenIndex, QScreen* screen, QWidg
 
 QSize ScreenPreviewWidget::calculatePreviewSize() const
 {
-    if (!m_screen) {
+    QSize screenSize = m_screen ? m_screen->size() : m_screenSize;
+    if (screenSize.isEmpty()) {
         return QSize(scale(300), scale(200));
     }
-
-    QSize screenSize = m_screen->size();
     const int maxWidth = 400;
     const int maxHeight = 300;
 
