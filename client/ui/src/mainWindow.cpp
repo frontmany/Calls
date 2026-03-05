@@ -366,6 +366,32 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_mainMenuWidget, &MainMenuWidget::meetingButtonClicked, m_dialogsController, &DialogsController::showMeetingsManagementDialog);
     }
 
+    // Create meeting: close dialog, switch to meeting widget, init UI (no core calls yet)
+    if (m_dialogsController && m_navigationController && m_meetingWidget) {
+        connect(m_dialogsController, &DialogsController::meetingCreateRequested, this, [this](const QString& uid) {
+            m_dialogsController->hideMeetingsManagementDialog();
+            if (m_meetingWidget) {
+                m_meetingWidget->clearParticipants();
+                m_meetingWidget->setCallName(uid);
+                m_meetingWidget->setIsOwner(true);
+                if (m_configManager) {
+                    m_meetingWidget->setInputVolume(m_configManager->getInputVolume());
+                    m_meetingWidget->setOutputVolume(m_configManager->getOutputVolume());
+                }
+                if (m_coreClient) {
+                    const std::string myNickname = m_coreClient->getMyNickname();
+                    if (!myNickname.empty()) {
+                        m_meetingWidget->addParticipant(QString::fromStdString(myNickname));
+                    }
+                    m_meetingWidget->setMicrophoneMuted(m_coreClient->isMicrophoneMuted());
+                    m_meetingWidget->setSpeakerMuted(m_coreClient->isSpeakerMuted());
+                }
+            }
+            if (m_navigationController)
+                m_navigationController->switchToMeetingWidget();
+        });
+    }
+
     // MeetingWidget connections
     if (m_meetingWidget && m_dialogsController) {
         connect(m_meetingWidget, &MeetingWidget::hangupConfirmationRequested, m_dialogsController, &DialogsController::showEndMeetingConfirmationDialog);

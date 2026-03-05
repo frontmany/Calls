@@ -173,8 +173,8 @@ private:
     void updateJoinRequestsPanelPosition();
     void updateJoinRequestsPanelSize();
     void updateCallNamePanelPosition();
-    void showCallNamePanelIfAvailable();
-    void scheduleCallNameHide();
+    void showOverlayWithTimeout();
+    void onOverlayHideTimerTimeout();
 
     QSpacerItem* m_topMainLayoutSpacer = nullptr;
     QVBoxLayout* m_mainLayout = nullptr;
@@ -216,7 +216,7 @@ private:
     QHBoxLayout* m_callNameLayout = nullptr;
     QLabel* m_callNameLabel = nullptr;
     ToggleButtonIcon* m_copyCallNameButton = nullptr;
-    QTimer* m_callNameHideTimer = nullptr;
+    QTimer* m_overlayHideTimer = nullptr;
 
     QIcon m_screenShareIconNormal;
     QIcon m_screenShareIconHover;

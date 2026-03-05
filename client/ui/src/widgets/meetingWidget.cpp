@@ -772,30 +772,17 @@ void MeetingWidget::setupUI() {
     m_callNamePanel->setMouseTracking(true);
     m_callNamePanel->hide();
 
-    m_callNameHideTimer = new QTimer(this);
-    m_callNameHideTimer->setSingleShot(true);
-    m_callNameHideTimer->setInterval(2000);
-    connect(m_callNameHideTimer, &QTimer::timeout, this, [this]()
-    {
-        if (m_callNamePanel)
-        {
-            const bool isMouseOverPanel = m_callNamePanel->underMouse() ||
-                (m_callNameLabel && m_callNameLabel->underMouse()) ||
-                (m_copyCallNameButton && m_copyCallNameButton->underMouse());
-            
-            if (!isMouseOverPanel)
-            {
-                m_callNamePanel->hide();
-            }
-        }
-    });
+    m_overlayHideTimer = new QTimer(this);
+    m_overlayHideTimer->setSingleShot(true);
+    m_overlayHideTimer->setInterval(3000);
+    connect(m_overlayHideTimer, &QTimer::timeout, this, &MeetingWidget::onOverlayHideTimerTimeout);
 
     m_callNameLayout = new QHBoxLayout(m_callNamePanel);
     m_callNameLayout->setContentsMargins(scale(18), scale(12), scale(16), scale(12));
     m_callNameLayout->setSpacing(scale(12));
     m_callNameLayout->setAlignment(Qt::AlignVCenter);
 
-    m_callNameLabel = new QLabel("Group name:   ", m_callNamePanel);
+    m_callNameLabel = new QLabel("Meeting id:   ", m_callNamePanel);
     QFont callNameFont("Outfit", scale(12), QFont::Light);
     m_callNameLabel->setFont(callNameFont);
     m_callNameLabel->setStyleSheet(StyleMeetingWidget::callNameLabelStyle());
@@ -810,12 +797,13 @@ void MeetingWidget::setupUI() {
         QIcon(":/resources/copied.png"),
         QIcon(":/resources/copiedHover.png"),
         scale(20), scale(20));
+
     m_copyCallNameButton->setSize(scale(20), scale(20));
     m_copyCallNameButton->setCursor(Qt::PointingHandCursor);
-    m_copyCallNameButton->setToolTip("Copy call name");
+    m_copyCallNameButton->setToolTip("Copy meeting id");
 
     m_callNameLayout->addWidget(m_callNameLabel);
-    m_callNameLayout->addSpacing(scale(30));
+    m_callNameLayout->addSpacing(scale(10));
     m_callNameLayout->addWidget(m_copyCallNameButton);
 
     // Spacers
@@ -833,6 +821,8 @@ void MeetingWidget::setupUI() {
     m_mainLayout->addWidget(m_mainScreen, 0, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_buttonsPanel);
 
+    setMouseTracking(true);
+
     // Ensure initial positioning of floating panels
     QTimer::singleShot(0, this, [this]()
     {
@@ -841,22 +831,22 @@ void MeetingWidget::setupUI() {
     });
 
     // Connect signals
-    connect(m_exitFullscreenButton, &ButtonIcon::clicked, [this]() { showCallNamePanelIfAvailable(); emit requestExitFullscreen(); });
+    connect(m_exitFullscreenButton, &ButtonIcon::clicked, [this]() { showOverlayWithTimeout(); emit requestExitFullscreen(); });
     connect(m_settingsButton, &ButtonIcon::clicked, [this]() { emit audioSettingsRequested(); });
-    connect(m_enterFullscreenButton, &ButtonIcon::clicked, [this]() { showCallNamePanelIfAvailable(); emit requestEnterFullscreen(); });
+    connect(m_enterFullscreenButton, &ButtonIcon::clicked, [this]() { showOverlayWithTimeout(); emit requestEnterFullscreen(); });
     connect(m_microphoneButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
-        showCallNamePanelIfAvailable();
+        showOverlayWithTimeout();
         emit muteMicrophoneClicked(toggled);
     });
     connect(m_screenShareButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
-        showCallNamePanelIfAvailable();
+        showOverlayWithTimeout();
         m_hasScreenSharing = toggled;
         emit screenShareClicked(toggled);
     });
-    connect(m_cameraButton, &ToggleButtonIcon::toggled, [this](bool toggled) { showCallNamePanelIfAvailable(); emit cameraClicked(toggled); });
+    connect(m_cameraButton, &ToggleButtonIcon::toggled, [this](bool toggled) { showOverlayWithTimeout(); emit cameraClicked(toggled); });
     connect(m_hangupButton, &QPushButton::clicked, [this]() 
     { 
-        showCallNamePanelIfAvailable(); 
+        showOverlayWithTimeout(); 
         
         // Check if user is owner and has other participants (more than just the owner)
         if (m_isOwner && m_participantWidgets.size() > 1)
@@ -954,7 +944,7 @@ void MeetingWidget::setCallName(const QString& callName) {
             displayName = displayName.left(5) + "...";
         }
 
-        m_callNameLabel->setText(QString("Group name:   %1").arg(displayName));
+        m_callNameLabel->setText(QString("Meeting id:   %1").arg(displayName));
         m_callNameLabel->setToolTip(m_callName);
     }
 
@@ -969,18 +959,12 @@ void MeetingWidget::setCallName(const QString& callName) {
         if (hasName)
         {
             updateCallNamePanelPosition();
-            m_callNamePanel->show();
             m_callNamePanel->adjustSize();
             updateCallNamePanelPosition();
-            scheduleCallNameHide();
         }
         else
         {
             m_callNamePanel->hide();
-            if (m_callNameHideTimer)
-            {
-                m_callNameHideTimer->stop();
-            }
         }
     }
 
@@ -1194,7 +1178,6 @@ void MeetingWidget::addJoinRequest(const QString& nickname)
     }
     
     updateJoinRequestsPanelSize();
-    m_joinRequestsPanel->show();
     updateJoinRequestsPanelPosition();
 }
 
@@ -1225,14 +1208,16 @@ void MeetingWidget::updateCallNamePanelPosition()
         return;
     }
 
-    const int margin = scale(20);
-    const int topMargin = scale(16);
+    const int margin = scale(10);
+    const int topMargin = scale(10);
+    const int buttonSize = scale(38);
+    const int spacing = scale(8);
 
     if (m_callNamePanel->isVisible())
     {
         m_callNamePanel->adjustSize();
 
-        int maxWidth = width() - (margin * 2);
+        int maxWidth = width() - (margin * 2) - buttonSize - spacing;
         if (maxWidth > 0 && m_callNamePanel->sizeHint().width() > maxWidth)
         {
             m_callNamePanel->setMaximumWidth(maxWidth);
@@ -1243,58 +1228,85 @@ void MeetingWidget::updateCallNamePanelPosition()
         }
     }
 
-    int x = margin;
+    // Position to the left of settings button, same horizontal line
+    m_callNamePanel->adjustSize();
+    int panelWidth = m_callNamePanel->sizeHint().width();
+    int x = width() - buttonSize - margin - spacing - panelWidth;
     int y = topMargin;
+
+    if (x < margin)
+        x = margin;
 
     m_callNamePanel->move(x, y);
     m_callNamePanel->raise();
 }
 
-void MeetingWidget::showCallNamePanelIfAvailable()
+void MeetingWidget::showOverlayWithTimeout()
 {
-    if (!m_callNamePanel || m_callName.isEmpty())
+    if (m_screenFullscreenActive)
     {
-        return;
+        if (m_exitFullscreenButton)
+            m_exitFullscreenButton->show();
+        if (m_exitFullscreenHideTimer)
+            m_exitFullscreenHideTimer->start();
+    }
+    else
+    {
+        if (m_exitFullscreenButton)
+            m_exitFullscreenButton->hide();
+        if (m_settingsButton && !m_audioSettingsDialogOpen)
+            m_settingsButton->show();
+        if (m_callNamePanel && !m_callName.isEmpty())
+        {
+            m_callNamePanel->show();
+            m_callNamePanel->adjustSize();
+        }
+        if (m_joinRequestsPanel && !m_joinRequestItems.isEmpty())
+            m_joinRequestsPanel->show();
     }
 
-    if (!m_callNamePanel->isVisible())
-    {
-        m_callNamePanel->show();
-    }
-
-    m_callNamePanel->adjustSize();
+    updateOverlayButtonsPosition();
     updateCallNamePanelPosition();
-    scheduleCallNameHide();
+    updateJoinRequestsPanelPosition();
+
+    if (m_overlayHideTimer)
+    {
+        m_overlayHideTimer->stop();
+        m_overlayHideTimer->start();
+    }
 }
 
-void MeetingWidget::scheduleCallNameHide()
+void MeetingWidget::onOverlayHideTimerTimeout()
 {
-    if (!m_callNameHideTimer)
+    if (m_audioSettingsDialogOpen)
+        return;
+    if (m_screenFullscreenActive)
     {
+        if (m_exitFullscreenButton)
+            m_exitFullscreenButton->hide();
         return;
     }
-
-    m_callNameHideTimer->stop();
-    m_callNameHideTimer->start();
+    if (m_settingsButton)
+        m_settingsButton->hide();
+    if (m_callNamePanel)
+        m_callNamePanel->hide();
+    if (m_joinRequestsPanel)
+        m_joinRequestsPanel->hide();
 }
 
 void MeetingWidget::updateJoinRequestsPanelPosition()
 {
     if (!m_joinRequestsPanel) return;
 
-    const int margin = scale(20);
-    const int topMargin = scale(16);
+    const int margin = scale(10);
+    const int topMargin = scale(10);
     
-    // Ensure panel has proper size
     m_joinRequestsPanel->adjustSize();
     QSize panelSize = m_joinRequestsPanel->size();
     
-    // Position panel in top-right corner
-    int x = width() - panelSize.width() - margin;
+    // Position panel in top-left corner
+    int x = margin;
     int y = topMargin;
-
-    // Ensure panel stays within bounds
-    if (x < margin) x = margin;
     
     m_joinRequestsPanel->move(x, y);
     m_joinRequestsPanel->raise();
@@ -1902,11 +1914,8 @@ void MeetingWidget::enterFullscreen() {
     m_additionalScreensContainer->hide();
     m_participantsContainer->hide();
 
-    m_exitFullscreenButton->show();
-    updateOverlayButtonsPosition();
-
     setMouseTracking(true);
-    m_exitFullscreenHideTimer->start();
+    showOverlayWithTimeout();
 
     m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
     applyFullscreenSize();
@@ -1914,8 +1923,15 @@ void MeetingWidget::enterFullscreen() {
 
 void MeetingWidget::setAudioSettingsDialogOpen(bool open) {
     m_audioSettingsDialogOpen = open;
-    if (!open && !m_screenFullscreenActive && m_settingsButton) {
-        m_settingsButton->show();
+    if (open) {
+        if (m_overlayHideTimer)
+            m_overlayHideTimer->stop();
+    } else {
+        if (!m_screenFullscreenActive) {
+            if (m_settingsButton) m_settingsButton->hide();
+            if (m_callNamePanel) m_callNamePanel->hide();
+            if (m_joinRequestsPanel) m_joinRequestsPanel->hide();
+        }
     }
     updateOverlayButtonsPosition();
 }
@@ -1938,8 +1954,9 @@ void MeetingWidget::exitFullscreen() {
     m_exitFullscreenButton->hide();
     updateOverlayButtonsPosition();
 
-    setMouseTracking(false);
+    setMouseTracking(true);
     m_exitFullscreenHideTimer->stop();
+    showOverlayWithTimeout();
 
     if (!m_participantWidgets.isEmpty() && !m_hasScreenSharing) {
         m_participantsContainer->show();
@@ -1979,22 +1996,14 @@ void MeetingWidget::hideMainScreen() {
 void MeetingWidget::updateOverlayButtonsPosition() {
     int buttonSize = scale(38);
     int margin = scale(10);
-    int x = width() - buttonSize - margin;
     int y = margin;
+    int x = width() - buttonSize - margin;
 
     if (m_exitFullscreenButton) {
         m_exitFullscreenButton->move(x, y);
     }
     if (m_settingsButton) {
         m_settingsButton->move(x, y);
-    }
-
-    if (m_screenFullscreenActive) {
-        if (m_settingsButton) m_settingsButton->hide();
-        if (m_exitFullscreenButton) m_exitFullscreenButton->show();
-    } else {
-        if (m_exitFullscreenButton) m_exitFullscreenButton->hide();
-        if (m_settingsButton && !m_audioSettingsDialogOpen) m_settingsButton->show();
     }
 }
 
@@ -2009,19 +2018,13 @@ void MeetingWidget::keyPressEvent(QKeyEvent* event) {
 }
 
 void MeetingWidget::mousePressEvent(QMouseEvent* event) {
-    if (m_screenFullscreenActive && m_exitFullscreenButton) {
-        m_exitFullscreenButton->show();
-        if (m_exitFullscreenHideTimer)
-            m_exitFullscreenHideTimer->start();
-    }
-
-    showCallNamePanelIfAvailable();
+    showOverlayWithTimeout();
     QWidget::mousePressEvent(event);
 }
 
 void MeetingWidget::mouseMoveEvent(QMouseEvent* event)
 {
-    showCallNamePanelIfAvailable();
+    showOverlayWithTimeout();
     QWidget::mouseMoveEvent(event);
 }
 

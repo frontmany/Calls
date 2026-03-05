@@ -54,5 +54,9 @@
 	 <file>settings.png</file>
 	 <file>settingsHover.png</file>
 	 <file>logo.png</file>
+	 <file>copy.png</file>
+	 <file>copyHover.png</file>
+	 <file>copied.png</file>
+	 <file>copiedHover.png</file>
     </qresource>
 </RCC>
