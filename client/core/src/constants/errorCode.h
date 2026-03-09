@@ -25,7 +25,15 @@ namespace core::constant
         camera_sharing_not_active,
         viewing_remote_screen,
         encryption_error,
-        accept_call_instead_of_start
+        accept_call_instead_of_start,
+
+        // meeting
+        in_meeting,
+        not_in_meeting,
+        not_meeting_owner,
+        meeting_create_rejected,
+        no_pending_join_request,
+        no_meeting_join_request
     };
 
     class ErrorCategory : public std::error_category {
@@ -78,6 +86,18 @@ namespace core::constant
                 return "Encryption error";
             case ErrorCode::accept_call_instead_of_start:
                 return "Incoming call accepted instead of starting outgoing";
+            case ErrorCode::in_meeting:
+                return "In meeting";
+            case ErrorCode::not_in_meeting:
+                return "Not in meeting";
+            case ErrorCode::not_meeting_owner:
+                return "Not meeting owner";
+            case ErrorCode::meeting_create_rejected:
+                return "Meeting create rejected";
+            case ErrorCode::no_pending_join_request:
+                return "No pending join request";
+            case ErrorCode::no_meeting_join_request:
+                return "No meeting join request";
             default:
                 return "Unknown error";
             }

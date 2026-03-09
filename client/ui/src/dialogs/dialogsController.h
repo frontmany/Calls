@@ -58,6 +58,7 @@ public:
     void hideMeetingsManagementDialog();
     void showMeetingsConnectingState(const QString& roomId);
     void setMeetingsJoinStatus(const QString& status);
+    void showMeetingsJoinRequestTimeout();
 
     void showEndMeetingConfirmationDialog();
     void hideEndMeetingConfirmationDialog();
@@ -86,7 +87,7 @@ signals:
     void incomingCallDeclined(const QString& friendNickname);
     void incomingCallsDialogClosed(const QList<QString>& pendingCalls);
     void updateButtonClicked();
-    void meetingCreateRequested(const QString& uid);
+    void meetingCreateRequested();
     void meetingJoinRequested(const QString& uid);
     void meetingJoinCancelled();
     void endMeetingConfirmed();

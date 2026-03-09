@@ -6,10 +6,9 @@ using namespace std::chrono_literals;
 
 namespace server
 {
-PendingCall::PendingCall(const UserPtr& initiator, const UserPtr& receiver, std::function<void()> onTimeout, std::vector<unsigned char> callingBeginBody)
+PendingCall::PendingCall(const UserPtr& initiator, const UserPtr& receiver, std::function<void()> onTimeout)
 	: m_initiator(initiator),
-	m_receiver(receiver),
-	m_callingBeginBody(std::move(callingBeginBody))
+	m_receiver(receiver)
 {
 	m_timer.start(32s, std::move(onTimeout));
 }
@@ -22,11 +21,6 @@ const UserPtr& PendingCall::getInitiator() const
 const UserPtr& PendingCall::getReceiver() const
 {
 	return m_receiver;
-}
-
-const std::vector<unsigned char>& PendingCall::getCallingBeginBody() const
-{
-	return m_callingBeginBody;
 }
 
 void PendingCall::stop()

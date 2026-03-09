@@ -78,8 +78,13 @@ public slots:
     void onStartScreenSharingError();
     void onStartCameraSharingError();
 
+    void onMeetingCreated(const QString& meetingId);
+    void onMeetingCreateRejected(std::error_code ec);
+    void onJoinMeetingRequestTimeout();
+
 signals:
     void endCallFullscreenExitRequested();
+    void meetingCreated(const QString& meetingId);
 
 private slots:
     void onIncomingCallsDialogClosed(const QList<QString>& pendingCalls);

@@ -42,7 +42,7 @@ namespace core::logic
                 if (!clientInCall && jsonObject.contains(CALL_PARTNER_NICKNAME_HASH) && m_sendPacket) {
                     const std::string& partnerNicknameHash = jsonObject[CALL_PARTNER_NICKNAME_HASH].get<std::string>();
                     std::string myNicknameHash = utilities::crypto::calculateHash(m_stateManager->getMyNickname());
-                    auto packet = PacketFactory::getCallEndPacketWithHashes(myNicknameHash, partnerNicknameHash);
+                    auto packet = PacketFactory::getCallEndPacketWithHashes(myNicknameHash);
                     m_sendPacket(packet, PacketType::CALL_END);
                     m_stateManager->resetOutgoingCall();
                     m_stateManager->resetActiveCall();
@@ -52,10 +52,12 @@ namespace core::logic
                 }
                 else if (clientInCall && jsonObject.contains(CALL_PARTNER_NICKNAME_HASH) && m_sendPacket) {
                     const std::string& serverPartnerHash = jsonObject[CALL_PARTNER_NICKNAME_HASH].get<std::string>();
-                    std::string clientPartnerHash = utilities::crypto::calculateHash(m_stateManager->getActiveCall().getNickname());
+                    auto activeOpt = m_stateManager->getActiveCall();
+                    if (activeOpt) {
+                    std::string clientPartnerHash = utilities::crypto::calculateHash(activeOpt->get().getNickname());
                     if (serverPartnerHash != clientPartnerHash) {
                         std::string myNicknameHash = utilities::crypto::calculateHash(m_stateManager->getMyNickname());
-                        auto packet = PacketFactory::getCallEndPacketWithHashes(myNicknameHash, serverPartnerHash);
+                        auto packet = PacketFactory::getCallEndPacketWithHashes(myNicknameHash);
                         m_sendPacket(packet, PacketType::CALL_END);
                         m_stateManager->resetActiveCall();
                         m_stateManager->setCallParticipantConnectionDown(false);
@@ -65,6 +67,7 @@ namespace core::logic
                     }
                     else if (m_startAudioSharing) {
                         m_startAudioSharing();
+                    }
                     }
                 }
                 else if (clientInCall && m_startAudioSharing) {

@@ -572,8 +572,8 @@ void DialogsController::showMeetingsManagementDialog()
     QObject::connect(m_meetingsManagementOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
 
     connect(m_meetingsManagementDialog, &MeetingManagementDialog::closeRequested, this, &DialogsController::hideMeetingsManagementDialog);
-    connect(m_meetingsManagementDialog, &MeetingManagementDialog::createMeetingRequested, this, [this](const QString& uid) {
-        emit meetingCreateRequested(uid);
+    connect(m_meetingsManagementDialog, &MeetingManagementDialog::createMeetingRequested, this, [this]() {
+        emit meetingCreateRequested();
     });
     connect(m_meetingsManagementDialog, &MeetingManagementDialog::joinMeetingRequested, this, [this](const QString& uid) {
         emit meetingJoinRequested(uid);
@@ -618,6 +618,14 @@ void DialogsController::setMeetingsJoinStatus(const QString& status)
     if (m_meetingsManagementDialog)
     {
         m_meetingsManagementDialog->setJoinStatus(status);
+    }
+}
+
+void DialogsController::showMeetingsJoinRequestTimeout()
+{
+    if (m_meetingsManagementDialog)
+    {
+        m_meetingsManagementDialog->showInitialState();
     }
 }
 

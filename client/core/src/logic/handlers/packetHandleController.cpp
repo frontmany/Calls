@@ -8,6 +8,7 @@
 #include "logic/handlers/authorizationPacketHandler.h"
 #include "logic/handlers/callPacketHandler.h"
 #include "logic/handlers/mediaPacketHandler.h"
+#include "logic/handlers/meetingPacketHandler.h"
 #include "logic/handlers/reconnectionPacketHandler.h"
 #include "utilities/logger.h"
 
@@ -29,11 +30,14 @@ namespace core::logic
         : m_sendPacket(std::move(sendPacket))
         , m_startAudioSharing(std::move(startAudioSharing))
         , m_stopAudioSharing(std::move(stopAudioSharing))
+        , m_stateManager(stateManager)
     {
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
         m_callPacketHandler = std::make_unique<CallPacketHandler>(stateManager, keyManager, eventListener,
             [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
         m_mediaPacketHandler = std::make_unique<MediaPacketHandler>(stateManager, audioEngine, mediaProcessingService, eventListener);
+        m_meetingPacketHandler = std::make_unique<MeetingPacketHandler>(stateManager, keyManager, eventListener,
+            [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
         m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener,
             [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); },
             m_startAudioSharing, m_stopAudioSharing);
@@ -53,6 +57,31 @@ namespace core::logic
         m_packetHandlers.emplace(PacketType::CONNECTION_DOWN_WITH_USER, [this](const nlohmann::json& json) {handleRemoteUserConnectionDown(json); });
         m_packetHandlers.emplace(PacketType::CONNECTION_RESTORED_WITH_USER, [this](const nlohmann::json& json) {handleRemoteUserConnectionRestored(json); });
         m_packetHandlers.emplace(PacketType::USER_LOGOUT, [this](const nlohmann::json& json) {handleRemoteUserLogout(json); });
+
+        m_packetHandlers.emplace(PacketType::GET_MEETING_INFO_RESULT, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleGetMeetingInfoResult(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_CREATE_RESULT, [this](const nlohmann::json& json) {
+            m_meetingPacketHandler->handleMeetingCreateResult(json);
+            if (m_startAudioSharing && m_stateManager->isInMeeting()) {
+                m_startAudioSharing();
+            }
+        });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_REQUEST, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRequestForward(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_CANCEL, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRequestCancelled(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_ACCEPT, [this](const nlohmann::json& json) {
+            m_meetingPacketHandler->handleMeetingJoinAccept(json);
+            if (m_startAudioSharing) {
+                m_startAudioSharing();
+            }
+        });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_DECLINE, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinDecline(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_ENDED, [this](const nlohmann::json& json) {
+            m_meetingPacketHandler->handleMeetingEnded(json);
+            if (m_stopAudioSharing) {
+                m_stopAudioSharing();
+            }
+        });
+        m_packetHandlers.emplace(PacketType::MEETING_PARTICIPANT_JOINED, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingParticipantJoined(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_PARTICIPANT_LEFT, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingParticipantLeft(json); });
     }
 
     PacketHandleController::~PacketHandleController() = default;

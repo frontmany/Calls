@@ -38,6 +38,17 @@ namespace core
         virtual void onCallParticipantConnectionDown() = 0;
         virtual void onCallParticipantConnectionRestored() = 0;
 
+        virtual void onMeetingCreated(const std::string& meetingId) = 0;
+        virtual void onMeetingCreateRejected(std::error_code ec) = 0;
+        virtual void onMeetingJoinRequestReceived(const std::string& friendNickname) = 0;
+        virtual void onMeetingJoinRequestCancelled(const std::string& friendNickname) = 0;
+        virtual void onJoinMeetingAccepted(const std::string& meetingId) = 0;
+        virtual void onJoinMeetingDeclined(const std::string& meetingId) = 0;
+        virtual void onJoinMeetingRequestTimeout() = 0;
+        virtual void onMeetingEndedByOwner() = 0;
+        virtual void onMeetingParticipantJoined(const std::string& nickname) = 0;
+        virtual void onMeetingParticipantLeft(const std::string& nickname) = 0;
+
         virtual void onConnectionDown() = 0;
         virtual void onConnectionEstablished() = 0;
         virtual void onConnectionEstablishedAuthorizationNeeded() = 0;

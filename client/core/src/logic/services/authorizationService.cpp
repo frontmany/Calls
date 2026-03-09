@@ -31,7 +31,7 @@ namespace core::logic
 
         m_keyManager->awaitKeysGeneration();
 
-        auto packet = PacketFactory::getAuthorizationPacket(nickname, m_keyManager->getMyPublicKey(), m_getLocalUdpPort());
+        auto packet = PacketFactory::getAuthorizationRequestPacket(nickname, m_keyManager->getMyPublicKey(), m_getLocalUdpPort());
 
         return m_sendPacket(packet, PacketType::AUTHORIZATION);
     }
@@ -40,7 +40,7 @@ namespace core::logic
         if (m_stateManager->isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
 
-        auto packet = PacketFactory::getNicknamePacket(m_stateManager->getMyNickname());
+        auto packet = PacketFactory::getLogoutPacket(m_stateManager->getMyNickname());
 
         auto ec = m_sendPacket(packet, PacketType::LOGOUT);
 

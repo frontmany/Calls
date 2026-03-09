@@ -10,6 +10,9 @@
 #include "models/call.h"
 #include "models/incomingCall.h"
 #include "models/outgoingCall.h"
+#include "models/meeting.h"
+#include "models/outgoingJoinMeetingRequest.h"
+#include "models/incomingJoinMeetingRequest.h"
 #include "media/mediaState.h"
 #include "media/mediaType.h"
 
@@ -20,37 +23,31 @@ namespace core::logic
         ClientStateManager();
         ~ClientStateManager() = default;
 
+        // ——— Authorization & connection ———
         bool isAuthorized() const;
-        bool isConnectionDown() const;
-        bool isIncomingCalls() const;
-        bool isViewingRemoteScreen() const;
-        bool isViewingRemoteCamera() const;
-        bool isOutgoingCall() const;
-        bool isActiveCall() const;
-        bool isCallParticipantConnectionDown() const;
-
         void setAuthorized(bool value);
+        bool isConnectionDown() const;
         void setConnectionDown(bool value);
-        void setCallParticipantConnectionDown(bool value);
-        void setMediaState(media::MediaType type, media::MediaState state);
-        void setViewingRemoteScreen(bool value);
-        void setViewingRemoteCamera(bool value);
-        void setSharingScreen(bool value);
-        void setSharingCamera(bool value);
 
+        // ——— User identity ———
         const std::string& getMyNickname() const;
         void setMyNickname(const std::string& nickname);
         void resetMyNickname();
-
         const std::string& getMyToken() const;
         void setMyToken(const std::string& token);
         void resetMyToken();
 
+        // ——— Media state ———
         const media::MediaState getMediaState(media::MediaType type) const;
+        void setMediaState(media::MediaType type, media::MediaState state);
+        bool isViewingRemoteScreen() const;
+        void setViewingRemoteScreen(bool value);
+        bool isViewingRemoteCamera() const;
+        void setViewingRemoteCamera(bool value);
 
-        const OutgoingCall& getOutgoingCall() const;
-        const Call& getActiveCall() const;
-
+        // ——— Outgoing call ———
+        bool isOutgoingCall() const;
+        std::optional<std::reference_wrapper<const core::OutgoingCall>> getOutgoingCall() const;
         template <typename Rep, typename Period>
         void setOutgoingCall(const std::string& nickname,
             const std::chrono::duration<Rep, Period>& timeout,
@@ -62,16 +59,21 @@ namespace core::logic
             }
             m_outgoingCall.emplace(nickname, timeout, std::move(onTimeout));
         }
-
-        void setActiveCall(const std::string& nickname,
-            const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& callKey);
-
-        void resetActiveCall();
         void resetOutgoingCall();
 
-        const std::unordered_map<std::string, IncomingCall>& getIncomingCalls() const;
-        int getIncomingCallsCount() const;
+        // ——— Active call ———
+        bool isActiveCall() const;
+        bool isCallParticipantConnectionDown() const;
+        void setCallParticipantConnectionDown(bool value);
+        std::optional<std::reference_wrapper<const core::Call>> getActiveCall() const;
+        void setActiveCall(const std::string& nickname,
+            const CryptoPP::RSA::PublicKey& publicKey, const CryptoPP::SecByteBlock& callKey);
+        void resetActiveCall();
 
+        // ——— Incoming calls ———
+        bool isIncomingCalls() const;
+        const std::unordered_map<std::string, core::IncomingCall>& getIncomingCalls() const;
+        int getIncomingCallsCount() const;
         template <typename Rep, typename Period>
         void addIncomingCall(const std::string& nickname,
             const CryptoPP::RSA::PublicKey& publicKey,
@@ -80,14 +82,39 @@ namespace core::logic
             std::function<void()> onTimeout)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-
-            IncomingCall incomingCall(nickname, publicKey, callKey, timeout, std::move(onTimeout));
+            core::IncomingCall incomingCall(nickname, publicKey, callKey, timeout, std::move(onTimeout));
             m_incomingCalls.emplace(nickname, std::move(incomingCall));
         }
-        
         void removeIncomingCall(const std::string& nickname);
-
         void resetIncomingCalls();
+
+        // ——— Active meeting ———
+        bool isActiveMeeting() const;
+        std::optional<std::reference_wrapper<const core::Meeting>> getActiveMeeting() const;
+        void setActiveMeeting(const std::string& meetingId);
+        void resetActiveMeeting();
+
+        // ——— Outgoing join meeting request ———
+        bool isOutgoingJoinMeetingRequest() const;
+        std::optional<std::reference_wrapper<const core::OutgoingJoinMeetingRequest>> getOutgoingJoinMeetingRequest() const;
+        template <typename Rep, typename Period>
+        void setOutgoingJoinMeetingRequest(const std::string& meetingId,
+            const std::chrono::duration<Rep, Period>& timeout,
+            std::function<void()> onTimeout)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_outgoingJoinMeetingRequest.has_value()) {
+                m_outgoingJoinMeetingRequest->stop();
+            }
+            m_outgoingJoinMeetingRequest.emplace(meetingId, timeout, std::move(onTimeout));
+        }
+        void resetOutgoingJoinMeetingRequest();
+
+        // ——— Incoming meeting join requests ———
+        const std::unordered_map<std::string, core::IncomingJoinMeetingRequest>& getIncomingMeetingJoinRequests() const;
+        void addIncomingMeetingJoinRequest(const std::string& nickname);
+        void removeIncomingMeetingJoinRequest(const std::string& nickname);
+        void resetIncomingMeetingJoinRequests();
 
         void reset();
 
@@ -96,13 +123,15 @@ namespace core::logic
         std::map<media::MediaType, media::MediaState> m_mediaState;
         bool m_authorized = false;
         bool m_connectionDown = false;
-        bool m_viewingRemoteScreen = false;
-        bool m_viewingRemoteCamera = false;
-        std::string m_myNickname;
+        std::string m_myNickname; 
         std::string m_myToken;
 
-        std::optional<Call> m_activeCall;
-        std::optional<OutgoingCall> m_outgoingCall;
-        std::unordered_map<std::string, IncomingCall> m_incomingCalls;
+        std::optional<core::Call> m_activeCall;
+        std::optional<core::OutgoingCall> m_outgoingCall;
+        std::unordered_map<std::string, core::IncomingCall> m_incomingCalls;
+
+        std::optional<core::Meeting> m_activeMeeting;
+        std::optional<core::OutgoingJoinMeetingRequest> m_outgoingJoinMeetingRequest;
+        std::unordered_map<std::string, core::IncomingJoinMeetingRequest> m_incomingMeetingJoinRequests;
     };
 }

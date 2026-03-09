@@ -45,7 +45,7 @@ namespace core::logic
             return ec;
         }
         else {
-            auto packet = PacketFactory::getRequestUserInfoPacket(m_stateManager->getMyNickname(), m_keyManager->getMyPublicKey(), userNickname);
+            auto packet = PacketFactory::getUserInfoRequestPacket(m_stateManager->getMyNickname(), m_keyManager->getMyPublicKey(), userNickname);
 
             return m_sendPacket(packet, PacketType::GET_USER_INFO);
         }
@@ -56,7 +56,9 @@ namespace core::logic
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager->isOutgoingCall()) return make_error_code(ErrorCode::no_outgoing_call);
 
-        auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), m_stateManager->getOutgoingCall().getNickname());
+        auto outgoingOpt = m_stateManager->getOutgoingCall();
+        if (!outgoingOpt) return make_error_code(ErrorCode::no_outgoing_call);
+        auto packet = PacketFactory::getCallingEndPacket(m_stateManager->getMyNickname());
         
         auto ec = m_sendPacket(packet, PacketType::CALLING_END);
 
@@ -83,7 +85,7 @@ namespace core::logic
 
         for (auto& [nickname, incomingCallData] : incomingCalls) {
             if (nickname != userNickname) {
-                auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), nickname);
+                auto packet = PacketFactory::getCallDeclinePacket(m_stateManager->getMyNickname(), nickname);
                 
                 auto ec = m_sendPacket(packet, PacketType::CALL_DECLINE);
 
@@ -97,7 +99,9 @@ namespace core::logic
         }
 
         if (m_stateManager->isOutgoingCall()) {
-            auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), m_stateManager->getOutgoingCall().getNickname());
+            auto outgoingOpt = m_stateManager->getOutgoingCall();
+            if (outgoingOpt) {
+                auto packet = PacketFactory::getCallingEndPacket(m_stateManager->getMyNickname());
             
             auto ec = m_sendPacket(packet, PacketType::CALLING_END);
 
@@ -107,9 +111,12 @@ namespace core::logic
             else {
                 m_stateManager->resetOutgoingCall();
             }
+            }
         }
         else if (m_stateManager->isActiveCall()) {
-            auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
+            auto activeOpt = m_stateManager->getActiveCall();
+            if (activeOpt) {
+                auto packet = PacketFactory::getCallEndPacket(m_stateManager->getMyNickname());
             
             auto ec = m_sendPacket(packet, PacketType::CALL_END);
 
@@ -119,11 +126,12 @@ namespace core::logic
             else {
                 changeStateOnEndCall();
             }
+            }
         }
 
         auto& inc = m_stateManager->getIncomingCalls();
         auto& incomingCall = inc.at(userNickname);
-        auto packet = PacketFactory::getCallPacketWithKeys(m_stateManager->getMyNickname(), userNickname, m_keyManager->getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
+        auto packet = PacketFactory::getCallAcceptPacket(m_stateManager->getMyNickname(), userNickname, m_keyManager->getMyPublicKey(), incomingCall.getPublicKey(), incomingCall.getCallKey());
             
         auto ec = m_sendPacket(packet, PacketType::CALL_ACCEPT);
 
@@ -150,7 +158,7 @@ namespace core::logic
             return make_error_code(ErrorCode::no_incoming_call);
         }
 
-        auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), userNickname);
+        auto packet = PacketFactory::getCallDeclinePacket(m_stateManager->getMyNickname(), userNickname);
 
         auto ec = m_sendPacket(packet, PacketType::CALL_DECLINE);
 
@@ -169,7 +177,9 @@ namespace core::logic
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager->isActiveCall()) return make_error_code(ErrorCode::no_active_call);
 
-        auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
+        auto activeOpt = m_stateManager->getActiveCall();
+        if (!activeOpt) return make_error_code(ErrorCode::no_active_call);
+        auto packet = PacketFactory::getCallEndPacket(m_stateManager->getMyNickname());
 
         auto ec = m_sendPacket(packet, PacketType::CALL_END);
 

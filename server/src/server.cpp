@@ -281,14 +281,7 @@ namespace server
                 }
             }
 
-            if (allowed) {
-                auto incomingPending = user->getIncomingPendingCalls();
-                for (const auto& pc : incomingPending) {
-                    if (pc && !pc->getCallingBeginBody().empty()) {
-                        sendTcp(conn, static_cast<uint32_t>(PacketType::CALLING_BEGIN), pc->getCallingBeginBody());
-                    }
-                }
-            }
+            
         }
         catch (const std::exception& e) {
             LOG_ERROR("Reconnect error: {}", e.what());
@@ -363,18 +356,17 @@ namespace server
             if (!receiver || !sender) return;
             if (sender->getTcpConnection() != conn) return;
 
-            std::string jsonStr = json.dump();
-            std::vector<unsigned char> body = toBytes(jsonStr);
             auto pending = std::make_shared<PendingCall>(sender, receiver, [this, receiver, sender]() {
                 auto out = sender->getOutgoingPendingCall();
                 if (out && out->getReceiver()->getNicknameHash() == receiver->getNicknameHash()) {
                     resetOutgoingPendingCall(sender);
                     removeIncomingPendingCall(receiver, out);
                 }
-            }, body);
+            });
             m_callManager.addPendingCall(pending);
             sender->setOutgoingPendingCall(pending);
             receiver->addIncomingPendingCall(pending);
+            std::vector<unsigned char> body = toBytes(json.dump());
             if (sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALLING_BEGIN), body)) {
                 std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
                 std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
@@ -389,27 +381,25 @@ namespace server
     void Server::handleStopOutgoingCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
-            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
 
-            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
             auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
             if (!sender || sender->getTcpConnection() != conn) return;
+            if (!sender->hasOutgoingPendingCall()) return;
+
+            auto out = sender->getOutgoingPendingCall();
+            auto receiver = out->getReceiver();
 
             std::vector<unsigned char> body = toBytes(json.dump());
             if (receiver && !receiver->isConnectionDown())
-                sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALLING_END), body);
+                sendTcpToUserIfConnected(receiver->getNicknameHash(), static_cast<uint32_t>(PacketType::CALLING_END), body);
 
-            if (receiver && sender) {
-                auto out = sender->getOutgoingPendingCall();
-                if (out && out->getReceiver()->getNicknameHash() == receiverNicknameHash) {
-                    resetOutgoingPendingCall(sender);
-                    removeIncomingPendingCall(receiver, out);
-                    std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                    std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                    LOG_INFO("Outgoing call stopped: {} -> {}", sp, rp);
-                }
-            }
+            std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+            std::string rp = receiver->getNicknameHash().length() >= 5 ? receiver->getNicknameHash().substr(0, 5) : receiver->getNicknameHash();
+            LOG_INFO("Outgoing call stopped: {} -> {}", sp, rp);
+
+            resetOutgoingPendingCall(sender);
+            removeIncomingPendingCall(receiver, out);
         }
         catch (const std::exception& e) {
             LOG_ERROR("Stop outgoing call error: {}", e.what());
@@ -442,7 +432,7 @@ namespace server
             if (!delivered) {
                 resetOutgoingPendingCall(receiver);
                 removeIncomingPendingCall(sender, found);
-                std::vector<unsigned char> callEndBody = PacketFactory::getCallEndPacket(receiverNicknameHash, senderNicknameHash);
+                std::vector<unsigned char> callEndBody = PacketFactory::getCallEndPacket(receiverNicknameHash);
                 sendTcpToUserIfConnected(senderNicknameHash, static_cast<uint32_t>(PacketType::CALL_END), callEndBody);
                 std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
                 std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
@@ -471,25 +461,23 @@ namespace server
             std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
 
-            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
             auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
             if (!sender || sender->getTcpConnection() != conn) return;
 
             std::vector<unsigned char> body = toBytes(json.dump());
             if (receiver && !receiver->isConnectionDown())
                 sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_DECLINE), body);
 
-            if (receiver) {
-                auto incoming = receiver->getIncomingPendingCalls();
-                for (auto& pc : incoming) {
-                    if (pc->getInitiator()->getNicknameHash() == senderNicknameHash) {
-                        resetOutgoingPendingCall(sender);
-                        removeIncomingPendingCall(receiver, pc);
-                        std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                        std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
-                        LOG_INFO("Call declined: {} -> {}", sp, rp);
-                        break;
-                    }
+            auto incoming = sender->getIncomingPendingCalls();
+            for (auto& pc : incoming) {
+                if (pc->getInitiator()->getNicknameHash() == receiverNicknameHash) {
+                    if (receiver) resetOutgoingPendingCall(receiver);
+                    removeIncomingPendingCall(sender, pc);
+                    std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                    std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                    LOG_INFO("Call declined: {} declined call from {}", sp, rp);
+                    break;
                 }
             }
         }
@@ -502,35 +490,40 @@ namespace server
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
             std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
-            std::string receiverNicknameHash = json[RECEIVER_NICKNAME_HASH].get<std::string>();
 
-            auto receiver = m_userRepository.findUserByNickname(receiverNicknameHash);
             auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
             if (!sender || sender->getTcpConnection() != conn) return;
+            if (!sender->isInCall()) return;
+
+            auto receiver = sender->getCallPartner();
 
             std::vector<unsigned char> body = toBytes(json.dump());
             if (receiver && !receiver->isConnectionDown())
-                sendTcpToUserIfConnected(receiverNicknameHash, static_cast<uint32_t>(PacketType::CALL_END), body);
+                sendTcpToUserIfConnected(receiver->getNicknameHash(), static_cast<uint32_t>(PacketType::CALL_END), body);
 
-            if (receiver && sender && sender->isInCall() && receiver->isInCall()) {
-                std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
-                std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+            std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+            if (receiver) {
+                std::string rp = receiver->getNicknameHash().length() >= 5 ? receiver->getNicknameHash().substr(0, 5) : receiver->getNicknameHash();
                 LOG_INFO("Call ended: {} ended call with {}", sp, rp);
-                m_callManager.endCall(sender->getCall());
-                sender->resetCall();
                 receiver->resetCall();
             }
+            m_callManager.endCall(sender->getCall());
+            sender->resetCall();
         }
         catch (const std::exception& e) {
             LOG_ERROR("End call error: {}", e.what());
         }
     }
 
-    void Server::redirectPacket(const nlohmann::json& json, PacketType type, network::tcp::ConnectionPtr) {
+    void Server::redirectPacket(const nlohmann::json& json, PacketType type, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (!json.contains(RECEIVER_NICKNAME_HASH)) return;
-        std::string receiver = json[RECEIVER_NICKNAME_HASH].get<std::string>();
-        sendTcpToUser(receiver, static_cast<uint32_t>(type), json.dump());
+        if (!json.contains(SENDER_NICKNAME_HASH)) return;
+        std::string senderHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+        auto sender = m_userRepository.findUserByNickname(senderHash);
+        if (!sender || !sender->isInCall()) return;
+        auto partner = sender->getCallPartner();
+        if (!partner) return;
+        sendTcpToUser(partner->getNicknameHash(), static_cast<uint32_t>(type), json.dump());
     }
 
     void Server::processConnectionDown(const UserPtr& user) {

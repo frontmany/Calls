@@ -1,7 +1,5 @@
 #pragma once
 
-#include <optional>
-
 #include "utilities/crypto.h"
 #include "incomingCall.h"
 

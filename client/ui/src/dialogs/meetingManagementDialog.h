@@ -19,7 +19,7 @@ public:
 
 signals:
     void closeRequested();
-    void createMeetingRequested(const QString& uid);
+    void createMeetingRequested();
     void joinMeetingRequested(const QString& uid);
     void joinCancelled();
 

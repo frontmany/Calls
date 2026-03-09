@@ -194,3 +194,33 @@ void CoreEventListener::onCallEndedByRemote(std::error_code ec)
             Qt::QueuedConnection);
     }
 }
+
+void CoreEventListener::onMeetingCreated(const std::string& meetingId)
+{
+    if (m_callManager) {
+        QMetaObject::invokeMethod(m_callManager, "onMeetingCreated",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(meetingId)));
+    }
+}
+
+void CoreEventListener::onMeetingCreateRejected(std::error_code ec)
+{
+    if (m_callManager) {
+        QMetaObject::invokeMethod(m_callManager, "onMeetingCreateRejected",
+            Qt::QueuedConnection, Q_ARG(std::error_code, ec));
+    }
+}
+void CoreEventListener::onMeetingJoinRequestReceived(const std::string& friendNickname) { (void)friendNickname; }
+void CoreEventListener::onMeetingJoinRequestCancelled(const std::string& friendNickname) { (void)friendNickname; }
+void CoreEventListener::onJoinMeetingAccepted(const std::string& meetingId) { (void)meetingId; }
+void CoreEventListener::onJoinMeetingDeclined(const std::string& meetingId) { (void)meetingId; }
+void CoreEventListener::onJoinMeetingRequestTimeout()
+{
+    if (m_callManager) {
+        QMetaObject::invokeMethod(m_callManager, "onJoinMeetingRequestTimeout",
+            Qt::QueuedConnection);
+    }
+}
+void CoreEventListener::onMeetingEndedByOwner() {}
+void CoreEventListener::onMeetingParticipantJoined(const std::string& nickname) { (void)nickname; }
+void CoreEventListener::onMeetingParticipantLeft(const std::string& nickname) { (void)nickname; }

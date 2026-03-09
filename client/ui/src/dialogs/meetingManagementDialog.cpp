@@ -202,7 +202,7 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     initialLayout->addStretch(1);
 
     connect(m_createMeetingButton, &QPushButton::clicked, this, [this]() {
-        emit createMeetingRequested(generateMeetingUid());
+        emit createMeetingRequested();
     });
     connect(m_joinMeetingButton, &QPushButton::clicked, this, [this]() {
         QString uid = m_meetingIdEdit->text().trimmed();

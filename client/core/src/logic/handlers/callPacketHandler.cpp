@@ -45,7 +45,7 @@ namespace core::logic
             CryptoPP::SecByteBlock callKey;
             generateAESKey(callKey);
 
-            auto packet = PacketFactory::getCallPacketWithKeys(m_stateManager->getMyNickname(), userNickname, m_keyManager->getMyPublicKey(), userPublicKey, callKey);
+            auto packet = PacketFactory::getOutgoingCallBeginPacket(m_stateManager->getMyNickname(), userNickname, m_keyManager->getMyPublicKey(), userPublicKey, callKey);
             
             auto ec = m_sendPacket(packet, PacketType::CALLING_BEGIN);
 
@@ -132,7 +132,8 @@ namespace core::logic
         const std::string& encryptedCallKey = jsonObject[ENCRYPTED_CALL_KEY].get<std::string>();
         auto callKey = RSADecryptAESKey(m_keyManager->getMyPrivateKey(), encryptedCallKey);
 
-        if (calculateHash(m_stateManager->getOutgoingCall().getNickname()) != senderNicknameHash) return;
+        auto outgoingOpt = m_stateManager->getOutgoingCall();
+        if (!outgoingOpt || calculateHash(outgoingOpt->get().getNickname()) != senderNicknameHash) return;
 
         if (m_stateManager->isIncomingCalls()) {
             m_stateManager->resetIncomingCalls();
@@ -141,7 +142,7 @@ namespace core::logic
         auto& incomingCalls = m_stateManager->getIncomingCalls();
 
         for (auto& [nickname, incomingCallData] : incomingCalls) {
-            auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), nickname);
+            auto packet = PacketFactory::getCallDeclinePacket(m_stateManager->getMyNickname(), nickname);
 
             auto ec = m_sendPacket(packet, PacketType::CALL_DECLINE);
 
@@ -154,7 +155,9 @@ namespace core::logic
         }
 
         if (m_stateManager->isActiveCall()) {
-            auto packet = PacketFactory::getTwoNicknamesPacket(m_stateManager->getMyNickname(), m_stateManager->getActiveCall().getNickname());
+            auto activeOpt = m_stateManager->getActiveCall();
+            if (activeOpt) {
+                auto packet = PacketFactory::getCallEndPacket(m_stateManager->getMyNickname());
 
             auto ec = m_sendPacket(packet, PacketType::CALL_END);
 
@@ -163,6 +166,7 @@ namespace core::logic
             }
             else {
                 changeStateOnEndCall();
+            }
             }
         }
 
@@ -176,7 +180,8 @@ namespace core::logic
         
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
 
-        if (calculateHash(m_stateManager->getOutgoingCall().getNickname()) != senderNicknameHash) return;
+        auto outgoingOpt = m_stateManager->getOutgoingCall();
+        if (!outgoingOpt || calculateHash(outgoingOpt->get().getNickname()) != senderNicknameHash) return;
 
         m_stateManager->resetOutgoingCall();
         m_eventListener->onOutgoingCallDeclined();
@@ -187,7 +192,8 @@ namespace core::logic
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
 
-        if (calculateHash(m_stateManager->getActiveCall().getNickname()) != senderNicknameHash) return;
+        auto activeOpt = m_stateManager->getActiveCall();
+        if (!activeOpt || calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
         
         changeStateOnEndCall();
 
@@ -200,7 +206,8 @@ namespace core::logic
         const std::string& userNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
 
         if (m_stateManager->isOutgoingCall()) {
-            if (calculateHash(m_stateManager->getOutgoingCall().getNickname()) == userNicknameHash) {
+            auto outgoingOpt = m_stateManager->getOutgoingCall();
+            if (outgoingOpt && calculateHash(outgoingOpt->get().getNickname()) == userNicknameHash) {
                 m_stateManager->resetOutgoingCall();
 
                 m_eventListener->onOutgoingCallTimeout(make_error_code(ErrorCode::connection_down_with_user));
@@ -222,7 +229,8 @@ namespace core::logic
             }
         }
 
-        if (m_stateManager->isActiveCall() && calculateHash(m_stateManager->getActiveCall().getNickname()) == userNicknameHash) {
+        auto activeOpt = m_stateManager->getActiveCall();
+        if (activeOpt && calculateHash(activeOpt->get().getNickname()) == userNicknameHash) {
             m_stateManager->setViewingRemoteScreen(false);
             m_stateManager->setViewingRemoteCamera(false);
             m_stateManager->setCallParticipantConnectionDown(true);
@@ -237,8 +245,8 @@ namespace core::logic
 
         const std::string& userNicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
 
-        if (m_stateManager->isActiveCall()
-            && calculateHash(m_stateManager->getActiveCall().getNickname()) == userNicknameHash) {
+        auto activeOpt = m_stateManager->getActiveCall();
+        if (activeOpt && calculateHash(activeOpt->get().getNickname()) == userNicknameHash) {
             m_stateManager->setCallParticipantConnectionDown(false);
 
             m_eventListener->onCallParticipantConnectionRestored();
@@ -251,8 +259,8 @@ namespace core::logic
         std::string userNicknameHash = jsonObject[NICKNAME_HASH];
 
         if (m_stateManager->isOutgoingCall()) {
-            const auto& outgoingCall = m_stateManager->getOutgoingCall();
-            if (calculateHash(outgoingCall.getNickname()) == userNicknameHash) {
+            auto outgoingOpt = m_stateManager->getOutgoingCall();
+            if (outgoingOpt && calculateHash(outgoingOpt->get().getNickname()) == userNicknameHash) {
                 m_stateManager->resetOutgoingCall();
 
                 m_eventListener->onOutgoingCallTimeout(make_error_code(ErrorCode::user_logout));
@@ -276,7 +284,8 @@ namespace core::logic
         }
 
         if (m_stateManager->isActiveCall()) {
-            if (calculateHash(m_stateManager->getActiveCall().getNickname()) == userNicknameHash) {
+            auto activeOpt = m_stateManager->getActiveCall();
+            if (activeOpt && calculateHash(activeOpt->get().getNickname()) == userNicknameHash) {
                 m_stateManager->resetActiveCall();
 
                 m_eventListener->onCallEndedByRemote(make_error_code(ErrorCode::user_logout));

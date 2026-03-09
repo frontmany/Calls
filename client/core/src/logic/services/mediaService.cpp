@@ -2,12 +2,34 @@
 #include "logic/packetFactory.h"
 #include "constants/errorCode.h"
 #include "utilities/logger.h"
+#include "utilities/crypto.h"
+
+#include <cstdint>
+#include <optional>
 
 using namespace core::constant;
 using namespace core::media;
 
 namespace core::logic
 {
+    namespace
+    {
+        std::optional<std::vector<unsigned char>> deriveMeetingKeyVec(const std::string& meetingId)
+        {
+            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
+            if (!binOpt) {
+                return std::nullopt;
+            }
+            return std::vector<unsigned char>(binOpt->begin(), binOpt->end());
+        }
+
+        void appendU16BE(std::vector<unsigned char>& out, uint16_t value)
+        {
+            out.push_back(static_cast<unsigned char>((value >> 8) & 0xFF));
+            out.push_back(static_cast<unsigned char>(value & 0xFF));
+        }
+    }
+
     MediaService::MediaService(
         std::shared_ptr<ClientStateManager> stateManager,
         std::shared_ptr<media::AudioEngine> audioEngine,
@@ -34,10 +56,10 @@ namespace core::logic
                 if (m_stateManager && m_stateManager->getMediaState(MediaType::Camera) != MediaState::Stopped) {
                     m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
 
-                    if (m_stateManager->isActiveCall()) {
-                        auto packet = PacketFactory::getTwoNicknamesPacket(
-                            m_stateManager->getMyNickname(),
-                            m_stateManager->getActiveCall().getNickname()
+                    auto activeOpt = m_stateManager->getActiveCall();
+                    if (activeOpt) {
+                        auto packet = PacketFactory::getCameraSharingEndPacket(
+                            m_stateManager->getMyNickname()
                         );
                         (void)m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
                     }
@@ -60,7 +82,7 @@ namespace core::logic
 
         m_stateManager->setMediaState(MediaType::Screen, MediaState::Starting);
 
-        auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
+        auto packet = PacketFactory::getScreenSharingBeginPacket(myNickname);
         m_sendPacket(packet, PacketType::SCREEN_SHARING_BEGIN);
 
         constexpr int kScreenBitrate = 1800000;
@@ -94,7 +116,7 @@ namespace core::logic
             std::lock_guard<std::mutex> lock(m_mutex);
             // Do not cleanup Screen pipeline here: decoder is needed to display remote's screen when they share.
             // Pipeline is reinitialized on next startScreenSharing().
-            auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
+            auto packet = PacketFactory::getScreenSharingEndPacket(myNickname);
             m_sendPacket(packet, PacketType::SCREEN_SHARING_END);
         }
         return {};
@@ -110,12 +132,12 @@ namespace core::logic
 
         m_stateManager->setMediaState(MediaType::Camera, MediaState::Starting);
 
-        auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
+        auto packet = PacketFactory::getCameraSharingBeginPacket(myNickname);
         m_sendPacket(packet, PacketType::CAMERA_SHARING_BEGIN);
 
         if (!m_cameraCaptureService.start(deviceName.empty() ? nullptr : deviceName.c_str())) {
             m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
-            m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
+            m_sendPacket(PacketFactory::getCameraSharingEndPacket(myNickname), PacketType::CAMERA_SHARING_END);
             return make_error_code(ErrorCode::network_error);
         }
 
@@ -155,7 +177,7 @@ namespace core::logic
 
         if (previousState != MediaState::Stopped) {
             std::lock_guard<std::mutex> lock(m_mutex);
-            auto packet = PacketFactory::getTwoNicknamesPacket(myNickname, userNickname);
+            auto packet = PacketFactory::getCameraSharingEndPacket(myNickname);
             m_sendPacket(packet, PacketType::CAMERA_SHARING_END);
         }
         return {};
@@ -199,7 +221,10 @@ namespace core::logic
     void MediaService::onRawAudio(const float* data, int length) {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (!m_stateManager->isActiveCall() ||
+        const bool isActiveCall = m_stateManager->isActiveCall();
+        const bool isInMeeting = m_stateManager->isInMeeting();
+
+        if ((!isActiveCall && !isInMeeting) ||
             m_stateManager->getMediaState(MediaType::Audio) != MediaState::Active) {
             return;
         }
@@ -209,7 +234,41 @@ namespace core::logic
             return;
         }
 
-        auto encryptedAudio = encryptWithCallKey(encodedAudio);
+        std::vector<unsigned char> encryptedAudio;
+        if (isActiveCall) {
+            encryptedAudio = encryptWithCallKey(encodedAudio);
+        }
+        else {
+            auto meetingOpt = m_stateManager->getActiveMeeting();
+            if (!meetingOpt) return;
+            const std::string& meetingId = meetingOpt->get().getMeetingId();
+            auto keyOpt = deriveMeetingKeyVec(meetingId);
+            if (!keyOpt) return;
+
+            encryptedAudio = m_mediaProcessingService->encryptData(
+                encodedAudio.data(),
+                static_cast<int>(encodedAudio.size()),
+                *keyOpt
+            );
+
+            if (encryptedAudio.empty()) {
+                return;
+            }
+
+            if (meetingId.size() > 0xFFFF) {
+                return;
+            }
+
+            std::vector<unsigned char> framed;
+            framed.reserve(2 + meetingId.size() + encryptedAudio.size());
+            appendU16BE(framed, static_cast<uint16_t>(meetingId.size()));
+            framed.insert(framed.end(), meetingId.begin(), meetingId.end());
+            framed.insert(framed.end(), encryptedAudio.begin(), encryptedAudio.end());
+
+            m_sendMediaFrame(framed, PacketType::VOICE);
+            return;
+        }
+
         if (encryptedAudio.empty()) {
             return;
         }
@@ -257,11 +316,12 @@ namespace core::logic
     }
 
     std::vector<unsigned char> MediaService::encryptWithCallKey(const std::vector<unsigned char>& data) {
-        if (!m_stateManager->isActiveCall()) {
+        auto activeOpt = m_stateManager->getActiveCall();
+        if (!activeOpt) {
             return {};
         }
 
-        const auto& callKey = m_stateManager->getActiveCall().getCallKey();
+        const auto& callKey = activeOpt->get().getCallKey();
         if (callKey.size() == 0) {
             return data;
         }

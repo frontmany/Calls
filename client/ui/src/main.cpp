@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
     MainWindow* mainWindow = new MainWindow();
     mainWindow->init();
 
-    mainWindow->resize(800, 600);
+    mainWindow->resize(800, 650);
     mainWindow->show();
 
     // 192.168.1.44 local machine 

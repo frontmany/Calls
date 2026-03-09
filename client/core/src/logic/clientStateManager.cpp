@@ -133,26 +133,20 @@ namespace core::logic
         return m_myToken;
     }
 
-    const OutgoingCall& ClientStateManager::getOutgoingCall() const
+    std::optional<std::reference_wrapper<const core::OutgoingCall>> ClientStateManager::getOutgoingCall() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-
-        if (!m_outgoingCall.has_value()) {
-            throw std::runtime_error("Outgoing call is not set");
-        }
-
-        return m_outgoingCall.value();
+        if (m_outgoingCall.has_value())
+            return std::cref(*m_outgoingCall);
+        return std::nullopt;
     }
 
-    const Call& ClientStateManager::getActiveCall() const
+    std::optional<std::reference_wrapper<const core::Call>> ClientStateManager::getActiveCall() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-
-        if (!m_activeCall.has_value()) {
-            throw std::runtime_error("Active call is not set");
-        }
-
-        return m_activeCall.value();
+        if (m_activeCall.has_value())
+            return std::cref(*m_activeCall);
+        return std::nullopt;
     }
 
     void ClientStateManager::setMyToken(const std::string& token)
@@ -195,7 +189,7 @@ namespace core::logic
         m_outgoingCall = std::nullopt;
     }
 
-    const std::unordered_map<std::string, IncomingCall>& ClientStateManager::getIncomingCalls() const
+    const std::unordered_map<std::string, core::IncomingCall>& ClientStateManager::getIncomingCalls() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_incomingCalls;
@@ -217,6 +211,79 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_incomingCalls.clear();
+    }
+
+    bool ClientStateManager::isActiveMeeting() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_activeMeeting.has_value();
+    }
+
+    bool ClientStateManager::isOutgoingJoinMeetingRequest() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_outgoingJoinMeetingRequest.has_value();
+    }
+
+    std::optional<std::reference_wrapper<const core::Meeting>> ClientStateManager::getActiveMeeting() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_activeMeeting.has_value())
+            return std::cref(*m_activeMeeting);
+        return std::nullopt;
+    }
+
+    std::optional<std::reference_wrapper<const core::OutgoingJoinMeetingRequest>> ClientStateManager::getOutgoingJoinMeetingRequest() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_outgoingJoinMeetingRequest.has_value())
+            return std::cref(*m_outgoingJoinMeetingRequest);
+        return std::nullopt;
+    }
+
+    void ClientStateManager::setActiveMeeting(const std::string& meetingId)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_activeMeeting.emplace(meetingId);
+    }
+
+    void ClientStateManager::resetActiveMeeting()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_activeMeeting = std::nullopt;
+    }
+
+    void ClientStateManager::resetOutgoingJoinMeetingRequest()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_outgoingJoinMeetingRequest.has_value()) {
+            m_outgoingJoinMeetingRequest->stop();
+        }
+        m_outgoingJoinMeetingRequest = std::nullopt;
+    }
+
+    const std::unordered_map<std::string, core::IncomingJoinMeetingRequest>& ClientStateManager::getIncomingMeetingJoinRequests() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_incomingMeetingJoinRequests;
+    }
+
+    void ClientStateManager::addIncomingMeetingJoinRequest(const std::string& nickname)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_incomingMeetingJoinRequests.emplace(nickname, core::IncomingJoinMeetingRequest(nickname));
+    }
+
+    void ClientStateManager::removeIncomingMeetingJoinRequest(const std::string& nickname)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_incomingMeetingJoinRequests.erase(nickname);
+    }
+
+    void ClientStateManager::resetIncomingMeetingJoinRequests()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_incomingMeetingJoinRequests.clear();
     }
 
     void ClientStateManager::reset()
@@ -241,5 +308,12 @@ namespace core::logic
         m_mediaState[media::MediaType::Screen] = media::MediaState::Stopped;
         m_mediaState[media::MediaType::Camera] = media::MediaState::Stopped;
         m_mediaState[media::MediaType::Audio] = media::MediaState::Stopped;
+
+        m_activeMeeting = std::nullopt;
+        if (m_outgoingJoinMeetingRequest.has_value()) {
+            m_outgoingJoinMeetingRequest->stop();
+        }
+        m_outgoingJoinMeetingRequest = std::nullopt;
+        m_incomingMeetingJoinRequests.clear();
     }
 }

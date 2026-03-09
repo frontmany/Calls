@@ -17,6 +17,7 @@ namespace core::logic
     class AuthorizationPacketHandler;
     class CallPacketHandler;
     class MediaPacketHandler;
+    class MeetingPacketHandler;
     class ReconnectionPacketHandler;
     class ClientStateManager;
     class KeyManager;
@@ -64,6 +65,8 @@ namespace core::logic
         std::unique_ptr<AuthorizationPacketHandler> m_authorizationPacketHandler;
         std::unique_ptr<CallPacketHandler> m_callPacketHandler;
         std::unique_ptr<MediaPacketHandler> m_mediaPacketHandler;
+        std::shared_ptr<ClientStateManager> m_stateManager;
+        std::unique_ptr<MeetingPacketHandler> m_meetingPacketHandler;
         std::unique_ptr<ReconnectionPacketHandler> m_reconnectionPacketHandler;
         std::unordered_map<core::constant::PacketType, std::function<void(const nlohmann::json&)>> m_packetHandlers;
     };

@@ -10,11 +10,13 @@
 
 #include <string>
 #include <memory>
+#include <utility>
 
 #include "media/audio/audioEngine.h"
 #include "network/networkController.h"
 #include "logic/services/authorizationService.h"
 #include "logic/services/callService.h"
+#include "logic/services/meetingService.h"
 #include "logic/services/mediaService.h"
 #include "logic/services/connectionEstablishService.h"
 #include "logic/handlers/packetHandleController.h"
@@ -62,6 +64,8 @@ namespace core
         bool isOutgoingCall() const;
         bool isActiveCall() const;
         bool isCameraAvailable() const;
+        bool isInMeeting() const;
+        bool isOutgoingJoinMeeting() const;
 
         int getInputVolume() const;
         int getOutputVolume() const;
@@ -82,6 +86,13 @@ namespace core
         std::error_code acceptCall(const std::string& friendNickname);
         std::error_code declineCall(const std::string& friendNickname);
         std::error_code endCall();
+        std::error_code createMeeting();
+        std::error_code sendJoinMeetingRequest(const std::string& meetingId);
+        std::error_code cancelJoinMeetingRequest();
+        std::error_code acceptJoinMeetingRequest(const std::string& friendNickname);
+        std::error_code declineJoinMeetingRequest(const std::string& friendNickname);
+        std::error_code endMeeting();
+        std::error_code leaveMeeting();
         std::error_code startScreenSharing(const media::Screen& target);
         std::error_code stopScreenSharing();
         std::error_code startCameraSharing(std::string deviceName);
@@ -95,6 +106,7 @@ namespace core
         std::shared_ptr<media::AudioEngine> m_audioEngine;
         std::unique_ptr<logic::AuthorizationService> m_authorizationService;
         std::unique_ptr<logic::CallService> m_callService;
+        std::unique_ptr<logic::MeetingService> m_meetingService;
         std::unique_ptr<logic::MediaService> m_mediaService;
         std::unique_ptr<logic::ConnectionEstablishService> m_connectionEstablishService;
         std::unique_ptr<logic::PacketHandleController> m_packetHandleController;

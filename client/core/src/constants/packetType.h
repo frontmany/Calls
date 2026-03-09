@@ -29,6 +29,25 @@ namespace core::constant
         CAMERA,
         VOICE,
 
+        // meeting: send and receive
+        MEETING_JOIN_REQUEST,
+        MEETING_JOIN_CANCEL,
+        MEETING_JOIN_ACCEPT,
+        MEETING_JOIN_DECLINE,
+
+        // meeting: send
+        MEETING_CREATE,
+        GET_MEETING_INFO,
+        MEETING_LEAVE,
+        MEETING_END,
+
+        // meeting: receive
+        MEETING_CREATE_RESULT,
+        GET_MEETING_INFO_RESULT,
+        MEETING_PARTICIPANT_JOINED,
+        MEETING_PARTICIPANT_LEFT,
+        MEETING_ENDED,
+
         // only receive
         AUTHORIZATION_RESULT,
         RECONNECT_RESULT,
@@ -61,6 +80,19 @@ namespace core::constant
             case PacketType::CAMERA_SHARING_END: return "CAMERA_SHARING_END";
             case PacketType::CAMERA: return "CAMERA";
             case PacketType::VOICE: return "VOICE";
+            case PacketType::MEETING_CREATE: return "MEETING_CREATE";
+            case PacketType::GET_MEETING_INFO: return "GET_MEETING_INFO";
+            case PacketType::MEETING_JOIN_REQUEST: return "MEETING_JOIN_REQUEST";
+            case PacketType::MEETING_JOIN_CANCEL: return "MEETING_JOIN_CANCEL";
+            case PacketType::MEETING_JOIN_ACCEPT: return "MEETING_JOIN_ACCEPT";
+            case PacketType::MEETING_JOIN_DECLINE: return "MEETING_JOIN_DECLINE";
+            case PacketType::MEETING_LEAVE: return "MEETING_LEAVE";
+            case PacketType::MEETING_END: return "MEETING_END";
+            case PacketType::MEETING_CREATE_RESULT: return "MEETING_CREATE_RESULT";
+            case PacketType::GET_MEETING_INFO_RESULT: return "GET_MEETING_INFO_RESULT";
+            case PacketType::MEETING_ENDED: return "MEETING_ENDED";
+            case PacketType::MEETING_PARTICIPANT_JOINED: return "MEETING_PARTICIPANT_JOINED";
+            case PacketType::MEETING_PARTICIPANT_LEFT: return "MEETING_PARTICIPANT_LEFT";
 
             // only receive
             case PacketType::AUTHORIZATION_RESULT: return "AUTHORIZATION_RESULT";

@@ -40,6 +40,17 @@ public:
     void onCallParticipantConnectionDown() override;
     void onCallParticipantConnectionRestored() override;
 
+    void onMeetingCreated(const std::string& meetingId) override;
+    void onMeetingCreateRejected(std::error_code ec) override;
+    void onMeetingJoinRequestReceived(const std::string& friendNickname) override;
+    void onMeetingJoinRequestCancelled(const std::string& friendNickname) override;
+    void onJoinMeetingAccepted(const std::string& meetingId) override;
+    void onJoinMeetingDeclined(const std::string& meetingId) override;
+    void onJoinMeetingRequestTimeout() override;
+    void onMeetingEndedByOwner() override;
+    void onMeetingParticipantJoined(const std::string& nickname) override;
+    void onMeetingParticipantLeft(const std::string& nickname) override;
+
     void onConnectionDown() override;
     void onConnectionEstablished() override;
     void onConnectionEstablishedAuthorizationNeeded() override;
