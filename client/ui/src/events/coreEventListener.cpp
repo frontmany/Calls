@@ -214,6 +214,7 @@ void CoreEventListener::onMeetingJoinRequestReceived(const std::string& friendNi
 void CoreEventListener::onMeetingJoinRequestCancelled(const std::string& friendNickname) { (void)friendNickname; }
 void CoreEventListener::onJoinMeetingAccepted(const std::string& meetingId) { (void)meetingId; }
 void CoreEventListener::onJoinMeetingDeclined(const std::string& meetingId) { (void)meetingId; }
+void CoreEventListener::onMeetingNotFound() {}
 void CoreEventListener::onJoinMeetingRequestTimeout()
 {
     if (m_callManager) {

@@ -87,8 +87,8 @@ namespace core
         std::error_code declineCall(const std::string& friendNickname);
         std::error_code endCall();
         std::error_code createMeeting();
-        std::error_code sendJoinMeetingRequest(const std::string& meetingId);
-        std::error_code cancelJoinMeetingRequest();
+        std::error_code joinMeeting(const std::string& meetingId);
+        std::error_code cancelMeetingJoin();
         std::error_code acceptJoinMeetingRequest(const std::string& friendNickname);
         std::error_code declineJoinMeetingRequest(const std::string& friendNickname);
         std::error_code endMeeting();

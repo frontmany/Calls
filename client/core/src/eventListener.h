@@ -44,6 +44,7 @@ namespace core
         virtual void onMeetingJoinRequestCancelled(const std::string& friendNickname) = 0;
         virtual void onJoinMeetingAccepted(const std::string& meetingId) = 0;
         virtual void onJoinMeetingDeclined(const std::string& meetingId) = 0;
+        virtual void onMeetingNotFound() = 0;
         virtual void onJoinMeetingRequestTimeout() = 0;
         virtual void onMeetingEndedByOwner() = 0;
         virtual void onMeetingParticipantJoined(const std::string& nickname) = 0;

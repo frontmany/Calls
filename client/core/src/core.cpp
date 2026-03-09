@@ -407,12 +407,12 @@ namespace core
         return m_meetingService->createMeeting();
     }
 
-    std::error_code Core::sendJoinMeetingRequest(const std::string& meetingId) {
-        return m_meetingService ? m_meetingService->sendJoinMeetingRequest(meetingId) : make_error_code(ErrorCode::network_error);
+    std::error_code Core::joinMeeting(const std::string& meetingId) {
+        return m_meetingService ? m_meetingService->joinMeeting(meetingId) : make_error_code(ErrorCode::network_error);
     }
 
-    std::error_code Core::cancelJoinMeetingRequest() {
-        return m_meetingService ? m_meetingService->cancelJoinMeetingRequest() : make_error_code(ErrorCode::network_error);
+    std::error_code Core::cancelMeetingJoin() {
+        return m_meetingService ? m_meetingService->cancelMeetingJoin() : make_error_code(ErrorCode::network_error);
     }
 
     std::error_code Core::acceptJoinMeetingRequest(const std::string& friendNickname) {

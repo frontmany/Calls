@@ -21,12 +21,12 @@ namespace core::logic
         );
 
         std::error_code createMeeting();
-        std::error_code sendJoinMeetingRequest(const std::string& meetingId);
-        std::error_code cancelJoinMeetingRequest();
-        std::error_code acceptJoinMeetingRequest(const std::string& friendNickname);
-        std::error_code declineJoinMeetingRequest(const std::string& friendNickname);
+        std::error_code joinMeeting(const std::string& meetingId);
+        std::error_code cancelMeetingJoin();
         std::error_code endMeeting();
         std::error_code leaveMeeting();
+        std::error_code acceptJoinMeetingRequest(const std::string& friendNickname);
+        std::error_code declineJoinMeetingRequest(const std::string& friendNickname);
 
     private:
         static constexpr std::chrono::seconds kJoinMeetingRequestTimeout{60};

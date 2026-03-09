@@ -46,6 +46,7 @@ public:
     void onMeetingJoinRequestCancelled(const std::string& friendNickname) override;
     void onJoinMeetingAccepted(const std::string& meetingId) override;
     void onJoinMeetingDeclined(const std::string& meetingId) override;
+    void onMeetingNotFound() override;
     void onJoinMeetingRequestTimeout() override;
     void onMeetingEndedByOwner() override;
     void onMeetingParticipantJoined(const std::string& nickname) override;

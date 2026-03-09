@@ -39,7 +39,7 @@ namespace core::logic
         bool found = jsonObject.contains(RESULT) && jsonObject[RESULT].get<bool>();
         if (!found) {
             m_stateManager->resetOutgoingJoinMeetingRequest();
-            if (m_eventListener) m_eventListener->onJoinMeetingDeclined(""); 
+            if (m_eventListener) m_eventListener->onMeetingNotFound();
             return;
         }
 

@@ -42,7 +42,7 @@ namespace core::logic
         return {};
     }
 
-    std::error_code MeetingService::sendJoinMeetingRequest(const std::string& meetingId) {
+    std::error_code MeetingService::joinMeeting(const std::string& meetingId) {
         if (m_stateManager->isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (m_stateManager->isActiveCall()) return make_error_code(ErrorCode::active_call_exists);
@@ -64,7 +64,7 @@ namespace core::logic
         return {};
     } 
 
-    std::error_code MeetingService::cancelJoinMeetingRequest() {
+    std::error_code MeetingService::cancelMeetingJoin() {
         if (m_stateManager->isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
         if (!m_stateManager->isOutgoingJoinMeetingRequest()) return make_error_code(ErrorCode::no_pending_join_request);
