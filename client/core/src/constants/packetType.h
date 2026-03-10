@@ -47,6 +47,7 @@ namespace core::constant
         MEETING_PARTICIPANT_JOINED,
         MEETING_PARTICIPANT_LEFT,
         MEETING_ENDED,
+        MEETING_JOIN_REJECTED,
 
         // only receive
         AUTHORIZATION_RESULT,
@@ -65,6 +66,7 @@ namespace core::constant
             case PacketType::LOGOUT: return "LOGOUT";
             case PacketType::RECONNECT: return "RECONNECT";
             case PacketType::GET_USER_INFO: return "GET_USER_INFO";
+            case PacketType::GET_METRICS: return "GET_METRICS";
 
             // send and receive
             case PacketType::CONFIRMATION: return "CONFIRMATION";
@@ -93,11 +95,13 @@ namespace core::constant
             case PacketType::MEETING_ENDED: return "MEETING_ENDED";
             case PacketType::MEETING_PARTICIPANT_JOINED: return "MEETING_PARTICIPANT_JOINED";
             case PacketType::MEETING_PARTICIPANT_LEFT: return "MEETING_PARTICIPANT_LEFT";
+            case PacketType::MEETING_JOIN_REJECTED: return "MEETING_JOIN_REJECTED";
 
             // only receive
             case PacketType::AUTHORIZATION_RESULT: return "AUTHORIZATION_RESULT";
             case PacketType::RECONNECT_RESULT: return "RECONNECT_RESULT";
             case PacketType::GET_USER_INFO_RESULT: return "GET_USER_INFO_RESULT";
+            case PacketType::GET_METRICS_RESULT: return "GET_METRICS_RESULT";
             case PacketType::CONNECTION_DOWN_WITH_USER: return "CONNECTION_DOWN_WITH_USER";
             case PacketType::CONNECTION_RESTORED_WITH_USER: return "CONNECTION_RESTORED_WITH_USER";
             case PacketType::USER_LOGOUT: return "USER_LOGOUT";

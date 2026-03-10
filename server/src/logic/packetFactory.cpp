@@ -133,6 +133,59 @@ std::vector<unsigned char> PacketFactory::getCallEndPacket(const std::string& se
     return toBytes(jsonObject.dump());
 }
 
+std::vector<unsigned char> PacketFactory::getMeetingCreateResultPacket(bool success, const std::string& meetingId)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[RESULT] = success;
+    if (success) {
+        jsonObject[MEETING_ID] = meetingId;
+    }
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMeetingInfoResultPacket(bool found, const std::string& ownerPublicKey)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[RESULT] = found;
+    if (found) {
+        jsonObject[PUBLIC_KEY] = ownerPublicKey;
+    }
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMeetingEndedPacket()
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMeetingParticipantJoinedPacket(const std::string& encryptedNickname)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[ENCRYPTED_NICKNAME] = encryptedNickname;
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMeetingParticipantLeftPacket(const std::string& encryptedNickname)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[ENCRYPTED_NICKNAME] = encryptedNickname;
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMeetingJoinRejectedPacket(const std::string& reason)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[REASON] = reason;
+    return toBytes(jsonObject.dump());
+}
+
 std::vector<unsigned char> PacketFactory::getMetricsResultPacket(double cpuUsagePercent, uint64_t memoryUsedBytes, uint64_t memoryAvailableBytes, size_t activeUsers) {
     nlohmann::json jsonObject;
 

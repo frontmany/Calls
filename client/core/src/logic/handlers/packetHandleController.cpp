@@ -65,7 +65,7 @@ namespace core::logic
                 m_startAudioSharing();
             }
         });
-        m_packetHandlers.emplace(PacketType::MEETING_JOIN_REQUEST, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRequestForward(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_REQUEST, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRequest(json); });
         m_packetHandlers.emplace(PacketType::MEETING_JOIN_CANCEL, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRequestCancelled(json); });
         m_packetHandlers.emplace(PacketType::MEETING_JOIN_ACCEPT, [this](const nlohmann::json& json) {
             m_meetingPacketHandler->handleMeetingJoinAccept(json);
@@ -74,6 +74,7 @@ namespace core::logic
             }
         });
         m_packetHandlers.emplace(PacketType::MEETING_JOIN_DECLINE, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinDecline(json); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_REJECTED, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRejected(json); });
         m_packetHandlers.emplace(PacketType::MEETING_ENDED, [this](const nlohmann::json& json) {
             m_meetingPacketHandler->handleMeetingEnded(json);
             if (m_stopAudioSharing) {

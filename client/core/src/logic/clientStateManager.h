@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <map>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -128,6 +129,8 @@ namespace core::logic
         std::map<media::MediaType, media::MediaState> m_mediaState;
         bool m_authorized = false;
         bool m_connectionDown = false;
+        bool m_viewingRemoteScreen = false;
+        bool m_viewingRemoteCamera = false;
         std::string m_myNickname; 
         std::string m_myToken;
 

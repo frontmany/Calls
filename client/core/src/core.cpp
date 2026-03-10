@@ -343,7 +343,7 @@ namespace core
         if (!m_stateManager) return empty;
         auto opt = m_stateManager->getOutgoingCall();
         return opt ? opt->get().getNickname() : empty;
-    }
+    } 
 
     const std::string& Core::getNicknameInCallWith() const {
         static const std::string empty;

@@ -16,6 +16,7 @@
 #include "constants/packetType.h"
 #include "logic/userRepository.h"
 #include "logic/callManager.h"
+#include "logic/meetingManager.h"
 
 #include "json.hpp"
 
@@ -51,11 +52,23 @@ namespace server
         void handleAcceptCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleDeclineCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleEndCall(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingCreate(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleGetMeetingInfo(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingJoinRequest(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingJoinCancel(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingJoinAccept(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingJoinDecline(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingLeave(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMeetingEnd(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void redirectPacket(const nlohmann::json& json, constant::PacketType type, network::tcp::ConnectionPtr conn);
 
         void processUserLogout(const UserPtr& user);
         bool resetOutgoingPendingCall(const UserPtr& user);
         void removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall);
+        void broadcastToMeeting(const MeetingPtr& meeting, const std::string& excludeNicknameHash, uint32_t type, const std::vector<unsigned char>& body);
+        void rejectAllPendingJoinRequests(const MeetingPtr& meeting, const std::string& reason);
+        void removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user, const std::string& encryptedNicknameOverride = "");
+        void endMeetingCleanup(const MeetingPtr& meeting);
         void processConnectionDown(const UserPtr& user);
 
     private:
@@ -65,6 +78,7 @@ namespace server
 
         server::logic::UserRepository m_userRepository;
         server::logic::CallManager m_callManager;
+        server::logic::MeetingManager m_meetingManager;
 
         std::unordered_map<constant::PacketType, TcpPacketHandler> m_packetHandlers;
         std::unordered_map<network::tcp::ConnectionPtr, UserPtr> m_connToUser;

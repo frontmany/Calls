@@ -185,6 +185,21 @@ namespace core::logic
         }
     }
 
+    void MeetingPacketHandler::handleMeetingJoinRejected(const nlohmann::json& jsonObject) {
+        (void)jsonObject;
+        if (!m_stateManager->isAuthorized() || m_stateManager->isConnectionDown()) return;
+        if (!m_stateManager->isOutgoingJoinMeetingRequest()) return;
+
+        std::string meetingId;
+        auto reqOpt = m_stateManager->getOutgoingJoinMeetingRequest();
+        if (reqOpt) meetingId = reqOpt->get().getMeetingId();
+
+        m_stateManager->resetOutgoingJoinMeetingRequest();
+        if (m_eventListener) {
+            m_eventListener->onJoinMeetingDeclined(meetingId);
+        }
+    }
+
     void MeetingPacketHandler::handleMeetingEnded(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() || m_stateManager->isConnectionDown()) return;
         if (!m_stateManager->isActiveMeeting()) return;

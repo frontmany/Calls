@@ -28,6 +28,20 @@ namespace server::constant
     CAMERA_SHARING_END,
     CAMERA,
     VOICE,
+    MEETING_JOIN_REQUEST,
+    MEETING_JOIN_CANCEL,
+    MEETING_JOIN_ACCEPT,
+    MEETING_JOIN_DECLINE,
+    MEETING_CREATE,
+    GET_MEETING_INFO,
+    MEETING_LEAVE,
+    MEETING_END,
+    MEETING_CREATE_RESULT,
+    GET_MEETING_INFO_RESULT,
+    MEETING_PARTICIPANT_JOINED,
+    MEETING_PARTICIPANT_LEFT,
+    MEETING_ENDED,
+    MEETING_JOIN_REJECTED,
 
     // only send
     AUTHORIZATION_RESULT,
@@ -46,6 +60,7 @@ inline std::string packetTypeToString(PacketType type) {
         case PacketType::LOGOUT: return "LOGOUT";
         case PacketType::RECONNECT: return "RECONNECT";
         case PacketType::GET_USER_INFO: return "GET_USER_INFO";
+        case PacketType::GET_METRICS: return "GET_METRICS";
 
         // redirect
         case PacketType::CONFIRMATION: return "CONFIRMATION";
@@ -61,11 +76,26 @@ inline std::string packetTypeToString(PacketType type) {
         case PacketType::CAMERA_SHARING_END: return "CAMERA_SHARING_END";
         case PacketType::CAMERA: return "CAMERA";
         case PacketType::VOICE: return "VOICE";
+        case PacketType::MEETING_JOIN_REQUEST: return "MEETING_JOIN_REQUEST";
+        case PacketType::MEETING_JOIN_CANCEL: return "MEETING_JOIN_CANCEL";
+        case PacketType::MEETING_JOIN_ACCEPT: return "MEETING_JOIN_ACCEPT";
+        case PacketType::MEETING_JOIN_DECLINE: return "MEETING_JOIN_DECLINE";
+        case PacketType::MEETING_CREATE: return "MEETING_CREATE";
+        case PacketType::GET_MEETING_INFO: return "GET_MEETING_INFO";
+        case PacketType::MEETING_LEAVE: return "MEETING_LEAVE";
+        case PacketType::MEETING_END: return "MEETING_END";
+        case PacketType::MEETING_CREATE_RESULT: return "MEETING_CREATE_RESULT";
+        case PacketType::GET_MEETING_INFO_RESULT: return "GET_MEETING_INFO_RESULT";
+        case PacketType::MEETING_PARTICIPANT_JOINED: return "MEETING_PARTICIPANT_JOINED";
+        case PacketType::MEETING_PARTICIPANT_LEFT: return "MEETING_PARTICIPANT_LEFT";
+        case PacketType::MEETING_ENDED: return "MEETING_ENDED";
+        case PacketType::MEETING_JOIN_REJECTED: return "MEETING_JOIN_REJECTED";
 
         // only send
         case PacketType::AUTHORIZATION_RESULT: return "AUTHORIZATION_RESULT";
         case PacketType::RECONNECT_RESULT: return "RECONNECT_RESULT";
         case PacketType::GET_USER_INFO_RESULT: return "GET_USER_INFO_RESULT";
+        case PacketType::GET_METRICS_RESULT: return "GET_METRICS_RESULT";
         case PacketType::CONNECTION_DOWN_WITH_USER: return "CONNECTION_DOWN_WITH_USER";
         case PacketType::CONNECTION_RESTORED_WITH_USER: return "CONNECTION_RESTORED_WITH_USER";
         case PacketType::USER_LOGOUT: return "USER_LOGOUT";

@@ -199,6 +199,7 @@ namespace core::logic
         std::string uid = generateUID();
         nlohmann::json jsonObject = createBasePacket(uid, myNickname);
         jsonObject[REQUESTER_NICKNAME_HASH] = calculateHash(friendNickname);
+        jsonObject[ENCRYPTED_NICKNAME] = AESEncrypt(meetingKey, friendNickname);
         jsonObject[ENCRYPTED_MEETING_KEY] = RSAEncryptAESKey(requesterPublicKey, meetingKey);
         nlohmann::json participantsJson = nlohmann::json::array();
         for (const auto& p : participants) {

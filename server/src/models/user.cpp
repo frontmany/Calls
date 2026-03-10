@@ -1,6 +1,8 @@
 #include "user.h"
 #include "call.h"
 #include "pendingCall.h"
+#include "meeting.h"
+#include "pendingMeetingJoinRequest.h"
 
 #include <chrono>
 #include <vector>
@@ -110,6 +112,18 @@ bool User::hasIncomingPendingCall(const PendingCallPtr& pendingCall) const
 	return false;
 }
 
+bool User::isInMeeting() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return !m_meeting.expired();
+}
+
+bool User::hasPendingMeetingJoinRequest() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return !m_pendingMeetingJoinRequest.expired();
+}
+
 CallPtr User::getCall() const
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -166,6 +180,18 @@ std::vector<PendingCallPtr> User::getIncomingPendingCalls() const
 	return result;
 }
 
+MeetingPtr User::getMeeting() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_meeting.lock();
+}
+
+PendingMeetingJoinRequestPtr User::getPendingMeetingJoinRequest() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_pendingMeetingJoinRequest.lock();
+}
+
 void User::setCall(CallPtr call)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -190,6 +216,18 @@ void User::addIncomingPendingCall(PendingCallPtr pendingCall)
 		}
 	}
 	m_incomingPendingCalls.push_back(pendingCall);
+}
+
+void User::setMeeting(MeetingPtr meeting)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_meeting = meeting;
+}
+
+void User::setPendingMeetingJoinRequest(PendingMeetingJoinRequestPtr pendingMeetingJoinRequest)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_pendingMeetingJoinRequest = pendingMeetingJoinRequest;
 }
 
 void User::resetCall()
@@ -227,5 +265,17 @@ void User::resetAllPendingCalls()
 	std::lock_guard<std::mutex> lock(m_mutex);
 	m_outgoingPendingCall.reset();
 	m_incomingPendingCalls.clear();
+}
+
+void User::resetMeeting()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_meeting.reset();
+}
+
+void User::resetPendingMeetingJoinRequest()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_pendingMeetingJoinRequest.reset();
 }
 } // namespace server

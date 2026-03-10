@@ -137,6 +137,65 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onCallParticipantConnectionRestored);
     }
 
+    void onMeetingCreated(const std::string& meetingId) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingCreated, meetingId);
+    }
+
+    void onMeetingCreateRejected(std::error_code ec) override
+    {
+        int ec_value = static_cast<int>(ec.value());
+        py::gil_scoped_acquire acquire;
+        if (auto py_func = py::get_override(this, "onMeetingCreateRejected")) {
+            py_func(ec_value);
+        }
+    }
+
+    void onMeetingJoinRequestReceived(const std::string& friendNickname) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingJoinRequestReceived, friendNickname);
+    }
+
+    void onMeetingJoinRequestCancelled(const std::string& friendNickname) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingJoinRequestCancelled, friendNickname);
+    }
+
+    void onJoinMeetingAccepted(const std::string& meetingId, const std::vector<std::string>& participants) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onJoinMeetingAccepted, meetingId, participants);
+    }
+
+    void onJoinMeetingDeclined(const std::string& meetingId) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onJoinMeetingDeclined, meetingId);
+    }
+
+    void onMeetingNotFound() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingNotFound);
+    }
+
+    void onJoinMeetingRequestTimeout() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onJoinMeetingRequestTimeout);
+    }
+
+    void onMeetingEndedByOwner() override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingEndedByOwner);
+    }
+
+    void onMeetingParticipantJoined(const std::string& nickname) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingParticipantJoined, nickname);
+    }
+
+    void onMeetingParticipantLeft(const std::string& nickname) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingParticipantLeft, nickname);
+    }
+
     void onConnectionDown() override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionDown);
@@ -199,6 +258,19 @@ PYBIND11_MODULE(callsClientPy, m) {
         }, py::arg("ec_value"))
         .def("onCallParticipantConnectionDown", &core::EventListener::onCallParticipantConnectionDown)
         .def("onCallParticipantConnectionRestored", &core::EventListener::onCallParticipantConnectionRestored)
+        .def("onMeetingCreated", &core::EventListener::onMeetingCreated, py::arg("meetingId"))
+        .def("onMeetingCreateRejected", [](core::EventListener& self, int ec_value) {
+            self.onMeetingCreateRejected(std::error_code(ec_value, core::constant::error_category()));
+        }, py::arg("ec_value"))
+        .def("onMeetingJoinRequestReceived", &core::EventListener::onMeetingJoinRequestReceived, py::arg("friendNickname"))
+        .def("onMeetingJoinRequestCancelled", &core::EventListener::onMeetingJoinRequestCancelled, py::arg("friendNickname"))
+        .def("onJoinMeetingAccepted", &core::EventListener::onJoinMeetingAccepted, py::arg("meetingId"), py::arg("participants"))
+        .def("onJoinMeetingDeclined", &core::EventListener::onJoinMeetingDeclined, py::arg("meetingId"))
+        .def("onMeetingNotFound", &core::EventListener::onMeetingNotFound)
+        .def("onJoinMeetingRequestTimeout", &core::EventListener::onJoinMeetingRequestTimeout)
+        .def("onMeetingEndedByOwner", &core::EventListener::onMeetingEndedByOwner)
+        .def("onMeetingParticipantJoined", &core::EventListener::onMeetingParticipantJoined, py::arg("nickname"))
+        .def("onMeetingParticipantLeft", &core::EventListener::onMeetingParticipantLeft, py::arg("nickname"))
         .def("onConnectionDown", &core::EventListener::onConnectionDown)
         .def("onConnectionEstablished", &core::EventListener::onConnectionEstablished)
         .def("onConnectionEstablishedAuthorizationNeeded", &core::EventListener::onConnectionEstablishedAuthorizationNeeded);

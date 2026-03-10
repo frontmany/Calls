@@ -6,6 +6,7 @@
 
 #include "logic/authorizationManager.h"
 #include "logic/callManager.h"
+#include "logic/meetingManager.h"
 #include "logic/coreNetworkErrorHandler.h"
 
 CoreEventListener::CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, MeetingManager* meetingManager, CoreNetworkErrorHandler* networkErrorHandler)

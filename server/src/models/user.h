@@ -17,9 +17,13 @@ namespace server
 
     class Call;
     class PendingCall;
+    class Meeting;
+    class PendingMeetingJoinRequest;
     class User;
     typedef std::shared_ptr<Call> CallPtr;
     typedef std::shared_ptr<PendingCall> PendingCallPtr;
+    typedef std::shared_ptr<Meeting> MeetingPtr;
+    typedef std::shared_ptr<PendingMeetingJoinRequest> PendingMeetingJoinRequestPtr;
     typedef std::shared_ptr<User> UserPtr;
 
     class User {
@@ -34,6 +38,8 @@ public:
 	bool isPendingCall() const;
 	bool hasOutgoingPendingCall() const;
 	bool hasIncomingPendingCall(const PendingCallPtr& pendingCall) const;
+    bool isInMeeting() const;
+    bool hasPendingMeetingJoinRequest() const;
 	bool isConnectionDown();
 	
 	const CryptoPP::RSA::PublicKey& getPublicKey() const;
@@ -45,6 +51,8 @@ public:
 	UserPtr getCallPartner() const;
 	UserPtr getOutgoingPendingCallPartner() const;
 	std::vector<PendingCallPtr> getIncomingPendingCalls() const;
+    MeetingPtr getMeeting() const;
+    PendingMeetingJoinRequestPtr getPendingMeetingJoinRequest() const;
 
 	void setConnectionDown(bool value);
 	void setEndpoint(asio::ip::udp::endpoint endpoint);
@@ -54,10 +62,14 @@ public:
 	void setCall(CallPtr call);
 	void setOutgoingPendingCall(PendingCallPtr pendingCall);
 	void addIncomingPendingCall(PendingCallPtr pendingCall);
+    void setMeeting(MeetingPtr meeting);
+    void setPendingMeetingJoinRequest(PendingMeetingJoinRequestPtr pendingMeetingJoinRequest);
 	void resetCall();
 	void resetOutgoingPendingCall();
 	void removeIncomingPendingCall(PendingCallPtr pendingCall);
 	void resetAllPendingCalls();
+    void resetMeeting();
+    void resetPendingMeetingJoinRequest();
 
 private:
 	mutable std::mutex m_mutex;
@@ -67,6 +79,8 @@ private:
 	std::weak_ptr<Call> m_call;
 	std::weak_ptr<PendingCall> m_outgoingPendingCall;
 	std::vector<std::weak_ptr<PendingCall>> m_incomingPendingCalls;
+    std::weak_ptr<Meeting> m_meeting;
+    std::weak_ptr<PendingMeetingJoinRequest> m_pendingMeetingJoinRequest;
 	CryptoPP::RSA::PublicKey m_publicKey;
 	asio::ip::udp::endpoint m_endpoint;
 	std::weak_ptr<network::TcpConnection> m_tcpConnection;

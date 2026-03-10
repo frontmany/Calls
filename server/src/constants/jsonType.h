@@ -22,4 +22,11 @@ namespace server::constant
     static constexpr const char* MEMORY_AVAILABLE = "memory_available";
     static constexpr const char* ACTIVE_USERS = "active_users";
     static constexpr const char* RECORDED_AT = "recorded_at";
+    static constexpr const char* MEETING_ID = "meeting_id";
+    static constexpr const char* MEETING_ID_HASH = "meeting_id_hash";
+    static constexpr const char* OWNER_NICKNAME_HASH = "owner_nickname_hash";
+    static constexpr const char* REQUESTER_NICKNAME_HASH = "requester_nickname_hash";
+    static constexpr const char* ENCRYPTED_MEETING_KEY = "encrypted_meeting_key";
+    static constexpr const char* ENCRYPTED_PARTICIPANTS = "encrypted_participants";
+    static constexpr const char* REASON = "reason";
 }

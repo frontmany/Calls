@@ -5,6 +5,8 @@
 #include "utilities/logger.h"
 #include "utilities/metrics.h"
 #include "models/pendingCall.h"
+#include "models/meeting.h"
+#include "models/pendingMeetingJoinRequest.h"
 #include "network/tcp/packet.h"
 
 #include <algorithm>
@@ -52,6 +54,14 @@ namespace server
         m_packetHandlers.emplace(PacketType::SCREEN_SHARING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::SCREEN_SHARING_END, conn); });
         m_packetHandlers.emplace(PacketType::CAMERA_SHARING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::CAMERA_SHARING_BEGIN, conn); });
         m_packetHandlers.emplace(PacketType::CAMERA_SHARING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::CAMERA_SHARING_END, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_CREATE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingCreate(json, conn); });
+        m_packetHandlers.emplace(PacketType::GET_MEETING_INFO, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleGetMeetingInfo(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_REQUEST, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingJoinRequest(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_CANCEL, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingJoinCancel(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_ACCEPT, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingJoinAccept(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_JOIN_DECLINE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingJoinDecline(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_LEAVE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingLeave(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEETING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingEnd(json, conn); });
     }
 
     void Server::run() {
@@ -77,13 +87,41 @@ namespace server
 
         m_userRepository.updateUserUdpEndpoint(senderHashHex, endpointFrom);
 
-        UserPtr partner = sender->getCallPartner();
-        if (!partner || !m_userRepository.containsUser(partner->getNicknameHash()))
-            return;
-        if (partner->isConnectionDown())
-            return;
+        if (sender->isInCall()) {
+            UserPtr partner = sender->getCallPartner();
+            if (!partner || !m_userRepository.containsUser(partner->getNicknameHash())) {
+                return;
+            }
+            if (partner->isConnectionDown()) {
+                return;
+            }
 
-        m_networkController.sendUdp(data, size, rawType, partner->getEndpoint());
+            m_networkController.sendUdp(data, size, rawType, partner->getEndpoint());
+            return;
+        }
+
+        if (!sender->isInMeeting()) {
+            return;
+        }
+
+        auto meeting = sender->getMeeting();
+        if (!meeting) {
+            return;
+        }
+
+        const std::string senderHash = sender->getNicknameHash();
+        for (const auto& participant : meeting->getParticipants()) {
+            if (!participant.user) {
+                continue;
+            }
+            if (participant.user->getNicknameHash() == senderHash) {
+                continue;
+            }
+            if (participant.user->isConnectionDown()) {
+                continue;
+            }
+            m_networkController.sendUdp(data, size, rawType, participant.user->getEndpoint());
+        }
     }
 
     void Server::handleReceiveTcp(network::tcp::OwnedPacket&& owned) {
@@ -515,12 +553,309 @@ namespace server
         }
     }
 
+    void Server::handleMeetingCreate(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn) {
+                return;
+            }
+            if (sender->isInCall() || sender->isInMeeting()) {
+                auto packet = PacketFactory::getMeetingCreateResultPacket(false);
+                sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_CREATE_RESULT), packet);
+                return;
+            }
+
+            const std::string meetingId = crypto::generateUID();
+            const std::string meetingIdHash = crypto::calculateHash(meetingId);
+            auto meeting = m_meetingManager.createMeeting(meetingId, meetingIdHash, sender);
+            if (!meeting) {
+                auto packet = PacketFactory::getMeetingCreateResultPacket(false);
+                sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_CREATE_RESULT), packet);
+                return;
+            }
+
+            sender->setMeeting(meeting);
+            meeting->addParticipant(sender, "");
+
+            auto packet = PacketFactory::getMeetingCreateResultPacket(true, meetingId);
+            sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_CREATE_RESULT), packet);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting create error: {}", e.what());
+        }
+    }
+
+    void Server::handleGetMeetingInfo(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string meetingIdHash = json[MEETING_ID_HASH].get<std::string>();
+            auto meeting = m_meetingManager.findByIdHash(meetingIdHash);
+            if (!meeting) {
+                auto packet = PacketFactory::getMeetingInfoResultPacket(false);
+                sendTcp(conn, static_cast<uint32_t>(PacketType::GET_MEETING_INFO_RESULT), packet);
+                return;
+            }
+
+            auto owner = meeting->getOwner();
+            if (!owner) {
+                auto packet = PacketFactory::getMeetingInfoResultPacket(false);
+                sendTcp(conn, static_cast<uint32_t>(PacketType::GET_MEETING_INFO_RESULT), packet);
+                return;
+            }
+
+            auto packet = PacketFactory::getMeetingInfoResultPacket(true, crypto::serializePublicKey(owner->getPublicKey()));
+            sendTcp(conn, static_cast<uint32_t>(PacketType::GET_MEETING_INFO_RESULT), packet);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Get meeting info error: {}", e.what());
+        }
+    }
+
+    void Server::handleMeetingJoinRequest(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            const std::string meetingIdHash = json[MEETING_ID_HASH].get<std::string>();
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            auto meeting = m_meetingManager.findByIdHash(meetingIdHash);
+            if (!sender || !meeting || sender->getTcpConnection() != conn) {
+                return;
+            }
+            if (sender->isInCall() || sender->isInMeeting() || sender->hasPendingMeetingJoinRequest()) {
+                auto packet = PacketFactory::getMeetingJoinRejectedPacket("invalid_state");
+                sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_JOIN_REJECTED), packet);
+                return;
+            }
+
+            auto owner = meeting->getOwner();
+            if (!owner) {
+                auto packet = PacketFactory::getMeetingJoinRejectedPacket("meeting_not_found");
+                sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_JOIN_REJECTED), packet);
+                return;
+            }
+            if (owner->isConnectionDown()) {
+                auto packet = PacketFactory::getMeetingJoinRejectedPacket("owner_unavailable");
+                sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_JOIN_REJECTED), packet);
+                return;
+            }
+            if (meeting->getPendingJoinRequest(senderNicknameHash)) {
+                return;
+            }
+
+            std::weak_ptr<User> weakSender = sender;
+            std::weak_ptr<Meeting> weakMeeting = meeting;
+            auto pending = std::make_shared<PendingMeetingJoinRequest>(sender, meeting, [this, weakSender, weakMeeting]() {
+                std::lock_guard<std::mutex> innerLock(m_mutex);
+                auto requester = weakSender.lock();
+                auto meetingFromWeak = weakMeeting.lock();
+                if (!requester || !meetingFromWeak) {
+                    return;
+                }
+
+                auto existingPending = requester->getPendingMeetingJoinRequest();
+                if (!existingPending) {
+                    return;
+                }
+
+                meetingFromWeak->removePendingJoinRequest(requester->getNicknameHash());
+                m_meetingManager.removePendingJoinRequest(existingPending);
+                requester->resetPendingMeetingJoinRequest();
+
+                auto rejectPacket = PacketFactory::getMeetingJoinRejectedPacket("request_timeout");
+                sendTcpToUserIfConnected(requester->getNicknameHash(), static_cast<uint32_t>(PacketType::MEETING_JOIN_REJECTED), rejectPacket);
+            });
+
+            sender->setPendingMeetingJoinRequest(pending);
+            meeting->addPendingJoinRequest(pending);
+            m_meetingManager.addPendingJoinRequest(pending);
+
+            sendTcpToUserIfConnected(owner->getNicknameHash(), static_cast<uint32_t>(PacketType::MEETING_JOIN_REQUEST), toBytes(json.dump()));
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting join request error: {}", e.what());
+        }
+    }
+
+    void Server::handleMeetingJoinCancel(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn || !sender->hasPendingMeetingJoinRequest()) {
+                return;
+            }
+
+            auto pending = sender->getPendingMeetingJoinRequest();
+            auto meeting = pending ? pending->getMeeting() : nullptr;
+            if (!meeting) {
+                sender->resetPendingMeetingJoinRequest();
+                return;
+            }
+
+            auto owner = meeting->getOwner();
+            if (owner && !owner->isConnectionDown()) {
+                sendTcpToUserIfConnected(owner->getNicknameHash(), static_cast<uint32_t>(PacketType::MEETING_JOIN_CANCEL), toBytes(json.dump()));
+            }
+
+            auto removed = meeting->removePendingJoinRequest(senderNicknameHash);
+            if (removed) {
+                removed->stop();
+                m_meetingManager.removePendingJoinRequest(removed);
+            }
+            sender->resetPendingMeetingJoinRequest();
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting join cancel error: {}", e.what());
+        }
+    }
+
+    void Server::handleMeetingJoinAccept(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string ownerNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            const std::string requesterNicknameHash = json[REQUESTER_NICKNAME_HASH].get<std::string>();
+            const std::string encryptedNickname = json[ENCRYPTED_NICKNAME].get<std::string>();
+
+            auto owner = m_userRepository.findUserByNickname(ownerNicknameHash);
+            auto requester = m_userRepository.findUserByNickname(requesterNicknameHash);
+            if (!owner || !requester || owner->getTcpConnection() != conn) {
+                return;
+            }
+
+            auto meeting = owner->getMeeting();
+            if (!meeting || !meeting->isOwner(ownerNicknameHash)) {
+                return;
+            }
+
+            auto pending = meeting->getPendingJoinRequest(requesterNicknameHash);
+            if (!pending || requester->getPendingMeetingJoinRequest() != pending) {
+                return;
+            }
+
+            const bool delivered = sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::MEETING_JOIN_ACCEPT), toBytes(json.dump()));
+            if (!delivered) {
+                return;
+            }
+
+            auto removed = meeting->removePendingJoinRequest(requesterNicknameHash);
+            if (removed) {
+                removed->stop();
+                m_meetingManager.removePendingJoinRequest(removed);
+            }
+            requester->resetPendingMeetingJoinRequest();
+            requester->setMeeting(meeting);
+            meeting->addParticipant(requester, encryptedNickname);
+
+            auto joinedPacket = PacketFactory::getMeetingParticipantJoinedPacket(encryptedNickname);
+            broadcastToMeeting(meeting, requesterNicknameHash, static_cast<uint32_t>(PacketType::MEETING_PARTICIPANT_JOINED), joinedPacket);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting join accept error: {}", e.what());
+        }
+    }
+
+    void Server::handleMeetingJoinDecline(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string ownerNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            const std::string requesterNicknameHash = json[REQUESTER_NICKNAME_HASH].get<std::string>();
+
+            auto owner = m_userRepository.findUserByNickname(ownerNicknameHash);
+            auto requester = m_userRepository.findUserByNickname(requesterNicknameHash);
+            if (!owner || !requester || owner->getTcpConnection() != conn) {
+                return;
+            }
+
+            auto meeting = owner->getMeeting();
+            if (!meeting || !meeting->isOwner(ownerNicknameHash)) {
+                return;
+            }
+
+            sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::MEETING_JOIN_DECLINE), toBytes(json.dump()));
+
+            auto removed = meeting->removePendingJoinRequest(requesterNicknameHash);
+            if (removed) {
+                removed->stop();
+                m_meetingManager.removePendingJoinRequest(removed);
+            }
+            requester->resetPendingMeetingJoinRequest();
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting join decline error: {}", e.what());
+        }
+    }
+
+    void Server::handleMeetingLeave(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn || !sender->isInMeeting()) {
+                return;
+            }
+
+            auto meeting = sender->getMeeting();
+            if (!meeting || meeting->isOwner(senderNicknameHash)) {
+                return;
+            }
+
+            std::string encryptedNickname;
+            if (json.contains(ENCRYPTED_NICKNAME) && json[ENCRYPTED_NICKNAME].is_string()) {
+                encryptedNickname = json[ENCRYPTED_NICKNAME].get<std::string>();
+            }
+            removeMeetingParticipant(meeting, sender, encryptedNickname);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting leave error: {}", e.what());
+        }
+    }
+
+    void Server::handleMeetingEnd(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string senderNicknameHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
+            if (!sender || sender->getTcpConnection() != conn || !sender->isInMeeting()) {
+                return;
+            }
+
+            auto meeting = sender->getMeeting();
+            if (!meeting || !meeting->isOwner(senderNicknameHash)) {
+                return;
+            }
+
+            endMeetingCleanup(meeting);
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Meeting end error: {}", e.what());
+        }
+    }
+
     void Server::redirectPacket(const nlohmann::json& json, PacketType type, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (!json.contains(SENDER_NICKNAME_HASH)) return;
         std::string senderHash = json[SENDER_NICKNAME_HASH].get<std::string>();
         auto sender = m_userRepository.findUserByNickname(senderHash);
-        if (!sender || !sender->isInCall()) return;
+        if (!sender || sender->getTcpConnection() != conn) return;
+
+        if (sender->isInMeeting()) {
+            auto meeting = sender->getMeeting();
+            if (!meeting) return;
+            broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(type), toBytes(json.dump()));
+            return;
+        }
+
+        if (!sender->isInCall()) return;
         auto partner = sender->getCallPartner();
         if (!partner) return;
         sendTcpToUser(partner->getNicknameHash(), static_cast<uint32_t>(type), json.dump());
@@ -568,6 +903,44 @@ namespace server
             // Call is terminated only when:
             // - user reconnects and peer ends call, or
             // - reconnection timeout triggers logout flow.
+        }
+
+        if (user->hasPendingMeetingJoinRequest()) {
+            auto pending = user->getPendingMeetingJoinRequest();
+            auto meeting = pending ? pending->getMeeting() : nullptr;
+            if (meeting) {
+                auto owner = meeting->getOwner();
+                if (owner && !owner->isConnectionDown()) {
+                    nlohmann::json cancelJson;
+                    cancelJson[UID] = crypto::generateUID();
+                    cancelJson[SENDER_NICKNAME_HASH] = user->getNicknameHash();
+                    sendTcpToUserIfConnected(owner->getNicknameHash(), static_cast<uint32_t>(PacketType::MEETING_JOIN_CANCEL), toBytes(cancelJson.dump()));
+                }
+                auto removed = meeting->removePendingJoinRequest(user->getNicknameHash());
+                if (removed) {
+                    removed->stop();
+                    m_meetingManager.removePendingJoinRequest(removed);
+                }
+            }
+            user->resetPendingMeetingJoinRequest();
+        }
+
+        if (user->isInMeeting()) {
+            auto meeting = user->getMeeting();
+            if (!meeting) {
+                return;
+            }
+
+            if (meeting->isOwner(user->getNicknameHash())) {
+                rejectAllPendingJoinRequests(meeting, "owner_unavailable");
+                return;
+            }
+
+            auto owner = meeting->getOwner();
+            if (owner && owner->isConnectionDown()) {
+                return;
+            }
+            // Keep regular participant in meeting while reconnect timer is active.
         }
     }
 
@@ -631,7 +1004,133 @@ namespace server
             removeIncomingPendingCall(user, pc);
         }
         user->resetAllPendingCalls();
+
+        if (user->hasPendingMeetingJoinRequest()) {
+            auto pending = user->getPendingMeetingJoinRequest();
+            auto meeting = pending ? pending->getMeeting() : nullptr;
+            if (meeting) {
+                auto removed = meeting->removePendingJoinRequest(user->getNicknameHash());
+                if (removed) {
+                    removed->stop();
+                    m_meetingManager.removePendingJoinRequest(removed);
+                }
+            }
+            user->resetPendingMeetingJoinRequest();
+        }
+
+        if (user->isInMeeting()) {
+            auto meeting = user->getMeeting();
+            if (meeting) {
+                if (meeting->isOwner(nicknameHash)) {
+                    endMeetingCleanup(meeting);
+                }
+                else {
+                    removeMeetingParticipant(meeting, user);
+                }
+            }
+        }
+
         m_userRepository.removeUser(nicknameHash);
+    }
+
+    void Server::broadcastToMeeting(const MeetingPtr& meeting, const std::string& excludeNicknameHash, uint32_t type, const std::vector<unsigned char>& body)
+    {
+        if (!meeting) {
+            return;
+        }
+
+        for (const auto& participant : meeting->getParticipants()) {
+            if (!participant.user) {
+                continue;
+            }
+            const std::string participantHash = participant.user->getNicknameHash();
+            if (!excludeNicknameHash.empty() && participantHash == excludeNicknameHash) {
+                continue;
+            }
+            sendTcpToUserIfConnected(participantHash, type, body);
+        }
+    }
+
+    void Server::rejectAllPendingJoinRequests(const MeetingPtr& meeting, const std::string& reason)
+    {
+        if (!meeting) {
+            return;
+        }
+
+        const auto rejectPacket = PacketFactory::getMeetingJoinRejectedPacket(reason);
+        auto pendingRequests = meeting->getPendingJoinRequests();
+        for (const auto& pending : pendingRequests) {
+            if (!pending) {
+                continue;
+            }
+            auto requester = pending->getRequester();
+            if (!requester) {
+                continue;
+            }
+
+            const std::string requesterHash = requester->getNicknameHash();
+            auto removed = meeting->removePendingJoinRequest(requesterHash);
+            if (removed) {
+                removed->stop();
+                m_meetingManager.removePendingJoinRequest(removed);
+            }
+            requester->resetPendingMeetingJoinRequest();
+            sendTcpToUserIfConnected(requesterHash, static_cast<uint32_t>(PacketType::MEETING_JOIN_REJECTED), rejectPacket);
+        }
+    }
+
+    void Server::removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user, const std::string& encryptedNicknameOverride)
+    {
+        if (!meeting || !user) {
+            return;
+        }
+
+        std::string encryptedNickname = encryptedNicknameOverride;
+        auto removedEncryptedNickname = meeting->removeParticipant(user->getNicknameHash());
+        if (!removedEncryptedNickname.has_value()) {
+            user->resetMeeting();
+            return;
+        }
+
+        if (encryptedNickname.empty()) {
+            encryptedNickname = removedEncryptedNickname.value();
+        }
+
+        user->resetMeeting();
+        auto leftPacket = PacketFactory::getMeetingParticipantLeftPacket(encryptedNickname);
+        broadcastToMeeting(meeting, user->getNicknameHash(), static_cast<uint32_t>(PacketType::MEETING_PARTICIPANT_LEFT), leftPacket);
+    }
+
+    void Server::endMeetingCleanup(const MeetingPtr& meeting)
+    {
+        if (!meeting) {
+            return;
+        }
+
+        rejectAllPendingJoinRequests(meeting, "meeting_ended");
+
+        auto endedPacket = PacketFactory::getMeetingEndedPacket();
+        auto participants = meeting->getParticipants();
+        std::string ownerHash;
+        auto owner = meeting->getOwner();
+        if (owner) {
+            ownerHash = owner->getNicknameHash();
+        }
+
+        for (const auto& participant : participants) {
+            if (!participant.user) {
+                continue;
+            }
+            const std::string participantHash = participant.user->getNicknameHash();
+            if (!ownerHash.empty() && participantHash == ownerHash) {
+                participant.user->resetMeeting();
+                continue;
+            }
+            sendTcpToUserIfConnected(participantHash, static_cast<uint32_t>(PacketType::MEETING_ENDED), endedPacket);
+            participant.user->resetMeeting();
+        }
+
+        m_meetingManager.endMeeting(meeting);
     }
 
     bool Server::resetOutgoingPendingCall(const UserPtr& user) {

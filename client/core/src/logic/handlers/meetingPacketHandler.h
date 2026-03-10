@@ -24,10 +24,11 @@ namespace core::logic
 
         void handleGetMeetingInfoResult(const nlohmann::json& jsonObject);
         void handleMeetingCreateResult(const nlohmann::json& jsonObject);
-        void handleMeetingJoinRequestForward(const nlohmann::json& jsonObject);
+        void handleMeetingJoinRequest(const nlohmann::json& jsonObject);
         void handleMeetingJoinRequestCancelled(const nlohmann::json& jsonObject);
         void handleMeetingJoinAccept(const nlohmann::json& jsonObject);
         void handleMeetingJoinDecline(const nlohmann::json& jsonObject);
+        void handleMeetingJoinRejected(const nlohmann::json& jsonObject);
         void handleMeetingEnded(const nlohmann::json& jsonObject);
         void handleMeetingParticipantJoined(const nlohmann::json& jsonObject);
         void handleMeetingParticipantLeft(const nlohmann::json& jsonObject);
