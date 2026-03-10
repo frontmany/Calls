@@ -864,29 +864,6 @@ void CallManager::onStartCameraSharingError()
     }
 }
 
-void CallManager::onMeetingCreated(const QString& meetingId)
-{
-    emit meetingCreated(meetingId);
-}
-
-void CallManager::onMeetingCreateRejected(std::error_code ec)
-{
-    (void)ec;
-    if (m_notificationController) {
-        m_notificationController->showErrorNotification("Meeting creation was rejected", 2000);
-    }
-}
-
-void CallManager::onJoinMeetingRequestTimeout()
-{
-    if (m_dialogsController) {
-        m_dialogsController->showMeetingsJoinRequestTimeout();
-    }
-    if (m_notificationController) {
-        m_notificationController->showErrorNotification("Join meeting request timed out", 2000);
-    }
-}
-
 void CallManager::onIncomingCallsDialogClosed(const QList<QString>& pendingCalls)
 {
     for (const QString& nickname : pendingCalls)

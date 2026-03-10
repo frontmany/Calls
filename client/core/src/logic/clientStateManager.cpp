@@ -219,6 +219,15 @@ namespace core::logic
         return m_activeMeeting.has_value();
     }
 
+    bool ClientStateManager::isMeetingOwner() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_activeMeeting.has_value()) return false;
+        auto ownerOpt = m_activeMeeting->getOwner();
+        if (!ownerOpt) return false;
+        return ownerOpt->getUser().getNickname() == m_myNickname;
+    }
+
     bool ClientStateManager::isOutgoingJoinMeetingRequest() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -241,10 +250,24 @@ namespace core::logic
         return std::nullopt;
     }
 
-    void ClientStateManager::setActiveMeeting(const std::string& meetingId)
+    void ClientStateManager::setActiveMeeting(const std::string& meetingId, const CryptoPP::SecByteBlock& meetingKey)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_activeMeeting.emplace(meetingId);
+        m_activeMeeting.emplace(meetingId, meetingKey);
+    }
+
+    void ClientStateManager::addMeetingParticipant(const core::User& user, bool isOwner)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_activeMeeting.has_value()) return;
+        m_activeMeeting->addParticipant(core::MeetingParticipant(isOwner, user));
+    }
+
+    void ClientStateManager::removeMeetingParticipant(const std::string& nickname)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_activeMeeting.has_value()) return;
+        m_activeMeeting->removeParticipant(nickname);
     }
 
     void ClientStateManager::resetActiveMeeting()
@@ -268,10 +291,10 @@ namespace core::logic
         return m_incomingMeetingJoinRequests;
     }
 
-    void ClientStateManager::addIncomingMeetingJoinRequest(const std::string& nickname)
+    void ClientStateManager::addIncomingMeetingJoinRequest(const std::string& nickname, const CryptoPP::RSA::PublicKey& publicKey)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_incomingMeetingJoinRequests.emplace(nickname, core::IncomingJoinMeetingRequest(nickname));
+        m_incomingMeetingJoinRequests.emplace(nickname, core::IncomingJoinMeetingRequest(nickname, publicKey));
     }
 
     void ClientStateManager::removeIncomingMeetingJoinRequest(const std::string& nickname)

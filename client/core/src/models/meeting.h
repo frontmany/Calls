@@ -12,7 +12,7 @@ namespace core
 {
     class Meeting {
     public:
-        explicit Meeting(std::string meetingId);
+        Meeting(std::string meetingId, CryptoPP::SecByteBlock meetingKey);
 
         const std::string& getMeetingId() const;
         const CryptoPP::SecByteBlock& getMeetingKey() const;

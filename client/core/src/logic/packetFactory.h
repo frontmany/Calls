@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "models/meetingParticipant.h"
 #include "utilities/crypto.h"
 
 namespace core::logic 
@@ -57,7 +58,9 @@ namespace core::logic
         static std::vector<unsigned char> getMeetingJoinAcceptPacket(
             const std::string& myNickname,
             const std::string& friendNickname,
-            const CryptoPP::SecByteBlock& meetingKey);
+            const CryptoPP::RSA::PublicKey& requesterPublicKey,
+            const CryptoPP::SecByteBlock& meetingKey,
+            const std::vector<core::MeetingParticipant>& participants);
         static std::vector<unsigned char> getMeetingJoinDeclinePacket(const std::string& myNickname, const std::string& friendNickname);
         static std::vector<unsigned char> getMeetingLeavePacket(const std::string& myNickname, const CryptoPP::SecByteBlock& meetingKey);
         static std::vector<unsigned char> getMeetingEndPacket(const std::string& myNickname);

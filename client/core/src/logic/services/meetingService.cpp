@@ -2,19 +2,8 @@
 #include "constants/errorCode.h"
 #include "constants/packetType.h"
 #include "logic/packetFactory.h"
-#include "utilities/crypto.h"
 
 using namespace core::constant;
-using namespace core::utilities::crypto;
-
-namespace
-{
-    CryptoPP::SecByteBlock deriveMeetingKey(const std::string& meetingId) {
-        auto binOpt = hashToBinary(calculateHash(meetingId));
-        if (!binOpt) return {};
-        return CryptoPP::SecByteBlock(binOpt->data(), binOpt->size());
-    }
-}
 
 namespace core::logic
 {
@@ -90,10 +79,17 @@ namespace core::logic
         auto owner = meetingOpt->get().getOwner();
         if (!owner.has_value() || owner->getUser().getNickname() != m_stateManager->getMyNickname()) return make_error_code(ErrorCode::not_meeting_owner);
         
-        if (!m_stateManager->getIncomingMeetingJoinRequests().contains(friendNickname)) return make_error_code(ErrorCode::no_meeting_join_request);
+        const auto& requests = m_stateManager->getIncomingMeetingJoinRequests();
+        auto requestIt = requests.find(friendNickname);
+        if (requestIt == requests.end()) return make_error_code(ErrorCode::no_meeting_join_request);
 
-        auto meetingKey = deriveMeetingKey(meetingOpt->get().getMeetingId());
-        auto packet = PacketFactory::getMeetingJoinAcceptPacket(m_stateManager->getMyNickname(), friendNickname, meetingKey);
+        auto meetingKey = meetingOpt->get().getMeetingKey();
+        auto packet = PacketFactory::getMeetingJoinAcceptPacket(
+            m_stateManager->getMyNickname(),
+            friendNickname,
+            requestIt->second.getPublicKey(),
+            meetingKey,
+            meetingOpt->get().getParticipants());
         auto ec = m_sendPacket(packet, PacketType::MEETING_JOIN_ACCEPT);
         if (ec) return ec;
 
@@ -141,7 +137,7 @@ namespace core::logic
         auto meetingOptLeave = m_stateManager->getActiveMeeting();
         if (!meetingOptLeave) return make_error_code(ErrorCode::not_in_meeting);
 
-        auto meetingKey = deriveMeetingKey(meetingOptLeave->get().getMeetingId());
+        auto meetingKey = meetingOptLeave->get().getMeetingKey();
         auto packet = PacketFactory::getMeetingLeavePacket(m_stateManager->getMyNickname(), meetingKey);
         auto ec = m_sendPacket(packet, PacketType::MEETING_LEAVE);
         if (ec) return ec;

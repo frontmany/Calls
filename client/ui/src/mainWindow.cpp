@@ -29,6 +29,7 @@
 #include "logic/coreNetworkErrorHandler.h"
 #include "logic/updaterNetworkErrorHandler.h"
 #include "logic/callManager.h"
+#include "logic/meetingManager.h"
 #include "audio/audioDevicesWatcher.h"
 
 #include "events/coreEventListener.h"
@@ -67,6 +68,7 @@ void MainWindow::init() {
     initializeUpdateManager();
     initializeAuthorizationManager();
     initializeCallManager();
+    initializeMeetingManager();
     initializeCoreNetworkErrorHandler();
     initializeUpdaterNetworkErrorHandler();
 
@@ -122,7 +124,7 @@ void MainWindow::customEvent(QEvent* event) {
             m_configManager->getServerHost().toStdString(),
             m_configManager->getMainServerTcpPort().toStdString(),
             m_configManager->getMainServerUdpPort().toStdString(),
-            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
+            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_meetingManager, m_coreNetworkErrorHandler)
         );
 
         if (coreStarted) {
@@ -268,6 +270,19 @@ void MainWindow::initializeCallManager() {
     }
 }
 
+void MainWindow::initializeMeetingManager() {
+    m_meetingManager = new MeetingManager(m_coreClient, m_navigationController, m_dialogsController, this);
+    if (m_meetingManager && m_meetingWidget) {
+        m_meetingManager->setMeetingWidget(m_meetingWidget);
+    }
+    if (m_meetingManager && m_notificationController) {
+        m_meetingManager->setNotificationController(m_notificationController);
+    }
+    if (m_meetingManager && m_configManager) {
+        m_meetingManager->setConfigManager(m_configManager);
+    }
+}
+
 void MainWindow::initializeCoreNetworkErrorHandler() {
     m_coreNetworkErrorHandler = new CoreNetworkErrorHandler(m_coreClient, m_navigationController, m_configManager, m_audioManager, this);
     if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
@@ -366,6 +381,16 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_mainMenuWidget, &MainMenuWidget::meetingButtonClicked, m_dialogsController, &DialogsController::showMeetingsManagementDialog);
     }
 
+    if (m_dialogsController && m_meetingManager) {
+        connect(m_dialogsController, &DialogsController::meetingJoinRequested, m_meetingManager, &MeetingManager::onJoinMeetingRequested);
+        connect(m_dialogsController, &DialogsController::meetingJoinCancelled, m_meetingManager, &MeetingManager::onCancelMeetingJoinRequested);
+    }
+
+    if (m_meetingWidget && m_meetingManager) {
+        connect(m_meetingWidget, &MeetingWidget::joinRequestAccepted, m_meetingManager, &MeetingManager::onAcceptJoinMeetingRequestClicked);
+        connect(m_meetingWidget, &MeetingWidget::joinRequestDeclined, m_meetingManager, &MeetingManager::onDeclineJoinMeetingRequestClicked);
+    }
+
     // Create meeting: only call core; switch to meeting widget when core reports success (meetingCreated)
     if (m_dialogsController && m_coreClient) {
         connect(m_dialogsController, &DialogsController::meetingCreateRequested, this, [this]() {
@@ -377,8 +402,8 @@ void MainWindow::connectWidgetsToManagers() {
             }
         });
     }
-    if (m_callManager && m_dialogsController && m_navigationController && m_meetingWidget) {
-        connect(m_callManager, &CallManager::meetingCreated, this, [this](const QString& meetingId) {
+    if (m_meetingManager && m_dialogsController && m_navigationController && m_meetingWidget) {
+        connect(m_meetingManager, &MeetingManager::meetingCreated, this, [this](const QString& meetingId) {
             m_dialogsController->hideMeetingsManagementDialog();
             if (m_meetingWidget) {
                 m_meetingWidget->clearParticipants();
@@ -602,8 +627,19 @@ void MainWindow::onEndCallFullscreenExitRequested()
 
 void MainWindow::onEndMeetingRequested()
 {
+    if (!m_coreClient) return;
     if (m_meetingWidget && m_meetingWidget->isFullScreen()) {
         m_meetingWidget->exitFullscreen();
+    }
+    std::error_code ec;
+    if (m_coreClient->isMeetingOwner()) {
+        ec = m_coreClient->endMeeting();
+    } else {
+        ec = m_coreClient->leaveMeeting();
+    }
+    if (ec && m_notificationController) {
+        m_notificationController->showErrorNotification("Failed to end meeting", 2000);
+        return;
     }
     if (m_navigationController) {
         m_navigationController->switchToMainMenuWidget();
@@ -629,7 +665,7 @@ void MainWindow::onCoreRestartRequested()
         m_configManager->getServerHost().toStdString(),
         m_configManager->getMainServerTcpPort().toStdString(),
         m_configManager->getMainServerUdpPort().toStdString(),
-        std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_coreNetworkErrorHandler)
+        std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_meetingManager, m_coreNetworkErrorHandler)
     );
 
     if (coreStarted) {

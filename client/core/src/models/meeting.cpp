@@ -3,8 +3,9 @@
 
 namespace core
 {
-    Meeting::Meeting(std::string meetingId)
+    Meeting::Meeting(std::string meetingId, CryptoPP::SecByteBlock meetingKey)
         : m_meetingId(std::move(meetingId))
+        , m_meetingKey(std::move(meetingKey))
     {
     }
 

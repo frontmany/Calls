@@ -24,6 +24,7 @@ class UpdateManager;
 class NavigationController;
 class AuthorizationManager;
 class CallManager;
+class MeetingManager;
 class DialogsController;
 class NotificationController;
 class CoreNetworkErrorHandler;
@@ -62,6 +63,7 @@ private:
     void initializeNavigationController();
     void initializeAuthorizationManager();
     void initializeCallManager();
+    void initializeMeetingManager();
     void initializeCoreNetworkErrorHandler();
     void initializeUpdaterNetworkErrorHandler();
     void initializeAuthorizationWidget();
@@ -98,6 +100,7 @@ private:
     NavigationController* m_navigationController = nullptr;
     AuthorizationManager* m_authorizationManager = nullptr;
     CallManager* m_callManager = nullptr;
+    MeetingManager* m_meetingManager = nullptr;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler = nullptr;
     UpdaterNetworkErrorHandler* m_updaterNetworkErrorHandler = nullptr;
 };

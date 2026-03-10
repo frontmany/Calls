@@ -65,6 +65,7 @@ namespace core
         bool isActiveCall() const;
         bool isCameraAvailable() const;
         bool isInMeeting() const;
+        bool isMeetingOwner() const;
         bool isOutgoingJoinMeeting() const;
 
         int getInputVolume() const;

@@ -90,12 +90,17 @@ namespace core::logic
 
         // ——— Active meeting ———
         bool isActiveMeeting() const;
+        bool isInMeeting() const { return isActiveMeeting(); }
+        bool isMeetingOwner() const;
         std::optional<std::reference_wrapper<const core::Meeting>> getActiveMeeting() const;
-        void setActiveMeeting(const std::string& meetingId);
+        void setActiveMeeting(const std::string& meetingId, const CryptoPP::SecByteBlock& meetingKey);
+        void addMeetingParticipant(const core::User& user, bool isOwner);
+        void removeMeetingParticipant(const std::string& nickname);
         void resetActiveMeeting();
 
         // ——— Outgoing join meeting request ———
         bool isOutgoingJoinMeetingRequest() const;
+        bool isOutgoingJoinMeeting() const { return isOutgoingJoinMeetingRequest(); }
         std::optional<std::reference_wrapper<const core::OutgoingJoinMeetingRequest>> getOutgoingJoinMeetingRequest() const;
         template <typename Rep, typename Period>
         void setOutgoingJoinMeetingRequest(const std::string& meetingId,
@@ -112,7 +117,7 @@ namespace core::logic
 
         // ——— Incoming meeting join requests ———
         const std::unordered_map<std::string, core::IncomingJoinMeetingRequest>& getIncomingMeetingJoinRequests() const;
-        void addIncomingMeetingJoinRequest(const std::string& nickname);
+        void addIncomingMeetingJoinRequest(const std::string& nickname, const CryptoPP::RSA::PublicKey& publicKey);
         void removeIncomingMeetingJoinRequest(const std::string& nickname);
         void resetIncomingMeetingJoinRequests();
 

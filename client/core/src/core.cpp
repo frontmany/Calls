@@ -317,6 +317,10 @@ namespace core
         return m_stateManager ? m_stateManager->isInMeeting() : false;
     }
 
+    bool Core::isMeetingOwner() const {
+        return m_stateManager ? m_stateManager->isMeetingOwner() : false;
+    }
+
     bool Core::isOutgoingJoinMeeting() const {
         return m_stateManager ? m_stateManager->isOutgoingJoinMeeting() : false;
     }

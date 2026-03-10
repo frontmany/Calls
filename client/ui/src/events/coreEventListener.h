@@ -7,11 +7,12 @@
 
 class AuthorizationManager;
 class CallManager;
+class MeetingManager;
 class CoreNetworkErrorHandler;
 
 class CoreEventListener : public core::EventListener {
 public:
-    CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, CoreNetworkErrorHandler* networkErrorHandler);
+    CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, MeetingManager* meetingManager, CoreNetworkErrorHandler* networkErrorHandler);
 
     void onAuthorizationResult(std::error_code ec) override;
     void onStartOutgoingCallResult(std::error_code ec) override;
@@ -44,7 +45,7 @@ public:
     void onMeetingCreateRejected(std::error_code ec) override;
     void onMeetingJoinRequestReceived(const std::string& friendNickname) override;
     void onMeetingJoinRequestCancelled(const std::string& friendNickname) override;
-    void onJoinMeetingAccepted(const std::string& meetingId) override;
+    void onJoinMeetingAccepted(const std::string& meetingId, const std::vector<std::string>& participants) override;
     void onJoinMeetingDeclined(const std::string& meetingId) override;
     void onMeetingNotFound() override;
     void onJoinMeetingRequestTimeout() override;
@@ -59,5 +60,6 @@ public:
 private:
     AuthorizationManager* m_authorizationManager;
     CallManager* m_callManager;
+    MeetingManager* m_meetingManager;
     CoreNetworkErrorHandler* m_coreNetworkErrorHandler;
 };

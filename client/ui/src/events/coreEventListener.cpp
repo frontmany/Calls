@@ -1,15 +1,17 @@
 #include "coreEventListener.h"
 #include <QApplication>
 #include <QByteArray>
+#include <QStringList>
 #include <vector>
 
 #include "logic/authorizationManager.h"
 #include "logic/callManager.h"
 #include "logic/coreNetworkErrorHandler.h"
 
-CoreEventListener::CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, CoreNetworkErrorHandler* networkErrorHandler)
+CoreEventListener::CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, MeetingManager* meetingManager, CoreNetworkErrorHandler* networkErrorHandler)
     : m_authorizationManager(authorizationManager)
     , m_callManager(callManager)
+    , m_meetingManager(meetingManager)
     , m_coreNetworkErrorHandler(networkErrorHandler)
 {
 }
@@ -197,31 +199,90 @@ void CoreEventListener::onCallEndedByRemote(std::error_code ec)
 
 void CoreEventListener::onMeetingCreated(const std::string& meetingId)
 {
-    if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onMeetingCreated",
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingCreated",
             Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(meetingId)));
     }
 }
 
 void CoreEventListener::onMeetingCreateRejected(std::error_code ec)
 {
-    if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onMeetingCreateRejected",
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingCreateRejected",
             Qt::QueuedConnection, Q_ARG(std::error_code, ec));
     }
 }
-void CoreEventListener::onMeetingJoinRequestReceived(const std::string& friendNickname) { (void)friendNickname; }
-void CoreEventListener::onMeetingJoinRequestCancelled(const std::string& friendNickname) { (void)friendNickname; }
-void CoreEventListener::onJoinMeetingAccepted(const std::string& meetingId) { (void)meetingId; }
-void CoreEventListener::onJoinMeetingDeclined(const std::string& meetingId) { (void)meetingId; }
-void CoreEventListener::onMeetingNotFound() {}
+void CoreEventListener::onMeetingJoinRequestReceived(const std::string& friendNickname)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingJoinRequestReceived",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(friendNickname)));
+    }
+}
+
+void CoreEventListener::onMeetingJoinRequestCancelled(const std::string& friendNickname)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingJoinRequestCancelled",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(friendNickname)));
+    }
+}
+
+void CoreEventListener::onJoinMeetingAccepted(const std::string& meetingId, const std::vector<std::string>& participants)
+{
+    if (m_meetingManager) {
+        QStringList list;
+        for (const auto& s : participants)
+            list << QString::fromStdString(s);
+        QMetaObject::invokeMethod(m_meetingManager, "onJoinMeetingAccepted",
+            Qt::QueuedConnection,
+            Q_ARG(QString, QString::fromStdString(meetingId)),
+            Q_ARG(QStringList, list));
+    }
+}
+
+void CoreEventListener::onJoinMeetingDeclined(const std::string& meetingId)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onJoinMeetingDeclined",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(meetingId)));
+    }
+}
+
+void CoreEventListener::onMeetingNotFound()
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingNotFound", Qt::QueuedConnection);
+    }
+}
+
 void CoreEventListener::onJoinMeetingRequestTimeout()
 {
-    if (m_callManager) {
-        QMetaObject::invokeMethod(m_callManager, "onJoinMeetingRequestTimeout",
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onJoinMeetingRequestTimeout",
             Qt::QueuedConnection);
     }
 }
-void CoreEventListener::onMeetingEndedByOwner() {}
-void CoreEventListener::onMeetingParticipantJoined(const std::string& nickname) { (void)nickname; }
-void CoreEventListener::onMeetingParticipantLeft(const std::string& nickname) { (void)nickname; }
+
+void CoreEventListener::onMeetingEndedByOwner()
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingEndedByOwner", Qt::QueuedConnection);
+    }
+}
+
+void CoreEventListener::onMeetingParticipantJoined(const std::string& nickname)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantJoined",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(nickname)));
+    }
+}
+
+void CoreEventListener::onMeetingParticipantLeft(const std::string& nickname)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantLeft",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(nickname)));
+    }
+}

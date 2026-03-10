@@ -28,6 +28,9 @@ namespace core::constant
     static constexpr const char* MEETING_ID_HASH = "meeting_id_hash";
     static constexpr const char* OWNER_NICKNAME_HASH = "owner_nickname_hash";
     static constexpr const char* REQUESTER_NICKNAME_HASH = "requester_nickname_hash";
+    static constexpr const char* ENCRYPTED_MEETING_KEY = "encrypted_meeting_key";
+    static constexpr const char* ENCRYPTED_PARTICIPANTS = "encrypted_participants";
     static constexpr const char* FRIEND_NICKNAME = "friend_nickname";
     static constexpr const char* NICKNAME = "nickname";
+    static constexpr const char* IS_OWNER = "is_owner";
 }

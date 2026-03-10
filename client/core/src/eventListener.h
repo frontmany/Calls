@@ -42,7 +42,7 @@ namespace core
         virtual void onMeetingCreateRejected(std::error_code ec) = 0;
         virtual void onMeetingJoinRequestReceived(const std::string& friendNickname) = 0;
         virtual void onMeetingJoinRequestCancelled(const std::string& friendNickname) = 0;
-        virtual void onJoinMeetingAccepted(const std::string& meetingId) = 0;
+        virtual void onJoinMeetingAccepted(const std::string& meetingId, const std::vector<std::string>& participants) = 0;
         virtual void onJoinMeetingDeclined(const std::string& meetingId) = 0;
         virtual void onMeetingNotFound() = 0;
         virtual void onJoinMeetingRequestTimeout() = 0;

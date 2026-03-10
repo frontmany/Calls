@@ -192,12 +192,24 @@ namespace core::logic
     std::vector<unsigned char> PacketFactory::getMeetingJoinAcceptPacket(
         const std::string& myNickname,
         const std::string& friendNickname,
-        const CryptoPP::SecByteBlock& meetingKey)
+        const CryptoPP::RSA::PublicKey& requesterPublicKey,
+        const CryptoPP::SecByteBlock& meetingKey,
+        const std::vector<core::MeetingParticipant>& participants)
     {
         std::string uid = generateUID();
         nlohmann::json jsonObject = createBasePacket(uid, myNickname);
         jsonObject[REQUESTER_NICKNAME_HASH] = calculateHash(friendNickname);
-        jsonObject[ENCRYPTED_NICKNAME] = AESEncrypt(meetingKey, friendNickname);
+        jsonObject[ENCRYPTED_MEETING_KEY] = RSAEncryptAESKey(requesterPublicKey, meetingKey);
+        nlohmann::json participantsJson = nlohmann::json::array();
+        for (const auto& p : participants) {
+            const auto& user = p.getUser();
+            nlohmann::json obj;
+            obj[NICKNAME] = user.getNickname();
+            obj[PUBLIC_KEY] = serializePublicKey(static_cast<const CryptoPP::RSA::PublicKey&>(user.getPublicKey()));
+            obj[IS_OWNER] = p.isOwner();
+            participantsJson.push_back(std::move(obj));
+        }
+        jsonObject[ENCRYPTED_PARTICIPANTS] = AESEncrypt(meetingKey, participantsJson.dump());
         return toBytes(jsonObject.dump());
     }
 
