@@ -70,9 +70,8 @@ private:
     void paintEvent(QPaintEvent* event) override;
     bool validateNickname(const QString& nickname);
 
-    QWidget* m_container;
     QVBoxLayout* m_mainLayout;
-    QVBoxLayout* m_glassLayout;
+    QVBoxLayout* m_formLayout;
     QLabel* m_titleLabel;
     QLabel* m_subtitleLabel;
     QLabel* m_errorLabel;

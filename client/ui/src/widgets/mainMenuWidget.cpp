@@ -1,7 +1,9 @@
 #include "mainMenuWidget.h"
+#include "widgets/containerHighlightOverlay.h"
 
 #include <QResizeEvent>
 #include <QPainterPath>
+#include <QGraphicsBlurEffect>
 #include <QRegularExpressionValidator>
 #include <QShortcut>
 
@@ -38,7 +40,7 @@ const QColor StyleMainMenuWidget::m_scrollBarPressedColor = COLOR_SCROLLBAR_BACK
 
 QString StyleMainMenuWidget::containerStyle() {
     return QString("QWidget {"
-        "   background-color: transparent;"
+        "   background-color: rgba(255, 255, 255, 45);"
         "   border-radius: %1px;"
         "   padding: 0px;"
         "}")
@@ -408,7 +410,7 @@ void MainMenuWidget::setupUI() {
     m_mainContainer = new QWidget(this);
     m_mainContainer->setFixedWidth(scale(460));
     m_mainContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-    m_mainContainer->setStyleSheet(StyleMainMenuWidget::containerStyle());
+    m_mainContainer->setAttribute(Qt::WA_TranslucentBackground);
 
     m_containerLayout = new QVBoxLayout(m_mainContainer);
     m_containerLayout->setSpacing(scale(20));
@@ -562,6 +564,12 @@ void MainMenuWidget::setupUI() {
     m_containerLayout->addWidget(m_settingsPanel);
     m_containerLayout->addSpacing(scale(10));
 
+    m_containerHighlightOverlay = new ContainerHighlightOverlay(m_mainContainer, scale(20));
+    m_containerHighlightOverlay->setGeometry(m_mainContainer->rect());
+    m_containerHighlightOverlay->raise();
+
+    m_mainContainer->installEventFilter(this);
+
     // Center the main content vertically в оставшемся пространстве
     // с лёгким смещением вверх (чуть больше места снизу).
     m_mainLayout->addStretch(2);
@@ -620,20 +628,39 @@ void MainMenuWidget::setFocusToLineEdit() {
     m_friendNicknameEdit->setFocus();
 }
 
+void MainMenuWidget::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    if (!m_mainContainer) return;
+    if (m_containerHighlightOverlay)
+        m_containerHighlightOverlay->setGeometry(m_mainContainer->rect());
+}
+
+bool MainMenuWidget::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == m_mainContainer && event->type() == QEvent::Resize) {
+        if (m_containerHighlightOverlay)
+            m_containerHighlightOverlay->setGeometry(m_mainContainer->rect());
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
 void MainMenuWidget::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Draw background gradient
     QLinearGradient gradient(0, 90, width(), height());
     gradient.setColorAt(0.0, COLOR_GRADIENT_START);
     gradient.setColorAt(0.5, COLOR_GRADIENT_MIDDLE);
     gradient.setColorAt(1.0, COLOR_GRADIENT_END);
     painter.fillRect(rect(), gradient);
 
-    // Draw background texture over the whole window if loaded
     if (!m_backgroundTexture.isNull()) {
         painter.drawPixmap(rect(), m_backgroundTexture);
+    }
+
+    if (m_mainContainer) {
+        QPainterPath path;
+        path.addRoundedRect(QRectF(m_mainContainer->geometry()), scale(20), scale(20));
+        painter.fillPath(path, QColor(255, 255, 255, 45));
     }
 
     QWidget::paintEvent(event);

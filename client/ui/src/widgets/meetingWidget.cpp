@@ -782,7 +782,7 @@ void MeetingWidget::setupUI() {
     m_callNameLayout->setSpacing(scale(12));
     m_callNameLayout->setAlignment(Qt::AlignVCenter);
 
-    m_callNameLabel = new QLabel("Meeting id:   ", m_callNamePanel);
+    m_callNameLabel = new QLabel(m_callNamePanel);
     QFont callNameFont("Outfit", scale(12), QFont::Light);
     m_callNameLabel->setFont(callNameFont);
     m_callNameLabel->setStyleSheet(StyleMeetingWidget::callNameLabelStyle());
@@ -791,7 +791,7 @@ void MeetingWidget::setupUI() {
     m_callNameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_callNameLabel->setMouseTracking(true);
 
-    m_copyCallNameButton = new ToggleButtonIcon(m_callNamePanel,
+    m_copyCallNameButton = new ToggleButtonIcon(m_callNamePanel, 
         QIcon(":/resources/copy.png"),
         QIcon(":/resources/copyHover.png"),
         QIcon(":/resources/copied.png"),
@@ -944,7 +944,7 @@ void MeetingWidget::setCallName(const QString& callName) {
             displayName = displayName.left(5) + "...";
         }
 
-        m_callNameLabel->setText(QString("Meeting id:   %1").arg(displayName));
+        m_callNameLabel->setText(QString("%1").arg(displayName));
         m_callNameLabel->setToolTip(m_callName);
     }
 

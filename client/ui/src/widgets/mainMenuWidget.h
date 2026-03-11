@@ -12,9 +12,12 @@
 #include <QFrame>
 #include <QPropertyAnimation>
 #include <QGraphicsBlurEffect>
+#include <QResizeEvent>
+#include <QEvent>
 #include <QSpacerItem>
 #include "settingsPanelWidget.h"
 #include "widgets/components/button.h"
+#include "widgets/containerHighlightOverlay.h"
 
 struct StyleMainMenuWidget {
     static const QColor m_primaryColor;
@@ -110,11 +113,14 @@ private:
     void setupUI();
     void setupAnimations();
     void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void updateOutgoingCallState(bool outgoingCall);
 
     // Main layouts
     QVBoxLayout* m_mainLayout;
     QWidget* m_mainContainer;
+    ContainerHighlightOverlay* m_containerHighlightOverlay;
     QVBoxLayout* m_containerLayout;
     QPixmap m_backgroundTexture;
 

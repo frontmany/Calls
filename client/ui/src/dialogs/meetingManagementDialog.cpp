@@ -45,16 +45,16 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     // ========== Initial state ==========
     m_initialWidget = new QWidget();
     QVBoxLayout* initialLayout = new QVBoxLayout(m_initialWidget);
-    initialLayout->setContentsMargins(scale(32), scale(20), scale(32), scale(20));
+    initialLayout->setContentsMargins(scale(36), scale(24), scale(36), scale(28));
     initialLayout->setSpacing(0);
 
-    QFont titleFont("Outfit", scale(18), QFont::Bold);
+    QFont titleFont("Outfit", scale(22), QFont::Bold);
     QFont sectionFont("Outfit", scale(12), QFont::Normal);
 
     QWidget* headerWidget = new QWidget();
     QVBoxLayout* headerBlockLayout = new QVBoxLayout(headerWidget);
     headerBlockLayout->setContentsMargins(0, 0, 0, 0);
-    headerBlockLayout->setSpacing(scale(2));
+    headerBlockLayout->setSpacing(scale(4));
 
     QHBoxLayout* headerLayout = new QHBoxLayout();
     headerLayout->setContentsMargins(0, 0, 0, 0);
@@ -62,13 +62,13 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     QLabel* titleLabel = new QLabel("Meetings");
     titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     titleLabel->setStyleSheet(QString(
-        "color: rgb(60, 60, 60);"
+        "color: rgb(35, 35, 35);"
         "font-size: %1px;"
         "font-family: 'Outfit';"
         "font-weight: bold;"
         "padding: 0px;"
         "margin: 0px;")
-        .arg(scale(18)));
+        .arg(scale(22)));
     titleLabel->setFont(titleFont);
 
     ButtonIcon* closeButton = new ButtonIcon(headerWidget, scale(28), scale(28));
@@ -95,7 +95,7 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     // START NEW MEETING section
     QLabel* createSectionTitle = new QLabel("START NEW MEETING");
     createSectionTitle->setStyleSheet(QString(
-        "color: rgb(80, 80, 80);"
+        "color: rgb(130, 130, 130);"
         "font-size: %1px;"
         "font-family: 'Outfit';"
         "font-weight: bold;")
@@ -114,6 +114,7 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     m_createMeetingButton = new QPushButton("Create Meeting");
     m_createMeetingButton->setCursor(Qt::PointingHandCursor);
     m_createMeetingButton->setFixedHeight(scale(44));
+    m_createMeetingButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_createMeetingButton->setStyleSheet(QString(
         "QPushButton {"
         "   background-color: %1;"
@@ -132,20 +133,18 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         .arg(scale(12))
         .arg(scale(24)));
 
-    QHBoxLayout* createRow = new QHBoxLayout();
-    createRow->setSpacing(scale(18));
-    createRow->addWidget(createDescription, 1);
-    createRow->addWidget(m_createMeetingButton, 0, Qt::AlignRight);
-
     QVBoxLayout* createSection = new QVBoxLayout();
-    createSection->setSpacing(scale(8));
+    createSection->setSpacing(scale(12));
     createSection->addWidget(createSectionTitle);
-    createSection->addLayout(createRow);
+    createSection->addSpacing(scale(6));
+    createSection->addWidget(createDescription);
+    createSection->addSpacing(scale(10));
+    createSection->addWidget(m_createMeetingButton);
 
     // JOIN EXISTING MEETING section
     QLabel* joinSectionTitle = new QLabel("JOIN EXISTING MEETING");
     joinSectionTitle->setStyleSheet(QString(
-        "color: rgb(80, 80, 80);"
+        "color: rgb(130, 130, 130);"
         "font-size: %1px;"
         "font-family: 'Outfit';"
         "font-weight: bold;")
@@ -156,11 +155,12 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     m_meetingIdEdit->setPlaceholderText("Paste meeting ID (e.g., abc-defg-hij)");
     m_meetingIdEdit->setFixedHeight(scale(50));
     m_meetingIdEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
-    m_meetingIdEdit->setMaxLength(32);
+    m_meetingIdEdit->setMaxLength(64);
 
     m_joinMeetingButton = new QPushButton("Join Meeting");
     m_joinMeetingButton->setCursor(Qt::PointingHandCursor);
     m_joinMeetingButton->setFixedHeight(scale(44));
+    m_joinMeetingButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_joinMeetingButton->setStyleSheet(QString(
         "QPushButton {"
         "   background-color: %1;"
@@ -180,25 +180,37 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         .arg(scale(24)));
 
     QVBoxLayout* joinSection = new QVBoxLayout();
-    joinSection->setSpacing(scale(8));
+    joinSection->setSpacing(scale(10));
     joinSection->addWidget(joinSectionTitle);
+    joinSection->addSpacing(scale(6));
     joinSection->addWidget(m_meetingIdEdit);
+    joinSection->addSpacing(scale(10));
     joinSection->addWidget(m_joinMeetingButton);
 
     connect(closeButton, &ButtonIcon::clicked, this, [this]() { emit closeRequested(); });
 
     QFrame* separator = new QFrame();
-    separator->setFrameShape(QFrame::HLine);
-    separator->setStyleSheet("background-color: rgb(210, 210, 210); max-height: 1px;");
+    separator->setFrameShape(QFrame::NoFrame);
+    separator->setFixedHeight(scale(1));
+    separator->setStyleSheet(
+        "QFrame {"
+        "   max-height: 1px;"
+        "   background: qlineargradient(x1:0, y1:0.5, x2:1, y2:0.5,"
+        "                               stop:0 rgba(210,210,210,0),"
+        "                               stop:0.5 rgba(210,210,210,140),"
+        "                               stop:1 rgba(210,210,210,0));"
+        "   border: none;"
+        "}");
 
     initialLayout->addWidget(headerWidget);
-    initialLayout->addSpacing(scale(32));
+    initialLayout->addSpacing(scale(40));
     initialLayout->addStretch(1);
     initialLayout->addLayout(createSection);
-    initialLayout->addSpacing(scale(32));
+    initialLayout->addSpacing(scale(40));
     initialLayout->addWidget(separator);
-    initialLayout->addSpacing(scale(32));
+    initialLayout->addSpacing(scale(40));
     initialLayout->addLayout(joinSection);
+    initialLayout->addSpacing(scale(16));
     initialLayout->addStretch(1);
 
     connect(m_createMeetingButton, &QPushButton::clicked, this, [this]() {
@@ -322,9 +334,9 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     mainLayout->setContentsMargins(shadowMargin, shadowMargin, shadowMargin, shadowMargin);
     mainLayout->addWidget(mainWidget);
 
-    m_initialHeight = scale(440) + shadowMargin * 2;
+    m_initialHeight = scale(500) + shadowMargin * 2;
     m_connectingHeight = scale(320) + shadowMargin * 2;
-    setFixedSize(scale(520) + shadowMargin * 2, m_initialHeight);
+    setFixedSize(scale(460) + shadowMargin * 2, m_initialHeight);
 
     auto* escShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this, [this]() {
         if (m_stackedWidget->currentWidget() == m_connectingWidget) {

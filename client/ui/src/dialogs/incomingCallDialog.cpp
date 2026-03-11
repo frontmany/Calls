@@ -1,6 +1,5 @@
 #include "dialogs/incomingCallDialog.h"
 #include "widgets/components/button.h"
-#include "widgets/components/incomingCallWidget.h"
 #include "utilities/utilities.h"
 #include "constants/constant.h"
 #include "constants/color.h"
@@ -179,14 +178,14 @@ void IncomingCallDialog::setupUi()
 
     m_nicknameLabel = new QLabel(m_friendNickname, this);
     m_nicknameLabel->setAlignment(Qt::AlignCenter);
-    m_nicknameLabel->setStyleSheet(StyleIncomingCallWidget::nicknameStyle());
+    m_nicknameLabel->setStyleSheet(QString("color: %1;").arg(COLOR_TEXT_MAIN.name()));
     m_nicknameLabel->setWordWrap(true);
     QFont nicknameFont("Outfit", scale(20), QFont::Bold);
     m_nicknameLabel->setFont(nicknameFont);
 
     m_callTypeLabel = new QLabel("Incoming call", this);
     m_callTypeLabel->setAlignment(Qt::AlignCenter);
-    m_callTypeLabel->setStyleSheet(StyleIncomingCallWidget::callTypeStyle());
+    m_callTypeLabel->setStyleSheet(QString("color: %1;").arg(COLOR_TEXT_MUTED.name()));
     QFont callTypeFont("Outfit", scale(14), QFont::Light);
     m_callTypeLabel->setFont(callTypeFont);
 
@@ -197,7 +196,7 @@ void IncomingCallDialog::setupUi()
         "font-size: %2px;"
         "font-weight: bold;"
         "background-color: transparent;"
-        "}").arg(StyleIncomingCallWidget::m_timerTextColor.name())
+        "}").arg(COLOR_TEXT_MUTED_SECONDARY.name())
         .arg(QString::fromStdString(std::to_string(scale(22))));
     m_timerLabel->setStyleSheet(timerStyle);
     updateTimerLabel();

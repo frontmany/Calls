@@ -219,16 +219,14 @@ void AuthorizationWidget::setupUI() {
 
     m_notificationLayout->addWidget(m_notificationLabel);
 
-    m_container = new QWidget(this);
-    m_container->setFixedSize(scale(450), scale(400));
-    m_container->setAttribute(Qt::WA_TranslucentBackground);
+    QWidget* formWidget = new QWidget(this);
+    formWidget->setMaximumWidth(scale(450));
+    m_formLayout = new QVBoxLayout(formWidget);
+    m_formLayout->setSpacing(scale(15));
+    m_formLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(20));
+    m_formLayout->setAlignment(Qt::AlignTop);
 
-    m_glassLayout = new QVBoxLayout(m_container);
-    m_glassLayout->setSpacing(scale(15));
-    m_glassLayout->setContentsMargins(scale(30), scale(30), scale(30), scale(30));
-    m_glassLayout->setAlignment(Qt::AlignTop);
-
-    m_titleLabel = new QLabel("Welcome to Callifornia", m_container);
+    m_titleLabel = new QLabel("Welcome to Callifornia", formWidget);
     m_titleLabel->setAlignment(Qt::AlignCenter);
     m_titleLabel->setStyleSheet(StyleAuthorizationWidget::glassTitleLabelStyle());
     m_titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
@@ -236,21 +234,21 @@ void AuthorizationWidget::setupUI() {
     QFont titleFont("Pacifico", scale(28));
     m_titleLabel->setFont(titleFont);
 
-    m_subtitleLabel = new QLabel("Enter your nickname to start making calls", m_container);
+    m_subtitleLabel = new QLabel("Enter your nickname to start making calls", formWidget);
     m_subtitleLabel->setAlignment(Qt::AlignCenter);
     m_subtitleLabel->setStyleSheet(StyleAuthorizationWidget::glassSubTitleLabelStyle());
     m_subtitleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     QFont subTitleFont("Outfit", scale(13), QFont::ExtraLight);
     m_subtitleLabel->setFont(subTitleFont);
 
-    m_errorLabel = new QLabel("field cannot be empty", m_container);
+    m_errorLabel = new QLabel("field cannot be empty", formWidget);
     m_errorLabel->setStyleSheet(StyleAuthorizationWidget::glassErrorLabelStyle());
     m_errorLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_errorLabel->hide();
     QFont errorLabelFont("Outfit", scale(10), QFont::ExtraLight);
     m_errorLabel->setFont(errorLabelFont);
 
-    m_nicknameEdit = new QLineEdit(m_container);
+    m_nicknameEdit = new QLineEdit(formWidget);
     m_nicknameEdit->setFixedSize(scale(390), scale(60));
     m_nicknameEdit->setStyleSheet(StyleAuthorizationWidget::glassLineEditStyle());
     m_nicknameEdit->setPlaceholderText("Only letters, numbers and _");
@@ -266,7 +264,7 @@ void AuthorizationWidget::setupUI() {
         QRegularExpression(QString("[\\p{L}0-9_]{%1,%2}").arg(MIN_NICKNAME_LENGTH).arg(MAX_NICKNAME_LENGTH)), this);
     m_nicknameEdit->setValidator(validator);
 
-    m_authorizeButton = new QPushButton("Authorize", m_container);
+    m_authorizeButton = new QPushButton("Authorize", formWidget);
     m_authorizeButton->setFixedSize(scale(390), scale(60));
     m_authorizeButton->setStyleSheet(StyleAuthorizationWidget::glassButtonStyle());
     m_authorizeButton->setCursor(Qt::PointingHandCursor);
@@ -275,16 +273,18 @@ void AuthorizationWidget::setupUI() {
     QFont authorizeButtonFont("Outfit", scale(14), QFont::Bold);
     m_authorizeButton->setFont(authorizeButtonFont);
 
-    m_glassLayout->addWidget(m_titleLabel);
-    m_glassLayout->addWidget(m_subtitleLabel);
-    m_glassLayout->addSpacing(scale(16));
-    m_glassLayout->addWidget(m_errorLabel);
-    m_glassLayout->addWidget(m_nicknameEdit);
-    m_glassLayout->addWidget(m_authorizeButton);
+    m_formLayout->addWidget(m_titleLabel);
+    m_formLayout->addWidget(m_subtitleLabel);
+    m_formLayout->addSpacing(scale(16));
+    m_formLayout->addWidget(m_errorLabel);
+    m_formLayout->addWidget(m_nicknameEdit);
+    m_formLayout->addWidget(m_authorizeButton);
 
+    m_mainLayout->addStretch(2);
     m_mainLayout->addSpacing(scale(42));
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignTop | Qt::AlignHCenter);
-    m_mainLayout->addWidget(m_container);
+    m_mainLayout->addWidget(formWidget, 0, Qt::AlignHCenter);
+    m_mainLayout->addStretch(3);
 
     connect(m_authorizeButton, &QPushButton::clicked, this, &AuthorizationWidget::onAuthorizationClicked);
     connect(m_nicknameEdit, &QLineEdit::textChanged, this, &AuthorizationWidget::onTextChanged);
@@ -310,12 +310,21 @@ void AuthorizationWidget::paintEvent(QPaintEvent* event) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    QLinearGradient gradient(0, 90, width(), height());
-    gradient.setColorAt(0.0, COLOR_GRADIENT_START);
-    gradient.setColorAt(0.5, COLOR_GRADIENT_MIDDLE);
-    gradient.setColorAt(1.0, COLOR_GRADIENT_END);
-
-    painter.fillRect(rect(), gradient);
+    QPixmap background(":/resources/blur.png");
+    if (!background.isNull()) {
+        QPixmap scaledBackground = background.scaled(size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+        QPoint topLeft(
+            (scaledBackground.width() - width()) / 2,
+            (scaledBackground.height() - height()) / 2
+        );
+        painter.drawPixmap(-topLeft.x(), -topLeft.y(), scaledBackground);
+    } else {
+        QLinearGradient gradient(0, 90, width(), height());
+        gradient.setColorAt(0.0, COLOR_GRADIENT_START);
+        gradient.setColorAt(0.5, COLOR_GRADIENT_MIDDLE);
+        gradient.setColorAt(1.0, COLOR_GRADIENT_END);
+        painter.fillRect(rect(), gradient);
+    }
 
     QWidget::paintEvent(event);
 }
