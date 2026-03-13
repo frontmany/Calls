@@ -3,6 +3,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -39,7 +40,7 @@ namespace server::network::udp
         asio::io_context m_context;
         asio::ip::udp::socket m_socket;
         asio::ip::udp::endpoint m_serverEndpoint;
-        asio::executor_work_guard<asio::io_context::executor_type> m_workGuard;
+        std::optional<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
 
         udp::PacketReceiver m_packetReceiver;
         udp::PacketSender m_packetSender;

@@ -31,7 +31,9 @@ void MeetingParticipantWidget::setupUI()
     m_compactMode = false;
 
     m_mainLayout = new QGridLayout(this);
-    m_mainLayout->setContentsMargins(scale(10), scale(10), scale(10), scale(10));
+    // Видео должно заполнять всю карточку без внутренних отступов,
+    // поэтому убираем margin у основного лейаута.
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
     m_mainLayout->setColumnStretch(0, 1);
     m_mainLayout->setRowStretch(0, 1);

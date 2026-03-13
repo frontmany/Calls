@@ -13,10 +13,10 @@ namespace server::network::udp
 {
     Server::Server()
         : m_socket(m_context)
-        , m_workGuard(asio::make_work_guard(m_context))
         , m_running(false)
         , m_nextPacketId(0U)
     {
+        m_workGuard.emplace(asio::make_work_guard(m_context));
     }
 
     Server::~Server() {
@@ -65,6 +65,8 @@ namespace server::network::udp
                 LOG_ERROR("Failed to bind UDP socket: {}", server::utilities::errorCodeForLog(ec));
                 return false;
             }
+
+            m_workGuard.emplace(asio::make_work_guard(m_context));
 
             std::function<void()> errorHandler = []() {
                 LOG_ERROR("[UDP] Packet send/receive error");

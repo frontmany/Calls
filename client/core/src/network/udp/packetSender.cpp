@@ -26,10 +26,8 @@ void PacketSender::initialize(asio::ip::udp::socket& socket, asio::ip::udp::endp
 }
 
 void PacketSender::send(const Packet& packet) {
-    bool wasEmpty = m_packetQueue.empty();
     m_packetQueue.push_with_limit(packet, m_maxPacketQueueSize);
-    if (wasEmpty && !m_isSending.load())
-        startSendingIfIdle();
+    startSendingIfIdle();
 }
 
 void PacketSender::stop() {
@@ -101,7 +99,6 @@ void PacketSender::sendNextDatagram() {
         [this](std::error_code errorCode, std::size_t bytesTransferred) {
             if (errorCode) {
                 LOG_ERROR("Media failed to send datagram chunk: {}", core::utilities::errorCodeForLog(errorCode));
-                m_isSending = false;
                 processNextPacketFromQueue();
                 return;
             }
