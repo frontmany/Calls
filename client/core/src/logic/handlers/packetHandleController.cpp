@@ -26,10 +26,14 @@ namespace core::logic
         std::shared_ptr<EventListener> eventListener,
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket,
         std::function<void()> startAudioSharing,
-        std::function<void()> stopAudioSharing)
+        std::function<void()> stopAudioSharing,
+        std::function<void()> stopScreenSharing,
+        std::function<void()> stopCameraSharing)
         : m_sendPacket(std::move(sendPacket))
         , m_startAudioSharing(std::move(startAudioSharing))
         , m_stopAudioSharing(std::move(stopAudioSharing))
+        , m_stopScreenSharing(std::move(stopScreenSharing))
+        , m_stopCameraSharing(std::move(stopCameraSharing))
         , m_stateManager(stateManager)
     {
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
@@ -40,7 +44,7 @@ namespace core::logic
             [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
         m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener,
             [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); },
-            m_startAudioSharing, m_stopAudioSharing);
+            m_startAudioSharing, m_stopAudioSharing, m_stopScreenSharing, m_stopCameraSharing);
 
         m_packetHandlers.emplace(PacketType::AUTHORIZATION_RESULT, [this](const nlohmann::json& json) { handleAuthorizationResult(json); });
         m_packetHandlers.emplace(PacketType::RECONNECT_RESULT, [this](const nlohmann::json& json) {handleReconnectResult(json); });
@@ -76,10 +80,12 @@ namespace core::logic
         m_packetHandlers.emplace(PacketType::MEETING_JOIN_DECLINE, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinDecline(json); });
         m_packetHandlers.emplace(PacketType::MEETING_JOIN_REJECTED, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingJoinRejected(json); });
         m_packetHandlers.emplace(PacketType::MEETING_ENDED, [this](const nlohmann::json& json) {
-            m_meetingPacketHandler->handleMeetingEnded(json);
-            if (m_stopAudioSharing) {
-                m_stopAudioSharing();
+            if (m_stateManager->isInMeeting()) {
+                if (m_stopScreenSharing) m_stopScreenSharing();
+                if (m_stopCameraSharing) m_stopCameraSharing();
+                if (m_stopAudioSharing) m_stopAudioSharing();
             }
+            m_meetingPacketHandler->handleMeetingEnded(json);
         });
         m_packetHandlers.emplace(PacketType::MEETING_PARTICIPANT_JOINED, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingParticipantJoined(json); });
         m_packetHandlers.emplace(PacketType::MEETING_PARTICIPANT_LEFT, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingParticipantLeft(json); });

@@ -274,6 +274,8 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_activeMeeting = std::nullopt;
+        m_viewingRemoteScreen = false;
+        m_viewingRemoteCamera = false;
     }
 
     void ClientStateManager::resetOutgoingJoinMeetingRequest()

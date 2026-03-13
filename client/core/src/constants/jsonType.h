@@ -16,6 +16,7 @@ namespace core::constant
     static constexpr const char* PACKET_KEY = "packet_key";
     static constexpr const char* IS_ACTIVE_CALL = "is_active_call";
     static constexpr const char* CALL_PARTNER_NICKNAME_HASH = "call_partner_nickname_hash";
+    static constexpr const char* IS_IN_MEETING = "is_in_meeting";
     static constexpr const char* UDP_PORT = "udp_port";
     static constexpr const char* CPU_USAGE = "cpu_usage";
     static constexpr const char* MEMORY_USED = "memory_used";

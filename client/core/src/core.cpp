@@ -182,7 +182,9 @@ namespace core
         m_packetHandleController = std::make_unique<logic::PacketHandleController>(m_stateManager, keyManager, m_audioEngine, mediaProcessingService, eventListener,
             [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); },
             [this]() { if (m_mediaService) m_mediaService->startAudioSharing(); },
-            [this]() { if (m_mediaService) m_mediaService->stopAudioSharing(); });
+            [this]() { if (m_mediaService) m_mediaService->stopAudioSharing(); },
+            [this]() { if (m_mediaService) (void)stopScreenSharing(); },
+            [this]() { if (m_mediaService) (void)stopCameraSharing(); });
 
         return true;
     }

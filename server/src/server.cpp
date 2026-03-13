@@ -297,8 +297,13 @@ namespace server
                 auto partner = user->getCallPartner();
                 if (partner) callPartnerHash = partner->getNicknameHash();
             }
+            std::optional<bool> isInMeetingOpt;
+            if (allowed) {
+                isInMeetingOpt = user->isInMeeting();
+            }
+
             std::vector<unsigned char> packet = PacketFactory::getReconnectionResultPacket(
-                allowed, uid, senderNicknameHash, token, allowed && user->isInCall(), callPartnerHash);
+                allowed, uid, senderNicknameHash, token, allowed && user->isInCall(), callPartnerHash, isInMeetingOpt);
             sendTcp(conn, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), packet);
 
             if (allowed) {
@@ -319,7 +324,27 @@ namespace server
                 }
             }
 
-            
+            // If user is in a meeting after reconnect, replay current media sharing state to them.
+            if (allowed && user->isInMeeting()) {
+                auto meeting = user->getMeeting();
+                if (meeting) {
+                    const std::string userHash = user->getNicknameHash();
+                    for (const auto& sharerHash : meeting->getScreenSharers()) {
+                        if (sharerHash == userHash) {
+                            continue;
+                        }
+                        auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
+                        sendTcp(conn, static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN), beginPacket);
+                    }
+                    for (const auto& sharerHash : meeting->getCameraSharers()) {
+                        if (sharerHash == userHash) {
+                            continue;
+                        }
+                        auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
+                        sendTcp(conn, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
+                    }
+                }
+            }
         }
         catch (const std::exception& e) {
             LOG_ERROR("Reconnect error: {}", e.what());
@@ -753,8 +778,26 @@ namespace server
             requester->setMeeting(meeting);
             meeting->addParticipant(requester, encryptedNickname);
 
-            auto joinedPacket = PacketFactory::getMeetingParticipantJoinedPacket(encryptedNickname);
+            auto joinedPacket = PacketFactory::getMeetingParticipantJoinedPacket(
+                encryptedNickname,
+                crypto::serializePublicKey(requester->getPublicKey()));
             broadcastToMeeting(meeting, requesterNicknameHash, static_cast<uint32_t>(PacketType::MEETING_PARTICIPANT_JOINED), joinedPacket);
+
+            // Send the current media sharing state to the newly joined participant.
+            for (const auto& sharerHash : meeting->getScreenSharers()) {
+                if (sharerHash == requesterNicknameHash) {
+                    continue;
+                }
+                auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
+                sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN), beginPacket);
+            }
+            for (const auto& sharerHash : meeting->getCameraSharers()) {
+                if (sharerHash == requesterNicknameHash) {
+                    continue;
+                }
+                auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
+                sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
+            }
         }
         catch (const std::exception& e) {
             LOG_ERROR("Meeting join accept error: {}", e.what());
@@ -851,7 +894,28 @@ namespace server
         if (sender->isInMeeting()) {
             auto meeting = sender->getMeeting();
             if (!meeting) return;
+
             broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(type), toBytes(json.dump()));
+
+            // Track media sharing state for meetings so that late joiners and
+            // reconnecting participants can be brought up to date.
+            switch (type) {
+            case PacketType::SCREEN_SHARING_BEGIN:
+                meeting->addScreenSharer(senderHash);
+                break;
+            case PacketType::SCREEN_SHARING_END:
+                meeting->removeScreenSharer(senderHash);
+                break;
+            case PacketType::CAMERA_SHARING_BEGIN:
+                meeting->addCameraSharer(senderHash);
+                break;
+            case PacketType::CAMERA_SHARING_END:
+                meeting->removeCameraSharer(senderHash);
+                break;
+            default:
+                break;
+            }
+
             return;
         }
 
@@ -1085,8 +1149,26 @@ namespace server
             return;
         }
 
+        const std::string senderHash = user->getNicknameHash();
+
+        // If user was actively sharing media, notify others that sharing has ended.
+        if (meeting->isParticipant(senderHash)) {
+            auto screenSharers = meeting->getScreenSharers();
+            if (std::find(screenSharers.begin(), screenSharers.end(), senderHash) != screenSharers.end()) {
+                auto packet = PacketFactory::getMediaSharingEndPacket(senderHash);
+                broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(PacketType::SCREEN_SHARING_END), packet);
+                meeting->removeScreenSharer(senderHash);
+            }
+            auto cameraSharers = meeting->getCameraSharers();
+            if (std::find(cameraSharers.begin(), cameraSharers.end(), senderHash) != cameraSharers.end()) {
+                auto packet = PacketFactory::getMediaSharingEndPacket(senderHash);
+                broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), packet);
+                meeting->removeCameraSharer(senderHash);
+            }
+        }
+
         std::string encryptedNickname = encryptedNicknameOverride;
-        auto removedEncryptedNickname = meeting->removeParticipant(user->getNicknameHash());
+        auto removedEncryptedNickname = meeting->removeParticipant(senderHash);
         if (!removedEncryptedNickname.has_value()) {
             user->resetMeeting();
             return;
@@ -1098,7 +1180,7 @@ namespace server
 
         user->resetMeeting();
         auto leftPacket = PacketFactory::getMeetingParticipantLeftPacket(encryptedNickname);
-        broadcastToMeeting(meeting, user->getNicknameHash(), static_cast<uint32_t>(PacketType::MEETING_PARTICIPANT_LEFT), leftPacket);
+        broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(PacketType::MEETING_PARTICIPANT_LEFT), leftPacket);
     }
 
     void Server::endMeetingCleanup(const MeetingPtr& meeting)

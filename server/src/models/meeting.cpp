@@ -119,4 +119,47 @@ namespace server
         }
         return requests;
     }
+
+    void Meeting::addScreenSharer(const std::string& nicknameHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_screenSharers.insert(nicknameHash);
+    }
+
+    void Meeting::removeScreenSharer(const std::string& nicknameHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_screenSharers.erase(nicknameHash);
+    }
+
+    std::vector<std::string> Meeting::getScreenSharers() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return std::vector<std::string>(m_screenSharers.begin(), m_screenSharers.end());
+    }
+
+    void Meeting::addCameraSharer(const std::string& nicknameHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_cameraSharers.insert(nicknameHash);
+    }
+
+    void Meeting::removeCameraSharer(const std::string& nicknameHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_cameraSharers.erase(nicknameHash);
+    }
+
+    std::vector<std::string> Meeting::getCameraSharers() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return std::vector<std::string>(m_cameraSharers.begin(), m_cameraSharers.end());
+    }
+
+    void Meeting::clearMediaState()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_screenSharers.clear();
+        m_cameraSharers.clear();
+    }
 }

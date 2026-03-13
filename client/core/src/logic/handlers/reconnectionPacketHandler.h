@@ -23,7 +23,9 @@ namespace core::logic
             std::shared_ptr<EventListener> eventListener,
             SendPacket sendPacket,
             std::function<void()> startAudioSharing = nullptr,
-            std::function<void()> stopAudioSharing = nullptr
+            std::function<void()> stopAudioSharing = nullptr,
+            std::function<void()> stopScreenSharing = nullptr,
+            std::function<void()> stopCameraSharing = nullptr
         );
 
         void handleReconnectResult(const nlohmann::json& jsonObject);
@@ -34,5 +36,7 @@ namespace core::logic
         SendPacket m_sendPacket;
         std::function<void()> m_startAudioSharing;
         std::function<void()> m_stopAudioSharing;
+        std::function<void()> m_stopScreenSharing;
+        std::function<void()> m_stopCameraSharing;
     };
 }

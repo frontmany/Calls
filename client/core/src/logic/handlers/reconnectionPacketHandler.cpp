@@ -16,12 +16,16 @@ namespace core::logic
         std::shared_ptr<EventListener> eventListener,
         SendPacket sendPacket,
         std::function<void()> startAudioSharing,
-        std::function<void()> stopAudioSharing)
+        std::function<void()> stopAudioSharing,
+        std::function<void()> stopScreenSharing,
+        std::function<void()> stopCameraSharing)
         : m_stateManager(stateManager)
         , m_eventListener(eventListener)
         , m_sendPacket(std::move(sendPacket))
         , m_startAudioSharing(std::move(startAudioSharing))
         , m_stopAudioSharing(std::move(stopAudioSharing))
+        , m_stopScreenSharing(std::move(stopScreenSharing))
+        , m_stopCameraSharing(std::move(stopCameraSharing))
     {
     }
     
@@ -86,6 +90,27 @@ namespace core::logic
                 m_stateManager->setCallParticipantConnectionDown(false);
                 if (hadActiveCall) {
                     m_eventListener->onCallEndedByRemote({});
+                }
+            }
+
+            // Handle meeting state mismatch on reconnect.
+            if (jsonObject.contains(IS_IN_MEETING)) {
+                bool serverInMeeting = jsonObject[IS_IN_MEETING].get<bool>();
+                bool clientInMeeting = m_stateManager->isActiveMeeting();
+
+                if (!serverInMeeting && clientInMeeting) {
+                    // Server считает, что мы уже не в митинге — локально всё сбрасываем.
+                    if (m_stopScreenSharing) m_stopScreenSharing();
+                    if (m_stopCameraSharing) m_stopCameraSharing();
+                    if (m_stopAudioSharing) m_stopAudioSharing();
+                    m_stateManager->resetActiveMeeting();
+                    m_stateManager->resetIncomingMeetingJoinRequests();
+                    m_eventListener->onMeetingEndedByOwner();
+                } else if (serverInMeeting && clientInMeeting) {
+                    // При успешном reconnect в активный митинг сбрасываем флаги просмотра,
+                    // фактическое состояние придёт отдельными *_SHARING_BEGIN пакетами.
+                    m_stateManager->setViewingRemoteScreen(false);
+                    m_stateManager->setViewingRemoteCamera(false);
                 }
             }
         }

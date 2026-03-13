@@ -59,7 +59,7 @@ std::vector<unsigned char> PacketFactory::getAuthorizationResultPacket(bool auth
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool reconnectedSuccessfully, const std::string& uid, const std::string& receiverNicknameHash, const std::string& receiverToken, std::optional<bool> activeCall, const std::string& callPartnerNicknameHash) {
+std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool reconnectedSuccessfully, const std::string& uid, const std::string& receiverNicknameHash, const std::string& receiverToken, std::optional<bool> activeCall, const std::string& callPartnerNicknameHash, std::optional<bool> isInMeeting) {
     nlohmann::json jsonObject;
 
     jsonObject[UID] = uid;
@@ -71,6 +71,10 @@ std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool recon
         jsonObject[IS_ACTIVE_CALL] = activeCall.value();
         if (activeCall.value() && !callPartnerNicknameHash.empty())
             jsonObject[CALL_PARTNER_NICKNAME_HASH] = callPartnerNicknameHash;
+    }
+
+    if (reconnectedSuccessfully && isInMeeting.has_value()) {
+        jsonObject[IS_IN_MEETING] = isInMeeting.value();
     }
 
     return toBytes(jsonObject.dump());
@@ -162,11 +166,14 @@ std::vector<unsigned char> PacketFactory::getMeetingEndedPacket()
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getMeetingParticipantJoinedPacket(const std::string& encryptedNickname)
+std::vector<unsigned char> PacketFactory::getMeetingParticipantJoinedPacket(const std::string& encryptedNickname, const std::string& serializedPublicKey)
 {
     nlohmann::json jsonObject;
     jsonObject[UID] = crypto::generateUID();
     jsonObject[ENCRYPTED_NICKNAME] = encryptedNickname;
+    if (!serializedPublicKey.empty()) {
+        jsonObject[PUBLIC_KEY] = serializedPublicKey;
+    }
     return toBytes(jsonObject.dump());
 }
 
@@ -195,6 +202,22 @@ std::vector<unsigned char> PacketFactory::getMetricsResultPacket(double cpuUsage
     jsonObject[ACTIVE_USERS] = activeUsers;
     jsonObject[RECORDED_AT] = utcTimestampIso8601();
 
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMediaSharingBeginPacket(const std::string& senderNicknameHash)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMediaSharingEndPacket(const std::string& senderNicknameHash)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
     return toBytes(jsonObject.dump());
 }
 } // namespace server

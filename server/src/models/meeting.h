@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace server
@@ -39,6 +40,17 @@ namespace server
         PendingMeetingJoinRequestPtr getPendingJoinRequest(const std::string& requesterNicknameHash) const;
         std::vector<PendingMeetingJoinRequestPtr> getPendingJoinRequests() const;
 
+        // Media sharing state within the meeting (by participant nickname hash).
+        void addScreenSharer(const std::string& nicknameHash);
+        void removeScreenSharer(const std::string& nicknameHash);
+        std::vector<std::string> getScreenSharers() const;
+
+        void addCameraSharer(const std::string& nicknameHash);
+        void removeCameraSharer(const std::string& nicknameHash);
+        std::vector<std::string> getCameraSharers() const;
+
+        void clearMediaState();
+
     private:
         mutable std::mutex m_mutex;
         std::string m_meetingId;
@@ -46,5 +58,7 @@ namespace server
         UserPtr m_owner;
         std::unordered_map<std::string, ParticipantInfo> m_participants;
         std::unordered_map<std::string, PendingMeetingJoinRequestPtr> m_pendingJoinRequests;
+        std::unordered_set<std::string> m_screenSharers;
+        std::unordered_set<std::string> m_cameraSharers;
     };
 }

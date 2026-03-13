@@ -222,6 +222,18 @@ namespace core::logic
         std::string nickname = AESDecrypt(meetingKey, jsonObject[ENCRYPTED_NICKNAME].get<std::string>());
         if (nickname.empty()) return;
 
+        // When a new participant joins, the server also sends their public key so
+        // we can keep the meeting participant list in sync with reality.
+        if (jsonObject.contains(PUBLIC_KEY) && jsonObject[PUBLIC_KEY].is_string()) {
+            const std::string& pkStr = jsonObject[PUBLIC_KEY].get<std::string>();
+            try {
+                auto publicKey = deserializePublicKey(pkStr);
+                m_stateManager->addMeetingParticipant(core::User(nickname, publicKey), false);
+            } catch (...) {
+                // If public key deserialization fails, we still proceed with UI update.
+            }
+        }
+
         if (m_eventListener) {
             m_eventListener->onMeetingParticipantJoined(nickname);
         }
