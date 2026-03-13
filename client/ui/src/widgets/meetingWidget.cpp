@@ -544,11 +544,6 @@ void MeetingWidget::setupUI() {
     m_prevPageButton->setSize(scale(40), scale(40));
     m_prevPageButton->setToolTip("Previous page");
     m_prevPageButton->setCursor(Qt::PointingHandCursor);
-    {
-        QSizePolicy policy = m_prevPageButton->sizePolicy();
-        policy.setRetainSizeWhenHidden(true);
-        m_prevPageButton->setSizePolicy(policy);
-    }
     m_prevPageButton->hide();
     connect(m_prevPageButton, &ButtonIcon::clicked, this, &MeetingWidget::onPrevPageClicked);
 
@@ -556,16 +551,8 @@ void MeetingWidget::setupUI() {
     m_nextPageButton->setSize(scale(40), scale(40));
     m_nextPageButton->setToolTip("Next page");
     m_nextPageButton->setCursor(Qt::PointingHandCursor);
-    {
-        QSizePolicy policy = m_nextPageButton->sizePolicy();
-        policy.setRetainSizeWhenHidden(true);
-        m_nextPageButton->setSizePolicy(policy);
-    }
     m_nextPageButton->hide();
     connect(m_nextPageButton, &ButtonIcon::clicked, this, &MeetingWidget::onNextPageClicked);
-    
-    m_participantsContainerLayout->addWidget(m_prevPageButton);
-    m_participantsContainerLayout->addWidget(m_nextPageButton);
 
     QIcon prevIcon = createArrowIcon(true, false);
     QIcon prevIconHover = createArrowIcon(true, true);
@@ -573,6 +560,11 @@ void MeetingWidget::setupUI() {
     QIcon nextIconHover = createArrowIcon(false, true);
     m_prevPageButton->setIcons(prevIcon, prevIconHover);
     m_nextPageButton->setIcons(nextIcon, nextIconHover);
+
+    // Кнопки страниц находятся в одном горизонтальном лейауте с панелями участников:
+    // [prev] [panel_0/1/... по центру] [next]
+    m_participantsContainerLayout->addWidget(m_prevPageButton);
+    m_participantsContainerLayout->addWidget(m_nextPageButton);
 
     // Timer label (hidden, but timer still runs)
     m_timerLabel = new QLabel("00:00", this);
@@ -1497,8 +1489,13 @@ void MeetingWidget::updateParticipantPanels() {
         m_participantPanels.append(panel);
         m_participantPanelLayouts.append(gridLayout);
         
+        // Вставляем панели между кнопками prev/next.
         int insertIndex = m_participantsContainerLayout->indexOf(m_nextPageButton);
-        m_participantsContainerLayout->insertWidget(insertIndex, panel);
+        if (insertIndex < 0) {
+            m_participantsContainerLayout->addWidget(panel);
+        } else {
+            m_participantsContainerLayout->insertWidget(insertIndex, panel);
+        }
     }
 
     while (m_participantPanels.size() > totalPages) {
@@ -1603,9 +1600,9 @@ void MeetingWidget::updateNavigationButtons() {
     int totalPages = m_participantPanels.size();
     
     if (totalPages <= 1) {
+        // Нет пагинации — стрелки не нужны.
         m_prevPageButton->hide();
         m_nextPageButton->hide();
-        updateParticipantsContainerSize();
         return;
     }
 
@@ -1617,26 +1614,18 @@ void MeetingWidget::updateNavigationButtons() {
     bool prevVisible = m_currentPageIndex > 0;
     bool nextVisible = m_currentPageIndex < totalPages - 1;
     
-    if (prevVisible) {
-        m_prevPageButton->show();
-        m_prevPageButton->setIcons(prevIcon, prevIconHover);
-        m_prevPageButton->setEnabled(true);
-    } else {
-        m_prevPageButton->hide();
-    }
-    
-    if (nextVisible) {
-        m_nextPageButton->show();
-        m_nextPageButton->setIcons(nextIcon, nextIconHover);
-        m_nextPageButton->setEnabled(true);
-    } else {
-        m_nextPageButton->hide();
-    }
-    
-    updateParticipantsContainerSize();
-    
-    m_participantsContainer->updateGeometry();
-    m_participantsContainer->update();
+    // Оба слота стрелок всегда присутствуют в лейауте,
+    // просто включаем/выключаем соответствующую сторону.
+    m_prevPageButton->show();
+    m_nextPageButton->show();
+
+    m_prevPageButton->setEnabled(prevVisible);
+    m_prevPageButton->setCursor(prevVisible ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    m_prevPageButton->setIcons(prevVisible ? prevIcon : QIcon(), prevVisible ? prevIconHover : QIcon());
+
+    m_nextPageButton->setEnabled(nextVisible);
+    m_nextPageButton->setCursor(nextVisible ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    m_nextPageButton->setIcons(nextVisible ? nextIcon : QIcon(), nextVisible ? nextIconHover : QIcon());
 }
 
 void MeetingWidget::onPrevPageClicked() {
@@ -1691,7 +1680,10 @@ int MeetingWidget::calculateMaxParticipantsPerRow() const {
     bool isMainScreenVisible = m_mainScreen && m_mainScreen->isVisible();
     int widgetWidth = isMainScreenVisible ? scale(240) : scale(320);
     int spacing = scale(15);
-    int availableWidth = width() - scale(40);
+    int buttonWidth = scale(40);
+    int buttonSpacing = scale(10);
+    // Доступная ширина — это ширина виджета минус стрелки по краям и их отступы.
+    int availableWidth = width() - scale(40) - (buttonWidth * 2 + buttonSpacing * 2);
 
     if (availableWidth <= 0) return 1;
 
@@ -1739,27 +1731,26 @@ void MeetingWidget::updateParticipantsContainerSize() {
     
     int totalParticipants = m_participantWidgets.size();
     int actualParticipantsInRow = qMin(totalParticipants, maxPerRow);
-    int panelWidth = actualParticipantsInRow * widgetWidth + (actualParticipantsInRow > 0 ? (actualParticipantsInRow - 1) * spacing : 0) + horizontalMargins;
+    int panelWidth = actualParticipantsInRow * widgetWidth
+        + (actualParticipantsInRow > 0 ? (actualParticipantsInRow - 1) * spacing : 0)
+        + horizontalMargins;
     
     int buttonSpacing = scale(10);
     int buttonWidth = scale(40);
     int totalWidth = panelWidth;
     if (m_participantPanels.size() > 1) {
+        // Когда есть несколько страниц, учитываем стрелки по краям.
         totalWidth += (buttonWidth * 2) + (buttonSpacing * 2);
     }
 
     int maxAllowedHeight = height() * 0.6;
-    
-    if (m_participantPanels.size() == 1 && totalParticipants <= maxPerRow && !m_prevPageButton->isVisible() && !m_nextPageButton->isVisible()) {
-        m_participantsContainer->setMinimumWidth(0);
-        m_participantsContainer->setMaximumWidth(16777215);
-        m_participantsContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    } else {
-        m_participantsContainer->setMinimumWidth(totalWidth);
-        m_participantsContainer->setMaximumWidth(totalWidth);
-        m_participantsContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-    }
-    
+
+    // Контейнер по ширине подстраивается под общую ширину панелей + стрелок
+    // и центрируется основным лейаутом MeetingWidget.
+    m_participantsContainer->setMinimumWidth(totalWidth);
+    m_participantsContainer->setMaximumWidth(totalWidth);
+    m_participantsContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
+
     m_participantsContainer->setMinimumHeight(qMin(maxHeight, maxAllowedHeight));
     m_participantsContainer->setMaximumHeight(qMin(maxHeight, maxAllowedHeight));
 
@@ -1768,6 +1759,9 @@ void MeetingWidget::updateParticipantsContainerSize() {
         panel->setMaximumWidth(panelWidth);
         panel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     }
+
+    // Реальное позиционирование стрелок делаем в updateNavigationButtons(),
+    // когда уже известен текущий pageIndex и применён layout.
 }
 
 void MeetingWidget::applyStandardSize() {
