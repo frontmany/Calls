@@ -103,7 +103,9 @@ public:
     void setParticipantMuted(const QString& nickname, bool muted);
     void setParticipantSpeaking(const QString& nickname, bool speaking);
     void setParticipantCameraEnabled(const QString& nickname, bool enabled);
+    void clearAllParticipantVideos();
     void clearParticipants();
+    void resetMeetingState();
     void hideMainScreen();
     void hideAdditionalScreens();
     void enterFullscreen();

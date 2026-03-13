@@ -26,8 +26,8 @@ public:
     void switchToMeetingWidget();
 
 public slots:
-    void onCallWidgetEnterFullscreenRequested();
-    void onCallWidgetExitFullscreenRequested();
+    void onEnterFullscreenRequested();
+    void onExitFullscreenRequested();
 
 signals:
     void windowTitleChanged(const QString& title);

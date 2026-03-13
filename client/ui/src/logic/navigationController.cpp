@@ -87,16 +87,25 @@ void NavigationController::switchToMeetingWidget()
     emit windowTitleChanged("Meeting - Callifornia");
 }
 
-void NavigationController::onCallWidgetEnterFullscreenRequested()
+void NavigationController::onEnterFullscreenRequested()
 {
-    if (m_callWidget && !m_callWidget->isFullScreen())
+    QObject* src = sender();
+
+    // Fullscreen for CallWidget
+    if (src == m_callWidget && m_callWidget && !m_callWidget->isFullScreen())
     {
         m_callWidget->enterFullscreen();
     }
+    // Fullscreen for MeetingWidget
+    else if (src == m_meetingWidget && m_meetingWidget && !m_meetingWidget->isFullScreen())
+    {
+        m_meetingWidget->enterFullscreen();
+    }
+
     emit windowFullscreenRequested();
 }
 
-void NavigationController::onCallWidgetExitFullscreenRequested()
+void NavigationController::onExitFullscreenRequested()
 {
     emit windowMaximizedRequested();
 }

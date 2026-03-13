@@ -11,6 +11,7 @@
 #include <string>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "media/audio/audioEngine.h"
 #include "network/networkController.h"
@@ -79,6 +80,7 @@ namespace core
         const std::string& getMyNickname() const;
         const std::string& getNicknameWhomOutgoingCall() const;
         const std::string& getNicknameInCallWith() const;
+        std::vector<std::string> getMeetingParticipants() const;
 
         std::error_code authorize(const std::string& nickname);
         std::error_code logout();

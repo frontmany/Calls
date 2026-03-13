@@ -72,6 +72,11 @@ signals:
     void meetingCreated(const QString& meetingId);
 
 private:
+    bool hasRemoteParticipants() const;
+    void clearLocalParticipantVideo();
+    void clearRemoteParticipantVideos();
+    void restrictMediaButtons();
+    void unrestrictMediaButtons();
     std::shared_ptr<core::Core> m_coreClient = nullptr;
     NavigationController* m_navigationController = nullptr;
     DialogsController* m_dialogsController = nullptr;

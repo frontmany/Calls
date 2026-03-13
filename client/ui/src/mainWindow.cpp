@@ -352,8 +352,8 @@ void MainWindow::connectWidgetsToManagers() {
     // CallWidget connections
     if (m_callWidget) {
         if (m_navigationController) {
-            connect(m_callWidget, &CallWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onCallWidgetEnterFullscreenRequested);
-            connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onCallWidgetExitFullscreenRequested);
+            connect(m_callWidget, &CallWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onEnterFullscreenRequested);
+            connect(m_callWidget, &CallWidget::requestExitFullscreen, m_navigationController, &NavigationController::onExitFullscreenRequested);
         }
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::audioSettingsRequested, m_callManager, &CallManager::onCallWidgetAudioSettingsRequested);
@@ -425,6 +425,10 @@ void MainWindow::connectWidgetsToManagers() {
     }
 
     // MeetingWidget connections
+    if (m_meetingWidget && m_navigationController) {
+        connect(m_meetingWidget, &MeetingWidget::requestEnterFullscreen, m_navigationController, &NavigationController::onEnterFullscreenRequested);
+        connect(m_meetingWidget, &MeetingWidget::requestExitFullscreen, m_navigationController, &NavigationController::onExitFullscreenRequested);
+    }
     if (m_meetingWidget && m_dialogsController) {
         connect(m_meetingWidget, &MeetingWidget::hangupConfirmationRequested, m_dialogsController, &DialogsController::showEndMeetingConfirmationDialog);
     }
@@ -627,6 +631,9 @@ void MainWindow::onWindowMaximizedRequested()
     if (m_callWidget && m_callWidget->isFullScreen()) {
         m_callWidget->exitFullscreen();
     }
+    if (m_meetingWidget && m_meetingWidget->isFullScreen()) {
+        m_meetingWidget->exitFullscreen();
+    }
     showMaximized();
 }
 
@@ -653,6 +660,9 @@ void MainWindow::onEndMeetingRequested()
     if (ec && m_notificationController) {
         m_notificationController->showErrorNotification("Failed to end meeting", 2000);
         return;
+    }
+    if (m_meetingWidget) {
+        m_meetingWidget->resetMeetingState();
     }
     if (m_navigationController) {
         m_navigationController->switchToMainMenuWidget();

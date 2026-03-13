@@ -544,6 +544,11 @@ void MeetingWidget::setupUI() {
     m_prevPageButton->setSize(scale(40), scale(40));
     m_prevPageButton->setToolTip("Previous page");
     m_prevPageButton->setCursor(Qt::PointingHandCursor);
+    {
+        QSizePolicy policy = m_prevPageButton->sizePolicy();
+        policy.setRetainSizeWhenHidden(true);
+        m_prevPageButton->setSizePolicy(policy);
+    }
     m_prevPageButton->hide();
     connect(m_prevPageButton, &ButtonIcon::clicked, this, &MeetingWidget::onPrevPageClicked);
 
@@ -551,11 +556,15 @@ void MeetingWidget::setupUI() {
     m_nextPageButton->setSize(scale(40), scale(40));
     m_nextPageButton->setToolTip("Next page");
     m_nextPageButton->setCursor(Qt::PointingHandCursor);
+    {
+        QSizePolicy policy = m_nextPageButton->sizePolicy();
+        policy.setRetainSizeWhenHidden(true);
+        m_nextPageButton->setSizePolicy(policy);
+    }
     m_nextPageButton->hide();
     connect(m_nextPageButton, &ButtonIcon::clicked, this, &MeetingWidget::onNextPageClicked);
     
     m_participantsContainerLayout->addWidget(m_prevPageButton);
-    m_participantsContainerLayout->addStretch();
     m_participantsContainerLayout->addWidget(m_nextPageButton);
 
     QIcon prevIcon = createArrowIcon(true, false);
@@ -1050,6 +1059,14 @@ void MeetingWidget::clearParticipantVideo(const QString& nickname) {
     }
 }
 
+void MeetingWidget::clearAllParticipantVideos() {
+    for (MeetingParticipantWidget* widget : m_participantWidgets) {
+        if (widget) {
+            widget->clearVideoFrame();
+        }
+    }
+}
+
 void MeetingWidget::setParticipantMuted(const QString& nickname, bool muted) {
     if (m_participantWidgets.contains(nickname)) {
         m_participantWidgets[nickname]->setMuted(muted);
@@ -1084,6 +1101,84 @@ void MeetingWidget::clearParticipants() {
     m_isOwner = true;
     
     updateParticipantsContainerSize();
+}
+
+void MeetingWidget::resetMeetingState() {
+    if (m_screenFullscreenActive) {
+        exitFullscreen();
+    }
+
+    if (m_overlayHideTimer) {
+        m_overlayHideTimer->stop();
+    }
+    if (m_exitFullscreenHideTimer) {
+        m_exitFullscreenHideTimer->stop();
+    }
+
+    m_audioSettingsDialogOpen = false;
+    m_hasScreenSharing = false;
+
+    hideMainScreen();
+    hideAdditionalScreens();
+    clearAllParticipantVideos();
+    clearParticipants();
+
+    if (m_microphoneButton) {
+        m_microphoneButton->setToggled(false);
+    }
+    setScreenShareButtonActive(false);
+    setCameraButtonActive(false);
+
+    if (m_notificationWidget) {
+        m_notificationWidget->hide();
+    }
+
+    if (m_copyCallNameButton) {
+        m_copyCallNameButton->setToggled(false);
+        m_copyCallNameButton->setEnabled(false);
+    }
+    if (m_callNameLabel) {
+        m_callNameLabel->clear();
+        m_callNameLabel->setToolTip(QString());
+    }
+    m_callName.clear();
+    if (m_callNamePanel) {
+        m_callNamePanel->hide();
+    }
+
+    if (m_joinRequestsContainerLayout) {
+        for (QWidget* item : m_joinRequestItems) {
+            m_joinRequestsContainerLayout->removeWidget(item);
+            item->deleteLater();
+        }
+    }
+    m_joinRequestItems.clear();
+    if (m_joinRequestsPanel) {
+        m_joinRequestsPanel->hide();
+    }
+
+    if (m_settingsButton) {
+        m_settingsButton->hide();
+    }
+    if (m_exitFullscreenButton) {
+        m_exitFullscreenButton->hide();
+    }
+    if (m_enterFullscreenButton) {
+        m_enterFullscreenButton->hide();
+    }
+
+    if (m_callDuration) {
+        *m_callDuration = QTime(0, 0, 0);
+    }
+    if (m_callTimer && m_callTimer->isActive()) {
+        m_callTimer->stop();
+    }
+
+    updateOverlayButtonsPosition();
+    updateCallNamePanelPosition();
+    updateJoinRequestsPanelPosition();
+    updateParticipantsContainerSize();
+    updateMainScreenSize();
 }
 
 void MeetingWidget::addJoinRequest(const QString& nickname)
@@ -1176,7 +1271,10 @@ void MeetingWidget::addJoinRequest(const QString& nickname)
     {
         m_joinRequestsContainerLayout->addWidget(item);
     }
-    
+
+    if (m_joinRequestsPanel)
+        m_joinRequestsPanel->show();
+
     updateJoinRequestsPanelSize();
     updateJoinRequestsPanelPosition();
 }
@@ -1247,6 +1345,10 @@ void MeetingWidget::showOverlayWithTimeout()
     {
         if (m_exitFullscreenButton)
             m_exitFullscreenButton->show();
+        if (m_settingsButton)
+            m_settingsButton->hide();
+        if (m_callNamePanel)
+            m_callNamePanel->hide();
         if (m_exitFullscreenHideTimer)
             m_exitFullscreenHideTimer->start();
     }
@@ -1290,8 +1392,6 @@ void MeetingWidget::onOverlayHideTimerTimeout()
         m_settingsButton->hide();
     if (m_callNamePanel)
         m_callNamePanel->hide();
-    if (m_joinRequestsPanel)
-        m_joinRequestsPanel->hide();
 }
 
 void MeetingWidget::updateJoinRequestsPanelPosition()
@@ -1371,11 +1471,6 @@ void MeetingWidget::updateParticipantPanels() {
         m_participantPanels.clear();
         m_participantPanelLayouts.clear();
         m_currentPageIndex = 0;
-        QLayoutItem* stretchItem = m_participantsContainerLayout->itemAt(1);
-        if (stretchItem && stretchItem->spacerItem()) {
-            m_participantsContainerLayout->removeItem(stretchItem);
-            delete stretchItem;
-        }
         return;
     }
 
@@ -1510,25 +1605,6 @@ void MeetingWidget::updateNavigationButtons() {
     if (totalPages <= 1) {
         m_prevPageButton->hide();
         m_nextPageButton->hide();
-        QLayoutItem* stretchItem = m_participantsContainerLayout->itemAt(1);
-        if (stretchItem && stretchItem->spacerItem()) {
-            m_participantsContainerLayout->removeItem(stretchItem);
-            delete stretchItem;
-        }
-        
-        int totalParticipants = m_participantWidgets.size();
-        int maxPerRow = calculateMaxParticipantsPerRow();
-        if (totalParticipants > 0 && totalParticipants <= maxPerRow) {
-            QLayoutItem* firstItem = m_participantsContainerLayout->itemAt(0);
-            if (firstItem && firstItem->widget() != m_prevPageButton) {
-                m_participantsContainerLayout->insertStretch(0, 1);
-            }
-            QLayoutItem* lastItem = m_participantsContainerLayout->itemAt(m_participantsContainerLayout->count() - 1);
-            if (lastItem && lastItem->widget() != m_nextPageButton) {
-                m_participantsContainerLayout->addStretch(1);
-            }
-        }
-        
         updateParticipantsContainerSize();
         return;
     }
@@ -1540,20 +1616,6 @@ void MeetingWidget::updateNavigationButtons() {
     
     bool prevVisible = m_currentPageIndex > 0;
     bool nextVisible = m_currentPageIndex < totalPages - 1;
-    
-    QLayoutItem* stretchItem = m_participantsContainerLayout->itemAt(1);
-    bool hasStretch = stretchItem && stretchItem->spacerItem();
-    
-    if (prevVisible && nextVisible) {
-        if (!hasStretch) {
-            m_participantsContainerLayout->insertStretch(1);
-        }
-    } else {
-        if (hasStretch) {
-            m_participantsContainerLayout->removeItem(stretchItem);
-            delete stretchItem;
-        }
-    }
     
     if (prevVisible) {
         m_prevPageButton->show();
@@ -1649,6 +1711,11 @@ int MeetingWidget::calculateMaxParticipantsPerRow() const {
 }
 
 void MeetingWidget::updateParticipantsContainerSize() {
+    if (m_screenFullscreenActive) {
+        m_participantsContainer->hide();
+        return;
+    }
+
     if (m_participantWidgets.isEmpty()) {
         m_participantsContainer->setMaximumHeight(0);
         m_participantsContainer->setMinimumHeight(0);
@@ -1678,13 +1745,7 @@ void MeetingWidget::updateParticipantsContainerSize() {
     int buttonWidth = scale(40);
     int totalWidth = panelWidth;
     if (m_participantPanels.size() > 1) {
-        int visibleButtons = 0;
-        if (m_prevPageButton && m_prevPageButton->isVisible()) visibleButtons++;
-        if (m_nextPageButton && m_nextPageButton->isVisible()) visibleButtons++;
-        
-        if (visibleButtons > 0) {
-            totalWidth += visibleButtons * buttonWidth + visibleButtons * buttonSpacing;
-        }
+        totalWidth += (buttonWidth * 2) + (buttonSpacing * 2);
     }
 
     int maxAllowedHeight = height() * 0.6;
@@ -1907,9 +1968,15 @@ void MeetingWidget::enterFullscreen() {
     m_screenFullscreenActive = true;
 
     m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
+    m_mainLayout->setSpacing(0);
 
     m_enterFullscreenButton->hide();
     m_buttonsPanel->hide();
+
+    if (m_settingsButton)
+        m_settingsButton->hide();
+    if (m_callNamePanel)
+        m_callNamePanel->hide();
 
     m_additionalScreensContainer->hide();
     m_participantsContainer->hide();
@@ -1918,6 +1985,7 @@ void MeetingWidget::enterFullscreen() {
     showOverlayWithTimeout();
 
     m_mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+    m_mainLayout->invalidate();
     applyFullscreenSize();
 }
 
@@ -1962,7 +2030,9 @@ void MeetingWidget::exitFullscreen() {
         m_participantsContainer->show();
     }
 
+    m_mainLayout->setSpacing(scale(10));
     m_mainLayout->setAlignment(Qt::AlignCenter);
+    m_mainLayout->invalidate();
     updateMainScreenSize();
 }
 

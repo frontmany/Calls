@@ -164,6 +164,12 @@ namespace core::logic
 
     void PacketHandleController::handleCallEndedByRemote(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleCallEndedByRemote(jsonObject);
+        if (m_stopScreenSharing) {
+            m_stopScreenSharing();
+        }
+        if (m_stopCameraSharing) {
+            m_stopCameraSharing();
+        }
         if (m_stopAudioSharing) {
             m_stopAudioSharing();
         }

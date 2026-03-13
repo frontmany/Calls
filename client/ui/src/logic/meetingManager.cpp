@@ -14,6 +14,7 @@
 #include <QPixmap>
 
 #include <cmath>
+#include <vector>
 
 MeetingManager::MeetingManager(
     std::shared_ptr<core::Core> client,
@@ -47,8 +48,61 @@ bool MeetingManager::isInMeeting() const
     return m_coreClient && m_coreClient->isInMeeting();
 }
 
+bool MeetingManager::hasRemoteParticipants() const
+{
+    if (!m_coreClient) return false;
+    const std::string myNickname = m_coreClient->getMyNickname();
+    std::vector<std::string> participants = m_coreClient->getMeetingParticipants();
+    for (const auto& p : participants) {
+        if (myNickname.empty() || p != myNickname)
+            return true;
+    }
+    return false;
+}
+
+void MeetingManager::restrictMediaButtons()
+{
+    if (m_meetingWidget) {
+        m_meetingWidget->setCameraButtonRestricted(true);
+        m_meetingWidget->setScreenShareButtonRestricted(true);
+    }
+}
+
+void MeetingManager::unrestrictMediaButtons()
+{
+    if (m_meetingWidget) {
+        m_meetingWidget->setCameraButtonRestricted(false);
+        m_meetingWidget->setScreenShareButtonRestricted(false);
+    }
+}
+
+void MeetingManager::clearLocalParticipantVideo()
+{
+    if (!m_meetingWidget || !m_coreClient) return;
+    const std::string myNickname = m_coreClient->getMyNickname();
+    if (!myNickname.empty()) {
+        m_meetingWidget->clearParticipantVideo(QString::fromStdString(myNickname));
+    }
+}
+
+void MeetingManager::clearRemoteParticipantVideos()
+{
+    if (!m_meetingWidget || !m_coreClient) return;
+    const std::string myNickname = m_coreClient->getMyNickname();
+    const std::vector<std::string> participants = m_coreClient->getMeetingParticipants();
+    for (const auto& participant : participants) {
+        if (myNickname.empty() || participant != myNickname) {
+            m_meetingWidget->clearParticipantVideo(QString::fromStdString(participant));
+        }
+    }
+}
+
 void MeetingManager::onMeetingCreated(const QString& meetingId)
 {
+    if (m_meetingWidget) {
+        m_meetingWidget->resetMeetingState();
+    }
+    restrictMediaButtons();
     emit meetingCreated(meetingId);
 }
 
@@ -75,6 +129,13 @@ void MeetingManager::onCameraClicked(bool toggled)
     if (!m_coreClient) return;
 
     if (toggled) {
+        if (!hasRemoteParticipants()) {
+            if (m_meetingWidget)
+                m_meetingWidget->setCameraButtonActive(false);
+            if (m_notificationController)
+                m_notificationController->showErrorNotification("Camera sharing requires at least one other participant", 2000);
+            return;
+        }
         if (!m_coreClient->isCameraAvailable()) {
             if (m_meetingWidget) {
                 m_meetingWidget->setCameraButtonActive(false);
@@ -98,6 +159,7 @@ void MeetingManager::onCameraClicked(bool toggled)
         }
     } else {
         m_coreClient->stopCameraSharing();
+        clearLocalParticipantVideo();
         if (m_configManager) {
             m_configManager->setCameraActive(false);
         }
@@ -112,6 +174,13 @@ void MeetingManager::onScreenShareClicked(bool toggled)
     if (!m_coreClient || !m_dialogsController) return;
 
     if (toggled) {
+        if (!hasRemoteParticipants()) {
+            if (m_meetingWidget)
+                m_meetingWidget->setScreenShareButtonActive(false);
+            if (m_notificationController)
+                m_notificationController->showErrorNotification("Screen sharing requires at least one other participant", 2000);
+            return;
+        }
         const QList<QScreen*> screens = QGuiApplication::screens();
         if (screens.isEmpty()) {
             if (m_meetingWidget) {
@@ -139,6 +208,10 @@ void MeetingManager::onScreenShareClicked(bool toggled)
 void MeetingManager::onScreenSelected(int screenIndex)
 {
     if (!m_coreClient || !m_coreClient->isInMeeting()) return;
+    if (!hasRemoteParticipants()) {
+        onStartScreenSharingError();
+        return;
+    }
 
     QList<QScreen*> screens = QGuiApplication::screens();
     if (screenIndex < 0 || screenIndex >= screens.size() || !screens[screenIndex]) {
@@ -224,17 +297,18 @@ void MeetingManager::onMeetingJoinRequestCancelled(const QString& friendNickname
 
 void MeetingManager::onJoinMeetingAccepted(const QString& meetingId, const QStringList& participants)
 {
+    const std::string myNickname = m_coreClient ? m_coreClient->getMyNickname() : "";
+    const QString myNicknameQ = QString::fromStdString(myNickname);
+
     if (m_dialogsController) {
         m_dialogsController->hideMeetingsManagementDialog();
     }
     if (m_meetingWidget && m_coreClient && m_configManager) {
-        m_meetingWidget->clearParticipants();
+        m_meetingWidget->resetMeetingState();
         m_meetingWidget->setCallName(meetingId);
         m_meetingWidget->setIsOwner(false);
         m_meetingWidget->setInputVolume(m_configManager->getInputVolume());
         m_meetingWidget->setOutputVolume(m_configManager->getOutputVolume());
-        const std::string myNickname = m_coreClient->getMyNickname();
-        const QString myNicknameQ = QString::fromStdString(myNickname);
         for (const QString& nickname : participants) {
             if (!myNickname.empty() && nickname == myNicknameQ) continue;
             m_meetingWidget->addParticipant(nickname);
@@ -244,6 +318,13 @@ void MeetingManager::onJoinMeetingAccepted(const QString& meetingId, const QStri
         }
         m_meetingWidget->setMicrophoneMuted(m_coreClient->isMicrophoneMuted());
         m_meetingWidget->setSpeakerMuted(m_coreClient->isSpeakerMuted());
+        if (hasRemoteParticipants()) {
+            unrestrictMediaButtons();
+            if (m_coreClient->isViewingRemoteScreen())
+                m_meetingWidget->setScreenShareButtonRestricted(true);
+        } else {
+            restrictMediaButtons();
+        }
     }
     if (m_navigationController) {
         m_navigationController->switchToMeetingWidget();
@@ -273,11 +354,11 @@ void MeetingManager::onMeetingNotFound()
 
 void MeetingManager::onMeetingEndedByOwner()
 {
+    if (m_meetingWidget) {
+        m_meetingWidget->resetMeetingState();
+    }
     if (m_navigationController) {
         m_navigationController->switchToMainMenuWidget();
-    }
-    if (m_meetingWidget) {
-        m_meetingWidget->clearParticipants();
     }
 }
 
@@ -286,12 +367,55 @@ void MeetingManager::onMeetingParticipantJoined(const QString& nickname)
     if (m_meetingWidget) {
         m_meetingWidget->addParticipant(nickname);
     }
+    unrestrictMediaButtons();
+    if (m_coreClient && m_coreClient->isViewingRemoteScreen() && m_meetingWidget)
+        m_meetingWidget->setScreenShareButtonRestricted(true);
 }
 
 void MeetingManager::onMeetingParticipantLeft(const QString& nickname)
 {
     if (m_meetingWidget) {
+        m_meetingWidget->clearParticipantVideo(nickname);
         m_meetingWidget->removeParticipant(nickname);
+    }
+
+    if (m_coreClient) {
+        const std::string myNickname = m_coreClient->getMyNickname();
+        std::vector<std::string> participants = m_coreClient->getMeetingParticipants();
+        bool hasRemoteParticipants = false;
+        for (const auto& p : participants) {
+            if (myNickname.empty() || p != myNickname) {
+                hasRemoteParticipants = true;
+                break;
+            }
+        }
+        if (!hasRemoteParticipants) {
+            if (m_coreClient->isScreenSharing()) {
+                m_coreClient->stopScreenSharing();
+                if (m_meetingWidget) {
+                    m_meetingWidget->hideMainScreen();
+                    m_meetingWidget->hideAdditionalScreens();
+                    m_meetingWidget->setScreenShareButtonActive(false);
+                }
+            }
+            if (m_coreClient->isCameraSharing()) {
+                m_coreClient->stopCameraSharing();
+                clearLocalParticipantVideo();
+                if (m_configManager) {
+                    m_configManager->setCameraActive(false);
+                }
+                if (m_meetingWidget) {
+                    m_meetingWidget->setCameraButtonActive(false);
+                }
+            }
+        }
+        if (hasRemoteParticipants) {
+            unrestrictMediaButtons();
+            if (m_coreClient->isViewingRemoteScreen() && m_meetingWidget)
+                m_meetingWidget->setScreenShareButtonRestricted(true);
+        } else {
+            restrictMediaButtons();
+        }
     }
 }
 
@@ -314,6 +438,7 @@ void MeetingManager::onLocalCameraFrame(QByteArray data, int width, int height)
     if (!m_meetingWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
     if (!m_coreClient || !m_coreClient->isCameraSharing()) {
+        clearLocalParticipantVideo();
         return;
     }
 
@@ -345,6 +470,7 @@ void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int heigh
     if (!m_meetingWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
     if (!m_coreClient || !m_coreClient->isViewingRemoteCamera()) {
+        m_meetingWidget->clearParticipantVideo(nickname);
         return;
     }
 
@@ -357,8 +483,8 @@ void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int heigh
 void MeetingManager::onIncomingScreenSharingStarted()
 {
     if (m_meetingWidget) {
-        m_meetingWidget->setScreenShareButtonRestricted(true);
         m_meetingWidget->showEnterFullscreenButton();
+        m_meetingWidget->setScreenShareButtonRestricted(true);
     }
 }
 
@@ -366,9 +492,10 @@ void MeetingManager::onIncomingScreenSharingStopped()
 {
     if (m_meetingWidget) {
         m_meetingWidget->hideMainScreen();
-        m_meetingWidget->setScreenShareButtonRestricted(false);
         m_meetingWidget->hideEnterFullscreenButton();
     }
+    if (hasRemoteParticipants() && m_meetingWidget)
+        m_meetingWidget->setScreenShareButtonRestricted(false);
 }
 
 void MeetingManager::onIncomingCameraSharingStarted()
@@ -379,6 +506,7 @@ void MeetingManager::onIncomingCameraSharingStarted()
 void MeetingManager::onIncomingCameraSharingStopped()
 {
     if (!m_meetingWidget) return;
+    clearRemoteParticipantVideos();
     m_meetingWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
     if (!screenSharingActive) {
@@ -391,6 +519,7 @@ void MeetingManager::onStartCameraSharingError()
     if (m_coreClient) {
         m_coreClient->stopCameraSharing();
     }
+    clearLocalParticipantVideo();
     if (m_meetingWidget) {
         m_meetingWidget->setCameraButtonActive(false);
     }

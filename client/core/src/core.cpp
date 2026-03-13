@@ -354,6 +354,19 @@ namespace core
         return opt ? opt->get().getNickname() : empty;
     }
 
+    std::vector<std::string> Core::getMeetingParticipants() const {
+        std::vector<std::string> result;
+        if (!m_stateManager) return result;
+        auto meetingOpt = m_stateManager->getActiveMeeting();
+        if (!meetingOpt) return result;
+        const auto& participants = meetingOpt->get().getParticipants();
+        result.reserve(participants.size());
+        for (const auto& p : participants) {
+            result.push_back(p.getUser().getNickname());
+        }
+        return result;
+    }
+
     std::error_code Core::authorize(const std::string& nickname) {
         return m_authorizationService->authorize(nickname);
     }
