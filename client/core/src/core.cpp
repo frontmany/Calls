@@ -387,13 +387,28 @@ namespace core
     }
 
     std::error_code Core::acceptCall(const std::string& userNickname) {
-        if (m_stateManager->isActiveMeeting() && m_meetingService) {
-            auto ec = m_meetingService->leaveMeeting();
-            if (ec) return ec;
-            if (m_mediaService) {
-                (void)m_mediaService->stopAudioSharing();
+        // If there is an outgoing join-meeting request in progress, cancel it
+        // before accepting a call to avoid leaving a stale pending request.
+        if (m_meetingService && m_stateManager->isOutgoingJoinMeeting()) {
+            std::error_code joinEc = m_meetingService->cancelMeetingJoin();
+            if (joinEc) {
+                return joinEc;
             }
         }
+
+        if (m_stateManager->isActiveMeeting() && m_meetingService) {
+            std::error_code meetingEc;
+            if (isMeetingOwner()) {
+                meetingEc = endMeeting();
+            } else {
+                meetingEc = leaveMeeting();
+            }
+
+            if (meetingEc) {
+                return meetingEc;
+            }
+        }
+
         auto ec = m_callService->acceptCall(userNickname);
         if (!ec && m_mediaService) {
             m_mediaService->startAudioSharing();

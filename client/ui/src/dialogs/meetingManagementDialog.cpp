@@ -3,6 +3,7 @@
 #include "constants/color.h"
 #include "widgets/mainMenuWidget.h"
 #include "widgets/components/button.h"
+#include "widgets/components/waitingIndicator.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -12,7 +13,6 @@
 #include <QShortcut>
 #include <QRandomGenerator>
 #include <QIcon>
-#include <QMovie>
 
 MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     : QWidget(parent)
@@ -42,7 +42,6 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
 
     m_stackedWidget = new QStackedWidget(mainWidget);
 
-    // ========== Initial state ==========
     m_initialWidget = new QWidget();
     QVBoxLayout* initialLayout = new QVBoxLayout(m_initialWidget);
     initialLayout->setContentsMargins(scale(36), scale(24), scale(36), scale(28));
@@ -55,7 +54,7 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     QVBoxLayout* headerBlockLayout = new QVBoxLayout(headerWidget);
     headerBlockLayout->setContentsMargins(0, 0, 0, 0);
     headerBlockLayout->setSpacing(scale(4));
-
+     
     QHBoxLayout* headerLayout = new QHBoxLayout();
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(scale(6));
@@ -154,7 +153,23 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     m_meetingIdEdit = new QLineEdit();
     m_meetingIdEdit->setPlaceholderText("Paste meeting ID (e.g., abc-defg-hij)");
     m_meetingIdEdit->setFixedHeight(scale(50));
-    m_meetingIdEdit->setStyleSheet(StyleMainMenuWidget::lineEditStyle());
+    // Base main menu style + very subtle blue‑tinted variant with a light border for better visibility in meetings dialog
+    m_meetingIdEdit->setStyleSheet(
+        StyleMainMenuWidget::lineEditStyle() +
+        QString(
+            "QLineEdit {"
+            "   background-color: rgba(244, 246, 250, 230);"
+            "   border: 1px solid rgba(21, 119, 232, 60);"
+            "}"
+            "QLineEdit:focus {"
+            "   background-color: rgba(238, 242, 250, 245);"
+            "   border: 1px solid rgba(21, 119, 232, 120);"
+            "}"
+            "QLineEdit::placeholder {"
+            "   color: rgba(60, 90, 130, 180);"
+            "}"
+        )
+    );
     m_meetingIdEdit->setMaxLength(64);
 
     m_joinMeetingButton = new QPushButton("Join Meeting");
@@ -248,7 +263,7 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     joiningHeaderLayout->addWidget(joiningTitle);
     joiningHeaderLayout->addStretch();
 
-    m_roomIdLabel = new QLabel("Room ID: ");
+    m_roomIdLabel = new QLabel("Meeting ID: ");
     m_roomIdLabel->setAlignment(Qt::AlignCenter);
     m_roomIdLabel->setStyleSheet(QString(
         "color: rgb(80, 80, 80);"
@@ -256,34 +271,16 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         "font-family: 'Outfit';")
         .arg(scale(14)));
 
-    m_waitingGifLabel = new QLabel();
-    m_waitingGifLabel->setAlignment(Qt::AlignCenter);
-    m_waitingGifLabel->setFixedSize(scale(40), scale(40));
-    m_waitingGifLabel->setScaledContents(true);
-    QMovie* waitingMovie = new QMovie(":/resources/waiting.gif");
-    if (waitingMovie->isValid())
-    {
-        m_waitingGifLabel->setMovie(waitingMovie);
-        waitingMovie->start();
-    }
+    m_waitingIndicator = new WaitingIndicator(m_connectingWidget);
+    m_waitingIndicator->setColor(COLOR_ACCENT);
 
-    m_statusLabel = new QLabel("Waiting for host's approval...");
+    m_statusLabel = new QLabel("Waiting for approval...");
     m_statusLabel->setAlignment(Qt::AlignCenter);
     m_statusLabel->setStyleSheet(QString(
         "color: rgb(100, 100, 100);"
         "font-size: %1px;"
         "font-family: 'Outfit';")
         .arg(scale(12)));
-
-    QLabel* waitLabel = new QLabel(
-        "Your request to join has been sent. The meeting host will allow you to enter when ready.");
-    waitLabel->setWordWrap(true);
-    waitLabel->setAlignment(Qt::AlignCenter);
-    waitLabel->setStyleSheet(QString(
-        "color: rgb(120, 120, 120);"
-        "font-size: %1px;"
-        "font-family: 'Outfit';")
-        .arg(scale(11)));
 
     m_cancelRequestButton = new QPushButton("Cancel Request");
     m_cancelRequestButton->setCursor(Qt::PointingHandCursor);
@@ -312,9 +309,8 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     connectingLayout->addLayout(joiningHeaderLayout);
     connectingLayout->addWidget(m_roomIdLabel);
     connectingLayout->addSpacing(scale(16));
-    connectingLayout->addWidget(m_waitingGifLabel, 0, Qt::AlignHCenter);
+    connectingLayout->addWidget(m_waitingIndicator, 0, Qt::AlignHCenter);
     connectingLayout->addWidget(m_statusLabel);
-    connectingLayout->addWidget(waitLabel);
     connectingLayout->addStretch();
 
     connect(m_cancelRequestButton, &QPushButton::clicked, this, [this]() {
@@ -363,10 +359,10 @@ QString MeetingManagementDialog::generateMeetingUid() const
 void MeetingManagementDialog::showConnectingState(const QString& roomId)
 {
     m_roomIdLabel->setText("Room ID: " + roomId);
-    m_statusLabel->setText("Waiting for host's approval...");
-    if (m_waitingGifLabel && m_waitingGifLabel->movie())
+    m_statusLabel->setText("Waiting for approval...");
+    if (m_waitingIndicator)
     {
-        m_waitingGifLabel->movie()->start();
+        m_waitingIndicator->start();
     }
     m_cancelRequestButton->show();
     m_stackedWidget->setCurrentWidget(m_connectingWidget);
@@ -376,6 +372,10 @@ void MeetingManagementDialog::showConnectingState(const QString& roomId)
 void MeetingManagementDialog::showInitialState()
 {
     m_meetingIdEdit->clear();
+    if (m_waitingIndicator)
+    {
+        m_waitingIndicator->stop();
+    }
     m_cancelRequestButton->hide();
     m_stackedWidget->setCurrentWidget(m_initialWidget);
     setFixedHeight(m_initialHeight);

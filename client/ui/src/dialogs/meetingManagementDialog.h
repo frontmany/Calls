@@ -6,6 +6,8 @@
 #include <QStackedWidget>
 #include <QLabel>
 
+class WaitingIndicator;
+
 class MeetingManagementDialog : public QWidget
 {
     Q_OBJECT
@@ -37,7 +39,7 @@ private:
     // Connecting state
     QWidget* m_connectingWidget = nullptr;
     QLabel* m_roomIdLabel = nullptr;
-    QLabel* m_waitingGifLabel = nullptr;
+    WaitingIndicator* m_waitingIndicator = nullptr;
     QLabel* m_statusLabel = nullptr;
     QPushButton* m_cancelRequestButton = nullptr;
 

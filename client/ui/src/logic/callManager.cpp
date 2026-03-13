@@ -111,6 +111,9 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
 {
     hideOperationDialog();
     if (m_dialogsController) {
+        m_dialogsController->hideMeetingsManagementDialog();
+    }
+    if (m_dialogsController) {
         for (const QString& nickname : m_incomingCalls.keys()) {
             m_dialogsController->hideIncomingCallsDialog(nickname);
         }
@@ -118,12 +121,6 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
     m_incomingCalls.clear();
     if (m_audioManager && m_incomingCalls.isEmpty()) {
         m_audioManager->stopIncomingCallRingtone();
-    }
-    if (m_coreClient && m_coreClient->isScreenSharing()) {
-        m_coreClient->stopScreenSharing();
-    }
-    if (m_coreClient && m_coreClient->isCameraSharing()) {
-        m_coreClient->stopCameraSharing();
     }
     if (m_mainMenuWidget) {
         m_mainMenuWidget->removeOutgoingCallPanel();
@@ -138,7 +135,7 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
     if (m_navigationController) {
         m_navigationController->switchToCallWidget(friendNickname);
     }
-    if (m_configManager && m_configManager->isStartCameraWithCall() && m_coreClient && m_callWidget) {
+    if (m_configManager && m_configManager->isStartCameraWithSession() && m_coreClient && m_callWidget) {
         if (m_coreClient->isCameraAvailable()) {
             std::error_code ec = m_coreClient->startCameraSharing("");
             if (ec) {
@@ -148,7 +145,7 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
                 m_configManager->setCameraActive(true);
             }
         } else {
-            m_configManager->setStartCameraWithCall(false);
+            m_configManager->setStartCameraWithSession(false);
         }
     }
     if (m_audioManager) {
@@ -244,14 +241,14 @@ void CallManager::onActivateCameraClicked(bool active)
             return;
         }
         if (m_configManager) {
-            m_configManager->setStartCameraWithCall(true);
+            m_configManager->setStartCameraWithSession(true);
         }
         if (m_mainMenuWidget) {
             m_mainMenuWidget->setCameraActive(true);
         }
     } else {
         if (m_configManager) {
-            m_configManager->setStartCameraWithCall(false);
+            m_configManager->setStartCameraWithSession(false);
         }
         if (m_mainMenuWidget) {
             m_mainMenuWidget->setCameraActive(false);
@@ -449,7 +446,7 @@ void CallManager::onOutgoingCallAccepted(const QString& nickname)
     if (m_navigationController && !nickname.isEmpty()) {
         m_navigationController->switchToCallWidget(nickname);
     }
-    if (m_configManager && m_configManager->isStartCameraWithCall() && m_coreClient && m_callWidget) {
+    if (m_configManager && m_configManager->isStartCameraWithSession() && m_coreClient && m_callWidget) {
         if (m_coreClient->isCameraAvailable()) {
             std::error_code ec = m_coreClient->startCameraSharing("");
             if (ec) {
@@ -459,7 +456,7 @@ void CallManager::onOutgoingCallAccepted(const QString& nickname)
                 m_configManager->setCameraActive(true);
             }
         } else {
-            m_configManager->setStartCameraWithCall(false);
+            m_configManager->setStartCameraWithSession(false);
         }
     }
     if (m_audioManager) {

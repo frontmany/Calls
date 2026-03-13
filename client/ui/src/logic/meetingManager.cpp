@@ -329,6 +329,10 @@ void MeetingManager::onJoinMeetingAccepted(const QString& meetingId, const QStri
     if (m_navigationController) {
         m_navigationController->switchToMeetingWidget();
     }
+
+    // Automatically start camera for the local user when joining a meeting,
+    // if the corresponding setting is enabled.
+    tryStartCameraWithSession();
 }
 
 void MeetingManager::onJoinMeetingDeclined(const QString& meetingId)
@@ -370,6 +374,11 @@ void MeetingManager::onMeetingParticipantJoined(const QString& nickname)
     unrestrictMediaButtons();
     if (m_coreClient && m_coreClient->isViewingRemoteScreen() && m_meetingWidget)
         m_meetingWidget->setScreenShareButtonRestricted(true);
+
+    // When a participant joins the meeting created by the local user,
+    // media controls become available. Respect the "start camera with session"
+    // setting and start camera automatically if needed.
+    tryStartCameraWithSession();
 }
 
 void MeetingManager::onMeetingParticipantLeft(const QString& nickname)
@@ -538,4 +547,31 @@ void MeetingManager::onStartScreenSharingError()
     if (m_notificationController) {
         m_notificationController->showErrorNotification("Failed to start screen sharing", 1500);
     }
+}
+
+void MeetingManager::tryStartCameraWithSession()
+{
+    if (!m_coreClient || !m_meetingWidget || !m_configManager) return;
+
+    // Respect user preference: only start camera automatically if enabled.
+    if (!m_configManager->isStartCameraWithSession()) return;
+
+    // Do not attempt to start if already sharing or if no remote participants.
+    if (m_coreClient->isCameraSharing()) return;
+    if (!hasRemoteParticipants()) return;
+
+    if (!m_coreClient->isCameraAvailable()) {
+        // If camera is not available, disable auto-start to avoid repeated failures.
+        m_configManager->setStartCameraWithSession(false);
+        return;
+    }
+
+    std::error_code ec = m_coreClient->startCameraSharing("");
+    if (ec) {
+        onStartCameraSharingError();
+        return;
+    }
+
+    m_meetingWidget->setCameraButtonActive(true);
+    m_configManager->setCameraActive(true);
 }

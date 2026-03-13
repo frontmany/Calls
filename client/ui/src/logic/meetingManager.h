@@ -77,6 +77,7 @@ private:
     void clearRemoteParticipantVideos();
     void restrictMediaButtons();
     void unrestrictMediaButtons();
+    void tryStartCameraWithSession();
     std::shared_ptr<core::Core> m_coreClient = nullptr;
     NavigationController* m_navigationController = nullptr;
     DialogsController* m_dialogsController = nullptr;

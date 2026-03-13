@@ -36,7 +36,7 @@ void ConfigManager::loadConfig() {
             m_updaterHost = getUpdaterHostFromConfig();
             m_isSpeakerMuted = isSpeakerMutedFromConfig();
             m_isCameraActive = isCameraActiveFromConfig();
-            m_startCameraWithCall = isStartCameraWithCallFromConfig();
+            m_startCameraWithSession = isStartCameraWithSessionFromConfig();
             m_isMicrophoneMuted = isMicrophoneMutedFromConfig();
             m_outputVolume = getOutputVolumeFromConfig();
             m_inputVolume = getInputVolumeFromConfig();
@@ -84,7 +84,7 @@ void ConfigManager::saveConfig() {
         configObject[MICROPHONE_MUTED] = m_isMicrophoneMuted ? "1" : "0";
         configObject[SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
         configObject[CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
-        configObject[START_CAMERA_WITH_CALL] = m_startCameraWithCall ? "1" : "0";
+        configObject[START_CAMERA_WITH_CALL] = m_startCameraWithSession ? "1" : "0";
         configObject[FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
         configObject[LOG_DIRECTORY] = m_logDirectory;
         configObject[CRASH_DUMP_DIRECTORY] = m_crashDumpDirectory;
@@ -132,7 +132,7 @@ void ConfigManager::setDefaultValues() {
     m_isMicrophoneMuted = false;
     m_isMultiInstanceAllowed = false;
     m_isCameraActive = false;
-    m_startCameraWithCall = false;
+    m_startCameraWithSession = false;
     m_outputVolume = DEFAULT_VOLUME;
     m_inputVolume = DEFAULT_VOLUME;
     m_mainServerTcpPort = DEFAULT_MAIN_SERVER_TCP_PORT;
@@ -184,8 +184,8 @@ bool ConfigManager::isCameraActive() const {
     return m_isCameraActive;
 }
 
-bool ConfigManager::isStartCameraWithCall() const {
-    return m_startCameraWithCall;
+bool ConfigManager::isStartCameraWithSession() const {
+    return m_startCameraWithSession;
 }
 
 bool ConfigManager::isMicrophoneMuted() const {
@@ -243,8 +243,8 @@ void ConfigManager::setCameraActive(bool active) {
     saveConfig();
 }
 
-void ConfigManager::setStartCameraWithCall(bool startWithCall) {
-    m_startCameraWithCall = startWithCall;
+void ConfigManager::setStartCameraWithSession(bool startWithSession) {
+    m_startCameraWithSession = startWithSession;
     saveConfig();
 }
 
@@ -737,7 +737,7 @@ bool ConfigManager::isCameraActiveFromConfig() {
     }
 }
 
-bool ConfigManager::isStartCameraWithCallFromConfig() {
+bool ConfigManager::isStartCameraWithSessionFromConfig() {
     QFile file(m_configPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;

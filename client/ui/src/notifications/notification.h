@@ -2,9 +2,10 @@
 
 #include <QWidget>
 #include <QLabel>
-#include <QMovie>
 
 #include "notifications/notificationStyleType.h"
+
+class WaitingIndicator;
 
 struct NotificationStyle
 {
@@ -31,8 +32,7 @@ private:
 
     QWidget* m_mainWidget = nullptr;
     QLabel* m_statusLabel = nullptr;
-    QLabel* m_gifLabel = nullptr;
-    QMovie* m_movie = nullptr;
+    WaitingIndicator* m_waitingIndicator = nullptr;
     NotificationStyleType m_styleType = NotificationStyleType::BASE;
     bool m_isWaitingAnimation = true;
 };

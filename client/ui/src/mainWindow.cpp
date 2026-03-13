@@ -307,7 +307,7 @@ void MainWindow::applyAudioSettings() {
     if (m_mainMenuWidget) {
         m_mainMenuWidget->setInputVolume(m_configManager->getInputVolume());
         m_mainMenuWidget->setOutputVolume(m_configManager->getOutputVolume());
-        m_mainMenuWidget->setCameraActive(m_configManager->isStartCameraWithCall());
+        m_mainMenuWidget->setCameraActive(m_configManager->isStartCameraWithSession());
     }
 
     if (m_callWidget) {

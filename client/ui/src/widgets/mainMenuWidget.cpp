@@ -365,7 +365,7 @@ QString StyleMainMenuWidget::disabledStopOutgoingCallButtonStyle() {
 
 QString StyleMainMenuWidget::notificationBlueLabelStyle() {
     return QString("QWidget {"
-        "   background-color: rgba(21, 119, 232, 80);"  // ����� ���� � �������������
+        "   background-color: rgba(21, 119, 232, 80);"
         "   border: none;"
         "   border-radius: %1px;"
         "   margin: 0px;"
@@ -376,9 +376,6 @@ QString StyleMainMenuWidget::notificationBlueLabelStyle() {
 MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
     setupAnimations();
-
-
-    // ������ ��� ����������� �� ����������
 }
 
 void MainMenuWidget::setupUI() {

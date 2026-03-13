@@ -1,6 +1,7 @@
 #include "notifications/notification.h"
 #include "utilities/utility.h"
 #include "constants/color.h"
+#include "widgets/components/waitingIndicator.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 
@@ -111,22 +112,17 @@ Notification::Notification(QWidget* parent,
         m_statusLabel->setContentsMargins(0, 0, scale(8), 0);
     }
 
-    m_gifLabel = new QLabel();
-    m_gifLabel->setAlignment(Qt::AlignCenter);
-    m_gifLabel->setFixedSize(scale(32), scale(32));
-
-    m_movie = new QMovie(":/resources/waiting.gif");
-    if (m_movie->isValid())
+    m_waitingIndicator = new WaitingIndicator(this);
+    m_waitingIndicator->setFixedSize(scale(40), scale(40));
+    m_waitingIndicator->setColor(COLOR_ACCENT);
+    m_waitingIndicator->setVisible(m_isWaitingAnimation);
+    if (m_isWaitingAnimation)
     {
-        m_gifLabel->setMovie(m_movie);
-        if (m_isWaitingAnimation)
-        {
-            m_movie->start();
-        }
+        m_waitingIndicator->start();
     }
 
     contentLayout->addWidget(m_statusLabel, 0, Qt::AlignCenter);
-    contentLayout->addWidget(m_gifLabel, 0, Qt::AlignCenter);
+    contentLayout->addWidget(m_waitingIndicator, 0, Qt::AlignCenter);
 
     setMinimumHeight(50 - scale(2));
     setMaximumHeight(60 - scale(2));
@@ -167,24 +163,17 @@ void Notification::setAnimationEnabled(bool isAnimation)
 {
     m_isWaitingAnimation = isAnimation;
 
-    if (m_movie)
+    if (m_waitingIndicator)
     {
+        m_waitingIndicator->setVisible(m_isWaitingAnimation);
         if (m_isWaitingAnimation)
         {
-            if (m_movie->state() != QMovie::Running)
-            {
-                m_movie->start();
-            }
+            m_waitingIndicator->start();
         }
         else
         {
-            m_movie->stop();
+            m_waitingIndicator->stop();
         }
-    }
-
-    if (m_gifLabel)
-    {
-        m_gifLabel->setVisible(m_isWaitingAnimation);
     }
 
     updateMinimumSize();
