@@ -14,13 +14,8 @@ class ScreenShareDialog;
 class AlreadyRunningDialog;
 class FirstLaunchDialog;
 class IncomingCallDialog;
-class UpdateAvailableDialog;
 class MeetingManagementDialog;
 class EndMeetingConfirmationDialog;
-
-namespace updater {
-    class Client;
-}
 class DialogsController : public QObject
 {
 	Q_OBJECT
@@ -63,12 +58,6 @@ public:
     void showEndMeetingConfirmationDialog();
     void hideEndMeetingConfirmationDialog();
 
-    void showUpdateAvailableDialog(const QString& newVersion = QString());
-    void hideUpdateAvailableDialog();
-    void hideUpdateAvailableDialogTemporarily();
-    void showUpdateAvailableDialogTemporarilyHidden();
-    void setUpdateClient(std::shared_ptr<updater::Client> updaterClient);
-
 signals:
     void audioSettingsDialogClosed();
     void inputDeviceSelected(int deviceIndex);
@@ -86,7 +75,6 @@ signals:
     void incomingCallAccepted(const QString& friendNickname);
     void incomingCallDeclined(const QString& friendNickname);
     void incomingCallsDialogClosed(const QList<QString>& pendingCalls);
-    void updateButtonClicked();
     void meetingCreateRequested();
     void meetingJoinRequested(const QString& uid);
     void meetingJoinCancelled();
@@ -112,14 +100,10 @@ private:
     OverlayWidget* m_audioSettingsOverlay = nullptr;
     AudioSettingsDialog* m_audioSettingsDialog = nullptr;
 
-    OverlayWidget* m_updateAvailableOverlay = nullptr;
-    UpdateAvailableDialog* m_updateAvailableDialog = nullptr;
-
     OverlayWidget* m_meetingsManagementOverlay = nullptr;
     MeetingManagementDialog* m_meetingsManagementDialog = nullptr;
 
     OverlayWidget* m_endMeetingConfirmationOverlay = nullptr;
     EndMeetingConfirmationDialog* m_endMeetingConfirmationDialog = nullptr;
 
-    std::shared_ptr<updater::Client> m_updaterClient = nullptr;
 };

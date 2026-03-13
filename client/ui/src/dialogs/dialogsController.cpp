@@ -22,7 +22,6 @@
 #include <QPointer>
 #include "dialogs/audioSettingsDialog.h"
 #include "dialogs/updatingDialog.h"
-#include "dialogs/updateAvailableDialog.h"
 #include "dialogs/meetingManagementDialog.h"
 #include "dialogs/endMeetingConfirmationDialog.h"
 #include "updater.h"
@@ -41,8 +40,6 @@ DialogsController::DialogsController(QWidget* parent)
     , m_firstLaunchDialog(nullptr)
     , m_audioSettingsOverlay(nullptr)
     , m_audioSettingsDialog(nullptr)
-    , m_updateAvailableOverlay(nullptr)
-    , m_updateAvailableDialog(nullptr)
     , m_meetingsManagementOverlay(nullptr)
     , m_meetingsManagementDialog(nullptr)
     , m_endMeetingConfirmationOverlay(nullptr)
@@ -60,7 +57,6 @@ DialogsController::~DialogsController()
     hideAudioSettingsDialog();
     hideMeetingsManagementDialog();
     hideEndMeetingConfirmationDialog();
-    hideUpdateAvailableDialog();
 
     for (IncomingCallDialog* dialog : m_incomingCallDialogs)
     {
@@ -690,90 +686,3 @@ void DialogsController::hideEndMeetingConfirmationDialog()
     }
 }
 
-void DialogsController::showUpdateAvailableDialog(const QString& newVersion)
-{
-    if (m_updateAvailableDialog)
-    {
-        m_updateAvailableDialog->setNewVersion(newVersion);
-        m_updateAvailableDialog->raise();
-        return;
-    }
-
-    m_updateAvailableOverlay = new OverlayWidget(m_parent);
-    m_updateAvailableOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    // Hide overlay but keep it for geometry tracking
-    m_updateAvailableOverlay->hide();
-
-    m_updateAvailableDialog = new UpdateAvailableDialog(m_parent);
-    m_updateAvailableDialog->setNewVersion(newVersion);
-
-    auto positionDialog = [this]()
-    {
-        if (!m_updateAvailableDialog || !m_parent)
-            return;
-
-        m_updateAvailableDialog->adjustSize();
-        QSize dialogSize = m_updateAvailableDialog->size();
-        QRect parentRect = m_parent->rect();
-        
-        // Position at top center
-        int x = parentRect.center().x() - dialogSize.width() / 2;
-        int y = scale(30); // Small margin from top
-        
-        m_updateAvailableDialog->move(x, y);
-        m_updateAvailableDialog->raise();
-    };
-
-    positionDialog();
-    m_updateAvailableDialog->show();
-    QTimer::singleShot(0, this, positionDialog);
-    if (m_updateAvailableOverlay)
-    {
-        QObject::connect(m_updateAvailableOverlay, &OverlayWidget::geometryChanged, this, positionDialog);
-    }
-    connect(m_updateAvailableDialog, &UpdateAvailableDialog::updateButtonClicked, this, [this]()
-    {
-        emit updateButtonClicked();
-        hideUpdateAvailableDialog();
-    });
-}
-
-void DialogsController::hideUpdateAvailableDialog()
-{
-    if (m_updateAvailableDialog)
-    {
-        m_updateAvailableDialog->disconnect();
-        m_updateAvailableDialog->hide();
-        m_updateAvailableDialog->deleteLater();
-        m_updateAvailableDialog = nullptr;
-    }
-
-    if (m_updateAvailableOverlay)
-    {
-        m_updateAvailableOverlay->close();
-        m_updateAvailableOverlay->deleteLater();
-        m_updateAvailableOverlay = nullptr;
-    }
-}
-
-void DialogsController::hideUpdateAvailableDialogTemporarily()
-{
-    if (m_updateAvailableDialog)
-    {
-        m_updateAvailableDialog->hide();
-    }
-}
-
-void DialogsController::showUpdateAvailableDialogTemporarilyHidden()
-{
-    if (m_updateAvailableDialog)
-    {
-        m_updateAvailableDialog->show();
-        m_updateAvailableDialog->raise();
-    }
-}
-
-void DialogsController::setUpdateClient(std::shared_ptr<updater::Client> updaterClient)
-{
-    m_updaterClient = updaterClient;
-}

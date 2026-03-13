@@ -56,8 +56,7 @@ namespace core::logic
                 if (m_stateManager && m_stateManager->getMediaState(MediaType::Camera) != MediaState::Stopped) {
                     m_stateManager->setMediaState(MediaType::Camera, MediaState::Stopped);
 
-                    auto activeOpt = m_stateManager->getActiveCall();
-                    if (activeOpt) {
+                    if (m_stateManager->isActiveCall() || m_stateManager->isInMeeting()) {
                         auto packet = PacketFactory::getCameraSharingEndPacket(
                             m_stateManager->getMyNickname()
                         );
@@ -279,7 +278,9 @@ namespace core::logic
     void MediaService::onRawFrame(const media::Frame& frame, MediaType type) {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (!frame.isValid() || !m_stateManager->isActiveCall()) {
+        const bool isActiveCall = m_stateManager->isActiveCall();
+        const bool isInMeeting = m_stateManager->isInMeeting();
+        if (!frame.isValid() || (!isActiveCall && !isInMeeting)) {
             return;
         }
 
@@ -306,13 +307,47 @@ namespace core::logic
             return;
         }
 
-        auto encryptedVideo = encryptWithCallKey(encodedVideo);
+        PacketType packetType = (type == MediaType::Screen) ? PacketType::SCREEN : PacketType::CAMERA;
+        if (isActiveCall) {
+            auto encryptedVideo = encryptWithCallKey(encodedVideo);
+            if (encryptedVideo.empty()) {
+                return;
+            }
+            m_sendMediaFrame(encryptedVideo, packetType);
+            return;
+        }
+
+        auto meetingOpt = m_stateManager->getActiveMeeting();
+        if (!meetingOpt) return;
+        const std::string& meetingId = meetingOpt->get().getMeetingId();
+        auto keyOpt = deriveMeetingKeyVec(meetingId);
+        if (!keyOpt) return;
+
+        auto encryptedVideo = m_mediaProcessingService->encryptData(
+            encodedVideo.data(),
+            static_cast<int>(encodedVideo.size()),
+            *keyOpt
+        );
         if (encryptedVideo.empty()) {
             return;
         }
 
-        PacketType packetType = (type == MediaType::Screen) ? PacketType::SCREEN : PacketType::CAMERA;
-        m_sendMediaFrame(encryptedVideo, packetType);
+        if (meetingId.size() > 0xFFFF) {
+            return;
+        }
+
+        std::vector<unsigned char> framed;
+        const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
+        if (senderHash.size() > 0xFFFF) {
+            return;
+        }
+        framed.reserve(2 + meetingId.size() + 2 + senderHash.size() + encryptedVideo.size());
+        appendU16BE(framed, static_cast<uint16_t>(meetingId.size()));
+        framed.insert(framed.end(), meetingId.begin(), meetingId.end());
+        appendU16BE(framed, static_cast<uint16_t>(senderHash.size()));
+        framed.insert(framed.end(), senderHash.begin(), senderHash.end());
+        framed.insert(framed.end(), encryptedVideo.begin(), encryptedVideo.end());
+        m_sendMediaFrame(framed, packetType);
     }
 
     std::vector<unsigned char> MediaService::encryptWithCallKey(const std::vector<unsigned char>& data) {

@@ -114,7 +114,6 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
         for (const QString& nickname : m_incomingCalls.keys()) {
             m_dialogsController->hideIncomingCallsDialog(nickname);
         }
-        m_dialogsController->hideUpdateAvailableDialog();
     }
     m_incomingCalls.clear();
     if (m_audioManager && m_incomingCalls.isEmpty()) {
@@ -379,7 +378,7 @@ void CallManager::onEndCallButtonClicked()
         }
 
         if (m_updateManager) {
-            m_updateManager->showUpdateAvailableDialogIfNeeded();
+            m_updateManager->showUpdateButtonIfNeeded();
         }
 
         if (m_audioManager) {
@@ -462,9 +461,6 @@ void CallManager::onOutgoingCallAccepted(const QString& nickname)
         } else {
             m_configManager->setStartCameraWithCall(false);
         }
-    }
-    if (m_dialogsController) {
-        m_dialogsController->hideUpdateAvailableDialog();
     }
     if (m_audioManager) {
         m_audioManager->playCallJoinedEffect();
@@ -608,17 +604,7 @@ void CallManager::onCallParticipantConnectionRestored()
         m_notificationController->hideConnectionDownWithUser();
         
         const int restoredDurationMs = ERROR_MESSAGE_DURATION_MS;
-        if (m_dialogsController) {
-            m_dialogsController->hideUpdateAvailableDialogTemporarily();
-        }
         m_notificationController->showConnectionRestoredWithUser("Connection with participant restored", restoredDurationMs);
-        if (m_dialogsController) {
-            QTimer::singleShot(restoredDurationMs, this, [this]() {
-                if (m_dialogsController) {
-                    m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
-                }
-            });
-        }
     }
 }
 
@@ -708,7 +694,7 @@ void CallManager::onRemoteUserEndedCall()
     }
 
     if (m_updateManager) {
-        m_updateManager->showUpdateAvailableDialogIfNeeded();
+        m_updateManager->showUpdateButtonIfNeeded();
     }
 
     if (m_coreClient && m_coreClient->isScreenSharing()) {

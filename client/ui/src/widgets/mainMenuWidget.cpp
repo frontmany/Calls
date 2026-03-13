@@ -393,8 +393,29 @@ void MainMenuWidget::setupUI() {
     m_headerWidget = new QWidget(this);
     m_headerLayout = new QHBoxLayout(m_headerWidget);
     m_headerLayout->setContentsMargins(0, 0, 0, 0);
-    m_headerLayout->setSpacing(0);
+    m_headerLayout->setSpacing(scale(8));
     m_headerLayout->addStretch();
+
+    m_updateButton = new QPushButton(m_headerWidget);
+    m_updateButton->setCursor(Qt::PointingHandCursor);
+    m_updateButton->setFixedHeight(scale(38));
+    m_updateButton->setMinimumWidth(scale(105));
+    m_updateButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
+    m_updateButton->setVisible(false);
+
+    QHBoxLayout* updateButtonLayout = new QHBoxLayout(m_updateButton);
+    updateButtonLayout->setContentsMargins(scale(14), scale(8), scale(14), scale(8));
+    updateButtonLayout->setSpacing(scale(6));
+    QLabel* updateTextLabel = new QLabel(" update", m_updateButton);
+    updateTextLabel->setStyleSheet("color: white; background: transparent;");
+    QFont updateFont("Outfit", scale(12), QFont::Medium);
+    updateTextLabel->setFont(updateFont);
+    updateTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    QLabel* updateArrowLabel = new QLabel(m_updateButton);
+    updateArrowLabel->setPixmap(QPixmap(":/resources/toRightArrow.png").scaled(scale(20), scale(20), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    updateArrowLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    updateButtonLayout->addWidget(updateTextLabel);
+    updateButtonLayout->addWidget(updateArrowLabel);
 
     m_meetingButton = new ButtonIcon(m_headerWidget,
         QIcon(":/resources/meeting.png"),
@@ -402,6 +423,8 @@ void MainMenuWidget::setupUI() {
         scale(32), scale(32));
     m_meetingButton->setCursor(Qt::PointingHandCursor);
     m_headerLayout->addWidget(m_meetingButton);
+    m_headerLayout->addSpacing(scale(14));
+    m_headerLayout->addWidget(m_updateButton);
 
     m_mainLayout->addWidget(m_headerWidget, 0, Qt::AlignRight | Qt::AlignTop);
     m_mainLayout->addSpacing(scale(20));
@@ -578,6 +601,7 @@ void MainMenuWidget::setupUI() {
 
     // Connect signals
     connect(m_meetingButton, &ButtonIcon::clicked, this, &MainMenuWidget::onMeetingButtonClicked);
+    connect(m_updateButton, &QPushButton::clicked, this, &MainMenuWidget::onUpdateButtonClicked);
     connect(m_callButton, &QPushButton::clicked, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
     connect(m_stopOutgoingCallButton, &QPushButton::clicked, this, &MainMenuWidget::onStopOutgoingCallButtonClicked);
@@ -760,6 +784,17 @@ void MainMenuWidget::clearErrorMessage() {
 
 void MainMenuWidget::onMeetingButtonClicked() {
     emit meetingButtonClicked();
+}
+
+void MainMenuWidget::onUpdateButtonClicked() {
+    emit updateButtonClicked();
+}
+
+void MainMenuWidget::setUpdateButtonVisible(bool visible)
+{
+    if (m_updateButton) {
+        m_updateButton->setVisible(visible);
+    }
 }
 
 void MainMenuWidget::onSettingsButtonClicked() {

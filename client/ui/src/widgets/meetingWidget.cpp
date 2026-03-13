@@ -1996,8 +1996,8 @@ void MeetingWidget::hideMainScreen() {
 void MeetingWidget::updateOverlayButtonsPosition() {
     int buttonSize = scale(38);
     int margin = scale(10);
-    int y = margin;
     int x = width() - buttonSize - margin;
+    int y = margin;
 
     if (m_exitFullscreenButton) {
         m_exitFullscreenButton->move(x, y);

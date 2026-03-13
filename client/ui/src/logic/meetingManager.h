@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QByteArray>
 #include <memory>
 
 #include "core.h"
@@ -26,11 +27,18 @@ public:
     void setMeetingWidget(MeetingWidget* meetingWidget);
     void setNotificationController(NotificationController* notificationController);
     void setConfigManager(ConfigManager* configManager);
+    bool isInMeeting() const;
 
 public slots:
     void onMeetingCreated(const QString& meetingId);
     void onMeetingCreateRejected(std::error_code ec);
     void onJoinMeetingRequestTimeout();
+
+    // Media controls
+    void onCameraClicked(bool toggled);
+    void onScreenShareClicked(bool toggled);
+    void onScreenSelected(int screenIndex);
+    void onScreenShareDialogCancelled();
 
     void onJoinMeetingRequested(const QString& meetingId);
     void onCancelMeetingJoinRequested();
@@ -45,6 +53,20 @@ public slots:
     void onMeetingEndedByOwner();
     void onMeetingParticipantJoined(const QString& nickname);
     void onMeetingParticipantLeft(const QString& nickname);
+
+    // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
+    void onLocalScreenFrame(QByteArray data, int width, int height);
+    void onLocalCameraFrame(QByteArray data, int width, int height);
+    void onIncomingScreenFrame(QByteArray data, int width, int height);
+    void onIncomingCameraFrame(QByteArray data, int width, int height, const QString& nickname);
+
+    // Media state slots
+    void onIncomingScreenSharingStarted();
+    void onIncomingScreenSharingStopped();
+    void onIncomingCameraSharingStarted();
+    void onIncomingCameraSharingStopped();
+    void onStartScreenSharingError();
+    void onStartCameraSharingError();
 
 signals:
     void meetingCreated(const QString& meetingId);

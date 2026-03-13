@@ -34,8 +34,8 @@ void UpdaterNetworkErrorHandler::onNetworkError()
 {
     LOG_ERROR("Updater network error occurred");
 
-    if (m_dialogsController) {
-        m_dialogsController->hideUpdateAvailableDialog();
+    if (m_updateManager) {
+        m_updateManager->resetUpdateAvailability();
     }
 
     if (!m_updaterClient->isLoadingUpdate()) {

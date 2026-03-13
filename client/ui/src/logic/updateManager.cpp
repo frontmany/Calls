@@ -37,10 +37,19 @@ bool UpdateManager::isUpdateNeeded() const {
     return m_updateNeeded;
 }
 
-void UpdateManager::showUpdateAvailableDialogIfNeeded()
+void UpdateManager::showUpdateButtonIfNeeded()
 {
-    if (m_updateNeeded && !m_pendingUpdateVersion.isEmpty() && m_dialogsController) {
-        m_dialogsController->showUpdateAvailableDialog(m_pendingUpdateVersion);
+    if (m_updateNeeded && !m_pendingUpdateVersion.isEmpty() && m_mainMenuWidget) {
+        m_mainMenuWidget->setUpdateButtonVisible(true);
+    }
+}
+
+void UpdateManager::resetUpdateAvailability()
+{
+    m_updateNeeded = false;
+    m_pendingUpdateVersion.clear();
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->setUpdateButtonVisible(false);
     }
 }
 
@@ -49,9 +58,8 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QStri
     if (result == updater::CheckResult::POSSIBLE_UPDATE) {
         m_updateNeeded = true;
         m_pendingUpdateVersion = newVersion;
-        // Показываем диалог только если пользователь не в звонке
-        if (m_dialogsController && m_coreClient && !m_coreClient->isActiveCall()) {
-            m_dialogsController->showUpdateAvailableDialog(newVersion);
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setUpdateButtonVisible(true);
         }
     }
     else if (result == updater::CheckResult::REQUIRED_UPDATE) {
@@ -70,6 +78,9 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QStri
     else if (result == updater::CheckResult::UPDATE_NOT_NEEDED) {
         m_updateNeeded = false;
         m_pendingUpdateVersion.clear();
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setUpdateButtonVisible(false);
+        }
     }
     else {
         LOG_ERROR("error: unknown CheckResult type");
@@ -79,6 +90,9 @@ void UpdateManager::onUpdateCheckResult(updater::CheckResult result, const QStri
 void UpdateManager::onUpdateButtonClicked()
 {
     emit stopAllRingtonesRequested();
+    if (m_mainMenuWidget) {
+        m_mainMenuWidget->setUpdateButtonVisible(false);
+    }
 
     if (m_coreClient) {
         m_coreClient->stop();
@@ -134,6 +148,11 @@ void UpdateManager::onUpdateLoaded(bool emptyUpdate)
         }
     }
     else {
+        m_updateNeeded = false;
+        m_pendingUpdateVersion.clear();
+        if (m_mainMenuWidget) {
+            m_mainMenuWidget->setUpdateButtonVisible(false);
+        }
         m_dialogsController->setUpdateDialogStatus("Already up to date");
         m_dialogsController->hideUpdatingDialog();
         onUpdateAborted();

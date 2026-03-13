@@ -82,6 +82,7 @@ public:
     void setErrorMessage(const QString& errorText);
     void clearErrorMessage();
     void setFocusToLineEdit();
+    void setUpdateButtonVisible(bool visible);
 
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
@@ -94,6 +95,7 @@ public:
 
 signals:
     void meetingButtonClicked();
+    void updateButtonClicked();
     void startOutgoingCallButtonClicked(const QString& friendNickname);
     void stopOutgoingCallButtonClicked();
     void audioDevicePickerRequested();
@@ -105,6 +107,7 @@ signals:
 
 private slots:
     void onMeetingButtonClicked();
+    void onUpdateButtonClicked();
     void onCallButtonClicked();
     void onSettingsButtonClicked();
     void onStopOutgoingCallButtonClicked();
@@ -127,6 +130,7 @@ private:
     // Header section
     QWidget* m_headerWidget;
     QHBoxLayout* m_headerLayout;
+    QPushButton* m_updateButton;
     ButtonIcon* m_meetingButton;
     QLabel* m_titleLabel;
     QWidget* m_userInfoWidget;

@@ -65,9 +65,9 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStopped);
     }
 
-    void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) override
+    void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCamera, data, width, height);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCamera, data, width, height, nickname);
     }
 
     void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) override

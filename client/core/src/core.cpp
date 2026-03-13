@@ -429,6 +429,10 @@ namespace core
 
     std::error_code Core::endMeeting() {
         if (!m_meetingService) return make_error_code(ErrorCode::network_error);
+        if (m_mediaService) {
+            (void)stopScreenSharing();
+            (void)stopCameraSharing();
+        }
         auto ec = m_meetingService->endMeeting();
         if (!ec && m_mediaService) {
             (void)m_mediaService->stopAudioSharing();
@@ -438,6 +442,10 @@ namespace core
 
     std::error_code Core::leaveMeeting() {
         if (!m_meetingService) return make_error_code(ErrorCode::network_error);
+        if (m_mediaService) {
+            (void)stopScreenSharing();
+            (void)stopCameraSharing();
+        }
         auto ec = m_meetingService->leaveMeeting();
         if (!ec && m_mediaService) {
             (void)m_mediaService->stopAudioSharing();
@@ -447,26 +455,54 @@ namespace core
 
     std::error_code Core::startScreenSharing(const media::Screen& target) {
         auto callOpt = m_stateManager->getActiveCall();
-        if (!callOpt) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
-        return m_mediaService->startScreenSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname(), target);
+        if (callOpt) {
+            return m_mediaService->startScreenSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname(), target);
+        }
+
+        if (m_stateManager->isInMeeting()) {
+            return m_mediaService->startScreenSharing(m_stateManager->getMyNickname(), "", target);
+        }
+
+        return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
     }
 
     std::error_code Core::stopScreenSharing() {
         auto callOpt = m_stateManager->getActiveCall();
-        if (!callOpt) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
-        return m_mediaService->stopScreenSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname());
+        if (callOpt) {
+            return m_mediaService->stopScreenSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname());
+        }
+
+        if (m_stateManager->isInMeeting()) {
+            return m_mediaService->stopScreenSharing(m_stateManager->getMyNickname(), "");
+        }
+
+        return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
     }
 
     std::error_code Core::startCameraSharing(std::string deviceName) {
         auto callOpt = m_stateManager->getActiveCall();
-        if (!callOpt) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
-        return m_mediaService->startCameraSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname(), deviceName);
+        if (callOpt) {
+            return m_mediaService->startCameraSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname(), deviceName);
+        }
+
+        if (m_stateManager->isInMeeting()) {
+            return m_mediaService->startCameraSharing(m_stateManager->getMyNickname(), "", deviceName);
+        }
+
+        return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
     }
 
     std::error_code Core::stopCameraSharing() {
         auto callOpt = m_stateManager->getActiveCall();
-        if (!callOpt) return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
-        return m_mediaService->stopCameraSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname());
+        if (callOpt) {
+            return m_mediaService->stopCameraSharing(m_stateManager->getMyNickname(), callOpt->get().getNickname());
+        }
+
+        if (m_stateManager->isInMeeting()) {
+            return m_mediaService->stopCameraSharing(m_stateManager->getMyNickname(), "");
+        }
+
+        return core::constant::make_error_code(core::constant::ErrorCode::no_active_call);
     }
 
     bool Core::isCameraAvailable() const {

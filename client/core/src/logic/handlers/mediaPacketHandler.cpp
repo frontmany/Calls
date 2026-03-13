@@ -11,6 +11,24 @@ using namespace core::media;
 
 namespace core::logic 
 {
+    namespace
+    {
+        bool isMeetingParticipantHash(
+            const std::shared_ptr<ClientStateManager>& stateManager,
+            const std::string& senderNicknameHash)
+        {
+            auto meetingOpt = stateManager->getActiveMeeting();
+            if (!meetingOpt) return false;
+
+            for (const auto& participant : meetingOpt->get().getParticipants()) {
+                if (core::utilities::crypto::calculateHash(participant.getUser().getNickname()) == senderNicknameHash) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     MediaPacketHandler::MediaPacketHandler(
         std::shared_ptr<ClientStateManager> stateManager,
         std::shared_ptr<media::AudioEngine> audioEngine,
@@ -26,13 +44,16 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingScreenSharingStarted(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
             m_stateManager->isViewingRemoteScreen()) return;
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
 
         auto activeOpt = m_stateManager->getActiveCall();
-        if (!activeOpt || utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        if (activeOpt) {
+            if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        } else {
+            if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+        }
 
         m_stateManager->setViewingRemoteScreen(true);
         m_eventListener->onIncomingScreenSharingStarted();
@@ -41,13 +62,16 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
             !m_stateManager->isViewingRemoteScreen()) return;
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
 
         auto activeOpt = m_stateManager->getActiveCall();
-        if (!activeOpt || utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        if (activeOpt) {
+            if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        } else {
+            if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+        }
 
         m_stateManager->setViewingRemoteScreen(false);
         m_eventListener->onIncomingScreenSharingStopped();
@@ -56,13 +80,16 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
             m_stateManager->isViewingRemoteCamera()) return;
         
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
 
         auto activeOpt = m_stateManager->getActiveCall();
-        if (!activeOpt || utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        if (activeOpt) {
+            if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        } else {
+            if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+        }
 
         m_stateManager->setViewingRemoteCamera(true);
         m_eventListener->onIncomingCameraSharingStarted();
@@ -71,13 +98,16 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingCameraSharingStopped(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
             !m_stateManager->isViewingRemoteCamera()) return;
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
 
         auto activeOpt = m_stateManager->getActiveCall();
-        if (!activeOpt || utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        if (activeOpt) {
+            if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+        } else {
+            if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+        }
 
         m_stateManager->setViewingRemoteCamera(false);
         m_eventListener->onIncomingCameraSharingStopped();
@@ -129,12 +159,39 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingScreen(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
             !m_stateManager->isViewingRemoteScreen()) return;
 
         auto activeOpt = m_stateManager->getActiveCall();
-        if (!activeOpt) return;
-        auto decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
+        std::vector<unsigned char> decryptedData;
+        if (activeOpt) {
+            decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
+        } else {
+            if (!m_stateManager->isActiveMeeting() || length < 4) return;
+
+            int offset = 0;
+            const uint16_t meetingIdLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
+            offset += 2;
+            if (length < offset + meetingIdLen + 2) return;
+            const std::string meetingId(reinterpret_cast<const char*>(data + offset), meetingIdLen);
+            offset += meetingIdLen;
+
+            const uint16_t senderHashLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
+            offset += 2;
+            if (length < offset + senderHashLen) return;
+            // senderHash содержится в пакете, но для экрана ник не нужен — просто пропускаем байты
+            offset += senderHashLen;
+
+            auto meetingOpt = m_stateManager->getActiveMeeting();
+            if (meetingId.empty() || !meetingOpt || meetingId != meetingOpt->get().getMeetingId()) return;
+
+            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
+            if (!binOpt) return;
+            CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
+
+            const unsigned char* payload = data + offset;
+            const int payloadLen = length - offset;
+            decryptedData = m_mediaProcessingService->decryptData(payload, payloadLen, meetingKey);
+        }
         if (decryptedData.empty()) return;
         auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Screen, decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
@@ -145,16 +202,60 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingCamera(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isActiveCall() ||
             !m_stateManager->isViewingRemoteCamera()) return;
 
         auto activeOpt = m_stateManager->getActiveCall();
-        if (!activeOpt) return;
-        auto decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
-        if (decryptedData.empty()) return;
+        std::vector<unsigned char> decryptedData;
+        std::string senderNickname;
+        if (activeOpt) {
+            decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
+            if (!decryptedData.empty()) {
+                senderNickname = activeOpt->get().getNickname();
+            }
+        } else {
+            if (!m_stateManager->isActiveMeeting() || length < 4) return;
+            int offset = 0;
+            const uint16_t meetingIdLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
+            offset += 2;
+            if (length < offset + meetingIdLen + 2) return;
+            const std::string meetingId(reinterpret_cast<const char*>(data + offset), meetingIdLen);
+            offset += meetingIdLen;
+
+            const uint16_t senderHashLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
+            offset += 2;
+            if (length < offset + senderHashLen) return;
+            const std::string senderHash(reinterpret_cast<const char*>(data + offset), senderHashLen);
+            offset += senderHashLen;
+
+            auto meetingOpt = m_stateManager->getActiveMeeting();
+            if (meetingId.empty() || !meetingOpt || meetingId != meetingOpt->get().getMeetingId()) return;
+
+            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
+            if (!binOpt) return;
+            CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
+
+            const unsigned char* payload = data + offset;
+            const int payloadLen = length - offset;
+            decryptedData = m_mediaProcessingService->decryptData(payload, payloadLen, meetingKey);
+            if (decryptedData.empty()) return;
+
+            // Resolve sender nickname from hash using meeting participants
+            auto participants = meetingOpt->get().getParticipants();
+            for (const auto& participant : participants) {
+                const std::string& nickname = participant.getUser().getNickname();
+                if (core::utilities::crypto::calculateHash(nickname) == senderHash) {
+                    senderNickname = nickname;
+                    break;
+                }
+            }
+        }
+        if (decryptedData.empty() || senderNickname.empty()) return;
         auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Camera, decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingCamera(videoFrame, m_mediaProcessingService->getWidth(MediaType::Camera), m_mediaProcessingService->getHeight(MediaType::Camera));
+            m_eventListener->onIncomingCamera(videoFrame,
+                m_mediaProcessingService->getWidth(MediaType::Camera),
+                m_mediaProcessingService->getHeight(MediaType::Camera),
+                senderNickname);
         }
     }
 }

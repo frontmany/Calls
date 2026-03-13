@@ -215,9 +215,6 @@ void MainWindow::initializeCentralStackedWidget() {
 void MainWindow::initializeDialogsController() {
     m_dialogsController = new DialogsController(this);
     connect(m_dialogsController, &DialogsController::closeRequested, this, &MainWindow::close);
-    if (m_updaterClient) {
-        m_dialogsController->setUpdateClient(m_updaterClient);
-    }
 }
 
 void MainWindow::initializeNotificationController() {
@@ -434,6 +431,10 @@ void MainWindow::connectWidgetsToManagers() {
     if (m_meetingWidget && m_navigationController) {
         connect(m_meetingWidget, &MeetingWidget::hangupClicked, this, &MainWindow::onEndMeetingRequested);
     }
+    if (m_meetingWidget && m_meetingManager) {
+        connect(m_meetingWidget, &MeetingWidget::cameraClicked, m_meetingManager, &MeetingManager::onCameraClicked);
+        connect(m_meetingWidget, &MeetingWidget::screenShareClicked, m_meetingManager, &MeetingManager::onScreenShareClicked);
+    }
     if (m_meetingWidget && m_dialogsController && m_coreClient) {
         connect(m_meetingWidget, &MeetingWidget::audioSettingsRequested, this, [this]() {
             m_dialogsController->showAudioSettingsDialog(
@@ -458,8 +459,20 @@ void MainWindow::connectWidgetsToManagers() {
 
     // DialogsController connections
     if (m_dialogsController && m_callManager) {
-        connect(m_dialogsController, &DialogsController::screenSelected, m_callManager, &CallManager::onScreenSelected);
-        connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, m_callManager, &CallManager::onScreenShareDialogCancelled);
+        connect(m_dialogsController, &DialogsController::screenSelected, this, [this](int screenIndex) {
+            if (m_coreClient && m_coreClient->isInMeeting() && m_meetingManager) {
+                m_meetingManager->onScreenSelected(screenIndex);
+            } else if (m_callManager) {
+                m_callManager->onScreenSelected(screenIndex);
+            }
+        });
+        connect(m_dialogsController, &DialogsController::screenShareDialogCancelled, this, [this]() {
+            if (m_coreClient && m_coreClient->isInMeeting() && m_meetingManager) {
+                m_meetingManager->onScreenShareDialogCancelled();
+            } else if (m_callManager) {
+                m_callManager->onScreenShareDialogCancelled();
+            }
+        });
         connect(m_dialogsController, &DialogsController::audioSettingsDialogClosed, m_callManager, &CallManager::onAudioSettingsDialogClosed);
     }
 
@@ -481,9 +494,9 @@ void MainWindow::connectWidgetsToManagers() {
         });
     }
 
-    // Update available dialog connections
-    if (m_dialogsController && m_updateManager) {
-        connect(m_dialogsController, &DialogsController::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
+    // Update button in main menu
+    if (m_mainMenuWidget && m_updateManager) {
+        connect(m_mainMenuWidget, &MainMenuWidget::updateButtonClicked, m_updateManager, &UpdateManager::onUpdateButtonClicked);
     }
 
     // Manager to MainWindow connections

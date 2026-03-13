@@ -34,6 +34,11 @@ void CoreEventListener::onStartOutgoingCallResult(std::error_code ec)
 }
 
 void CoreEventListener::onIncomingScreenSharingStarted() {
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onIncomingScreenSharingStarted",
+            Qt::QueuedConnection);
+        return;
+    }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingScreenSharingStarted",
             Qt::QueuedConnection);
@@ -41,6 +46,11 @@ void CoreEventListener::onIncomingScreenSharingStarted() {
 }
 
 void CoreEventListener::onIncomingScreenSharingStopped() {
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onIncomingScreenSharingStopped",
+            Qt::QueuedConnection);
+        return;
+    }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingScreenSharingStopped",
             Qt::QueuedConnection);
@@ -48,14 +58,24 @@ void CoreEventListener::onIncomingScreenSharingStopped() {
 }
 
 void CoreEventListener::onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) {
+    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onIncomingScreenFrame",
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+        return;
+    }
     if (m_callManager) {
-        QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onIncomingScreenFrame",
             Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 
 void CoreEventListener::onStartScreenSharingError() {
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onStartScreenSharingError",
+            Qt::QueuedConnection);
+        return;
+    }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onStartScreenSharingError",
             Qt::QueuedConnection);
@@ -63,14 +83,24 @@ void CoreEventListener::onStartScreenSharingError() {
 }
 
 void CoreEventListener::onLocalScreen(const std::vector<unsigned char>& data, int width, int height) {
+    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onLocalScreenFrame",
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+        return;
+    }
     if (m_callManager) {
-        QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onLocalScreenFrame",
             Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 
 void CoreEventListener::onIncomingCameraSharingStarted() {
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onIncomingCameraSharingStarted",
+            Qt::QueuedConnection);
+        return;
+    }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraSharingStarted",
             Qt::QueuedConnection);
@@ -78,21 +108,40 @@ void CoreEventListener::onIncomingCameraSharingStarted() {
 }
 
 void CoreEventListener::onIncomingCameraSharingStopped() {
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onIncomingCameraSharingStopped",
+            Qt::QueuedConnection);
+        return;
+    }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraSharingStopped",
             Qt::QueuedConnection);
     }
 }
 
-void CoreEventListener::onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) {
+void CoreEventListener::onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) {
+    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onIncomingCameraFrame",
+            Qt::QueuedConnection,
+            Q_ARG(QByteArray, frameData),
+            Q_ARG(int, width),
+            Q_ARG(int, height),
+            Q_ARG(QString, QString::fromStdString(nickname)));
+        return;
+    }
     if (m_callManager) {
-        QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraFrame",
             Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }
 }
 
 void CoreEventListener::onStartCameraSharingError() {
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onStartCameraSharingError",
+            Qt::QueuedConnection);
+        return;
+    }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onStartCameraSharingError",
             Qt::QueuedConnection);
@@ -100,8 +149,13 @@ void CoreEventListener::onStartCameraSharingError() {
 }
 
 void CoreEventListener::onLocalCamera(const std::vector<unsigned char>& data, int width, int height) {
+    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+    if (m_meetingManager && m_meetingManager->isInMeeting()) {
+        QMetaObject::invokeMethod(m_meetingManager, "onLocalCameraFrame",
+            Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+        return;
+    }
     if (m_callManager) {
-        QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
         QMetaObject::invokeMethod(m_callManager, "onLocalCameraFrame",
             Qt::QueuedConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
     }

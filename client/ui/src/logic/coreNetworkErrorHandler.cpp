@@ -7,7 +7,6 @@
 #include "logic/configManager.h"
 #include "logic/callManager.h"
 #include "audio/audioEffectsManager.h"
-#include <QTimer>
 
 CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
     : QObject(parent)
@@ -94,20 +93,10 @@ void CoreNetworkErrorHandler::onConnectionDown()
 void CoreNetworkErrorHandler::onConnectionEstablished()
 {
     const int connectionRestoredDurationMs = 1500;
-    if (m_dialogsController) {
-        m_dialogsController->hideUpdateAvailableDialogTemporarily();
-    }
     if (m_notificationController && m_connectionWasDown) {
         m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
     }
     m_connectionWasDown = false;
-    if (m_dialogsController) {
-        QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
-            if (m_dialogsController) {
-                m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
-            }
-        });
-    }
 
     if (m_authorizationWidget) {
         m_authorizationWidget->resetBlur();
@@ -118,20 +107,10 @@ void CoreNetworkErrorHandler::onConnectionEstablished()
 void CoreNetworkErrorHandler::onConnectionEstablishedAuthorizationNeeded()
 {
     const int connectionRestoredDurationMs = 1500;
-    if (m_dialogsController) {
-        m_dialogsController->hideUpdateAvailableDialogTemporarily();
-    }
     if (m_notificationController && m_connectionWasDown) {
         m_notificationController->showConnectionRestored(connectionRestoredDurationMs);
     }
     m_connectionWasDown = false;
-    if (m_dialogsController) {
-        QTimer::singleShot(connectionRestoredDurationMs, this, [this]() {
-            if (m_dialogsController) {
-                m_dialogsController->showUpdateAvailableDialogTemporarilyHidden();
-            }
-        });
-    }
 
     if (m_authorizationWidget && m_navigationController) {
         m_navigationController->switchToAuthorizationWidget();

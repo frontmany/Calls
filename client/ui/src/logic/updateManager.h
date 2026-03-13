@@ -21,7 +21,8 @@ public:
     bool shouldRestart();
     bool isUpdateNeeded() const;
     void launchUpdateApplier();
-    void showUpdateAvailableDialogIfNeeded();
+    void showUpdateButtonIfNeeded();
+    void resetUpdateAvailability();
 
 signals:
     void stopAllRingtonesRequested();

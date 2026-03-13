@@ -22,7 +22,7 @@ namespace core
 
         virtual void onIncomingCameraSharingStarted() = 0;
         virtual void onIncomingCameraSharingStopped() = 0;
-        virtual void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height) = 0;
+        virtual void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) = 0;
 
         virtual void onStartCameraSharingError() = 0;
         virtual void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) = 0;
