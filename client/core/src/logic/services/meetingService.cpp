@@ -134,11 +134,9 @@ namespace core::logic
     std::error_code MeetingService::leaveMeeting() {
         if (m_stateManager->isConnectionDown()) return make_error_code(ErrorCode::connection_down);
         if (!m_stateManager->isAuthorized()) return make_error_code(ErrorCode::not_authorized);
-        auto meetingOptLeave = m_stateManager->getActiveMeeting();
-        if (!meetingOptLeave) return make_error_code(ErrorCode::not_in_meeting);
+        if (!m_stateManager->isActiveMeeting()) return make_error_code(ErrorCode::not_in_meeting);
 
-        auto meetingKey = meetingOptLeave->get().getMeetingKey();
-        auto packet = PacketFactory::getMeetingLeavePacket(m_stateManager->getMyNickname(), meetingKey);
+        auto packet = PacketFactory::getMeetingLeavePacket(m_stateManager->getMyNickname());
         auto ec = m_sendPacket(packet, PacketType::MEETING_LEAVE);
         if (ec) return ec;
 

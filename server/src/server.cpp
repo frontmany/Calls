@@ -852,12 +852,7 @@ namespace server
             if (!meeting || meeting->isOwner(senderNicknameHash)) {
                 return;
             }
-
-            std::string encryptedNickname;
-            if (json.contains(ENCRYPTED_NICKNAME) && json[ENCRYPTED_NICKNAME].is_string()) {
-                encryptedNickname = json[ENCRYPTED_NICKNAME].get<std::string>();
-            }
-            removeMeetingParticipant(meeting, sender, encryptedNickname);
+            removeMeetingParticipant(meeting, sender);
         }
         catch (const std::exception& e) {
             LOG_ERROR("Meeting leave error: {}", e.what());
@@ -1164,7 +1159,7 @@ namespace server
         }
     }
 
-    void Server::removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user, const std::string& encryptedNicknameOverride)
+    void Server::removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user)
     {
         if (!meeting || !user) {
             return;
@@ -1188,19 +1183,13 @@ namespace server
             }
         }
 
-        std::string encryptedNickname = encryptedNicknameOverride;
-        auto removedEncryptedNickname = meeting->removeParticipant(senderHash);
-        if (!removedEncryptedNickname.has_value()) {
+        if (!meeting->removeParticipant(senderHash).has_value()) {
             user->resetMeeting();
             return;
         }
 
-        if (encryptedNickname.empty()) {
-            encryptedNickname = removedEncryptedNickname.value();
-        }
-
         user->resetMeeting();
-        auto leftPacket = PacketFactory::getMeetingParticipantLeftPacket(encryptedNickname);
+        auto leftPacket = PacketFactory::getMeetingParticipantLeftPacket(senderHash);
         broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(PacketType::MEETING_PARTICIPANT_LEFT), leftPacket);
     }
 

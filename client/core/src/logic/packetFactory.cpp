@@ -221,11 +221,8 @@ namespace core::logic
         return toBytes(jsonObject.dump());
     }
 
-    std::vector<unsigned char> PacketFactory::getMeetingLeavePacket(const std::string& myNickname, const CryptoPP::SecByteBlock& meetingKey) {
-        std::string uid = generateUID();
-        nlohmann::json jsonObject = createBasePacket(uid, myNickname);
-        jsonObject[ENCRYPTED_NICKNAME] = AESEncrypt(meetingKey, myNickname);
-        return toBytes(jsonObject.dump());
+    std::vector<unsigned char> PacketFactory::getMeetingLeavePacket(const std::string& myNickname) {
+        return createBasePacketBytes(myNickname);
     }
 
     std::vector<unsigned char> PacketFactory::getMeetingEndPacket(const std::string& myNickname) {

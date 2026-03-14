@@ -62,7 +62,7 @@ namespace core::logic
             const CryptoPP::SecByteBlock& meetingKey,
             const std::vector<core::MeetingParticipant>& participants);
         static std::vector<unsigned char> getMeetingJoinDeclinePacket(const std::string& myNickname, const std::string& friendNickname);
-        static std::vector<unsigned char> getMeetingLeavePacket(const std::string& myNickname, const CryptoPP::SecByteBlock& meetingKey);
+        static std::vector<unsigned char> getMeetingLeavePacket(const std::string& myNickname);
         static std::vector<unsigned char> getMeetingEndPacket(const std::string& myNickname);
     };
 }

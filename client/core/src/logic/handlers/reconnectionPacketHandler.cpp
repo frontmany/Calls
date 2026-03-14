@@ -106,6 +106,23 @@ namespace core::logic
                     m_stateManager->resetActiveMeeting();
                     m_stateManager->resetIncomingMeetingJoinRequests();
                     m_eventListener->onMeetingEndedByOwner();
+                } else if (serverInMeeting && !clientInMeeting && m_sendPacket) {
+                    // Клиент уже вышел локально, а сервер всё ещё держит в митинге:
+                    // пробуем синхронизировать серверное состояние существующими пакетами.
+                    const std::string myNickname = m_stateManager->getMyNickname();
+                    auto endPacket = PacketFactory::getMeetingEndPacket(myNickname);
+                    auto endEc = m_sendPacket(endPacket, PacketType::MEETING_END);
+                    if (endEc) {
+                        LOG_WARN("Reconnect: failed to send MEETING_END on state mismatch: {}", endEc.message());
+                    }
+
+                    auto leavePacket = PacketFactory::getMeetingLeavePacket(myNickname);
+                    auto leaveEc = m_sendPacket(leavePacket, PacketType::MEETING_LEAVE);
+                    if (leaveEc) {
+                        LOG_WARN("Reconnect: failed to send MEETING_LEAVE on state mismatch: {}", leaveEc.message());
+                    } else {
+                        LOG_INFO("Reconnect: server in meeting but client not, sent MEETING_END and MEETING_LEAVE");
+                    }
                 } else if (serverInMeeting && clientInMeeting) {
                     // При успешном reconnect в активный митинг сбрасываем флаги просмотра,
                     // фактическое состояние придёт отдельными *_SHARING_BEGIN пакетами.

@@ -177,11 +177,11 @@ std::vector<unsigned char> PacketFactory::getMeetingParticipantJoinedPacket(cons
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getMeetingParticipantLeftPacket(const std::string& encryptedNickname)
+std::vector<unsigned char> PacketFactory::getMeetingParticipantLeftPacket(const std::string& nicknameHash)
 {
     nlohmann::json jsonObject;
     jsonObject[UID] = crypto::generateUID();
-    jsonObject[ENCRYPTED_NICKNAME] = encryptedNickname;
+    jsonObject[NICKNAME_HASH] = nicknameHash;
     return toBytes(jsonObject.dump());
 }
 

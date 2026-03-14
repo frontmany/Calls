@@ -244,10 +244,17 @@ namespace core::logic
         if (!m_stateManager->isActiveMeeting()) return;
 
         auto meetingOpt = m_stateManager->getActiveMeeting();
-        if (!meetingOpt || !jsonObject.contains(ENCRYPTED_NICKNAME)) return;
+        if (!meetingOpt || !jsonObject.contains(NICKNAME_HASH)) return;
 
-        auto meetingKey = meetingOpt->get().getMeetingKey();
-        std::string nickname = AESDecrypt(meetingKey, jsonObject[ENCRYPTED_NICKNAME].get<std::string>());
+        const std::string nicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string nickname;
+        for (const auto& participant : meetingOpt->get().getParticipants()) {
+            const auto& candidateNickname = participant.getUser().getNickname();
+            if (calculateHash(candidateNickname) == nicknameHash) {
+                nickname = candidateNickname;
+                break;
+            }
+        }
         if (nickname.empty()) return;
 
         m_stateManager->removeMeetingParticipant(nickname);

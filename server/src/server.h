@@ -67,7 +67,7 @@ namespace server
         void removeIncomingPendingCall(const UserPtr& user, const PendingCallPtr& pendingCall);
         void broadcastToMeeting(const MeetingPtr& meeting, const std::string& excludeNicknameHash, uint32_t type, const std::vector<unsigned char>& body);
         void rejectAllPendingJoinRequests(const MeetingPtr& meeting, const std::string& reason);
-        void removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user, const std::string& encryptedNicknameOverride = "");
+        void removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user);
         void endMeetingCleanup(const MeetingPtr& meeting);
         void processConnectionDown(const UserPtr& user);
 

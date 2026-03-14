@@ -26,7 +26,7 @@ namespace server
         static std::vector<unsigned char> getMeetingInfoResultPacket(bool found, const std::string& ownerPublicKey = "");
         static std::vector<unsigned char> getMeetingEndedPacket();
         static std::vector<unsigned char> getMeetingParticipantJoinedPacket(const std::string& encryptedNickname, const std::string& serializedPublicKey);
-        static std::vector<unsigned char> getMeetingParticipantLeftPacket(const std::string& encryptedNickname);
+        static std::vector<unsigned char> getMeetingParticipantLeftPacket(const std::string& nicknameHash);
         static std::vector<unsigned char> getMeetingJoinRejectedPacket(const std::string& reason);
         static std::vector<unsigned char> getMetricsResultPacket(double cpuUsagePercent, uint64_t memoryUsedBytes, uint64_t memoryAvailableBytes, size_t activeUsers);
 
