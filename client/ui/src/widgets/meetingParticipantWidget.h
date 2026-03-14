@@ -33,6 +33,7 @@ public:
 
     void setMuted(bool muted) { m_muted = muted; }
     void setSpeaking(bool speaking) { m_speaking = speaking; }
+    void setConnectionDown(bool down);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -46,6 +47,7 @@ private:
     bool m_speaking = false;
     bool m_cameraEnabled = false;
     bool m_compactMode = false;
+    bool m_connectionDown = false;
 
     DisplayMode m_displayMode = DisplayMode::DisplayName;
 

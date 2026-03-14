@@ -341,3 +341,19 @@ void CoreEventListener::onMeetingParticipantLeft(const std::string& nickname)
             Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(nickname)));
     }
 }
+
+void CoreEventListener::onMeetingParticipantConnectionDown(const std::string& nickname)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantConnectionDown",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(nickname)));
+    }
+}
+
+void CoreEventListener::onMeetingParticipantConnectionRestored(const std::string& nickname)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantConnectionRestored",
+            Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(nickname)));
+    }
+}

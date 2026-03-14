@@ -1071,6 +1071,12 @@ void MeetingWidget::setParticipantSpeaking(const QString& nickname, bool speakin
     }
 }
 
+void MeetingWidget::setParticipantConnectionDown(const QString& nickname, bool down) {
+    if (m_participantWidgets.contains(nickname)) {
+        m_participantWidgets[nickname]->setConnectionDown(down);
+    }
+}
+
 void MeetingWidget::setParticipantCameraEnabled(const QString& nickname, bool enabled) {
     if (m_participantWidgets.contains(nickname)) {
         m_participantWidgets[nickname]->setCameraEnabled(enabled);

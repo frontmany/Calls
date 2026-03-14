@@ -343,6 +343,8 @@ namespace server
                         auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
                         sendTcp(conn, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
                     }
+                    auto [_, restoredPacket] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
+                    broadcastToMeeting(meeting, user->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_RESTORED_WITH_USER), restoredPacket);
                 }
             }
         }
@@ -993,6 +995,10 @@ namespace server
             auto meeting = user->getMeeting();
             if (!meeting) {
                 return;
+            }
+            {
+                auto [_, p] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
+                broadcastToMeeting(meeting, user->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), p);
             }
 
             if (meeting->isOwner(user->getNicknameHash())) {

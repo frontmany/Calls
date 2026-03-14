@@ -238,6 +238,15 @@ namespace core::logic
             m_eventListener->onCallParticipantConnectionDown();
         }
 
+        auto meetingOpt = m_stateManager->getActiveMeeting();
+        if (meetingOpt) {
+            for (const auto& participant : meetingOpt->get().getParticipants()) {
+                if (calculateHash(participant.getUser().getNickname()) == userNicknameHash) {
+                    m_eventListener->onMeetingParticipantConnectionDown(participant.getUser().getNickname());
+                    break;
+                }
+            }
+        }
     }
 
     void CallPacketHandler::handleRemoteUserConnectionRestored(const nlohmann::json& jsonObject) {
@@ -250,6 +259,16 @@ namespace core::logic
             m_stateManager->setCallParticipantConnectionDown(false);
 
             m_eventListener->onCallParticipantConnectionRestored();
+        }
+
+        auto meetingOpt = m_stateManager->getActiveMeeting();
+        if (meetingOpt) {
+            for (const auto& participant : meetingOpt->get().getParticipants()) {
+                if (calculateHash(participant.getUser().getNickname()) == userNicknameHash) {
+                    m_eventListener->onMeetingParticipantConnectionRestored(participant.getUser().getNickname());
+                    break;
+                }
+            }
         }
     }
 

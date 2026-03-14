@@ -49,6 +49,8 @@ namespace core
         virtual void onMeetingEndedByOwner() = 0;
         virtual void onMeetingParticipantJoined(const std::string& nickname) = 0;
         virtual void onMeetingParticipantLeft(const std::string& nickname) = 0;
+        virtual void onMeetingParticipantConnectionDown(const std::string& nickname) = 0;
+        virtual void onMeetingParticipantConnectionRestored(const std::string& nickname) = 0;
 
         virtual void onConnectionDown() = 0;
         virtual void onConnectionEstablished() = 0;

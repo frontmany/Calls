@@ -52,6 +52,8 @@ public:
     void onMeetingEndedByOwner() override;
     void onMeetingParticipantJoined(const std::string& nickname) override;
     void onMeetingParticipantLeft(const std::string& nickname) override;
+    void onMeetingParticipantConnectionDown(const std::string& nickname) override;
+    void onMeetingParticipantConnectionRestored(const std::string& nickname) override;
 
     void onConnectionDown() override;
     void onConnectionEstablished() override;

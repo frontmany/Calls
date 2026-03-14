@@ -178,6 +178,25 @@ void MeetingParticipantWidget::setCameraEnabled(bool enabled)
     m_cameraEnabled = enabled;
 }
 
+void MeetingParticipantWidget::setConnectionDown(bool down)
+{
+    if (m_connectionDown == down) return;
+    m_connectionDown = down;
+
+    if (down) {
+        setDisplayMode(DisplayMode::DisplayName);
+        if (m_nameLabel) {
+            m_nameLabel->setText(m_nickname + QStringLiteral(" connection down"));
+        }
+    } else {
+        if (m_nameLabel) {
+            m_nameLabel->setText(m_nickname);
+        }
+        setDisplayMode(DisplayMode::DisplayName);
+    }
+    update();
+}
+
 void MeetingParticipantWidget::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
@@ -187,6 +206,15 @@ void MeetingParticipantWidget::paintEvent(QPaintEvent* event)
     painter.setPen(Qt::NoPen);
     painter.setBrush(COLOR_OVERLAY_PURE_180);
     painter.drawRoundedRect(glassRect, 12, 12);
+
+    if (m_connectionDown) {
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(128, 128, 128, 100));
+        painter.drawRoundedRect(glassRect, 12, 12);
+        painter.setPen(QPen(QColor(220, 50, 50), 2));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 12, 12);
+    }
 
     painter.setBrush(Qt::NoBrush);
     QWidget::paintEvent(event);

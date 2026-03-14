@@ -428,6 +428,20 @@ void MeetingManager::onMeetingParticipantLeft(const QString& nickname)
     }
 }
 
+void MeetingManager::onMeetingParticipantConnectionDown(const QString& nickname)
+{
+    if (m_meetingWidget) {
+        m_meetingWidget->setParticipantConnectionDown(nickname, true);
+    }
+}
+
+void MeetingManager::onMeetingParticipantConnectionRestored(const QString& nickname)
+{
+    if (m_meetingWidget) {
+        m_meetingWidget->setParticipantConnectionDown(nickname, false);
+    }
+}
+
 void MeetingManager::onLocalScreenFrame(QByteArray data, int width, int height)
 {
     if (!m_meetingWidget || width <= 0 || height <= 0) return;
