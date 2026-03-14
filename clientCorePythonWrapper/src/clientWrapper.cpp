@@ -26,14 +26,14 @@ public:
         }
     }
 
-    void onIncomingScreenSharingStarted() override
+    void onIncomingScreenSharingStarted(const std::string& sharerNickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreenSharingStarted);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreenSharingStarted, sharerNickname);
     }
 
-    void onIncomingScreenSharingStopped() override
+    void onIncomingScreenSharingStopped(const std::string& sharerNickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreenSharingStopped);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingScreenSharingStopped, sharerNickname);
     }
 
     void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) override
@@ -206,6 +206,11 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingParticipantConnectionRestored, nickname);
     }
 
+    void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingParticipantSpeaking, nickname, speaking);
+    }
+
     void onConnectionDown() override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionDown);
@@ -241,8 +246,8 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onAuthorizationResult", [](core::EventListener& self, int ec_value) {
             self.onAuthorizationResult(std::error_code(ec_value, core::constant::error_category()));
         }, py::arg("ec_value"))
-        .def("onIncomingScreenSharingStarted", &core::EventListener::onIncomingScreenSharingStarted)
-        .def("onIncomingScreenSharingStopped", &core::EventListener::onIncomingScreenSharingStopped)
+        .def("onIncomingScreenSharingStarted", &core::EventListener::onIncomingScreenSharingStarted, py::arg("sharer_nickname") = "")
+        .def("onIncomingScreenSharingStopped", &core::EventListener::onIncomingScreenSharingStopped, py::arg("sharer_nickname") = "")
         .def("onIncomingScreen", &core::EventListener::onIncomingScreen)
         .def("onStartOutgoingCallResult", [](core::EventListener& self, int ec_value) {
             self.onStartOutgoingCallResult(std::error_code(ec_value, core::constant::error_category()));
@@ -283,6 +288,7 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onMeetingParticipantLeft", &core::EventListener::onMeetingParticipantLeft, py::arg("nickname"))
         .def("onMeetingParticipantConnectionDown", &core::EventListener::onMeetingParticipantConnectionDown, py::arg("nickname"))
         .def("onMeetingParticipantConnectionRestored", &core::EventListener::onMeetingParticipantConnectionRestored, py::arg("nickname"))
+        .def("onMeetingParticipantSpeaking", &core::EventListener::onMeetingParticipantSpeaking, py::arg("nickname"), py::arg("speaking"))
         .def("onConnectionDown", &core::EventListener::onConnectionDown)
         .def("onConnectionEstablished", &core::EventListener::onConnectionEstablished)
         .def("onConnectionEstablishedAuthorizationNeeded", &core::EventListener::onConnectionEstablishedAuthorizationNeeded);

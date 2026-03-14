@@ -33,10 +33,11 @@ void CoreEventListener::onStartOutgoingCallResult(std::error_code ec)
     }
 }
 
-void CoreEventListener::onIncomingScreenSharingStarted() {
+void CoreEventListener::onIncomingScreenSharingStarted(const std::string& sharerNickname) {
+    const QString sharerQ = QString::fromStdString(sharerNickname);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onIncomingScreenSharingStarted",
-            Qt::QueuedConnection);
+            Qt::QueuedConnection, Q_ARG(QString, sharerQ));
         return;
     }
     if (m_callManager) {
@@ -45,10 +46,11 @@ void CoreEventListener::onIncomingScreenSharingStarted() {
     }
 }
 
-void CoreEventListener::onIncomingScreenSharingStopped() {
+void CoreEventListener::onIncomingScreenSharingStopped(const std::string& sharerNickname) {
+    const QString sharerQ = QString::fromStdString(sharerNickname);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onIncomingScreenSharingStopped",
-            Qt::QueuedConnection);
+            Qt::QueuedConnection, Q_ARG(QString, sharerQ));
         return;
     }
     if (m_callManager) {
@@ -355,5 +357,15 @@ void CoreEventListener::onMeetingParticipantConnectionRestored(const std::string
     if (m_meetingManager) {
         QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantConnectionRestored",
             Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(nickname)));
+    }
+}
+
+void CoreEventListener::onMeetingParticipantSpeaking(const std::string& nickname, bool speaking)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantSpeaking",
+            Qt::QueuedConnection,
+            Q_ARG(QString, QString::fromStdString(nickname)),
+            Q_ARG(bool, speaking));
     }
 }

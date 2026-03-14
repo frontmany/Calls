@@ -32,7 +32,8 @@ public:
     void setCompactSize(bool compact);
 
     void setMuted(bool muted) { m_muted = muted; }
-    void setSpeaking(bool speaking) { m_speaking = speaking; }
+    void setSpeaking(bool speaking);
+    void setScreenSharing(bool sharing) { m_screenSharing = sharing; update(); }
     void setConnectionDown(bool down);
 
 protected:
@@ -45,6 +46,7 @@ private:
     QString m_nickname;
     bool m_muted = false;
     bool m_speaking = false;
+    bool m_screenSharing = false;
     bool m_cameraEnabled = false;
     bool m_compactMode = false;
     bool m_connectionDown = false;
@@ -54,4 +56,5 @@ private:
     Screen* m_videoScreen = nullptr;
     QLabel* m_nameLabel = nullptr;
     QGridLayout* m_mainLayout = nullptr;
+    QGraphicsDropShadowEffect* m_shadowEffect = nullptr;
 };

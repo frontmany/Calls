@@ -155,13 +155,17 @@ class CallbacksHandler(callsClientPy.EventListener):
         self.events.append("remote_ended_call")
         print(f"[{self.name}] Remote user ended call")
     
-    def onIncomingScreenSharingStarted(self):
+    def onIncomingScreenSharingStarted(self, sharer_nickname=""):
         self.events.append("incoming_screen_sharing_started")
-        print(f"[{self.name}] Incoming screen sharing started")
+        print(f"[{self.name}] Incoming screen sharing started (sharer: {sharer_nickname})")
     
-    def onIncomingScreenSharingStopped(self):
+    def onIncomingScreenSharingStopped(self, sharer_nickname=""):
         self.events.append("incoming_screen_sharing_stopped")
-        print(f"[{self.name}] Incoming screen sharing stopped")
+        print(f"[{self.name}] Incoming screen sharing stopped (sharer: {sharer_nickname})")
+    
+    def onMeetingParticipantSpeaking(self, nickname, speaking):
+        # Optional meeting callback; tests can ignore or use for assertions
+        pass
     
     def onIncomingCameraSharingStarted(self):
         self.events.append("incoming_camera_sharing_started")

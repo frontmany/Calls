@@ -32,6 +32,8 @@ namespace core::logic
         void handleMeetingEnded(const nlohmann::json& jsonObject);
         void handleMeetingParticipantJoined(const nlohmann::json& jsonObject);
         void handleMeetingParticipantLeft(const nlohmann::json& jsonObject);
+        void handleMeetingParticipantConnectionDown(const nlohmann::json& jsonObject);
+        void handleMeetingParticipantConnectionRestored(const nlohmann::json& jsonObject);
 
     private:
         std::shared_ptr<ClientStateManager> m_stateManager;

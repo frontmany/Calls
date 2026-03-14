@@ -79,11 +79,11 @@ void MeetingParticipantWidget::setupUI()
 
     setDisplayMode(DisplayMode::DisplayName);
 
-    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect(this);
-    shadowEffect->setBlurRadius(scale(8));
-    shadowEffect->setColor(QColor(0, 0, 0, 25));
-    shadowEffect->setOffset(0, scale(2));
-    setGraphicsEffect(shadowEffect);
+    m_shadowEffect = new QGraphicsDropShadowEffect(this);
+    m_shadowEffect->setBlurRadius(scale(8));
+    m_shadowEffect->setColor(QColor(0, 0, 0, 25));
+    m_shadowEffect->setOffset(0, scale(2));
+    setGraphicsEffect(m_shadowEffect);
 }
 
 void MeetingParticipantWidget::setDisplayMode(DisplayMode mode)
@@ -178,6 +178,24 @@ void MeetingParticipantWidget::setCameraEnabled(bool enabled)
     m_cameraEnabled = enabled;
 }
 
+void MeetingParticipantWidget::setSpeaking(bool speaking)
+{
+    if (m_speaking == speaking) return;
+    m_speaking = speaking;
+    if (m_shadowEffect) {
+        if (m_speaking) {
+            m_shadowEffect->setColor(QColor(21, 119, 232));
+            m_shadowEffect->setBlurRadius(scale(16));
+            m_shadowEffect->setOffset(0, 0);
+        } else {
+            m_shadowEffect->setColor(QColor(0, 0, 0, 25));
+            m_shadowEffect->setBlurRadius(scale(8));
+            m_shadowEffect->setOffset(0, scale(2));
+        }
+    }
+    update();
+}
+
 void MeetingParticipantWidget::setConnectionDown(bool down)
 {
     if (m_connectionDown == down) return;
@@ -213,11 +231,12 @@ void MeetingParticipantWidget::paintEvent(QPaintEvent* event)
         painter.drawRoundedRect(glassRect, 12, 12);
     }
 
+    if (m_screenSharing) {
+        painter.setPen(QPen(QColor(21, 119, 232), 3));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 11, 11);
+    }
+
     painter.setBrush(Qt::NoBrush);
     QWidget::paintEvent(event);
-    if (m_speaking) {
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(21, 119, 232, 50));
-        painter.drawRoundedRect(rect().adjusted(2, 2, -2, -2), 10, 10);
-    }
 }

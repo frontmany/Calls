@@ -44,6 +44,8 @@ namespace core::logic
         , m_sendPacket(sendPacket)
         , m_sendMediaFrame(sendMediaFrame)
     {
+        m_cachedMyNickname.clear();
+        m_cachedMyNicknameHash.clear();
         m_audioEngine->setInputAudioCallback([this](const float* data, int length) { onRawAudio(data, length); });
         m_screenCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Screen); });
         m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Camera); });
@@ -258,13 +260,15 @@ namespace core::logic
                 return;
             }
 
-            std::vector<unsigned char> framed;
-            framed.reserve(2 + meetingId.size() + encryptedAudio.size());
-            appendU16BE(framed, static_cast<uint16_t>(meetingId.size()));
-            framed.insert(framed.end(), meetingId.begin(), meetingId.end());
-            framed.insert(framed.end(), encryptedAudio.begin(), encryptedAudio.end());
+            const std::string& senderHash = getCachedMyNicknameHash();
+            if (senderHash.size() > 0xFFFF) {
+                return;
+            }
 
-            m_sendMediaFrame(framed, PacketType::VOICE);
+            std::vector<unsigned char> framed = buildMeetingFrame(meetingId, senderHash, encryptedAudio);
+            if (!framed.empty()) {
+                m_sendMediaFrame(framed, PacketType::VOICE);
+            }
             return;
         }
 
@@ -336,18 +340,37 @@ namespace core::logic
             return;
         }
 
-        std::vector<unsigned char> framed;
-        const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
+        const std::string& senderHash = getCachedMyNicknameHash();
         if (senderHash.size() > 0xFFFF) {
             return;
         }
-        framed.reserve(2 + meetingId.size() + 2 + senderHash.size() + encryptedVideo.size());
+        std::vector<unsigned char> framed = buildMeetingFrame(meetingId, senderHash, encryptedVideo);
+        if (!framed.empty()) {
+            m_sendMediaFrame(framed, packetType);
+        }
+    }
+
+    std::vector<unsigned char> MediaService::buildMeetingFrame(const std::string& meetingId,
+        const std::string& senderHash,
+        const std::vector<unsigned char>& encryptedPayload)
+    {
+        std::vector<unsigned char> framed;
+        framed.reserve(2 + meetingId.size() + 2 + senderHash.size() + encryptedPayload.size());
         appendU16BE(framed, static_cast<uint16_t>(meetingId.size()));
         framed.insert(framed.end(), meetingId.begin(), meetingId.end());
         appendU16BE(framed, static_cast<uint16_t>(senderHash.size()));
         framed.insert(framed.end(), senderHash.begin(), senderHash.end());
-        framed.insert(framed.end(), encryptedVideo.begin(), encryptedVideo.end());
-        m_sendMediaFrame(framed, packetType);
+        framed.insert(framed.end(), encryptedPayload.begin(), encryptedPayload.end());
+        return framed;
+    }
+
+    const std::string& MediaService::getCachedMyNicknameHash() {
+        const std::string& nickname = m_stateManager->getMyNickname();
+        if (m_cachedMyNickname != nickname) {
+            m_cachedMyNickname = nickname;
+            m_cachedMyNicknameHash = core::utilities::crypto::calculateHash(nickname);
+        }
+        return m_cachedMyNicknameHash;
     }
 
     std::vector<unsigned char> MediaService::encryptWithCallKey(const std::vector<unsigned char>& data) {

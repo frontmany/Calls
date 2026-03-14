@@ -17,8 +17,8 @@ public:
     void onAuthorizationResult(std::error_code ec) override;
     void onStartOutgoingCallResult(std::error_code ec) override;
 
-    void onIncomingScreenSharingStarted() override;
-    void onIncomingScreenSharingStopped() override;
+    void onIncomingScreenSharingStarted(const std::string& sharerNickname) override;
+    void onIncomingScreenSharingStopped(const std::string& sharerNickname) override;
     void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) override;
 
     void onStartScreenSharingError() override;
@@ -54,6 +54,7 @@ public:
     void onMeetingParticipantLeft(const std::string& nickname) override;
     void onMeetingParticipantConnectionDown(const std::string& nickname) override;
     void onMeetingParticipantConnectionRestored(const std::string& nickname) override;
+    void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) override;
 
     void onConnectionDown() override;
     void onConnectionEstablished() override;

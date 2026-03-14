@@ -75,7 +75,7 @@ private:
     core::utilities::SafeQueue<ReceivedPacket> m_receivedPacketsQueue;
     core::utilities::SafeQueue<AssemblyJob> m_assemblyQueue;
     std::thread m_processingThread;
-    const std::size_t m_headerSize = 18;
+    const std::size_t m_headerSize = 18;  // Server forwards payload only and uses 18-byte header
     const std::size_t m_maxPendingPackets = 8;
     static constexpr std::size_t m_maxAssemblyQueueSize = 64;
     static constexpr std::size_t m_maxReceivedPacketsQueueSize = 64;

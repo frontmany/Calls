@@ -97,8 +97,18 @@ void MeetingManager::clearRemoteParticipantVideos()
     }
 }
 
+void MeetingManager::clearSpeakingTimers()
+{
+    for (QTimer* t : m_speakingTimers) {
+        t->stop();
+        t->deleteLater();
+    }
+    m_speakingTimers.clear();
+}
+
 void MeetingManager::onMeetingCreated(const QString& meetingId)
 {
+    clearSpeakingTimers();
     if (m_meetingWidget) {
         m_meetingWidget->resetMeetingState();
     }
@@ -304,6 +314,7 @@ void MeetingManager::onJoinMeetingAccepted(const QString& meetingId, const QStri
         m_dialogsController->hideMeetingsManagementDialog();
     }
     if (m_meetingWidget && m_coreClient && m_configManager) {
+        clearSpeakingTimers();
         m_meetingWidget->resetMeetingState();
         m_meetingWidget->setCallName(meetingId);
         m_meetingWidget->setIsOwner(false);
@@ -358,6 +369,7 @@ void MeetingManager::onMeetingNotFound()
 
 void MeetingManager::onMeetingEndedByOwner()
 {
+    clearSpeakingTimers();
     if (m_meetingWidget) {
         m_meetingWidget->resetMeetingState();
     }
@@ -519,22 +531,59 @@ void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int heigh
     m_meetingWidget->updateParticipantVideo(nickname, pixmap);
 }
 
-void MeetingManager::onIncomingScreenSharingStarted()
+void MeetingManager::onIncomingScreenSharingStarted(const QString& sharerNickname)
 {
     if (m_meetingWidget) {
         m_meetingWidget->showEnterFullscreenButton();
         m_meetingWidget->setScreenShareButtonRestricted(true);
+        if (m_coreClient) {
+            const std::vector<std::string> participants = m_coreClient->getMeetingParticipants();
+            for (const auto& p : participants) {
+                m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(p), false);
+            }
+            m_meetingWidget->setParticipantScreenSharing(sharerNickname, true);
+        }
     }
 }
 
-void MeetingManager::onIncomingScreenSharingStopped()
+void MeetingManager::onIncomingScreenSharingStopped(const QString& sharerNickname)
 {
     if (m_meetingWidget) {
+        m_meetingWidget->setParticipantScreenSharing(sharerNickname, false);
         m_meetingWidget->hideMainScreen();
         m_meetingWidget->hideEnterFullscreenButton();
     }
     if (hasRemoteParticipants() && m_meetingWidget)
         m_meetingWidget->setScreenShareButtonRestricted(false);
+}
+
+void MeetingManager::onMeetingParticipantSpeaking(const QString& nickname, bool speaking)
+{
+    if (m_meetingWidget) {
+        m_meetingWidget->setParticipantSpeaking(nickname, speaking);
+    }
+    if (speaking) {
+        QTimer*& t = m_speakingTimers[nickname];
+        if (!t) {
+            t = new QTimer(this);
+            t->setSingleShot(true);
+            connect(t, &QTimer::timeout, this, [this, nickname]() {
+                if (m_meetingWidget) {
+                    m_meetingWidget->setParticipantSpeaking(nickname, false);
+                }
+                auto it = m_speakingTimers.find(nickname);
+                if (it != m_speakingTimers.end()) {
+                    it.value()->stop();
+                }
+            });
+        }
+        t->start(kSpeakingSilenceMs);
+    } else {
+        auto it = m_speakingTimers.find(nickname);
+        if (it != m_speakingTimers.end()) {
+            it.value()->stop();
+        }
+    }
 }
 
 void MeetingManager::onIncomingCameraSharingStarted()

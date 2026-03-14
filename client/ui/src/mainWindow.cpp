@@ -439,6 +439,10 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_meetingWidget, &MeetingWidget::cameraClicked, m_meetingManager, &MeetingManager::onCameraClicked);
         connect(m_meetingWidget, &MeetingWidget::screenShareClicked, m_meetingManager, &MeetingManager::onScreenShareClicked);
     }
+    if (m_meetingWidget && m_audioSettingsManager) {
+        connect(m_meetingWidget, &MeetingWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
+        connect(m_meetingWidget, &MeetingWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+    }
     if (m_meetingWidget && m_dialogsController && m_coreClient) {
         connect(m_meetingWidget, &MeetingWidget::audioSettingsRequested, this, [this]() {
             m_dialogsController->showAudioSettingsDialog(

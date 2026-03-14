@@ -1071,6 +1071,12 @@ void MeetingWidget::setParticipantSpeaking(const QString& nickname, bool speakin
     }
 }
 
+void MeetingWidget::setParticipantScreenSharing(const QString& nickname, bool sharing) {
+    if (m_participantWidgets.contains(nickname)) {
+        m_participantWidgets[nickname]->setScreenSharing(sharing);
+    }
+}
+
 void MeetingWidget::setParticipantConnectionDown(const QString& nickname, bool down) {
     if (m_participantWidgets.contains(nickname)) {
         m_participantWidgets[nickname]->setConnectionDown(down);

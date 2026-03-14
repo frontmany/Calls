@@ -262,4 +262,50 @@ namespace core::logic
             m_eventListener->onMeetingParticipantLeft(nickname);
         }
     }
+
+    void MeetingPacketHandler::handleMeetingParticipantConnectionDown(const nlohmann::json& jsonObject) {
+        if (!m_stateManager->isAuthorized() || m_stateManager->isConnectionDown()) return;
+        if (!m_stateManager->isActiveMeeting()) return;
+
+        auto meetingOpt = m_stateManager->getActiveMeeting();
+        if (!meetingOpt || !jsonObject.contains(NICKNAME_HASH)) return;
+
+        const std::string nicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string nickname;
+        for (const auto& participant : meetingOpt->get().getParticipants()) {
+            const auto& candidateNickname = participant.getUser().getNickname();
+            if (calculateHash(candidateNickname) == nicknameHash) {
+                nickname = candidateNickname;
+                break;
+            }
+        }
+        if (nickname.empty()) return;
+
+        if (m_eventListener) {
+            m_eventListener->onMeetingParticipantConnectionDown(nickname);
+        }
+    }
+
+    void MeetingPacketHandler::handleMeetingParticipantConnectionRestored(const nlohmann::json& jsonObject) {
+        if (!m_stateManager->isAuthorized() || m_stateManager->isConnectionDown()) return;
+        if (!m_stateManager->isActiveMeeting()) return;
+
+        auto meetingOpt = m_stateManager->getActiveMeeting();
+        if (!meetingOpt || !jsonObject.contains(NICKNAME_HASH)) return;
+
+        const std::string nicknameHash = jsonObject[NICKNAME_HASH].get<std::string>();
+        std::string nickname;
+        for (const auto& participant : meetingOpt->get().getParticipants()) {
+            const auto& candidateNickname = participant.getUser().getNickname();
+            if (calculateHash(candidateNickname) == nicknameHash) {
+                nickname = candidateNickname;
+                break;
+            }
+        }
+        if (nickname.empty()) return;
+
+        if (m_eventListener) {
+            m_eventListener->onMeetingParticipantConnectionRestored(nickname);
+        }
+    }
 }

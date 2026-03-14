@@ -5,14 +5,40 @@
 #include "utilities/crypto.h"
 
 #include <cstdint>
+#include <optional>
 
 using namespace core::constant;
 using namespace core::media;
 
-namespace core::logic 
+namespace core::logic
 {
     namespace
     {
+        struct MeetingFrame {
+            std::string meetingId;
+            std::string senderHash;
+            const unsigned char* payload = nullptr;
+            int payloadLen = 0;
+        };
+
+        std::optional<MeetingFrame> parseMeetingFrame(const unsigned char* data, int length) {
+            if (length < 2) return std::nullopt;
+            const uint16_t meetingIdLen = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
+            if (length < 2 + meetingIdLen + 2) return std::nullopt;
+            const std::string meetingId(reinterpret_cast<const char*>(data + 2), meetingIdLen);
+            const uint16_t senderHashLen = (static_cast<uint16_t>(data[2 + meetingIdLen]) << 8) | static_cast<uint16_t>(data[2 + meetingIdLen + 1]);
+            if (length < 2 + meetingIdLen + 2 + senderHashLen) return std::nullopt;
+            const std::string senderHash(reinterpret_cast<const char*>(data + 2 + meetingIdLen + 2), senderHashLen);
+            const unsigned char* payload = data + 2 + meetingIdLen + 2 + senderHashLen;
+            const int payloadLen = length - static_cast<int>(2 + meetingIdLen + 2 + senderHashLen);
+            MeetingFrame frame;
+            frame.meetingId = meetingId;
+            frame.senderHash = senderHash;
+            frame.payload = payload;
+            frame.payloadLen = payloadLen;
+            return frame;
+        }
+
         bool isMeetingParticipantHash(
             const std::shared_ptr<ClientStateManager>& stateManager,
             const std::string& senderNicknameHash)
@@ -26,6 +52,21 @@ namespace core::logic
                 }
             }
             return false;
+        }
+
+        std::string meetingParticipantNicknameByHash(
+            const std::shared_ptr<ClientStateManager>& stateManager,
+            const std::string& senderNicknameHash)
+        {
+            auto meetingOpt = stateManager->getActiveMeeting();
+            if (!meetingOpt) return {};
+
+            for (const auto& participant : meetingOpt->get().getParticipants()) {
+                if (core::utilities::crypto::calculateHash(participant.getUser().getNickname()) == senderNicknameHash) {
+                    return participant.getUser().getNickname();
+                }
+            }
+            return {};
         }
     }
 
@@ -47,16 +88,19 @@ namespace core::logic
             m_stateManager->isViewingRemoteScreen()) return;
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+        std::string sharerNickname;
 
         auto activeOpt = m_stateManager->getActiveCall();
         if (activeOpt) {
             if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+            sharerNickname = activeOpt->get().getNickname();
         } else {
             if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+            sharerNickname = meetingParticipantNicknameByHash(m_stateManager, senderNicknameHash);
         }
 
         m_stateManager->setViewingRemoteScreen(true);
-        m_eventListener->onIncomingScreenSharingStarted();
+        m_eventListener->onIncomingScreenSharingStarted(sharerNickname);
     }
 
     void MediaPacketHandler::handleIncomingScreenSharingStopped(const nlohmann::json& jsonObject) {
@@ -65,16 +109,19 @@ namespace core::logic
             !m_stateManager->isViewingRemoteScreen()) return;
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+        std::string sharerNickname;
 
         auto activeOpt = m_stateManager->getActiveCall();
         if (activeOpt) {
             if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+            sharerNickname = activeOpt->get().getNickname();
         } else {
             if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+            sharerNickname = meetingParticipantNicknameByHash(m_stateManager, senderNicknameHash);
         }
 
         m_stateManager->setViewingRemoteScreen(false);
-        m_eventListener->onIncomingScreenSharingStopped();
+        m_eventListener->onIncomingScreenSharingStopped(sharerNickname);
     }
 
     void MediaPacketHandler::handleIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
@@ -133,26 +180,29 @@ namespace core::logic
             return;
         }
 
-        if (length < 2) return;
-        const uint16_t meetingIdLen = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
-        if (length < 2 + meetingIdLen) return;
+        auto frameOpt = parseMeetingFrame(data, length);
+        if (!frameOpt) return;
 
-        const std::string meetingId(reinterpret_cast<const char*>(data + 2), meetingIdLen);
+        const MeetingFrame& frame = *frameOpt;
         auto meetingOpt = m_stateManager->getActiveMeeting();
-        if (meetingId.empty() || !meetingOpt || meetingId != meetingOpt->get().getMeetingId()) return;
+        if (frame.meetingId.empty() || !meetingOpt || frame.meetingId != meetingOpt->get().getMeetingId()) return;
 
-        auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
+        auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(frame.meetingId));
         if (!binOpt) return;
 
         CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
-        const unsigned char* payload = data + 2 + meetingIdLen;
-        const int payloadLen = length - static_cast<int>(2 + meetingIdLen);
 
-        auto decryptedData = m_mediaProcessingService->decryptData(payload, payloadLen, meetingKey);
+        auto decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
         if (decryptedData.empty()) return;
         auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!audioFrame.empty()) {
             m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(audioFrame.size()));
+        }
+        if (!frame.senderHash.empty() && m_eventListener) {
+            const std::string nickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);
+            if (!nickname.empty()) {
+                m_eventListener->onMeetingParticipantSpeaking(nickname, true);
+            }
         }
     }
 
@@ -166,31 +216,16 @@ namespace core::logic
         if (activeOpt) {
             decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
         } else {
-            if (!m_stateManager->isActiveMeeting() || length < 4) return;
-
-            int offset = 0;
-            const uint16_t meetingIdLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
-            offset += 2;
-            if (length < offset + meetingIdLen + 2) return;
-            const std::string meetingId(reinterpret_cast<const char*>(data + offset), meetingIdLen);
-            offset += meetingIdLen;
-
-            const uint16_t senderHashLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
-            offset += 2;
-            if (length < offset + senderHashLen) return;
-            // senderHash содержится в пакете, но для экрана ник не нужен — просто пропускаем байты
-            offset += senderHashLen;
-
+            if (!m_stateManager->isActiveMeeting()) return;
+            auto frameOpt = parseMeetingFrame(data, length);
+            if (!frameOpt) return;
+            const MeetingFrame& frame = *frameOpt;
             auto meetingOpt = m_stateManager->getActiveMeeting();
-            if (meetingId.empty() || !meetingOpt || meetingId != meetingOpt->get().getMeetingId()) return;
-
-            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
+            if (frame.meetingId.empty() || !meetingOpt || frame.meetingId != meetingOpt->get().getMeetingId()) return;
+            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(frame.meetingId));
             if (!binOpt) return;
             CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
-
-            const unsigned char* payload = data + offset;
-            const int payloadLen = length - offset;
-            decryptedData = m_mediaProcessingService->decryptData(payload, payloadLen, meetingKey);
+            decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
         }
         if (decryptedData.empty()) return;
         auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Screen, decryptedData.data(), static_cast<int>(decryptedData.size()));
@@ -213,41 +248,18 @@ namespace core::logic
                 senderNickname = activeOpt->get().getNickname();
             }
         } else {
-            if (!m_stateManager->isActiveMeeting() || length < 4) return;
-            int offset = 0;
-            const uint16_t meetingIdLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
-            offset += 2;
-            if (length < offset + meetingIdLen + 2) return;
-            const std::string meetingId(reinterpret_cast<const char*>(data + offset), meetingIdLen);
-            offset += meetingIdLen;
-
-            const uint16_t senderHashLen = (static_cast<uint16_t>(data[offset]) << 8) | static_cast<uint16_t>(data[offset + 1]);
-            offset += 2;
-            if (length < offset + senderHashLen) return;
-            const std::string senderHash(reinterpret_cast<const char*>(data + offset), senderHashLen);
-            offset += senderHashLen;
-
+            if (!m_stateManager->isActiveMeeting()) return;
+            auto frameOpt = parseMeetingFrame(data, length);
+            if (!frameOpt) return;
+            const MeetingFrame& frame = *frameOpt;
             auto meetingOpt = m_stateManager->getActiveMeeting();
-            if (meetingId.empty() || !meetingOpt || meetingId != meetingOpt->get().getMeetingId()) return;
-
-            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
+            if (frame.meetingId.empty() || !meetingOpt || frame.meetingId != meetingOpt->get().getMeetingId()) return;
+            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(frame.meetingId));
             if (!binOpt) return;
             CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
-
-            const unsigned char* payload = data + offset;
-            const int payloadLen = length - offset;
-            decryptedData = m_mediaProcessingService->decryptData(payload, payloadLen, meetingKey);
+            decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
             if (decryptedData.empty()) return;
-
-            // Resolve sender nickname from hash using meeting participants
-            auto participants = meetingOpt->get().getParticipants();
-            for (const auto& participant : participants) {
-                const std::string& nickname = participant.getUser().getNickname();
-                if (core::utilities::crypto::calculateHash(nickname) == senderHash) {
-                    senderNickname = nickname;
-                    break;
-                }
-            }
+            senderNickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);
         }
         if (decryptedData.empty() || senderNickname.empty()) return;
         auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Camera, decryptedData.data(), static_cast<int>(decryptedData.size()));

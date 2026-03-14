@@ -193,21 +193,27 @@ namespace core::logic
 
     void PacketHandleController::handleRemoteUserConnectionDown(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleRemoteUserConnectionDown(jsonObject);
-        if (m_stopAudioSharing) {
+        if (m_stopAudioSharing && m_stateManager->isActiveCall()) {
             m_stopAudioSharing();
+        }
+        if (m_stateManager->isActiveMeeting()) {
+            m_meetingPacketHandler->handleMeetingParticipantConnectionDown(jsonObject);
         }
     }
 
     void PacketHandleController::handleRemoteUserConnectionRestored(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleRemoteUserConnectionRestored(jsonObject);
-        if (m_startAudioSharing) {
+        if (m_startAudioSharing && m_stateManager->isActiveCall()) {
             m_startAudioSharing();
+        }
+        if (m_stateManager->isActiveMeeting()) {
+            m_meetingPacketHandler->handleMeetingParticipantConnectionRestored(jsonObject);
         }
     }
 
     void PacketHandleController::handleRemoteUserLogout(const nlohmann::json& jsonObject) {
         m_callPacketHandler->handleRemoteUserLogout(jsonObject);
-        if (m_stopAudioSharing) {
+        if (m_stopAudioSharing && m_stateManager->isActiveCall()) {
             m_stopAudioSharing();
         }
     }

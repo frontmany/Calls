@@ -102,6 +102,7 @@ public:
     void clearParticipantVideo(const QString& nickname);
     void setParticipantMuted(const QString& nickname, bool muted);
     void setParticipantSpeaking(const QString& nickname, bool speaking);
+    void setParticipantScreenSharing(const QString& nickname, bool sharing);
     void setParticipantCameraEnabled(const QString& nickname, bool enabled);
     void setParticipantConnectionDown(const QString& nickname, bool down);
     void clearAllParticipantVideos();

@@ -13,8 +13,8 @@ namespace core
         virtual void onAuthorizationResult(std::error_code ec) = 0;
         virtual void onStartOutgoingCallResult(std::error_code ec) = 0;
 
-        virtual void onIncomingScreenSharingStarted() = 0;
-        virtual void onIncomingScreenSharingStopped() = 0;
+        virtual void onIncomingScreenSharingStarted(const std::string& sharerNickname) = 0;
+        virtual void onIncomingScreenSharingStopped(const std::string& sharerNickname) = 0;
         virtual void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) = 0;
 
         virtual void onStartScreenSharingError() = 0;
@@ -51,6 +51,7 @@ namespace core
         virtual void onMeetingParticipantLeft(const std::string& nickname) = 0;
         virtual void onMeetingParticipantConnectionDown(const std::string& nickname) = 0;
         virtual void onMeetingParticipantConnectionRestored(const std::string& nickname) = 0;
+        virtual void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) = 0;
 
         virtual void onConnectionDown() = 0;
         virtual void onConnectionEstablished() = 0;

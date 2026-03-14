@@ -4,6 +4,8 @@
 #include <QString>
 #include <QStringList>
 #include <QByteArray>
+#include <QMap>
+#include <QTimer>
 #include <memory>
 
 #include "core.h"
@@ -64,8 +66,9 @@ public slots:
     void onIncomingCameraFrame(QByteArray data, int width, int height, const QString& nickname);
 
     // Media state slots
-    void onIncomingScreenSharingStarted();
-    void onIncomingScreenSharingStopped();
+    void onIncomingScreenSharingStarted(const QString& sharerNickname);
+    void onIncomingScreenSharingStopped(const QString& sharerNickname);
+    void onMeetingParticipantSpeaking(const QString& nickname, bool speaking);
     void onIncomingCameraSharingStarted();
     void onIncomingCameraSharingStopped();
     void onStartScreenSharingError();
@@ -75,6 +78,8 @@ signals:
     void meetingCreated(const QString& meetingId);
 
 private:
+    static constexpr int kSpeakingSilenceMs = 400;
+    void clearSpeakingTimers();
     bool hasRemoteParticipants() const;
     void clearLocalParticipantVideo();
     void clearRemoteParticipantVideos();
@@ -87,4 +92,5 @@ private:
     NotificationController* m_notificationController = nullptr;
     ConfigManager* m_configManager = nullptr;
     MeetingWidget* m_meetingWidget = nullptr;
+    QMap<QString, QTimer*> m_speakingTimers;
 };
