@@ -12,6 +12,7 @@ class NavigationController;
 class MainMenuWidget;
 class AudioEffectsManager;
 class CallManager;
+class MeetingManager;
 class ConfigManager;
 
 class CoreNetworkErrorHandler : public QObject {
@@ -21,7 +22,7 @@ public:
     explicit CoreNetworkErrorHandler(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent = nullptr);
     
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
-    void setManagers(CallManager* callManager);
+    void setManagers(CallManager* callManager, MeetingManager* meetingManager);
     void setNotificationController(NotificationController* notificationController);
 
 public slots:
@@ -39,5 +40,6 @@ private:
     NotificationController* m_notificationController = nullptr;
     AudioEffectsManager* m_audioManager = nullptr;
     CallManager* m_callManager = nullptr;
+    MeetingManager* m_meetingManager = nullptr;
     bool m_connectionWasDown = false;
 };

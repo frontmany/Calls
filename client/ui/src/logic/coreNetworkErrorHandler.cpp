@@ -6,6 +6,7 @@
 #include "logic/navigationController.h"
 #include "logic/configManager.h"
 #include "logic/callManager.h"
+#include "logic/meetingManager.h"
 #include "audio/audioEffectsManager.h"
 
 CoreNetworkErrorHandler::CoreNetworkErrorHandler(std::shared_ptr<core::Core> client, NavigationController* navigationController, ConfigManager* configManager, AudioEffectsManager* audioManager, QObject* parent)
@@ -24,9 +25,10 @@ void CoreNetworkErrorHandler::setWidgets(AuthorizationWidget* authWidget, MainMe
     m_dialogsController = dialogsController;
 }
 
-void CoreNetworkErrorHandler::setManagers(CallManager* callManager)
+void CoreNetworkErrorHandler::setManagers(CallManager* callManager, MeetingManager* meetingManager)
 {
     m_callManager = callManager;
+    m_meetingManager = meetingManager;
 }
 
 void CoreNetworkErrorHandler::setNotificationController(NotificationController* notificationController)
@@ -59,6 +61,17 @@ void CoreNetworkErrorHandler::onConnectionDown()
             
             if (m_callManager) {
                 m_callManager->onLocalConnectionDownInCall();
+            }
+        }
+        else if (m_coreClient->isInMeeting()) {
+            if (m_coreClient->isScreenSharing()) {
+                m_coreClient->stopScreenSharing();
+            }
+            if (m_coreClient->isCameraSharing()) {
+                m_coreClient->stopCameraSharing();
+            }
+            if (m_meetingManager) {
+                QMetaObject::invokeMethod(m_meetingManager, "onLocalConnectionDownInMeeting", Qt::QueuedConnection);
             }
         }
         else {

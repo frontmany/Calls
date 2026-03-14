@@ -1000,6 +1000,21 @@ namespace server
                 auto [_, p] = PacketFactory::getConnectionDownWithUserPacket(user->getNicknameHash());
                 broadcastToMeeting(meeting, user->getNicknameHash(), static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), p);
             }
+            const std::string disconnectedHash = user->getNicknameHash();
+            {
+                auto screenSharers = meeting->getScreenSharers();
+                if (std::find(screenSharers.begin(), screenSharers.end(), disconnectedHash) != screenSharers.end()) {
+                    auto endPacket = PacketFactory::getMediaSharingEndPacket(disconnectedHash);
+                    broadcastToMeeting(meeting, disconnectedHash, static_cast<uint32_t>(PacketType::SCREEN_SHARING_END), endPacket);
+                    meeting->removeScreenSharer(disconnectedHash);
+                }
+                auto cameraSharers = meeting->getCameraSharers();
+                if (std::find(cameraSharers.begin(), cameraSharers.end(), disconnectedHash) != cameraSharers.end()) {
+                    auto endPacket = PacketFactory::getMediaSharingEndPacket(disconnectedHash);
+                    broadcastToMeeting(meeting, disconnectedHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), endPacket);
+                    meeting->removeCameraSharer(disconnectedHash);
+                }
+            }
 
             if (meeting->isOwner(user->getNicknameHash())) {
                 rejectAllPendingJoinRequests(meeting, "owner_unavailable");

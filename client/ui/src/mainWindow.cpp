@@ -285,8 +285,8 @@ void MainWindow::initializeCoreNetworkErrorHandler() {
     if (m_authorizationWidget && m_mainMenuWidget && m_dialogsController) {
         m_coreNetworkErrorHandler->setWidgets(m_authorizationWidget, m_mainMenuWidget, m_dialogsController);
     }
-    if (m_callManager) {
-        m_coreNetworkErrorHandler->setManagers(m_callManager);
+    if (m_callManager || m_meetingManager) {
+        m_coreNetworkErrorHandler->setManagers(m_callManager, m_meetingManager);
     }
     if (m_coreNetworkErrorHandler && m_notificationController) {
         m_coreNetworkErrorHandler->setNotificationController(m_notificationController);

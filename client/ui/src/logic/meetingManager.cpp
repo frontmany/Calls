@@ -432,6 +432,8 @@ void MeetingManager::onMeetingParticipantConnectionDown(const QString& nickname)
 {
     if (m_meetingWidget) {
         m_meetingWidget->setParticipantConnectionDown(nickname, true);
+        m_meetingWidget->clearParticipantVideo(nickname);
+        m_meetingWidget->hideMainScreen();
     }
 }
 
@@ -439,6 +441,20 @@ void MeetingManager::onMeetingParticipantConnectionRestored(const QString& nickn
 {
     if (m_meetingWidget) {
         m_meetingWidget->setParticipantConnectionDown(nickname, false);
+    }
+}
+
+void MeetingManager::onLocalConnectionDownInMeeting()
+{
+    if (m_meetingWidget) {
+        m_meetingWidget->hideMainScreen();
+        m_meetingWidget->hideAdditionalScreens();
+        m_meetingWidget->setScreenShareButtonActive(false);
+        m_meetingWidget->setCameraButtonActive(false);
+        clearLocalParticipantVideo();
+    }
+    if (m_configManager) {
+        m_configManager->setCameraActive(false);
     }
 }
 

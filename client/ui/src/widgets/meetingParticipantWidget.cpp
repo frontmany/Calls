@@ -186,7 +186,7 @@ void MeetingParticipantWidget::setConnectionDown(bool down)
     if (down) {
         setDisplayMode(DisplayMode::DisplayName);
         if (m_nameLabel) {
-            m_nameLabel->setText(m_nickname + QStringLiteral(" connection down"));
+            m_nameLabel->setText(m_nickname + QStringLiteral("\nconnection down"));
         }
     } else {
         if (m_nameLabel) {
@@ -211,9 +211,6 @@ void MeetingParticipantWidget::paintEvent(QPaintEvent* event)
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(128, 128, 128, 100));
         painter.drawRoundedRect(glassRect, 12, 12);
-        painter.setPen(QPen(QColor(220, 50, 50), 2));
-        painter.setBrush(Qt::NoBrush);
-        painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 12, 12);
     }
 
     painter.setBrush(Qt::NoBrush);
