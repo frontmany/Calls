@@ -208,6 +208,9 @@ void MeetingManager::onScreenShareClicked(bool toggled)
         m_coreClient->stopScreenSharing();
 
         if (m_meetingWidget) {
+            const std::string myNick = m_coreClient->getMyNickname();
+            if (!myNick.empty())
+                m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), false);
             m_meetingWidget->hideMainScreen();
             m_meetingWidget->hideAdditionalScreens();
             m_meetingWidget->setScreenShareButtonActive(false);
@@ -244,6 +247,10 @@ void MeetingManager::onScreenSelected(int screenIndex)
     std::error_code ec = m_coreClient->startScreenSharing(target);
     if (ec) {
         onStartScreenSharingError();
+    } else if (m_meetingWidget) {
+        const std::string myNick = m_coreClient->getMyNickname();
+        if (!myNick.empty())
+            m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), true);
     }
 }
 
@@ -410,15 +417,17 @@ void MeetingManager::onMeetingParticipantLeft(const QString& nickname)
                 break;
             }
         }
-        if (!hasRemoteParticipants) {
-            if (m_coreClient->isScreenSharing()) {
-                m_coreClient->stopScreenSharing();
-                if (m_meetingWidget) {
-                    m_meetingWidget->hideMainScreen();
-                    m_meetingWidget->hideAdditionalScreens();
-                    m_meetingWidget->setScreenShareButtonActive(false);
+            if (!hasRemoteParticipants) {
+                if (m_coreClient->isScreenSharing()) {
+                    m_coreClient->stopScreenSharing();
+                    if (m_meetingWidget) {
+                        if (!myNickname.empty())
+                            m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNickname), false);
+                        m_meetingWidget->hideMainScreen();
+                        m_meetingWidget->hideAdditionalScreens();
+                        m_meetingWidget->setScreenShareButtonActive(false);
+                    }
                 }
-            }
             if (m_coreClient->isCameraSharing()) {
                 m_coreClient->stopCameraSharing();
                 clearLocalParticipantVideo();
@@ -459,6 +468,11 @@ void MeetingManager::onMeetingParticipantConnectionRestored(const QString& nickn
 void MeetingManager::onLocalConnectionDownInMeeting()
 {
     if (m_meetingWidget) {
+        if (m_coreClient) {
+            const std::string myNick = m_coreClient->getMyNickname();
+            if (!myNick.empty())
+                m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), false);
+        }
         m_meetingWidget->hideMainScreen();
         m_meetingWidget->hideAdditionalScreens();
         m_meetingWidget->setScreenShareButtonActive(false);
@@ -603,6 +617,11 @@ void MeetingManager::onStartCameraSharingError()
 void MeetingManager::onStartScreenSharingError()
 {
     if (m_meetingWidget) {
+        if (m_coreClient) {
+            const std::string myNick = m_coreClient->getMyNickname();
+            if (!myNick.empty())
+                m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), false);
+        }
         m_meetingWidget->setScreenShareButtonActive(false);
         m_meetingWidget->hideMainScreen();
         m_meetingWidget->hideAdditionalScreens();
