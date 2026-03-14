@@ -227,6 +227,13 @@ namespace core::logic
 
         if ((!isActiveCall && !isInMeeting) ||
             m_stateManager->getMediaState(MediaType::Audio) != MediaState::Active) {
+            if (m_localParticipantSpeaking && m_eventListener) {
+                const std::string& myNick = m_stateManager->getMyNickname();
+                if (!myNick.empty())
+                    m_eventListener->onMeetingParticipantSpeaking(myNick, false);
+            }
+            m_localParticipantSpeaking = false;
+            m_silenceFramesCount = 0;
             return;
         }
 
@@ -242,6 +249,29 @@ namespace core::logic
         else {
             auto meetingOpt = m_stateManager->getActiveMeeting();
             if (!meetingOpt) return;
+            {
+                const float rmsVal = core::constant::computeRms(data, length);
+                if (rmsVal > core::constant::kSpeakingRmsThreshold) {
+                    m_silenceFramesCount = 0;
+                    if (!m_localParticipantSpeaking) {
+                        m_localParticipantSpeaking = true;
+                        const std::string& myNick = m_stateManager->getMyNickname();
+                        if (m_eventListener && !myNick.empty())
+                            m_eventListener->onMeetingParticipantSpeaking(myNick, true);
+                    }
+                } else {
+                    m_silenceFramesCount++;
+                    if (m_silenceFramesCount >= core::constant::kSpeakingSilenceFrames) {
+                        m_silenceFramesCount = core::constant::kSpeakingSilenceFrames;
+                        if (m_localParticipantSpeaking) {
+                            m_localParticipantSpeaking = false;
+                            const std::string& myNick = m_stateManager->getMyNickname();
+                            if (m_eventListener && !myNick.empty())
+                                m_eventListener->onMeetingParticipantSpeaking(myNick, false);
+                        }
+                    }
+                }
+            }
             const std::string& meetingId = meetingOpt->get().getMeetingId();
             auto keyOpt = deriveMeetingKeyVec(meetingId);
             if (!keyOpt) return;

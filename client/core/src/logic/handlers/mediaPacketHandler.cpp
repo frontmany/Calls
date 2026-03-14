@@ -1,6 +1,7 @@
 #include "mediaPacketHandler.h"
 #include "logic/clientStateManager.h"
 #include "constants/jsonType.h"
+#include "constants/speakingVad.h"
 #include "media/mediaType.h"
 #include "utilities/crypto.h"
 
@@ -177,6 +178,7 @@ namespace core::logic
         }
 
         if (!m_stateManager->isActiveMeeting()) {
+            m_remoteParticipantSpeakingState.clear();
             return;
         }
 
@@ -201,7 +203,24 @@ namespace core::logic
         if (!frame.senderHash.empty() && m_eventListener) {
             const std::string nickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);
             if (!nickname.empty()) {
-                m_eventListener->onMeetingParticipantSpeaking(nickname, true);
+                const float rms = core::constant::computeRms(audioFrame.data(), static_cast<int>(audioFrame.size()));
+                RemoteParticipantSpeakingState& state = m_remoteParticipantSpeakingState[nickname];
+                if (rms > core::constant::kSpeakingRmsThreshold) {
+                    state.silenceCount = 0;
+                    if (!state.speaking) {
+                        state.speaking = true;
+                        m_eventListener->onMeetingParticipantSpeaking(nickname, true);
+                    }
+                } else {
+                    state.silenceCount++;
+                    if (state.silenceCount >= core::constant::kSpeakingSilenceFrames) {
+                        state.silenceCount = core::constant::kSpeakingSilenceFrames;
+                        if (state.speaking) {
+                            state.speaking = false;
+                            m_eventListener->onMeetingParticipantSpeaking(nickname, false);
+                        }
+                    }
+                }
             }
         }
     }

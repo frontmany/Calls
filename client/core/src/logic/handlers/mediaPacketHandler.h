@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <map>
+#include <string>
 #include "media/audio/audioEngine.h"
 #include "media/processing/mediaProcessingService.h"
 #include "eventListener.h"
@@ -10,6 +12,11 @@
 namespace core::logic
 {
     class ClientStateManager;
+
+    struct RemoteParticipantSpeakingState {
+        bool speaking = false;
+        int silenceCount = 0;
+    };
 
     class MediaPacketHandler {
     public:
@@ -33,5 +40,6 @@ namespace core::logic
         std::shared_ptr<media::AudioEngine> m_audioEngine;
         std::shared_ptr<media::MediaProcessingService> m_mediaProcessingService;
         std::shared_ptr<EventListener> m_eventListener;
+        std::map<std::string, RemoteParticipantSpeakingState> m_remoteParticipantSpeakingState;
     };
 }

@@ -14,6 +14,7 @@
 #include "media/processing/mediaProcessingService.h"
 #include "logic/clientStateManager.h"
 #include "constants/packetType.h"
+#include "constants/speakingVad.h"
 #include "eventListener.h"
 
 #include "json.hpp"
@@ -66,5 +67,8 @@ namespace core::logic
         std::shared_ptr<EventListener> m_eventListener;
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendMediaFrame;
+
+        bool m_localParticipantSpeaking = false;
+        int m_silenceFramesCount = 0;
     };
 }
