@@ -234,6 +234,7 @@ namespace core::logic
             }
             m_localParticipantSpeaking = false;
             m_silenceFramesCount = 0;
+            m_localSmoothedRms = 0.f;
             return;
         }
 
@@ -251,7 +252,8 @@ namespace core::logic
             if (!meetingOpt) return;
             {
                 const float rmsVal = core::constant::computeRms(data, length);
-                if (rmsVal > core::constant::kSpeakingRmsThreshold) {
+                m_localSmoothedRms = core::constant::smoothRms(m_localSmoothedRms, rmsVal);
+                if (m_localSmoothedRms > core::constant::kSpeakingRmsThreshold) {
                     m_silenceFramesCount = 0;
                     if (!m_localParticipantSpeaking) {
                         m_localParticipantSpeaking = true;

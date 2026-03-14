@@ -562,23 +562,7 @@ void MeetingManager::onMeetingParticipantSpeaking(const QString& nickname, bool 
     if (m_meetingWidget) {
         m_meetingWidget->setParticipantSpeaking(nickname, speaking);
     }
-    if (speaking) {
-        QTimer*& t = m_speakingTimers[nickname];
-        if (!t) {
-            t = new QTimer(this);
-            t->setSingleShot(true);
-            connect(t, &QTimer::timeout, this, [this, nickname]() {
-                if (m_meetingWidget) {
-                    m_meetingWidget->setParticipantSpeaking(nickname, false);
-                }
-                auto it = m_speakingTimers.find(nickname);
-                if (it != m_speakingTimers.end()) {
-                    it.value()->stop();
-                }
-            });
-        }
-        t->start(kSpeakingSilenceMs);
-    } else {
+    if (!speaking) {
         auto it = m_speakingTimers.find(nickname);
         if (it != m_speakingTimers.end()) {
             it.value()->stop();

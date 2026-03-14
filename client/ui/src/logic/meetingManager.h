@@ -78,7 +78,6 @@ signals:
     void meetingCreated(const QString& meetingId);
 
 private:
-    static constexpr int kSpeakingSilenceMs = 400;
     void clearSpeakingTimers();
     bool hasRemoteParticipants() const;
     void clearLocalParticipantVideo();

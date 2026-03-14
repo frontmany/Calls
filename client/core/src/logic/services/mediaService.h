@@ -70,5 +70,6 @@ namespace core::logic
 
         bool m_localParticipantSpeaking = false;
         int m_silenceFramesCount = 0;
+        float m_localSmoothedRms = 0.f;
     };
 }

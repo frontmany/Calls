@@ -16,6 +16,7 @@ namespace core::logic
     struct RemoteParticipantSpeakingState {
         bool speaking = false;
         int silenceCount = 0;
+        float smoothedRms = 0.f;
     };
 
     class MediaPacketHandler {

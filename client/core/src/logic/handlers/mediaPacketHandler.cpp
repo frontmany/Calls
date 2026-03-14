@@ -205,7 +205,8 @@ namespace core::logic
             if (!nickname.empty()) {
                 const float rms = core::constant::computeRms(audioFrame.data(), static_cast<int>(audioFrame.size()));
                 RemoteParticipantSpeakingState& state = m_remoteParticipantSpeakingState[nickname];
-                if (rms > core::constant::kSpeakingRmsThreshold) {
+                state.smoothedRms = core::constant::smoothRms(state.smoothedRms, rms);
+                if (state.smoothedRms > core::constant::kSpeakingRmsThreshold) {
                     state.silenceCount = 0;
                     if (!state.speaking) {
                         state.speaking = true;
