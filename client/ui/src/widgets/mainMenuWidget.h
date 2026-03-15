@@ -45,6 +45,7 @@ struct StyleMainMenuWidget {
     static const QColor m_scrollBarPressedColor;
 
     static QString containerStyle();
+    static QString updateButtonGlassStyle();
     static QString titleStyle();
     static QString nicknameStyle();
     static QString buttonStyle();
@@ -131,6 +132,7 @@ private:
     QWidget* m_headerWidget;
     QHBoxLayout* m_headerLayout;
     QPushButton* m_updateButton;
+    ContainerHighlightOverlay* m_updateButtonHighlightOverlay;
     ButtonIcon* m_meetingButton;
     QLabel* m_titleLabel;
     QWidget* m_userInfoWidget;

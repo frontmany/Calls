@@ -47,6 +47,27 @@ QString StyleMainMenuWidget::containerStyle() {
         .arg(scale(20));
 }
 
+QString StyleMainMenuWidget::updateButtonGlassStyle() {
+    return QString("QPushButton {"
+        "   background-color: rgba(255, 255, 255, 45);"
+        "   color: black;"
+        "   border: none;"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   margin: 0px;"
+        "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(255, 255, 255, 65);"
+        "}")
+        .arg(scale(15))
+        .arg(scale(12))
+        .arg(scale(24));
+}
+
 QString StyleMainMenuWidget::titleStyle() {
     return QString("QLabel {"
         "   color: %1;"
@@ -397,14 +418,19 @@ void MainMenuWidget::setupUI() {
     m_updateButton->setCursor(Qt::PointingHandCursor);
     m_updateButton->setFixedHeight(scale(38));
     m_updateButton->setMinimumWidth(scale(105));
-    m_updateButton->setStyleSheet(StyleMainMenuWidget::buttonStyle());
+    m_updateButton->setStyleSheet(StyleMainMenuWidget::updateButtonGlassStyle());
     m_updateButton->setVisible(false);
+
+    m_updateButtonHighlightOverlay = new ContainerHighlightOverlay(m_updateButton, scale(15));
+    m_updateButtonHighlightOverlay->setGeometry(m_updateButton->rect());
+    m_updateButtonHighlightOverlay->raise();
+    m_updateButton->installEventFilter(this);
 
     QHBoxLayout* updateButtonLayout = new QHBoxLayout(m_updateButton);
     updateButtonLayout->setContentsMargins(scale(14), scale(8), scale(14), scale(8));
     updateButtonLayout->setSpacing(scale(6));
     QLabel* updateTextLabel = new QLabel(" update", m_updateButton);
-    updateTextLabel->setStyleSheet("color: white; background: transparent;");
+    updateTextLabel->setStyleSheet("color: black; background: transparent;");
     QFont updateFont("Outfit", scale(12), QFont::Medium);
     updateTextLabel->setFont(updateFont);
     updateTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -654,12 +680,18 @@ void MainMenuWidget::resizeEvent(QResizeEvent* event) {
     if (!m_mainContainer) return;
     if (m_containerHighlightOverlay)
         m_containerHighlightOverlay->setGeometry(m_mainContainer->rect());
+    if (m_updateButton && m_updateButtonHighlightOverlay)
+        m_updateButtonHighlightOverlay->setGeometry(m_updateButton->rect());
 }
 
 bool MainMenuWidget::eventFilter(QObject* watched, QEvent* event) {
     if (watched == m_mainContainer && event->type() == QEvent::Resize) {
         if (m_containerHighlightOverlay)
             m_containerHighlightOverlay->setGeometry(m_mainContainer->rect());
+    }
+    if (watched == m_updateButton && event->type() == QEvent::Resize) {
+        if (m_updateButtonHighlightOverlay)
+            m_updateButtonHighlightOverlay->setGeometry(m_updateButton->rect());
     }
     return QWidget::eventFilter(watched, event);
 }
