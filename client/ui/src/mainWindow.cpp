@@ -521,6 +521,9 @@ void MainWindow::connectWidgetsToManagers() {
     if (m_callManager) {
         connect(m_callManager, &CallManager::endCallFullscreenExitRequested, this, &MainWindow::onEndCallFullscreenExitRequested);
     }
+    if (m_meetingManager) {
+        connect(m_meetingManager, &MeetingManager::endMeetingFullscreenExitRequested, this, &MainWindow::onEndMeetingFullscreenExitRequested);
+    }
 }
 
 void MainWindow::initializeAuthorizationWidget() {
@@ -645,6 +648,14 @@ void MainWindow::onEndCallFullscreenExitRequested()
 {
     if (m_callWidget && m_callWidget->isFullScreen()) {
         m_callWidget->exitFullscreen();
+    }
+    showMaximized();
+}
+
+void MainWindow::onEndMeetingFullscreenExitRequested()
+{
+    if (m_meetingWidget && m_meetingWidget->isFullScreen()) {
+        m_meetingWidget->exitFullscreen();
     }
     showMaximized();
 }

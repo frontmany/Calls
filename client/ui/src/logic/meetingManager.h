@@ -76,6 +76,7 @@ public slots:
 
 signals:
     void meetingCreated(const QString& meetingId);
+    void endMeetingFullscreenExitRequested();
 
 private:
     void clearSpeakingTimers();

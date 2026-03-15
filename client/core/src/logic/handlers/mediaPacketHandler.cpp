@@ -189,10 +189,8 @@ namespace core::logic
         auto meetingOpt = m_stateManager->getActiveMeeting();
         if (frame.meetingId.empty() || !meetingOpt || frame.meetingId != meetingOpt->get().getMeetingId()) return;
 
-        auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(frame.meetingId));
-        if (!binOpt) return;
-
-        CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
+        const auto& meetingKey = meetingOpt->get().getMeetingKey();
+        if (meetingKey.empty()) return;
 
         auto decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
         if (decryptedData.empty()) return;
@@ -242,9 +240,8 @@ namespace core::logic
             const MeetingFrame& frame = *frameOpt;
             auto meetingOpt = m_stateManager->getActiveMeeting();
             if (frame.meetingId.empty() || !meetingOpt || frame.meetingId != meetingOpt->get().getMeetingId()) return;
-            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(frame.meetingId));
-            if (!binOpt) return;
-            CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
+            const auto& meetingKey = meetingOpt->get().getMeetingKey();
+            if (meetingKey.empty()) return;
             decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
         }
         if (decryptedData.empty()) return;
@@ -274,9 +271,8 @@ namespace core::logic
             const MeetingFrame& frame = *frameOpt;
             auto meetingOpt = m_stateManager->getActiveMeeting();
             if (frame.meetingId.empty() || !meetingOpt || frame.meetingId != meetingOpt->get().getMeetingId()) return;
-            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(frame.meetingId));
-            if (!binOpt) return;
-            CryptoPP::SecByteBlock meetingKey(binOpt->data(), binOpt->size());
+            const auto& meetingKey = meetingOpt->get().getMeetingKey();
+            if (meetingKey.empty()) return;
             decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
             if (decryptedData.empty()) return;
             senderNickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);

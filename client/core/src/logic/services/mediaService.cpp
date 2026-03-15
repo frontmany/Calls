@@ -14,15 +14,6 @@ namespace core::logic
 {
     namespace
     {
-        std::optional<std::vector<unsigned char>> deriveMeetingKeyVec(const std::string& meetingId)
-        {
-            auto binOpt = core::utilities::crypto::hashToBinary(core::utilities::crypto::calculateHash(meetingId));
-            if (!binOpt) {
-                return std::nullopt;
-            }
-            return std::vector<unsigned char>(binOpt->begin(), binOpt->end());
-        }
-
         void appendU16BE(std::vector<unsigned char>& out, uint16_t value)
         {
             out.push_back(static_cast<unsigned char>((value >> 8) & 0xFF));
@@ -44,8 +35,6 @@ namespace core::logic
         , m_sendPacket(sendPacket)
         , m_sendMediaFrame(sendMediaFrame)
     {
-        m_cachedMyNickname.clear();
-        m_cachedMyNicknameHash.clear();
         m_audioEngine->setInputAudioCallback([this](const float* data, int length) { onRawAudio(data, length); });
         m_screenCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Screen); });
         m_cameraCaptureService.setFrameCallback([this](const media::Frame& frame) { onRawFrame(frame, MediaType::Camera); });
@@ -247,8 +236,9 @@ namespace core::logic
         if (isActiveCall) {
             encryptedAudio = encryptWithCallKey(encodedAudio);
         }
-        else {
+        else if (isInMeeting) {
             auto meetingOpt = m_stateManager->getActiveMeeting();
+
             if (!meetingOpt) return;
             {
                 const float rmsVal = core::constant::computeRms(data, length);
@@ -261,7 +251,8 @@ namespace core::logic
                         if (m_eventListener && !myNick.empty())
                             m_eventListener->onMeetingParticipantSpeaking(myNick, true);
                     }
-                } else {
+                } 
+                else {
                     m_silenceFramesCount++;
                     if (m_silenceFramesCount >= core::constant::kSpeakingSilenceFrames) {
                         m_silenceFramesCount = core::constant::kSpeakingSilenceFrames;
@@ -274,14 +265,16 @@ namespace core::logic
                     }
                 }
             }
-            const std::string& meetingId = meetingOpt->get().getMeetingId();
-            auto keyOpt = deriveMeetingKeyVec(meetingId);
-            if (!keyOpt) return;
 
+            const std::string& meetingId = meetingOpt->get().getMeetingId();
+            const auto& meetingKey = meetingOpt->get().getMeetingKey();
+            if (meetingKey.empty()) return;
+
+            std::vector<unsigned char> keyVec(meetingKey.begin(), meetingKey.end());
             encryptedAudio = m_mediaProcessingService->encryptData(
                 encodedAudio.data(),
                 static_cast<int>(encodedAudio.size()),
-                *keyOpt
+                keyVec
             );
 
             if (encryptedAudio.empty()) {
@@ -292,7 +285,7 @@ namespace core::logic
                 return;
             }
 
-            const std::string& senderHash = getCachedMyNicknameHash();
+            const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
             if (senderHash.size() > 0xFFFF) {
                 return;
             }
@@ -356,13 +349,14 @@ namespace core::logic
         auto meetingOpt = m_stateManager->getActiveMeeting();
         if (!meetingOpt) return;
         const std::string& meetingId = meetingOpt->get().getMeetingId();
-        auto keyOpt = deriveMeetingKeyVec(meetingId);
-        if (!keyOpt) return;
+        const auto& meetingKey = meetingOpt->get().getMeetingKey();
+        if (meetingKey.empty()) return;
 
+        std::vector<unsigned char> keyVec(meetingKey.begin(), meetingKey.end());
         auto encryptedVideo = m_mediaProcessingService->encryptData(
             encodedVideo.data(),
             static_cast<int>(encodedVideo.size()),
-            *keyOpt
+            keyVec
         );
         if (encryptedVideo.empty()) {
             return;
@@ -372,7 +366,7 @@ namespace core::logic
             return;
         }
 
-        const std::string& senderHash = getCachedMyNicknameHash();
+        const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
         if (senderHash.size() > 0xFFFF) {
             return;
         }
@@ -394,15 +388,6 @@ namespace core::logic
         framed.insert(framed.end(), senderHash.begin(), senderHash.end());
         framed.insert(framed.end(), encryptedPayload.begin(), encryptedPayload.end());
         return framed;
-    }
-
-    const std::string& MediaService::getCachedMyNicknameHash() {
-        const std::string& nickname = m_stateManager->getMyNickname();
-        if (m_cachedMyNickname != nickname) {
-            m_cachedMyNickname = nickname;
-            m_cachedMyNicknameHash = core::utilities::crypto::calculateHash(nickname);
-        }
-        return m_cachedMyNicknameHash;
     }
 
     std::vector<unsigned char> MediaService::encryptWithCallKey(const std::vector<unsigned char>& data) {

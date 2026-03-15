@@ -53,12 +53,9 @@ namespace core::logic
         std::vector<unsigned char> buildMeetingFrame(const std::string& meetingId,
             const std::string& senderHash,
             const std::vector<unsigned char>& encryptedPayload);
-        const std::string& getCachedMyNicknameHash();
 
     private:
         mutable std::mutex m_mutex;
-        std::string m_cachedMyNickname;
-        std::string m_cachedMyNicknameHash;
         media::ScreenCaptureService m_screenCaptureService;
         media::CameraCaptureService m_cameraCaptureService;
         std::shared_ptr<ClientStateManager> m_stateManager;

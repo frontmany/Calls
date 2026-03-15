@@ -47,7 +47,8 @@ private slots:
     void onWindowTitleChanged(const QString& title);
     void onWindowFullscreenRequested();
     void onWindowMaximizedRequested();
-    void onEndCallFullscreenExitRequested(); 
+    void onEndCallFullscreenExitRequested();
+    void onEndMeetingFullscreenExitRequested();
     void onStopAllRingtonesRequested();
     void onCoreRestartRequested();
     void onEndMeetingRequested();

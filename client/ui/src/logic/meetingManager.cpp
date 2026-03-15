@@ -565,6 +565,9 @@ void MeetingManager::onIncomingScreenSharingStopped(const QString& sharerNicknam
     if (m_meetingWidget) {
         m_meetingWidget->setParticipantScreenSharing(sharerNickname, false);
         m_meetingWidget->hideMainScreen();
+        if (m_meetingWidget->isFullScreen()) {
+            emit endMeetingFullscreenExitRequested();
+        }
         m_meetingWidget->hideEnterFullscreenButton();
     }
     if (hasRemoteParticipants() && m_meetingWidget)
