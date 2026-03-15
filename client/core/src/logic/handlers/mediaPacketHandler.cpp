@@ -259,10 +259,12 @@ namespace core::logic
         auto activeOpt = m_stateManager->getActiveCall();
         std::vector<unsigned char> decryptedData;
         std::string senderNickname;
+        std::string senderStreamKey;
         if (activeOpt) {
             decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
             if (!decryptedData.empty()) {
                 senderNickname = activeOpt->get().getNickname();
+                senderStreamKey = utilities::crypto::calculateHash(senderNickname);
             }
         } else {
             if (!m_stateManager->isActiveMeeting()) return;
@@ -276,13 +278,18 @@ namespace core::logic
             decryptedData = m_mediaProcessingService->decryptData(frame.payload, frame.payloadLen, meetingKey);
             if (decryptedData.empty()) return;
             senderNickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);
+            senderStreamKey = frame.senderHash;
         }
-        if (decryptedData.empty() || senderNickname.empty()) return;
-        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Camera, decryptedData.data(), static_cast<int>(decryptedData.size()));
+        if (decryptedData.empty() || senderNickname.empty() || senderStreamKey.empty()) return;
+        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(
+            MediaType::Camera,
+            senderStreamKey,
+            decryptedData.data(),
+            static_cast<int>(decryptedData.size()));
         if (!videoFrame.empty() && m_eventListener) {
             m_eventListener->onIncomingCamera(videoFrame,
-                m_mediaProcessingService->getWidth(MediaType::Camera),
-                m_mediaProcessingService->getHeight(MediaType::Camera),
+                m_mediaProcessingService->getWidth(MediaType::Camera, senderStreamKey),
+                m_mediaProcessingService->getHeight(MediaType::Camera, senderStreamKey),
                 senderNickname);
         }
     }

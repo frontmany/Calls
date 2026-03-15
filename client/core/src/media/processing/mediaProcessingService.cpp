@@ -38,8 +38,12 @@ namespace core::media
         for (auto& [type, pipeline] : m_videoPipelines) {
             pipeline.cleanup();
         }
+        for (auto& [streamKey, pipeline] : m_cameraDecodePipelines) {
+            pipeline.cleanup();
+        }
 
         m_videoPipelines.clear();
+        m_cameraDecodePipelines.clear();
         m_encryptionService.reset();
     }
 
@@ -97,6 +101,12 @@ namespace core::media
         if (it != m_videoPipelines.end()) {
             it->second.cleanup();
         }
+        if (type == MediaType::Camera) {
+            for (auto& [streamKey, pipeline] : m_cameraDecodePipelines) {
+                pipeline.cleanup();
+            }
+            m_cameraDecodePipelines.clear();
+        }
     }
 
     bool MediaProcessingService::isVideoInitialized(MediaType type) const
@@ -111,10 +121,28 @@ namespace core::media
         return (it != m_videoPipelines.end()) ? it->second.width : 0;
     }
 
+    int MediaProcessingService::getWidth(MediaType type, const std::string& streamKey) const
+    {
+        if (type == MediaType::Camera && !streamKey.empty()) {
+            auto it = m_cameraDecodePipelines.find(streamKey);
+            return (it != m_cameraDecodePipelines.end()) ? it->second.width : 0;
+        }
+        return getWidth(type);
+    }
+
     int MediaProcessingService::getHeight(MediaType type) const
     {
         auto it = m_videoPipelines.find(type);
         return (it != m_videoPipelines.end()) ? it->second.height : 0;
+    }
+
+    int MediaProcessingService::getHeight(MediaType type, const std::string& streamKey) const
+    {
+        if (type == MediaType::Camera && !streamKey.empty()) {
+            auto it = m_cameraDecodePipelines.find(streamKey);
+            return (it != m_cameraDecodePipelines.end()) ? it->second.height : 0;
+        }
+        return getHeight(type);
     }
 
     std::vector<unsigned char> MediaProcessingService::encodeAudioFrame(const float* pcmData)
@@ -210,15 +238,43 @@ namespace core::media
 
     std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize)
     {
-        auto it = m_videoPipelines.find(type);
-        if (it == m_videoPipelines.end() || !it->second.initialized || !it->second.decoder) {
-            return {};
+        return decodeVideoFrame(type, std::string(), h264Data, dataSize);
+    }
+
+    std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(
+        MediaType type,
+        const std::string& streamKey,
+        const unsigned char* h264Data,
+        int dataSize)
+    {
+        VideoPipeline* pipelinePtr = nullptr;
+        if (type == MediaType::Camera && !streamKey.empty()) {
+            auto it = m_cameraDecodePipelines.find(streamKey);
+            if (it == m_cameraDecodePipelines.end()) {
+                auto [newIt, inserted] = m_cameraDecodePipelines.emplace(streamKey, VideoPipeline{});
+                (void)inserted;
+                it = newIt;
+            }
+            pipelinePtr = &it->second;
+        } else {
+            auto it = m_videoPipelines.find(type);
+            if (it == m_videoPipelines.end() || !it->second.initialized) {
+                return {};
+            }
+            pipelinePtr = &it->second;
         }
 
-        auto& pipeline = it->second;
-            
+        auto& pipeline = *pipelinePtr;
+        if (!pipeline.decoder) {
+            pipeline.decoder = std::make_unique<H264Decoder>();
+            if (!pipeline.decoder->initialize()) {
+                pipeline.decoder.reset();
+                return {};
+            }
+        }
+
         pipeline.lastDecodedFrame.clear();
-            
+
         pipeline.decoder->setDecodedFrameCallback([&pipeline](const Frame& frame) {
             if (!frame.isValid()) return;
             pipeline.width = frame.width;
@@ -237,11 +293,11 @@ namespace core::media
                 dst += rowBytes;
             }
         });
-            
+
         if (!pipeline.decoder->decodePacket(h264Data, dataSize, 0)) {
             return {};
         }
-            
+
         return pipeline.lastDecodedFrame;
     }
 

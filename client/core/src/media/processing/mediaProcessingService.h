@@ -4,6 +4,7 @@
 #include <memory>
 #include <cstdint>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 
 #include "secblock.h"
@@ -53,6 +54,7 @@ namespace core::media
 
         std::vector<unsigned char> encodeVideoFrame(MediaType type, const unsigned char* rawData, int width, int height);
         std::vector<unsigned char> decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize);
+        std::vector<unsigned char> decodeVideoFrame(MediaType type, const std::string& streamKey, const unsigned char* h264Data, int dataSize);
         
         std::vector<unsigned char> encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key);
         std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key);
@@ -66,11 +68,14 @@ namespace core::media
 
         int getWidth(MediaType type) const;
         int getHeight(MediaType type) const;
+        int getWidth(MediaType type, const std::string& streamKey) const;
+        int getHeight(MediaType type, const std::string& streamKey) const;
 
     private:
         std::unique_ptr<OpusEncoder> m_audioEncoder;
         std::unique_ptr<OpusDecoder> m_audioDecoder;
         std::unordered_map<MediaType, VideoPipeline, MediaTypeHash> m_videoPipelines;
+        std::unordered_map<std::string, VideoPipeline> m_cameraDecodePipelines;
         std::unique_ptr<MediaEncryptionService> m_encryptionService;
         mutable std::mutex m_encryptionMutex;
 
