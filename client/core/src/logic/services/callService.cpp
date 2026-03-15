@@ -197,6 +197,6 @@ namespace core::logic
     void CallService::changeStateOnEndCall() {
         m_stateManager->resetActiveCall();
         m_stateManager->setViewingRemoteScreen(false);
-        m_stateManager->setViewingRemoteCamera(false);
+        m_stateManager->clearRemoteCameraSenders();
     }
 }

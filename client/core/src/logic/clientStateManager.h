@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <functional>
 #include <optional>
 
@@ -43,8 +44,11 @@ namespace core::logic
         void setMediaState(media::MediaType type, media::MediaState state);
         bool isViewingRemoteScreen() const;
         void setViewingRemoteScreen(bool value);
-        bool isViewingRemoteCamera() const;
-        void setViewingRemoteCamera(bool value);
+        bool isViewingAnyRemoteCamera() const;
+        bool isViewingRemoteCameraFrom(const std::string& senderHash) const;
+        void addRemoteCameraSender(const std::string& senderHash);
+        void removeRemoteCameraSender(const std::string& senderHash);
+        void clearRemoteCameraSenders();
 
         // ——— Outgoing call ———
         bool isOutgoingCall() const;
@@ -130,7 +134,7 @@ namespace core::logic
         bool m_authorized = false;
         bool m_connectionDown = false;
         bool m_viewingRemoteScreen = false;
-        bool m_viewingRemoteCamera = false;
+        std::unordered_set<std::string> m_remoteCameraSenderHashes;
         std::string m_myNickname; 
         std::string m_myToken;
 

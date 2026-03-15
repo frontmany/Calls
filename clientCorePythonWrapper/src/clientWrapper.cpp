@@ -55,14 +55,14 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onStartScreenSharingError);
     }
 
-    void onIncomingCameraSharingStarted() override
+    void onIncomingCameraSharingStarted(const std::string& nickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStarted);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStarted, nickname);
     }
 
-    void onIncomingCameraSharingStopped() override
+    void onIncomingCameraSharingStopped(const std::string& nickname) override
     {
-        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStopped);
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onIncomingCameraSharingStopped, nickname);
     }
 
     void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) override
@@ -253,8 +253,8 @@ PYBIND11_MODULE(callsClientPy, m) {
             self.onStartOutgoingCallResult(std::error_code(ec_value, core::constant::error_category()));
         }, py::arg("ec_value"))
         .def("onStartScreenSharingError", &core::EventListener::onStartScreenSharingError)
-        .def("onIncomingCameraSharingStarted", &core::EventListener::onIncomingCameraSharingStarted)
-        .def("onIncomingCameraSharingStopped", &core::EventListener::onIncomingCameraSharingStopped)
+        .def("onIncomingCameraSharingStarted", &core::EventListener::onIncomingCameraSharingStarted, py::arg("nickname") = "")
+        .def("onIncomingCameraSharingStopped", &core::EventListener::onIncomingCameraSharingStopped, py::arg("nickname") = "")
         .def("onIncomingCamera", &core::EventListener::onIncomingCamera)
         .def("onLocalScreen", &core::EventListener::onLocalScreen)
         .def("onLocalCamera", &core::EventListener::onLocalCamera)
@@ -318,8 +318,8 @@ PYBIND11_MODULE(callsClientPy, m) {
             "Check if viewing remote screen")
         .def("is_camera_sharing", &core::Core::isCameraSharing,
             "Check if camera sharing")
-        .def("is_viewing_remote_camera", &core::Core::isViewingRemoteCamera,
-            "Check if viewing remote camera")
+        .def("is_viewing_remote_camera", &core::Core::isViewingAnyRemoteCamera,
+            "Check if viewing any remote camera")
         .def("is_microphone_muted", &core::Core::isMicrophoneMuted,
             "Check if microphone is muted")
         .def("is_speaker_muted", &core::Core::isSpeakerMuted,

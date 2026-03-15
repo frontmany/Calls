@@ -167,13 +167,13 @@ class CallbacksHandler(callsClientPy.EventListener):
         # Optional meeting callback; tests can ignore or use for assertions
         pass
     
-    def onIncomingCameraSharingStarted(self):
+    def onIncomingCameraSharingStarted(self, nickname=""):
         self.events.append("incoming_camera_sharing_started")
-        print(f"[{self.name}] Incoming camera sharing started")
+        print(f"[{self.name}] Incoming camera sharing started: {nickname}")
     
-    def onIncomingCameraSharingStopped(self):
+    def onIncomingCameraSharingStopped(self, nickname=""):
         self.events.append("incoming_camera_sharing_stopped")
-        print(f"[{self.name}] Incoming camera sharing stopped")
+        print(f"[{self.name}] Incoming camera sharing stopped: {nickname}")
     
     def wait_for_event(self, event_name, timeout):
         """Wait for specific event with timeout"""

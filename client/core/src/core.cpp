@@ -255,8 +255,8 @@ namespace core
         return m_stateManager && m_stateManager->getMediaState(media::MediaType::Camera) == media::MediaState::Active;
     }
 
-    bool Core::isViewingRemoteCamera() const {
-        return m_stateManager ? m_stateManager->isViewingRemoteCamera() : false;
+    bool Core::isViewingAnyRemoteCamera() const {
+        return m_stateManager ? m_stateManager->isViewingAnyRemoteCamera() : false;
     }
 
     bool Core::isMicrophoneMuted() const {

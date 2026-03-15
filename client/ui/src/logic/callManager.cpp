@@ -736,7 +736,7 @@ void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
     QPixmap pixmap = QPixmap::fromImage(image.copy());
 
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
-    const bool bothCameras = m_coreClient && m_coreClient->isCameraSharing() && m_coreClient->isViewingRemoteCamera();
+    const bool bothCameras = m_coreClient && m_coreClient->isCameraSharing() && m_coreClient->isViewingAnyRemoteCamera();
     if (screenSharingActive || bothCameras) {
         m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
     } else {
@@ -764,7 +764,7 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
 {
     if (!m_callWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
-    if (!m_coreClient || !m_coreClient->isViewingRemoteCamera()) {
+    if (!m_coreClient || !m_coreClient->isViewingAnyRemoteCamera()) {
         m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
         const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
         if (!screenSharingActive) {
@@ -808,13 +808,15 @@ void CallManager::onIncomingScreenSharingStopped()
     }
 }
 
-void CallManager::onIncomingCameraSharingStarted()
+void CallManager::onIncomingCameraSharingStarted(const QString& nickname)
 {
+    Q_UNUSED(nickname);
     // Remote camera frames will arrive via onIncomingCameraFrame
 }
 
-void CallManager::onIncomingCameraSharingStopped()
+void CallManager::onIncomingCameraSharingStopped(const QString& nickname)
 {
+    Q_UNUSED(nickname);
     if (!m_callWidget) return;
     m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());

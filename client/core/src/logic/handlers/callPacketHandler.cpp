@@ -232,7 +232,7 @@ namespace core::logic
         auto activeOpt = m_stateManager->getActiveCall();
         if (activeOpt && calculateHash(activeOpt->get().getNickname()) == userNicknameHash) {
             m_stateManager->setViewingRemoteScreen(false);
-            m_stateManager->setViewingRemoteCamera(false);
+            m_stateManager->removeRemoteCameraSender(userNicknameHash);
             m_stateManager->setCallParticipantConnectionDown(true);
 
             m_eventListener->onCallParticipantConnectionDown();
@@ -315,6 +315,6 @@ namespace core::logic
     void CallPacketHandler::changeStateOnEndCall() {
         m_stateManager->resetActiveCall();
         m_stateManager->setViewingRemoteScreen(false);
-        m_stateManager->setViewingRemoteCamera(false);
+        m_stateManager->clearRemoteCameraSenders();
     }
 }

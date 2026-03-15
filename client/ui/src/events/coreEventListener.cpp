@@ -97,27 +97,29 @@ void CoreEventListener::onLocalScreen(const std::vector<unsigned char>& data, in
     }
 }
 
-void CoreEventListener::onIncomingCameraSharingStarted() {
+void CoreEventListener::onIncomingCameraSharingStarted(const std::string& nickname) {
+    const QString qNickname = QString::fromStdString(nickname);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onIncomingCameraSharingStarted",
-            Qt::QueuedConnection);
+            Qt::QueuedConnection, Q_ARG(QString, qNickname));
         return;
     }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraSharingStarted",
-            Qt::QueuedConnection);
+            Qt::QueuedConnection, Q_ARG(QString, qNickname));
     }
 }
 
-void CoreEventListener::onIncomingCameraSharingStopped() {
+void CoreEventListener::onIncomingCameraSharingStopped(const std::string& nickname) {
+    const QString qNickname = QString::fromStdString(nickname);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onIncomingCameraSharingStopped",
-            Qt::QueuedConnection);
+            Qt::QueuedConnection, Q_ARG(QString, qNickname));
         return;
     }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraSharingStopped",
-            Qt::QueuedConnection);
+            Qt::QueuedConnection, Q_ARG(QString, qNickname));
     }
 }
 

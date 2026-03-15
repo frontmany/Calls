@@ -89,7 +89,6 @@ public:
     ~MeetingWidget() = default;
 
     bool isMainScreenVisible() const;
-    bool isAdditionalScreenVisible(const std::string& id) const;
     bool isFullScreen() const;
     void setCallName(const QString& callName);
     void setInputVolume(int newVolume);
@@ -109,13 +108,10 @@ public:
     void clearParticipants();
     void resetMeetingState();
     void hideMainScreen();
-    void hideAdditionalScreens();
     void enterFullscreen();
     void exitFullscreen();
     void updateMainScreenSize();
     void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode = Screen::ScaleMode::KeepAspectRatio);
-    void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id);
-    void removeAdditionalScreen(const std::string& id);
     void setHangupButtonRestricted(bool restricted);
     void setScreenShareButtonRestricted(bool restricted);
     void setScreenShareButtonActive(bool active);
@@ -193,10 +189,6 @@ private:
 
     QLabel* m_timerLabel = nullptr;
     Screen* m_mainScreen = nullptr;
-
-    QWidget* m_additionalScreensContainer = nullptr;
-    QHBoxLayout* m_additionalScreensLayout = nullptr;
-    QMap<std::string, Screen*> m_additionalScreens;
 
     QWidget* m_buttonsPanel = nullptr;
     QHBoxLayout* m_buttonsLayout = nullptr;

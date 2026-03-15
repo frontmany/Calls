@@ -57,7 +57,7 @@ namespace core
         bool isScreenSharing() const;
         bool isViewingRemoteScreen() const;
         bool isCameraSharing() const;
-        bool isViewingRemoteCamera() const;
+        bool isViewingAnyRemoteCamera() const;
         bool isMicrophoneMuted() const;
         bool isSpeakerMuted() const;
         bool isAuthorized() const;

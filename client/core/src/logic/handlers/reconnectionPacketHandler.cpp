@@ -127,7 +127,7 @@ namespace core::logic
                     // При успешном reconnect в активный митинг сбрасываем флаги просмотра,
                     // фактическое состояние придёт отдельными *_SHARING_BEGIN пакетами.
                     m_stateManager->setViewingRemoteScreen(false);
-                    m_stateManager->setViewingRemoteCamera(false);
+                    m_stateManager->clearRemoteCameraSenders();
                 }
             }
         }

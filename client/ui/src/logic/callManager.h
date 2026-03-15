@@ -73,8 +73,8 @@ public slots:
     // Media state slots
     void onIncomingScreenSharingStarted();
     void onIncomingScreenSharingStopped();
-    void onIncomingCameraSharingStarted();
-    void onIncomingCameraSharingStopped();
+    void onIncomingCameraSharingStarted(const QString& nickname);
+    void onIncomingCameraSharingStopped(const QString& nickname);
     void onStartScreenSharingError();
     void onStartCameraSharingError();
 

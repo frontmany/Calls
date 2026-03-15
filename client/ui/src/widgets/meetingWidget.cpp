@@ -584,17 +584,6 @@ void MeetingWidget::setupUI() {
     m_mainScreen->hide();
     applyStandardSize();
 
-    // Additional screens container
-    m_additionalScreensContainer = new QWidget(this);
-    m_additionalScreensContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-    m_additionalScreensContainer->setStyleSheet("background-color: transparent;");
-    m_additionalScreensContainer->hide();
-
-    m_additionalScreensLayout = new QHBoxLayout(m_additionalScreensContainer);
-    m_additionalScreensLayout->setContentsMargins(0, 0, 0, scale(10));
-    m_additionalScreensLayout->setSpacing(scale(10));
-    m_additionalScreensLayout->setAlignment(Qt::AlignCenter);
-
     // Buttons panel
     m_buttonsPanel = new QWidget(this);
     m_buttonsPanel->setStyleSheet(StyleMeetingWidget::panelStyle());
@@ -818,7 +807,6 @@ void MeetingWidget::setupUI() {
     m_mainLayout->addSpacerItem(m_topMainLayoutSpacer);
     m_mainLayout->addWidget(m_notificationWidget, 0, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_participantsContainer, 0, Qt::AlignHCenter);
-    m_mainLayout->addWidget(m_additionalScreensContainer);
     m_mainLayout->addWidget(m_mainScreen, 0, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_buttonsPanel);
 
@@ -990,10 +978,6 @@ bool MeetingWidget::isMainScreenVisible() const {
     return !m_mainScreen->isHidden();
 }
 
-bool MeetingWidget::isAdditionalScreenVisible(const std::string& id) const {
-    return m_additionalScreens.contains(id);
-}
-
 void MeetingWidget::setInputVolume(int newVolume) {
     Q_UNUSED(newVolume);
 }
@@ -1123,7 +1107,6 @@ void MeetingWidget::resetMeetingState() {
     m_hasScreenSharing = false;
 
     hideMainScreen();
-    hideAdditionalScreens();
     clearAllParticipantVideos();
     clearParticipants();
 
@@ -1833,7 +1816,7 @@ void MeetingWidget::updateMainScreenSize() {
         applyFullscreenSize();
     }
     else {
-        if (m_additionalScreens.isEmpty() && m_participantWidgets.isEmpty())
+        if (m_participantWidgets.isEmpty())
             applyStandardSize();
         else
             applyDecreasedSize();
@@ -1862,60 +1845,6 @@ void MeetingWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMod
             updateParticipantsContainerSize();
         }
         updateMainScreenSize();
-    }
-}
-
-void MeetingWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::string& id) {
-    if (frame.isNull()) return;
-
-    bool wasEmpty = m_additionalScreens.isEmpty();
-
-    if (wasEmpty)
-        m_topMainLayoutSpacer->changeSize(0, scale(20), QSizePolicy::Minimum, QSizePolicy::Fixed);
-
-    Screen* screen = nullptr;
-    if (m_additionalScreens.contains(id)) {
-        screen = m_additionalScreens[id];
-    }
-    else {
-        screen = new Screen(m_additionalScreensContainer);
-        screen->setRoundedCornersEnabled(true);
-        screen->setScaleMode(Screen::ScaleMode::CropToFit);
-
-        const int scaledWidth = extraScale(256, 3);
-        const int scaledHeight = extraScale(144, 3);
-        screen->setFixedSize(scaledWidth, scaledHeight);
-
-        m_additionalScreens[id] = screen;
-        m_additionalScreensLayout->addWidget(screen);
-
-        if (wasEmpty && !m_screenFullscreenActive) {
-            updateMainScreenSize();
-        }
-    }
-
-    if (m_screenFullscreenActive)
-        m_additionalScreensContainer->hide();
-    else
-        m_additionalScreensContainer->show();
-
-    screen->setPixmap(frame);
-}
-
-void MeetingWidget::removeAdditionalScreen(const std::string& id) {
-    if (!m_additionalScreens.contains(id)) return;
-
-    Screen* screen = m_additionalScreens[id];
-    m_additionalScreensLayout->removeWidget(screen);
-    screen->deleteLater();
-    m_additionalScreens.remove(id);
-
-    if (m_additionalScreens.isEmpty()) {
-        m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
-        m_additionalScreensContainer->hide();
-
-        if (!m_screenFullscreenActive)
-            updateMainScreenSize();
     }
 }
 
@@ -1984,7 +1913,6 @@ void MeetingWidget::enterFullscreen() {
     if (m_callNamePanel)
         m_callNamePanel->hide();
 
-    m_additionalScreensContainer->hide();
     m_participantsContainer->hide();
 
     setMouseTracking(true);
@@ -2013,14 +1941,7 @@ void MeetingWidget::setAudioSettingsDialogOpen(bool open) {
 void MeetingWidget::exitFullscreen() {
     m_screenFullscreenActive = false;
 
-    if (m_additionalScreens.isEmpty()) {
-        m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
-        m_additionalScreensContainer->hide();
-    }
-    else {
-        m_topMainLayoutSpacer->changeSize(0, scale(20), QSizePolicy::Minimum, QSizePolicy::Fixed);
-        m_additionalScreensContainer->show();
-    }
+    m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
 
     m_enterFullscreenButton->show();
     m_buttonsPanel->show();
@@ -2040,18 +1961,6 @@ void MeetingWidget::exitFullscreen() {
     m_mainLayout->setAlignment(Qt::AlignCenter);
     m_mainLayout->invalidate();
     updateMainScreenSize();
-}
-
-void MeetingWidget::hideAdditionalScreens() {
-    for (auto it = m_additionalScreens.begin(); it != m_additionalScreens.end(); ++it) {
-        Screen* screen = it.value();
-        m_additionalScreensLayout->removeWidget(screen);
-        screen->deleteLater();
-    }
-    m_additionalScreens.clear();
-
-    m_topMainLayoutSpacer->changeSize(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
-    m_additionalScreensContainer->hide();
 }
 
 void MeetingWidget::hideMainScreen() {

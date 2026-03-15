@@ -6,7 +6,6 @@ namespace core::logic
         : m_authorized(false)
         , m_connectionDown(false)
         , m_viewingRemoteScreen(false)
-        , m_viewingRemoteCamera(false)
     {
         m_mediaState[media::MediaType::Screen] = media::MediaState::Stopped;
         m_mediaState[media::MediaType::Camera] = media::MediaState::Stopped;
@@ -58,10 +57,34 @@ namespace core::logic
         return m_viewingRemoteScreen;
     }
 
-    bool ClientStateManager::isViewingRemoteCamera() const
+    bool ClientStateManager::isViewingAnyRemoteCamera() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return m_viewingRemoteCamera;
+        return !m_remoteCameraSenderHashes.empty();
+    }
+
+    bool ClientStateManager::isViewingRemoteCameraFrom(const std::string& senderHash) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_remoteCameraSenderHashes.count(senderHash) != 0;
+    }
+
+    void ClientStateManager::addRemoteCameraSender(const std::string& senderHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_remoteCameraSenderHashes.insert(senderHash);
+    }
+
+    void ClientStateManager::removeRemoteCameraSender(const std::string& senderHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_remoteCameraSenderHashes.erase(senderHash);
+    }
+
+    void ClientStateManager::clearRemoteCameraSenders()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_remoteCameraSenderHashes.clear();
     }
 
     bool ClientStateManager::isAuthorized() const
@@ -100,12 +123,6 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_viewingRemoteScreen = value;
-    }
-
-    void ClientStateManager::setViewingRemoteCamera(bool value)
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_viewingRemoteCamera = value;
     }
 
     const std::string& ClientStateManager::getMyNickname() const
@@ -275,7 +292,7 @@ namespace core::logic
         std::lock_guard<std::mutex> lock(m_mutex);
         m_activeMeeting = std::nullopt;
         m_viewingRemoteScreen = false;
-        m_viewingRemoteCamera = false;
+        m_remoteCameraSenderHashes.clear();
     }
 
     void ClientStateManager::resetOutgoingJoinMeetingRequest()
@@ -328,7 +345,7 @@ namespace core::logic
         m_authorized = false;
         m_connectionDown = false;
         m_viewingRemoteScreen = false;
-        m_viewingRemoteCamera = false;
+        m_remoteCameraSenderHashes.clear();
 
         m_mediaState[media::MediaType::Screen] = media::MediaState::Stopped;
         m_mediaState[media::MediaType::Camera] = media::MediaState::Stopped;

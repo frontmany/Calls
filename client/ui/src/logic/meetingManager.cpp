@@ -5,7 +5,6 @@
 #include "logic/configManager.h"
 #include "widgets/meetingWidget.h"
 #include "widgets/components/screen.h"
-#include "constants/constant.h"
 
 #include <QGuiApplication>
 #include <QScreen>
@@ -212,7 +211,6 @@ void MeetingManager::onScreenShareClicked(bool toggled)
             if (!myNick.empty())
                 m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), false);
             m_meetingWidget->hideMainScreen();
-            m_meetingWidget->hideAdditionalScreens();
             m_meetingWidget->setScreenShareButtonActive(false);
         }
     }
@@ -424,7 +422,6 @@ void MeetingManager::onMeetingParticipantLeft(const QString& nickname)
                         if (!myNickname.empty())
                             m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNickname), false);
                         m_meetingWidget->hideMainScreen();
-                        m_meetingWidget->hideAdditionalScreens();
                         m_meetingWidget->setScreenShareButtonActive(false);
                     }
                 }
@@ -474,7 +471,6 @@ void MeetingManager::onLocalConnectionDownInMeeting()
                 m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), false);
         }
         m_meetingWidget->hideMainScreen();
-        m_meetingWidget->hideAdditionalScreens();
         m_meetingWidget->setScreenShareButtonActive(false);
         m_meetingWidget->setCameraButtonActive(false);
         clearLocalParticipantVideo();
@@ -534,7 +530,7 @@ void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int heigh
 {
     if (!m_meetingWidget || width <= 0 || height <= 0) return;
     if (data.size() < width * height * 3) return;
-    if (!m_coreClient || !m_coreClient->isViewingRemoteCamera()) {
+    if (!m_coreClient || !m_coreClient->isViewingAnyRemoteCamera()) {
         m_meetingWidget->clearParticipantVideo(nickname);
         return;
     }
@@ -587,19 +583,21 @@ void MeetingManager::onMeetingParticipantSpeaking(const QString& nickname, bool 
     }
 }
 
-void MeetingManager::onIncomingCameraSharingStarted()
+void MeetingManager::onIncomingCameraSharingStarted(const QString& nickname)
 {
+    Q_UNUSED(nickname);
     // Remote camera frames are handled by onIncomingCameraFrame.
 }
 
-void MeetingManager::onIncomingCameraSharingStopped()
+void MeetingManager::onIncomingCameraSharingStopped(const QString& nickname)
 {
     if (!m_meetingWidget) return;
-    clearRemoteParticipantVideos();
-    m_meetingWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
-    const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
-    if (!screenSharingActive) {
-        m_meetingWidget->hideMainScreen();
+    m_meetingWidget->clearParticipantVideo(nickname);
+    if (!m_coreClient || !m_coreClient->isViewingAnyRemoteCamera()) {
+        const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
+        if (!screenSharingActive) {
+            m_meetingWidget->hideMainScreen();
+        }
     }
 }
 
@@ -627,7 +625,6 @@ void MeetingManager::onStartScreenSharingError()
         }
         m_meetingWidget->setScreenShareButtonActive(false);
         m_meetingWidget->hideMainScreen();
-        m_meetingWidget->hideAdditionalScreens();
     }
     if (m_notificationController) {
         m_notificationController->showErrorNotification("Failed to start screen sharing", 1500);

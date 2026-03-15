@@ -127,38 +127,44 @@ namespace core::logic
 
     void MediaPacketHandler::handleIncomingCameraSharingStarted(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
-            m_stateManager->isConnectionDown() ||
-            m_stateManager->isViewingRemoteCamera()) return;
-        
+            m_stateManager->isConnectionDown()) return;
+
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+        std::string nickname;
 
         auto activeOpt = m_stateManager->getActiveCall();
         if (activeOpt) {
             if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+            nickname = activeOpt->get().getNickname();
         } else {
             if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+            nickname = meetingParticipantNicknameByHash(m_stateManager, senderNicknameHash);
         }
+        if (nickname.empty()) return;
 
-        m_stateManager->setViewingRemoteCamera(true);
-        m_eventListener->onIncomingCameraSharingStarted();
+        m_stateManager->addRemoteCameraSender(senderNicknameHash);
+        m_eventListener->onIncomingCameraSharingStarted(nickname);
     }
 
     void MediaPacketHandler::handleIncomingCameraSharingStopped(const nlohmann::json& jsonObject) {
         if (!m_stateManager->isAuthorized() ||
-            m_stateManager->isConnectionDown() ||
-            !m_stateManager->isViewingRemoteCamera()) return;
+            m_stateManager->isConnectionDown()) return;
 
         const std::string& senderNicknameHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+        std::string nickname;
 
         auto activeOpt = m_stateManager->getActiveCall();
         if (activeOpt) {
             if (utilities::crypto::calculateHash(activeOpt->get().getNickname()) != senderNicknameHash) return;
+            nickname = activeOpt->get().getNickname();
         } else {
             if (!m_stateManager->isActiveMeeting() || !isMeetingParticipantHash(m_stateManager, senderNicknameHash)) return;
+            nickname = meetingParticipantNicknameByHash(m_stateManager, senderNicknameHash);
         }
+        if (nickname.empty()) return;
 
-        m_stateManager->setViewingRemoteCamera(false);
-        m_eventListener->onIncomingCameraSharingStopped();
+        m_stateManager->removeRemoteCameraSender(senderNicknameHash);
+        m_eventListener->onIncomingCameraSharingStopped(nickname);
     }
 
     void MediaPacketHandler::handleIncomingAudio(const unsigned char* data, int length) {
@@ -254,7 +260,7 @@ namespace core::logic
     void MediaPacketHandler::handleIncomingCamera(const unsigned char* data, int length) {
         if (!m_stateManager->isAuthorized() ||
             m_stateManager->isConnectionDown() ||
-            !m_stateManager->isViewingRemoteCamera()) return;
+            !m_stateManager->isViewingAnyRemoteCamera()) return;
 
         auto activeOpt = m_stateManager->getActiveCall();
         std::vector<unsigned char> decryptedData;

@@ -24,8 +24,8 @@ public:
     void onStartScreenSharingError() override;
     void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) override;
 
-    void onIncomingCameraSharingStarted() override;
-    void onIncomingCameraSharingStopped() override;
+    void onIncomingCameraSharingStarted(const std::string& nickname) override;
+    void onIncomingCameraSharingStopped(const std::string& nickname) override;
     void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) override;
 
     void onStartCameraSharingError() override;
