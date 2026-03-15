@@ -417,7 +417,7 @@ void MainMenuWidget::setupUI() {
     m_updateButton = new QPushButton(m_headerWidget);
     m_updateButton->setCursor(Qt::PointingHandCursor);
     m_updateButton->setFixedHeight(scale(38));
-    m_updateButton->setMinimumWidth(scale(105));
+    m_updateButton->setMinimumWidth(scale(110));
     m_updateButton->setStyleSheet(StyleMainMenuWidget::updateButtonGlassStyle());
     m_updateButton->setVisible(false);
 

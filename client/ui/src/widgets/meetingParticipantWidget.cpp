@@ -56,6 +56,23 @@ void MeetingParticipantWidget::setupUI()
         "}"
     ).arg(COLOR_TEXT_SECONDARY.name()));
 
+    m_connectionDownLabel = new QLabel(this);
+    m_connectionDownLabel->setAlignment(Qt::AlignCenter);
+    m_connectionDownLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    m_connectionDownLabel->setText(QStringLiteral("Connection down"));
+    QFont connectionDownFont(QStringLiteral("Outfit"), scale(11));
+    m_connectionDownLabel->setFont(connectionDownFont);
+    m_connectionDownLabel->setStyleSheet(QString(
+        "QLabel {"
+        "   color: %1;"
+        "   font-weight: normal;"
+        "   background-color: transparent;"
+        "   border: none;"
+        "   padding: 2px 10px;"
+        "}"
+    ).arg(COLOR_TEXT_MUTED.name()));
+    m_connectionDownLabel->hide();
+
     m_videoScreen = new Screen(this);
     m_videoScreen->setStyleSheet("background-color: rgba(240, 240, 240, 100); border: none; border-radius: 8px;");
     m_videoScreen->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -69,9 +86,10 @@ void MeetingParticipantWidget::setupUI()
 
     QVBoxLayout* overlayLayout = new QVBoxLayout(overlayWidget);
     overlayLayout->setContentsMargins(scale(12), scale(12), scale(12), scale(12));
-    overlayLayout->setSpacing(0);
+    overlayLayout->setSpacing(scale(4));
     overlayLayout->addStretch();
     overlayLayout->addWidget(m_nameLabel, 0, Qt::AlignCenter);
+    overlayLayout->addWidget(m_connectionDownLabel, 0, Qt::AlignCenter);
     overlayLayout->addStretch();
 
     m_mainLayout->addWidget(m_videoScreen, 0, 0);
@@ -132,10 +150,18 @@ void MeetingParticipantWidget::setCompactSize(bool compact)
         setFixedSize(scale(240), scale(135));
         QFont nameFont(QStringLiteral("Outfit"), scale(16));
         m_nameLabel->setFont(nameFont);
+        if (m_connectionDownLabel) {
+            QFont connectionDownFont(QStringLiteral("Outfit"), scale(10));
+            m_connectionDownLabel->setFont(connectionDownFont);
+        }
     } else {
         setFixedSize(scale(320), scale(180));
         QFont nameFont(QStringLiteral("Outfit"), scale(20));
         m_nameLabel->setFont(nameFont);
+        if (m_connectionDownLabel) {
+            QFont connectionDownFont(QStringLiteral("Outfit"), scale(11));
+            m_connectionDownLabel->setFont(connectionDownFont);
+        }
     }
 
     update();
@@ -204,11 +230,17 @@ void MeetingParticipantWidget::setConnectionDown(bool down)
     if (down) {
         setDisplayMode(DisplayMode::DisplayName);
         if (m_nameLabel) {
-            m_nameLabel->setText(m_nickname + QStringLiteral("\nconnection down"));
+            m_nameLabel->setText(m_nickname);
+        }
+        if (m_connectionDownLabel) {
+            m_connectionDownLabel->show();
         }
     } else {
         if (m_nameLabel) {
             m_nameLabel->setText(m_nickname);
+        }
+        if (m_connectionDownLabel) {
+            m_connectionDownLabel->hide();
         }
         setDisplayMode(DisplayMode::DisplayName);
     }
@@ -227,8 +259,11 @@ void MeetingParticipantWidget::paintEvent(QPaintEvent* event)
 
     if (m_connectionDown) {
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(128, 128, 128, 100));
+        painter.setBrush(QColor(0, 0, 0, 28));
         painter.drawRoundedRect(glassRect, 12, 12);
+        painter.setPen(QPen(QColor(0, 0, 0, 18), 1));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(glassRect, 11, 11);
     }
 
     if (m_screenSharing) {
