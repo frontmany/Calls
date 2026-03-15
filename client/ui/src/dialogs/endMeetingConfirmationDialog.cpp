@@ -17,11 +17,13 @@ EndMeetingConfirmationDialog::EndMeetingConfirmationDialog(QWidget* parent)
     QFont font("Outfit", scale(14), QFont::Normal);
     QFont titleFont("Outfit", scale(18), QFont::Bold);
 
+    const int shadowMargin = scale(24);
+
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
     shadowEffect->setBlurRadius(scale(30));
     shadowEffect->setXOffset(0);
-    shadowEffect->setYOffset(0);
-    shadowEffect->setColor(QColor(0, 0, 0, 150));
+    shadowEffect->setYOffset(scale(4));
+    shadowEffect->setColor(QColor(0, 0, 0, 120));
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);
@@ -38,7 +40,7 @@ EndMeetingConfirmationDialog::EndMeetingConfirmationDialog(QWidget* parent)
         .arg(COLOR_BORDER_NEUTRAL.name()));
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setContentsMargins(shadowMargin, shadowMargin, shadowMargin, shadowMargin);
     mainLayout->addWidget(mainWidget);
 
     QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
@@ -142,6 +144,6 @@ EndMeetingConfirmationDialog::EndMeetingConfirmationDialog(QWidget* parent)
     });
     escShortcut->setContext(Qt::ApplicationShortcut);
 
-    setMinimumWidth(scale(400));
-    setMinimumHeight(scale(280));
+    setMinimumWidth(scale(400) + shadowMargin * 2);
+    setMinimumHeight(scale(280) + shadowMargin * 2);
 }

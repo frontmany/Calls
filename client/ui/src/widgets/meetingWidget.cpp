@@ -1296,7 +1296,7 @@ void MeetingWidget::updateCallNamePanelPosition()
     const int margin = scale(10);
     const int topMargin = scale(10);
     const int buttonSize = scale(38);
-    const int spacing = scale(8);
+    const int spacing = scale(12);
 
     if (m_callNamePanel->isVisible())
     {
