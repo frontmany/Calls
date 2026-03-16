@@ -153,17 +153,17 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     m_meetingIdEdit = new QLineEdit();
     m_meetingIdEdit->setPlaceholderText("Paste meeting ID (e.g., abc-defg-hij)");
     m_meetingIdEdit->setFixedHeight(scale(50));
-    // Base main menu style + very subtle blue‑tinted variant with a light border for better visibility in meetings dialog
+    // Base main menu style, but without explicit border in meetings dialog
     m_meetingIdEdit->setStyleSheet(
         StyleMainMenuWidget::lineEditStyle() +
         QString(
             "QLineEdit {"
             "   background-color: rgba(244, 246, 250, 230);"
-            "   border: 1px solid rgba(21, 119, 232, 60);"
+            "   border: none;"
             "}"
             "QLineEdit:focus {"
             "   background-color: rgba(238, 242, 250, 245);"
-            "   border: 1px solid rgba(21, 119, 232, 120);"
+            "   border: none;"
             "}"
             "QLineEdit::placeholder {"
             "   color: rgba(60, 90, 130, 180);"

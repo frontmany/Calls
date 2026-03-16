@@ -23,6 +23,8 @@ public:
     void playCallJoinedEffect();
     void playOutgoingCallEndedEffect();
     void playEndCallEffect();
+    void playMeetingJoinRequestEffect();
+    void playMeetingJoinRejectedEffect();
 
 private slots:
     void onPlaybackStateChanged(QMediaPlayer::PlaybackState state);
@@ -31,6 +33,7 @@ private:
     void playRingtone(const QUrl& ringtoneUrl);
     void stopRingtone();
     void playSoundEffect(const QUrl& soundUrl);
+    void playMediaEffect(const QUrl& soundUrl);
     QAudioDevice resolveOutputDevice() const;
 
     std::shared_ptr<core::Core> m_coreClient = nullptr;

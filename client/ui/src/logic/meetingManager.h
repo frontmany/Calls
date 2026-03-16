@@ -15,6 +15,7 @@ class NavigationController;
 class DialogsController;
 class NotificationController;
 class ConfigManager;
+class AudioEffectsManager;
 
 class MeetingManager : public QObject {
     Q_OBJECT
@@ -29,6 +30,7 @@ public:
     void setMeetingWidget(MeetingWidget* meetingWidget);
     void setNotificationController(NotificationController* notificationController);
     void setConfigManager(ConfigManager* configManager);
+    void setAudioManager(AudioEffectsManager* audioManager);
     bool isInMeeting() const;
 
 public slots:
@@ -91,6 +93,7 @@ private:
     DialogsController* m_dialogsController = nullptr;
     NotificationController* m_notificationController = nullptr;
     ConfigManager* m_configManager = nullptr;
+    AudioEffectsManager* m_audioManager = nullptr;
     MeetingWidget* m_meetingWidget = nullptr;
     QMap<QString, QTimer*> m_speakingTimers;
 };

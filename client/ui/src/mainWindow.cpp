@@ -278,6 +278,9 @@ void MainWindow::initializeMeetingManager() {
     if (m_meetingManager && m_configManager) {
         m_meetingManager->setConfigManager(m_configManager);
     }
+    if (m_meetingManager && m_audioManager) {
+        m_meetingManager->setAudioManager(m_audioManager);
+    }
 }
 
 void MainWindow::initializeCoreNetworkErrorHandler() {

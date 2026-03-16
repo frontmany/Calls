@@ -133,7 +133,8 @@ private:
     QHBoxLayout* m_headerLayout;
     QPushButton* m_updateButton;
     ContainerHighlightOverlay* m_updateButtonHighlightOverlay;
-    ButtonIcon* m_meetingButton;
+    QPushButton* m_meetingButton;
+    ContainerHighlightOverlay* m_meetingButtonHighlightOverlay;
     QLabel* m_titleLabel;
     QWidget* m_userInfoWidget;
     QHBoxLayout* m_userInfoLayout;
@@ -155,6 +156,7 @@ private:
 
     // Settings section
     QPushButton* m_settingsButton;
+    ContainerHighlightOverlay* m_settingsButtonHighlightOverlay;
     SettingsPanel* m_settingsPanel;
 
     // Animations

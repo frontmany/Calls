@@ -3,6 +3,7 @@
 #include "dialogs/dialogsController.h"
 #include "notifications/notificationController.h"
 #include "logic/configManager.h"
+#include "audio/audioEffectsManager.h"
 #include "widgets/meetingWidget.h"
 #include "widgets/components/screen.h"
 
@@ -40,6 +41,11 @@ void MeetingManager::setNotificationController(NotificationController* notificat
 void MeetingManager::setConfigManager(ConfigManager* configManager)
 {
     m_configManager = configManager;
+}
+
+void MeetingManager::setAudioManager(AudioEffectsManager* audioManager)
+{
+    m_audioManager = audioManager;
 }
 
 bool MeetingManager::isInMeeting() const
@@ -275,6 +281,10 @@ void MeetingManager::onCancelMeetingJoinRequested()
     std::error_code ec = m_coreClient->cancelMeetingJoin();
     if (ec && m_notificationController) {
         m_notificationController->showErrorNotification("Failed to cancel join request", 2000);
+        return;
+    }
+    if (!ec && m_audioManager) {
+        m_audioManager->playMeetingJoinRejectedEffect();
     }
 }
 
@@ -301,12 +311,18 @@ void MeetingManager::onMeetingJoinRequestReceived(const QString& friendNickname)
     if (m_meetingWidget) {
         m_meetingWidget->addJoinRequest(friendNickname);
     }
+    if (m_audioManager) {
+        m_audioManager->playMeetingJoinRequestEffect();
+    }
 }
 
 void MeetingManager::onMeetingJoinRequestCancelled(const QString& friendNickname)
 {
     if (m_meetingWidget) {
         m_meetingWidget->removeJoinRequest(friendNickname);
+    }
+    if (m_audioManager) {
+        m_audioManager->playMeetingJoinRejectedEffect();
     }
 }
 
@@ -359,6 +375,9 @@ void MeetingManager::onJoinMeetingDeclined(const QString& meetingId)
     }
     if (m_notificationController) {
         m_notificationController->showErrorNotification("Join meeting was declined", 2000);
+    }
+    if (m_audioManager) {
+        m_audioManager->playMeetingJoinRejectedEffect();
     }
 }
 

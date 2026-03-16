@@ -1,5 +1,6 @@
 #include "settingsPanelWidget.h"
 #include "widgets/components/button.h"
+#include "widgets/containerHighlightOverlay.h"
 #include <QIcon>
 #include "utilities/utilities.h"
 #include "constants/constant.h"
@@ -123,6 +124,35 @@ QString SettingsPanel::StyleSettingsPanel::refreshButtonStyle() {
         .arg(COLOR_OVERLAY_SETTINGS_110.name());    // %13 - focus border-color
 }
 
+QString SettingsPanel::StyleSettingsPanel::audioDeviceGlassButtonStyle() {
+    return QString(
+        "QPushButton {"
+        "   background-color: rgba(255, 255, 255, 45);"
+        "   color: black;"
+        "   border: 1px solid rgba(255, 255, 255, 140);"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   margin: 0px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(255, 255, 255, 70);"
+        "   color: black;"
+        "   border: 1px solid rgba(255, 255, 255, 200);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(255, 255, 255, 80);"
+        "   color: black;"
+        "   border: 1px solid rgba(255, 255, 255, 220);"
+        "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: 1px solid rgba(255, 255, 255, 200);"
+        "}")
+        .arg(scale(12))
+        .arg(scale(10))
+        .arg(scale(18));
+}
+
 QString SettingsPanel::StyleSettingsPanel::volumeLabelStyle() {
     return QString(
         "QLabel {"
@@ -171,13 +201,20 @@ void SettingsPanel::setupUI() {
     QHBoxLayout* refreshLayout = new QHBoxLayout();
     refreshLayout->setContentsMargins(0, 0, 0, 0);
 
-    m_devicePickerButton = new QPushButton("Audio devices", this);
-    m_devicePickerButton->setFixedHeight(scale(60));
-    m_devicePickerButton->setStyleSheet(StyleSettingsPanel::refreshButtonStyle());
+    m_devicePickerButton = new QPushButton("Audio settings", this);
+    m_devicePickerButton->setFixedHeight(scale(52));
+    m_devicePickerButton->setCursor(Qt::PointingHandCursor);
+    m_devicePickerButton->setFlat(true);
+    m_devicePickerButton->setAutoFillBackground(false);
+    m_devicePickerButton->setStyleSheet(StyleSettingsPanel::audioDeviceGlassButtonStyle());
     QFont refreshButtonFont("Outfit", scale(13), QFont::Light);
     m_devicePickerButton->setFont(refreshButtonFont);
     m_devicePickerButton->setToolTip("Select input/output devices");
-    m_devicePickerButton->setCursor(Qt::PointingHandCursor);
+
+    m_devicePickerHighlightOverlay = new ContainerHighlightOverlay(m_devicePickerButton, scale(12));
+    m_devicePickerHighlightOverlay->setGeometry(m_devicePickerButton->rect());
+    m_devicePickerHighlightOverlay->raise();
+    m_devicePickerButton->installEventFilter(this);
 
     // Camera button
     m_cameraButton = new ToggleButtonIcon(this,
@@ -267,6 +304,15 @@ void SettingsPanel::setupUI() {
     });
 
     setStyleSheet(StyleSettingsPanel::settingsPanelStyle());
+}
+
+bool SettingsPanel::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == m_devicePickerButton && event->type() == QEvent::Resize) {
+        if (m_devicePickerHighlightOverlay) {
+            m_devicePickerHighlightOverlay->setGeometry(m_devicePickerButton->rect());
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void SettingsPanel::onMicVolumeChanged(int volume) {

@@ -48,24 +48,33 @@ QString StyleMainMenuWidget::containerStyle() {
 }
 
 QString StyleMainMenuWidget::updateButtonGlassStyle() {
-    return QString("QPushButton {"
+    return QString(
+        "QPushButton {"
         "   background-color: rgba(255, 255, 255, 45);"
-        "   color: black;"
-        "   border: none;"
+        "   color: %4;"
+        "   border: 1px solid rgba(255, 255, 255, 140);"
         "   border-radius: %1px;"
         "   padding: %2px %3px;"
         "   margin: 0px;"
         "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(255, 255, 255, 70);"
+        "   color: %4;"
+        "   border: 1px solid rgba(255, 255, 255, 200);"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: rgba(255, 255, 255, 80);"
+        "   color: %4;"
+        "   border: 1px solid rgba(255, 255, 255, 220);"
+        "}"
         "QPushButton:focus {"
         "   outline: none;"
-        "   border: none;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: rgba(255, 255, 255, 65);"
+        "   border: 1px solid rgba(255, 255, 255, 200);"
         "}")
         .arg(scale(15))
         .arg(scale(12))
-        .arg(scale(24));
+        .arg(scale(24))
+        .arg(m_primaryColor.name());
 }
 
 QString StyleMainMenuWidget::titleStyle() {
@@ -416,6 +425,8 @@ void MainMenuWidget::setupUI() {
 
     m_updateButton = new QPushButton(m_headerWidget);
     m_updateButton->setCursor(Qt::PointingHandCursor);
+    m_updateButton->setFlat(true);
+    m_updateButton->setAutoFillBackground(false);
     m_updateButton->setFixedHeight(scale(38));
     m_updateButton->setMinimumWidth(scale(110));
     m_updateButton->setStyleSheet(StyleMainMenuWidget::updateButtonGlassStyle());
@@ -430,7 +441,7 @@ void MainMenuWidget::setupUI() {
     updateButtonLayout->setContentsMargins(scale(14), scale(8), scale(14), scale(8));
     updateButtonLayout->setSpacing(scale(6));
     QLabel* updateTextLabel = new QLabel(" update", m_updateButton);
-    updateTextLabel->setStyleSheet("color: black; background: transparent;");
+    updateTextLabel->setStyleSheet(QString("color: %1; background: transparent;").arg(StyleMainMenuWidget::m_primaryColor.name()));
     QFont updateFont("Outfit", scale(12), QFont::Medium);
     updateTextLabel->setFont(updateFont);
     updateTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -440,11 +451,33 @@ void MainMenuWidget::setupUI() {
     updateButtonLayout->addWidget(updateTextLabel);
     updateButtonLayout->addWidget(updateArrowLabel);
 
-    m_meetingButton = new ButtonIcon(m_headerWidget,
-        QIcon(":/resources/meeting.png"),
-        QIcon(":/resources/meetingHover.png"),
-        scale(32), scale(32));
+    m_meetingButton = new QPushButton(m_headerWidget);
     m_meetingButton->setCursor(Qt::PointingHandCursor);
+    m_meetingButton->setFlat(true);
+    m_meetingButton->setAutoFillBackground(false);
+    m_meetingButton->setFixedHeight(scale(38));
+    m_meetingButton->setMinimumWidth(scale(130));
+    m_meetingButton->setStyleSheet(StyleMainMenuWidget::updateButtonGlassStyle());
+
+    m_meetingButtonHighlightOverlay = new ContainerHighlightOverlay(m_meetingButton, scale(15));
+    m_meetingButtonHighlightOverlay->setGeometry(m_meetingButton->rect());
+    m_meetingButtonHighlightOverlay->raise();
+    m_meetingButton->installEventFilter(this);
+
+    QHBoxLayout* meetingButtonLayout = new QHBoxLayout(m_meetingButton);
+    meetingButtonLayout->setContentsMargins(scale(14), scale(8), scale(14), scale(8));
+    meetingButtonLayout->setSpacing(scale(6));
+    QLabel* meetingIconLabel = new QLabel(m_meetingButton);
+    meetingIconLabel->setPixmap(QPixmap(":/resources/meeting.png").scaled(scale(20), scale(20), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    meetingIconLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    QLabel* meetingTextLabel = new QLabel(" meetings", m_meetingButton);
+    meetingTextLabel->setStyleSheet("color: black; background: transparent;");
+    QFont meetingFont("Outfit", scale(12), QFont::Medium);
+    meetingTextLabel->setFont(meetingFont);
+    meetingTextLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    meetingButtonLayout->addWidget(meetingIconLabel);
+    meetingButtonLayout->addWidget(meetingTextLabel);
+
     m_headerLayout->addWidget(m_meetingButton);
     m_headerLayout->addSpacing(scale(14));
     m_headerLayout->addWidget(m_updateButton);
@@ -588,9 +621,16 @@ void MainMenuWidget::setupUI() {
 
     m_settingsButton = new QPushButton(m_mainContainer);
     m_settingsButton->setFixedHeight(scale(50));
-    m_settingsButton->setLayout(buttonLayout);
-    m_settingsButton->setStyleSheet(StyleMainMenuWidget::settingsButtonStyle());
     m_settingsButton->setCursor(Qt::PointingHandCursor);
+    m_settingsButton->setFlat(true);
+    m_settingsButton->setAutoFillBackground(false);
+    m_settingsButton->setLayout(buttonLayout);
+    m_settingsButton->setStyleSheet(StyleMainMenuWidget::updateButtonGlassStyle());
+
+    m_settingsButtonHighlightOverlay = new ContainerHighlightOverlay(m_settingsButton, scale(15));
+    m_settingsButtonHighlightOverlay->setGeometry(m_settingsButton->rect());
+    m_settingsButtonHighlightOverlay->raise();
+    m_settingsButton->installEventFilter(this);
 
     // Settings panel (initially hidden)
     m_settingsPanel = new SettingsPanel(m_mainContainer);
@@ -623,7 +663,7 @@ void MainMenuWidget::setupUI() {
     m_mainLayout->addStretch(3);
 
     // Connect signals
-    connect(m_meetingButton, &ButtonIcon::clicked, this, &MainMenuWidget::onMeetingButtonClicked);
+    connect(m_meetingButton, &QPushButton::clicked, this, &MainMenuWidget::onMeetingButtonClicked);
     connect(m_updateButton, &QPushButton::clicked, this, &MainMenuWidget::onUpdateButtonClicked);
     connect(m_callButton, &QPushButton::clicked, this, &MainMenuWidget::onCallButtonClicked);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainMenuWidget::onSettingsButtonClicked);
@@ -682,6 +722,10 @@ void MainMenuWidget::resizeEvent(QResizeEvent* event) {
         m_containerHighlightOverlay->setGeometry(m_mainContainer->rect());
     if (m_updateButton && m_updateButtonHighlightOverlay)
         m_updateButtonHighlightOverlay->setGeometry(m_updateButton->rect());
+    if (m_meetingButton && m_meetingButtonHighlightOverlay)
+        m_meetingButtonHighlightOverlay->setGeometry(m_meetingButton->rect());
+    if (m_settingsButton && m_settingsButtonHighlightOverlay)
+        m_settingsButtonHighlightOverlay->setGeometry(m_settingsButton->rect());
 }
 
 bool MainMenuWidget::eventFilter(QObject* watched, QEvent* event) {
@@ -692,6 +736,14 @@ bool MainMenuWidget::eventFilter(QObject* watched, QEvent* event) {
     if (watched == m_updateButton && event->type() == QEvent::Resize) {
         if (m_updateButtonHighlightOverlay)
             m_updateButtonHighlightOverlay->setGeometry(m_updateButton->rect());
+    }
+    if (watched == m_meetingButton && event->type() == QEvent::Resize) {
+        if (m_meetingButtonHighlightOverlay)
+            m_meetingButtonHighlightOverlay->setGeometry(m_meetingButton->rect());
+    }
+    if (watched == m_settingsButton && event->type() == QEvent::Resize) {
+        if (m_settingsButtonHighlightOverlay)
+            m_settingsButtonHighlightOverlay->setGeometry(m_settingsButton->rect());
     }
     return QWidget::eventFilter(watched, event);
 }

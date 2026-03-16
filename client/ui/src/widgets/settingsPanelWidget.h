@@ -10,6 +10,7 @@
 
 class ButtonIcon;
 class ToggleButtonIcon;
+class ContainerHighlightOverlay;
 
 class SettingsPanel : public QWidget {
     Q_OBJECT
@@ -43,6 +44,7 @@ private:
     QLabel* m_micValueLabel;
     QLabel* m_speakerValueLabel;
     QPushButton* m_devicePickerButton;
+    ContainerHighlightOverlay* m_devicePickerHighlightOverlay = nullptr;
     ToggleButtonIcon* m_cameraButton = nullptr;
     ToggleButtonIcon* m_micMuteButton = nullptr;
     ToggleButtonIcon* m_speakerMuteButton = nullptr;
@@ -57,8 +59,12 @@ private:
         static QString titleStyle();
         static QString sliderStyle();
         static QString refreshButtonStyle();
+        static QString audioDeviceGlassButtonStyle();
         static QString volumeValueStyle();
         static QString volumeLabelStyle();
         static QString settingsPanelStyle();
     };
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
 };

@@ -93,6 +93,16 @@ void AudioEffectsManager::playEndCallEffect()
     playSoundEffect(QUrl("qrc:/resources/endCall.wav"));
 }
 
+void AudioEffectsManager::playMeetingJoinRequestEffect()
+{
+    playMediaEffect(QUrl("qrc:/resources/meetingJoinRequest.mp3"));
+}
+
+void AudioEffectsManager::playMeetingJoinRejectedEffect()
+{
+    playSoundEffect(QUrl("qrc:/resources/meetingJoinRejected.wav"));
+}
+
 void AudioEffectsManager::playSoundEffect(const QUrl& soundUrl)
 {
     QSoundEffect* effect = new QSoundEffect(this);
@@ -109,6 +119,31 @@ void AudioEffectsManager::playSoundEffect(const QUrl& soundUrl)
             effect->deleteLater();
         }
     });
+}
+
+void AudioEffectsManager::playMediaEffect(const QUrl& soundUrl)
+{
+    auto* player = new QMediaPlayer(this);
+    auto* output = new QAudioOutput(this);
+    output->setVolume(1.0f);
+
+    const QAudioDevice device = resolveOutputDevice();
+    if (!device.isNull()) {
+        output->setDevice(device);
+    }
+
+    player->setAudioOutput(output);
+    player->setSource(soundUrl);
+
+    connect(player, &QMediaPlayer::playbackStateChanged, this,
+        [player, output](QMediaPlayer::PlaybackState state) {
+            if (state == QMediaPlayer::StoppedState) {
+                player->deleteLater();
+                output->deleteLater();
+            }
+        });
+
+    player->play();
 }
 
 QAudioDevice AudioEffectsManager::resolveOutputDevice() const

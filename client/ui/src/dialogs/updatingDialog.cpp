@@ -160,8 +160,4 @@ void UpdatingDialog::setStatus(const QString& text, bool hideProgress)
     {
         m_progressLabel->setVisible(!hideProgress);
     }
-    if (m_movie && m_movie->isValid())
-    {
-        m_movie->stop();
-    }
 }

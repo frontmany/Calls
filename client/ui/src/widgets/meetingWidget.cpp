@@ -781,7 +781,7 @@ void MeetingWidget::setupUI() {
     m_callNameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_callNameLabel->setMouseTracking(true);
 
-    m_copyCallNameButton = new ToggleButtonIcon(m_callNamePanel, 
+    m_copyCallNameButton = new ToggleButtonIcon(m_callNamePanel,
         QIcon(":/resources/copy.png"),
         QIcon(":/resources/copyHover.png"),
         QIcon(":/resources/copied.png"),
