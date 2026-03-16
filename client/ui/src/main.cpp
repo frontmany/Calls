@@ -19,7 +19,10 @@ int main(int argc, char* argv[])
     mainWindow->init();
 
     mainWindow->resize(800, 650);
-    mainWindow->show();
+    if (mainWindow->isFirstLaunch())
+        mainWindow->showMaximized();
+    else
+        mainWindow->show();
 
     // 192.168.1.44 local machine 
     // 192.168.1.48 server internal ip

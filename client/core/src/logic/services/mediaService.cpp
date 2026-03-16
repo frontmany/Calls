@@ -62,6 +62,23 @@ namespace core::logic
         });
     }
 
+    void MediaService::onMicrophoneMuteChanged(bool isMuted)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (isMuted && m_localParticipantSpeaking && m_eventListener) {
+            const std::string& myNick = m_stateManager->getMyNickname();
+            if (!myNick.empty()) {
+                m_eventListener->onMeetingParticipantSpeaking(myNick, false);
+            }
+        }
+
+        // Reset VAD state so the first audible frame after unmute can emit speaking=true.
+        m_localParticipantSpeaking = false;
+        m_silenceFramesCount = 0;
+        m_localSmoothedRms = 0.f;
+    }
+
     std::error_code MediaService::startScreenSharing(const std::string& myNickname, const std::string& userNickname, const media::Screen& target)
     {
         std::lock_guard<std::mutex> lock(m_mutex);

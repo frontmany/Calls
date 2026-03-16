@@ -202,7 +202,7 @@ void SettingsPanel::setupUI() {
     refreshLayout->setContentsMargins(0, 0, 0, 0);
 
     m_devicePickerButton = new QPushButton("Audio settings", this);
-    m_devicePickerButton->setFixedHeight(scale(52));
+    m_devicePickerButton->setFixedHeight(scale(44));
     m_devicePickerButton->setCursor(Qt::PointingHandCursor);
     m_devicePickerButton->setFlat(true);
     m_devicePickerButton->setAutoFillBackground(false);
@@ -290,6 +290,7 @@ void SettingsPanel::setupUI() {
 
     // Add widgets to layout
     mainLayout->addLayout(refreshLayout);
+    mainLayout->addSpacing(scale(6));
     mainLayout->addLayout(micLayout);
     mainLayout->addLayout(speakerLayout);
 

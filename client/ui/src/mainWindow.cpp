@@ -91,6 +91,11 @@ void MainWindow::init() {
     QCoreApplication::postEvent(this, new StartupEvent());
 }
 
+bool MainWindow::isFirstLaunch() const
+{
+    return m_configManager && m_configManager->isFirstLaunch();
+}
+
 void MainWindow::customEvent(QEvent* event) {
 
 
@@ -416,7 +421,9 @@ void MainWindow::connectWidgetsToManagers() {
                 if (m_coreClient) {
                     const std::string myNickname = m_coreClient->getMyNickname();
                     if (!myNickname.empty()) {
-                        m_meetingWidget->addParticipant(QString::fromStdString(myNickname));
+                        const QString myNicknameQ = QString::fromStdString(myNickname);
+                        m_meetingWidget->setLocalParticipantNickname(myNicknameQ);
+                        m_meetingWidget->addParticipant(myNicknameQ);
                     }
                     m_meetingWidget->setMicrophoneMuted(m_coreClient->isMicrophoneMuted());
                     m_meetingWidget->setSpeakerMuted(m_coreClient->isSpeakerMuted());

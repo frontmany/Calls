@@ -45,6 +45,7 @@ namespace core::logic
 
         std::error_code startAudioSharing();
         std::error_code stopAudioSharing();
+        void onMicrophoneMuteChanged(bool isMuted);
             
     private:
         void onRawAudio(const float* data, int length);

@@ -31,7 +31,7 @@ public:
     void setCameraEnabled(bool enabled);
     void setCompactSize(bool compact);
 
-    void setMuted(bool muted) { m_muted = muted; }
+    void setMuted(bool muted);
     void setSpeaking(bool speaking);
     void setScreenSharing(bool sharing) { m_screenSharing = sharing; update(); }
     void setConnectionDown(bool down);
@@ -42,6 +42,7 @@ protected:
 private:
     void setupUI();
     void updateAppearance();
+    void applyShadowForSpeaking(bool speaking);
 
     QString m_nickname;
     bool m_muted = false;

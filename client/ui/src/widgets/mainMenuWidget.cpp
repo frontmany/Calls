@@ -71,7 +71,7 @@ QString StyleMainMenuWidget::updateButtonGlassStyle() {
         "   outline: none;"
         "   border: 1px solid rgba(255, 255, 255, 200);"
         "}")
-        .arg(scale(15))
+        .arg(scale(19))
         .arg(scale(12))
         .arg(scale(24))
         .arg(m_primaryColor.name());
@@ -432,7 +432,7 @@ void MainMenuWidget::setupUI() {
     m_updateButton->setStyleSheet(StyleMainMenuWidget::updateButtonGlassStyle());
     m_updateButton->setVisible(false);
 
-    m_updateButtonHighlightOverlay = new ContainerHighlightOverlay(m_updateButton, scale(15));
+    m_updateButtonHighlightOverlay = new ContainerHighlightOverlay(m_updateButton, scale(19));
     m_updateButtonHighlightOverlay->setGeometry(m_updateButton->rect());
     m_updateButtonHighlightOverlay->raise();
     m_updateButton->installEventFilter(this);

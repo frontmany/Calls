@@ -480,18 +480,16 @@ QString StyleMeetingWidget::callNamePanelStyle()
 {
     return QString(
         "QWidget#callNamePanel {"
-        "   background: rgba(%1, %2, %3, %4);"
-        "   border: none;"
+        "   background: rgba(255, 255, 255, 60);"
+        "   border: 1px solid rgba(255, 255, 255, 140);"
         "   border-radius: %5px;"
+        "   backdrop-filter: blur(12px);"
         "}"
         "QLabel {"
         "   color: #1A1A1A;"
         "   background: transparent;"
         "}")
-        .arg(m_joinRequestPanelBackgroundColor.red())
-        .arg(m_joinRequestPanelBackgroundColor.green())
-        .arg(m_joinRequestPanelBackgroundColor.blue())
-        .arg(QString::fromStdString(std::to_string(scale(120))))
+        .arg(QString::fromStdString(std::to_string(scale(20))))
         .arg(QString::fromStdString(std::to_string(scale(20))));
 }
 
@@ -678,9 +676,9 @@ void MeetingWidget::setupUI() {
     m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_exitFullscreenButton->hide();
 
-    m_settingsButton = new ButtonIcon(this, scale(28), scale(28));
+    m_settingsButton = new ButtonIcon(this, scale(24), scale(24));
     m_settingsButton->setIcons(QIcon(":/resources/settings.png"), QIcon(":/resources/settingsHover.png"));
-    m_settingsButton->setSize(scale(38), scale(38));
+    m_settingsButton->setSize(scale(32), scale(32));
     m_settingsButton->setToolTip("Audio settings");
     m_settingsButton->setCursor(Qt::PointingHandCursor);
     m_settingsButton->hide();
@@ -825,6 +823,9 @@ void MeetingWidget::setupUI() {
     connect(m_enterFullscreenButton, &ButtonIcon::clicked, [this]() { showOverlayWithTimeout(); emit requestEnterFullscreen(); });
     connect(m_microphoneButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
         showOverlayWithTimeout();
+        if (!m_localParticipantNickname.isEmpty() && m_participantWidgets.contains(m_localParticipantNickname)) {
+            m_participantWidgets[m_localParticipantNickname]->setMuted(toggled);
+        }
         emit muteMicrophoneClicked(toggled);
     });
     connect(m_screenShareButton, &ToggleButtonIcon::toggled, [this](bool toggled) {
@@ -978,6 +979,10 @@ bool MeetingWidget::isMainScreenVisible() const {
     return !m_mainScreen->isHidden();
 }
 
+void MeetingWidget::setLocalParticipantNickname(const QString& nickname) {
+    m_localParticipantNickname = nickname;
+}
+
 void MeetingWidget::setInputVolume(int newVolume) {
     Q_UNUSED(newVolume);
 }
@@ -989,6 +994,10 @@ void MeetingWidget::setOutputVolume(int newVolume) {
 void MeetingWidget::setMicrophoneMuted(bool muted) {
     if (m_microphoneButton && m_microphoneButton->isToggled() != muted) {
         m_microphoneButton->setToggled(muted);
+    }
+
+    if (!m_localParticipantNickname.isEmpty() && m_participantWidgets.contains(m_localParticipantNickname)) {
+        m_participantWidgets[m_localParticipantNickname]->setMuted(muted);
     }
 }
 
@@ -1078,6 +1087,7 @@ void MeetingWidget::clearParticipants() {
         widget->deleteLater();
     }
     m_participantWidgets.clear();
+    m_localParticipantNickname.clear();
     
     for (QWidget* panel : m_participantPanels) {
         panel->deleteLater();
@@ -1979,10 +1989,20 @@ void MeetingWidget::hideMainScreen() {
 }
 
 void MeetingWidget::updateOverlayButtonsPosition() {
-    int buttonSize = scale(38);
-    int margin = scale(10);
+    int margin = scale(14);
+
+    int buttonSize = m_settingsButton ? m_settingsButton->height() : scale(32);
     int x = width() - buttonSize - margin;
     int y = margin;
+
+    // If call name badge is visible, align settings button vertically with its center
+    if (m_callNamePanel && m_callNamePanel->isVisible()) {
+        int panelY = m_callNamePanel->y();
+        int panelH = m_callNamePanel->height();
+        if (panelH > 0) {
+            y = panelY + (panelH - buttonSize) / 2;
+        }
+    }
 
     if (m_exitFullscreenButton) {
         m_exitFullscreenButton->move(x, y);

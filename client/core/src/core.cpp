@@ -237,6 +237,7 @@ namespace core
 
     void Core::muteMicrophone(bool isMute) {
         if (m_audioEngine) m_audioEngine->muteMicrophone(isMute);
+        if (m_mediaService) m_mediaService->onMicrophoneMuteChanged(isMute);
     }
 
     void Core::muteSpeaker(bool isMute) {

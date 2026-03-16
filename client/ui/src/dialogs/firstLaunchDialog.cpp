@@ -19,10 +19,18 @@ QString StyleFirstLaunchDialog::mainWidgetStyle(int radius, int border)
         "   border-radius: %2px;"
         "   border: %3px solid %4;"
         "}")
-        .arg(COLOR_BACKGROUND_TERTIARY.name())
+        .arg(COLOR_BACKGROUND_PURE.name())
         .arg(radius)
         .arg(border)
-        .arg(COLOR_BORDER_NEUTRAL.name());
+        .arg(COLOR_BORDER_SUBTLE.name(QColor::HexArgb));
+}
+
+QString StyleFirstLaunchDialog::titleStyle()
+{
+    return QString(
+        "color: %1;"
+        "background-color: transparent;"
+    ).arg(COLOR_TEXT_SECONDARY.name());
 }
 
 QString StyleFirstLaunchDialog::descriptionStyle(int fontSize, int padding)
@@ -49,7 +57,7 @@ QString StyleFirstLaunchDialog::okButtonStyle(int radius, int fontSize)
         "   padding: %4px %5px;"
         "   font-family: 'Outfit';"
         "   font-size: %6px;"
-        "   font-weight: 500;"
+        "   font-weight: 600;"
         "   border: none;"
         "}"
         "QPushButton:hover {"
@@ -76,29 +84,29 @@ QString StyleFirstLaunchDialog::okButtonStyle(int radius, int fontSize)
 FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, const QString& descriptionText)
     : QWidget(parent)
 {
-    QFont font("Outfit", scale(14), QFont::Normal);
+    QFont baseFont("Outfit", scale(16), QFont::Light);
+    QFont titleFont("Outfit", scale(16), QFont::Normal);
 
     setAttribute(Qt::WA_TranslucentBackground);
-    setMinimumWidth(scale(500));
-    setMinimumHeight(scale(400));
-
+    setFixedWidth(scale(370));
+    
     QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
-    shadowEffect->setBlurRadius(scale(30));
+    shadowEffect->setBlurRadius(scale(36));
     shadowEffect->setXOffset(0);
-    shadowEffect->setYOffset(0);
-    shadowEffect->setColor(COLOR_SHADOW_STRONG_150);
+    shadowEffect->setYOffset(scale(6));
+    shadowEffect->setColor(COLOR_SHADOW_MEDIUM_60);
 
     QWidget* mainWidget = new QWidget(this);
     mainWidget->setGraphicsEffect(shadowEffect);
     mainWidget->setObjectName("mainWidget");
-    mainWidget->setStyleSheet(StyleFirstLaunchDialog::mainWidgetStyle(scale(16), scale(1)));
+    mainWidget->setStyleSheet(StyleFirstLaunchDialog::mainWidgetStyle(scale(20), scale(1)));
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(mainWidget);
 
     QVBoxLayout* contentLayout = new QVBoxLayout(mainWidget);
-    contentLayout->setContentsMargins(scale(32), scale(32), scale(32), scale(32));
-    contentLayout->setSpacing(scale(24));
+    contentLayout->setContentsMargins(scale(32), scale(34), scale(32), scale(30));
+    contentLayout->setSpacing(scale(18));
 
     auto createRoundedPixmap = [](const QPixmap& source, int maxSize, int radius) -> QPixmap {
         QPixmap scaled = source.scaled(maxSize, maxSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -129,7 +137,7 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
 
     QString actualImagePath = imagePath.isEmpty() ? ":/resources/welcome.jpg" : imagePath;
     QPixmap welcomePixmap(actualImagePath);
-    int imageSize = scale(330);
+    int imageSize = scale(270);
     int cornerRadius = scale(16);
 
     if (welcomePixmap.isNull()) {
@@ -152,7 +160,7 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
         }
 
         if (actualDescription.isEmpty()) {
-            actualDescription = QString("Welcome to Callifornia!\n\n"
+            actualDescription = QString("Welcome to new Callifornia!\n\n"
                 "What's new:\n"
                 "• Improved call quality\n"
                 "• Better screen sharing performance\n"
@@ -161,22 +169,34 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
         }
     }
 
+    QLabel* titleLabel = new QLabel("Welcome to new Callifornia");
+    titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    titleLabel->setStyleSheet(StyleFirstLaunchDialog::titleStyle());
+    titleLabel->setFont(titleFont);
+
+    QString formattedDescription = actualDescription.toHtmlEscaped();
+    formattedDescription.replace("\n\n", "</p><p>");
+    formattedDescription.replace("\n", "<br/>");
+    formattedDescription = QString("<p style=\"margin:0; line-height:180%%;\">%1</p>").arg(formattedDescription);
+
     QLabel* descriptionLabel = new QLabel(actualDescription);
     descriptionLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     descriptionLabel->setWordWrap(true);
-    descriptionLabel->setStyleSheet(StyleFirstLaunchDialog::descriptionStyle(scale(15), scale(8)));
-    descriptionLabel->setFont(font);
+    descriptionLabel->setTextFormat(Qt::RichText);
+    descriptionLabel->setText(formattedDescription);
+    descriptionLabel->setStyleSheet(StyleFirstLaunchDialog::descriptionStyle(scale(15), scale(0)));
+    descriptionLabel->setFont(baseFont);
 
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setAlignment(Qt::AlignCenter);
     buttonLayout->addStretch();
 
     QPushButton* okButton = new QPushButton("OK");
-    okButton->setFixedWidth(scale(120));
-    okButton->setMinimumHeight(scale(42));
+    okButton->setFixedWidth(scale(270));
+    okButton->setMinimumHeight(scale(46));
     okButton->setCursor(Qt::PointingHandCursor);
-    okButton->setStyleSheet(StyleFirstLaunchDialog::okButtonStyle(scale(15), scale(14)));
-    okButton->setFont(font);
+    okButton->setStyleSheet(StyleFirstLaunchDialog::okButtonStyle(scale(14), scale(15)));
+    okButton->setFont(baseFont);
 
     buttonLayout->addWidget(okButton);
     buttonLayout->addStretch();
@@ -185,16 +205,22 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
 
     QWidget* textContainer = new QWidget();
     textContainer->setStyleSheet("background-color: transparent;");
+    textContainer->setMaximumWidth(scale(440));
     QHBoxLayout* textContainerLayout = new QHBoxLayout(textContainer);
     textContainerLayout->setContentsMargins(0, 0, 0, 0);
-    textContainerLayout->setSpacing(0);
+    textContainerLayout->setSpacing(scale(10));
     textContainerLayout->addStretch();
-    textContainerLayout->addWidget(descriptionLabel, 0, Qt::AlignLeft);
+    QVBoxLayout* textLayout = new QVBoxLayout();
+    textLayout->setContentsMargins(0, 0, 0, 0);
+    textLayout->setSpacing(scale(14));
+    textLayout->addWidget(titleLabel, 0, Qt::AlignLeft);
+    textLayout->addWidget(descriptionLabel, 0, Qt::AlignLeft);
+    textContainerLayout->addLayout(textLayout, 0);
     textContainerLayout->addStretch();
     contentLayout->addWidget(textContainer, 0, Qt::AlignCenter);
 
-    contentLayout->addStretch(1);
     contentLayout->addSpacing(scale(20));
+    contentLayout->addStretch(1);
     contentLayout->addLayout(buttonLayout);
 
     connect(okButton, &QPushButton::clicked, this, &FirstLaunchDialog::closeRequested);

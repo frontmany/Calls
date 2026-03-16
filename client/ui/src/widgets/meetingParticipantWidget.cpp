@@ -204,12 +204,10 @@ void MeetingParticipantWidget::setCameraEnabled(bool enabled)
     m_cameraEnabled = enabled;
 }
 
-void MeetingParticipantWidget::setSpeaking(bool speaking)
+void MeetingParticipantWidget::applyShadowForSpeaking(bool speaking)
 {
-    if (m_speaking == speaking) return;
-    m_speaking = speaking;
     if (m_shadowEffect) {
-        if (m_speaking) {
+        if (speaking) {
             m_shadowEffect->setColor(QColor(21, 119, 232));
             m_shadowEffect->setBlurRadius(scale(16));
             m_shadowEffect->setOffset(0, 0);
@@ -220,6 +218,29 @@ void MeetingParticipantWidget::setSpeaking(bool speaking)
         }
     }
     update();
+}
+
+void MeetingParticipantWidget::setMuted(bool muted)
+{
+    if (m_muted == muted)
+        return;
+
+    m_muted = muted;
+
+    if (muted && m_speaking) {
+        m_speaking = false;
+        applyShadowForSpeaking(false);
+    }
+}
+
+void MeetingParticipantWidget::setSpeaking(bool speaking)
+{
+    if (m_muted && speaking)
+        speaking = false;
+
+    if (m_speaking == speaking) return;
+    m_speaking = speaking;
+    applyShadowForSpeaking(m_speaking);
 }
 
 void MeetingParticipantWidget::setConnectionDown(bool down)

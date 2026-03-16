@@ -401,9 +401,9 @@ void CallWidget::setupUI() {
     m_exitFullscreenButton->setToolTip("Exit fullscreen");
     m_exitFullscreenButton->setCursor(Qt::PointingHandCursor);
     m_exitFullscreenButton->hide();
-    m_settingsButton = new ButtonIcon(this, scale(28), scale(28));
+    m_settingsButton = new ButtonIcon(this, scale(24), scale(24));
     m_settingsButton->setIcons(QIcon(":/resources/settings.png"), QIcon(":/resources/settingsHover.png"));
-    m_settingsButton->setSize(scale(38), scale(38));
+    m_settingsButton->setSize(scale(32), scale(32));
     m_settingsButton->setToolTip("Audio settings");
     m_settingsButton->setCursor(Qt::PointingHandCursor);
     m_settingsButton->hide();

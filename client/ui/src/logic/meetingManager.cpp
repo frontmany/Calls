@@ -346,6 +346,7 @@ void MeetingManager::onJoinMeetingAccepted(const QString& meetingId, const QStri
             m_meetingWidget->addParticipant(nickname);
         }
         if (!myNickname.empty()) {
+            m_meetingWidget->setLocalParticipantNickname(myNicknameQ);
             m_meetingWidget->addParticipant(myNicknameQ);
         }
         m_meetingWidget->setMicrophoneMuted(m_coreClient->isMicrophoneMuted());

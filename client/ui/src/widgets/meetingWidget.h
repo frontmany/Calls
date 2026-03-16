@@ -91,6 +91,7 @@ public:
     bool isMainScreenVisible() const;
     bool isFullScreen() const;
     void setCallName(const QString& callName);
+    void setLocalParticipantNickname(const QString& nickname);
     void setInputVolume(int newVolume);
     void setOutputVolume(int newVolume);
     void setMicrophoneMuted(bool muted);
@@ -238,6 +239,7 @@ private:
     bool m_hasScreenSharing = false;
 
     QString m_callName;
+    QString m_localParticipantNickname;
     QMap<QString, MeetingParticipantWidget*> m_participantWidgets;
     bool m_isOwner = true;
 

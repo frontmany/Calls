@@ -37,6 +37,7 @@ public:
     MainWindow() = default;
     ~MainWindow() = default;
     void init();
+    bool isFirstLaunch() const;
 
 protected:
     void closeEvent(QCloseEvent* event) override;
