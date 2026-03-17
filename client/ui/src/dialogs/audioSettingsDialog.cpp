@@ -158,7 +158,7 @@ AudioSettingsDialog::AudioSettingsDialog(QWidget* parent)
     m_container->setMinimumWidth(scale(780));
     // header with close
     auto* headerLayout = new QHBoxLayout();
-    headerLayout->setContentsMargins(scale(8), scale(8), scale(0), scale(4));
+    headerLayout->setContentsMargins(scale(8), scale(8), scale(8), scale(4));
     headerLayout->addStretch();
     headerLayout->addWidget(m_closeButton);
 

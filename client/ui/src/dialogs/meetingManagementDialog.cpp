@@ -44,7 +44,7 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
 
     m_initialWidget = new QWidget();
     QVBoxLayout* initialLayout = new QVBoxLayout(m_initialWidget);
-    initialLayout->setContentsMargins(scale(36), scale(24), scale(36), scale(28));
+    initialLayout->setContentsMargins(scale(36), scale(24), scale(24), scale(28));
     initialLayout->setSpacing(0);
 
     QFont titleFont("Outfit", scale(22), QFont::Bold);
