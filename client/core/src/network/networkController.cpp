@@ -78,6 +78,15 @@ namespace core::network
         m_networkConfig.resetUdpParameters();
     }
 
+    void NetworkController::flushAndDisconnectTCP(int timeoutMs)
+    {
+        if (m_tcpClient) {
+            m_tcpClient->flushAndDisconnect(timeoutMs);
+        }
+        m_connected = false;
+        LOG_INFO("NetworkController TCP flushed and disconnected");
+    }
+
     bool NetworkController::tryReconnectTCP(int attempts) {
         const auto& host = m_networkConfig.getTcpHost();
         const auto& port = m_networkConfig.getTcpPort();

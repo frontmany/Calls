@@ -48,6 +48,7 @@ constexpr const char* DEFAULT_UPDATER_SERVER_TCP_PORT = "8082";
 constexpr const char* DEFAULT_SERVER_HOST = "92.255.165.77";  // Default server host
 constexpr const char* DEFAULT_UPDATER_HOST = "92.255.165.77"; // Default updater host
 constexpr const char* DEFAULT_DELETION_LIST_FILE_NAME = "remove.json"; // Update deletion list filename
+constexpr const char* DOWNLOADED_UPDATE_CONFIG_FILE_NAME = "config.json"; // Downloaded update metadata file
 
 // Update ignored directories
 constexpr const char* IGNORED_DIRECTORY_LOGS = "logs";     // Logs directory name

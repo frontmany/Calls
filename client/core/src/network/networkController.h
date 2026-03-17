@@ -28,6 +28,7 @@ namespace core::network
             const std::string& udpHost, const std::string& udpPort);
 
         void disconnect();
+        void flushAndDisconnectTCP(int timeoutMs);
 
         bool sendTCP(const std::vector<unsigned char>& data, core::constant::PacketType type);
         bool sendUDP(const std::vector<unsigned char>& data, core::constant::PacketType type,

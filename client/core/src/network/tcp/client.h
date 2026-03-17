@@ -26,6 +26,7 @@ public:
     void connect(const std::string& host, const std::string& port);
     bool connectSync(const std::string& host, const std::string& port, int timeoutMs);
     void disconnect();
+    void flushAndDisconnect(int timeoutMs);
     bool isConnected() const;
     bool send(uint32_t type, const std::vector<unsigned char>& body);
     bool send(uint32_t type, const void* data, size_t size);

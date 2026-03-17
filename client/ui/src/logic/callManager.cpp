@@ -109,6 +109,10 @@ void CallManager::onStopOutgoingCallButtonClicked()
 
 void CallManager::switchToActiveCall(const QString& friendNickname)
 {
+    if (m_updateManager) {
+        m_updateManager->onCommunicationSessionStarted();
+    }
+
     hideOperationDialog();
     if (m_dialogsController) {
         m_dialogsController->hideMeetingsManagementDialog();
@@ -431,6 +435,10 @@ void CallManager::onMaximumOutgoingCallTimeReached()
 void CallManager::onOutgoingCallAccepted(const QString& nickname)
 {
     if (!m_mainMenuWidget || !m_coreClient) return;
+
+    if (m_updateManager) {
+        m_updateManager->onCommunicationSessionStarted();
+    }
 
     m_incomingCalls.clear();
     updateIncomingCallsUi();

@@ -16,6 +16,18 @@ class UpdateManager : public QObject {
     Q_OBJECT
 
 public:
+    enum class UpdateMode {
+        None,
+        Background,
+        Foreground
+    };
+
+    enum class DownloadState {
+        None,
+        Downloading,
+        Downloaded
+    };
+
     explicit UpdateManager(std::shared_ptr<core::Core> client, std::shared_ptr<updater::Client> updater, ConfigManager* configManager, QObject* parent = nullptr);
     void setWidgets(AuthorizationWidget* authWidget, MainMenuWidget* mainMenuWidget, DialogsController* dialogsController);
     bool shouldRestart();
@@ -35,13 +47,24 @@ public slots:
     void onManifestProgress(qulonglong filesProcessed, qulonglong totalFiles, const QString& currentFilePath);
     void onUpdateButtonClicked();
     void onUpdateAborted();
+    void onCommunicationSessionStarted();
 
 private:
     updater::OperationSystemType resolveOperationSystemType();
+    bool isUpdateAlreadyDownloadedForVersion(const QString& expectedVersion) const;
+    bool isCommunicationSessionActive() const;
+    bool shouldShowProgressDialog() const;
+    void clearTemporaryUpdateDirectory();
+    void applyUpdate();
+    void resetUpdateState();
 
 private:
     bool m_shouldRestart = false;
     bool m_updateNeeded = false;
+    bool m_userCommitted = false;
+    double m_lastProgress = 0.0;
+    UpdateMode m_updateMode = UpdateMode::None;
+    DownloadState m_downloadState = DownloadState::None;
     QString m_pendingUpdateVersion;
 
     std::shared_ptr<core::Core> m_coreClient = nullptr;

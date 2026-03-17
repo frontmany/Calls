@@ -3,6 +3,7 @@
 #include "utilities/crashCatchInitializer.h"
 #include "utilities/crypto.h"
 #include "constants/errorCode.h"
+#include "constants/constant.h"
 #include "logic/packetFactory.h"
 #include "constants/packetType.h"
 
@@ -373,7 +374,17 @@ namespace core
     }
 
     std::error_code Core::logout() {
-        return m_authorizationService->logout();
+        if (!m_authorizationService) {
+            return {};
+        }
+
+        std::error_code ec = m_authorizationService->logout();
+        if (!ec && m_networkController) {
+            // LOGOUT is enqueued asynchronously; give the sender a small window to drain the queue
+            // before the TCP client is destroyed during shutdown.
+            m_networkController->flushAndDisconnectTCP(core::constant::LOGOUT_FLUSH_TIMEOUT_MS);
+        }
+        return ec;
     }
 
     std::error_code Core::startOutgoingCall(const std::string& userNickname) {

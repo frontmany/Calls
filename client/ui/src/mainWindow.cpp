@@ -505,6 +505,26 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_dialogsController, &DialogsController::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
     }
 
+    // Keep UI widgets in sync when audio settings change from the dialog (e.g. opened from main menu settings panel).
+    if (m_dialogsController) {
+        connect(m_dialogsController, &DialogsController::inputVolumeChanged, this, [this](int volume) {
+            if (m_mainMenuWidget) m_mainMenuWidget->setInputVolume(volume);
+            if (m_meetingWidget) m_meetingWidget->setInputVolume(volume);
+        });
+        connect(m_dialogsController, &DialogsController::outputVolumeChanged, this, [this](int volume) {
+            if (m_mainMenuWidget) m_mainMenuWidget->setOutputVolume(volume);
+            if (m_meetingWidget) m_meetingWidget->setOutputVolume(volume);
+        });
+        connect(m_dialogsController, &DialogsController::muteMicrophoneClicked, this, [this](bool muted) {
+            if (m_mainMenuWidget) m_mainMenuWidget->setMicrophoneMuted(muted);
+            if (m_meetingWidget) m_meetingWidget->setMicrophoneMuted(muted);
+        });
+        connect(m_dialogsController, &DialogsController::muteSpeakerClicked, this, [this](bool muted) {
+            if (m_mainMenuWidget) m_mainMenuWidget->setSpeakerMuted(muted);
+            if (m_meetingWidget) m_meetingWidget->setSpeakerMuted(muted);
+        });
+    }
+
     // Refresh audio settings dialog when system audio devices change (e.g. plug/unplug)
     if (m_audioDevicesWatcher && m_dialogsController && m_coreClient) {
         connect(m_audioDevicesWatcher, &AudioDevicesWatcher::devicesChanged, [this]() {

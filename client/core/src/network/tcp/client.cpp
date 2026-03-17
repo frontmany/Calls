@@ -9,6 +9,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <thread>
 
 #ifdef _WIN32
 #include <mstcpip.h>
@@ -308,6 +309,25 @@ void Client::disconnect() {
     m_outQueue.clear();
     m_inQueue.clear();
     m_shuttingDown = false;
+}
+
+void Client::flushAndDisconnect(int timeoutMs)
+{
+    // Stop packet processing thread early, but keep the socket alive to let PacketsSender drain m_outQueue.
+    m_shuttingDown = true;
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto timeout = std::chrono::milliseconds(timeoutMs);
+
+    while (m_socket.is_open() && !m_outQueue.empty()) {
+        if (std::chrono::steady_clock::now() - start >= timeout) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    // Now close everything normally.
+    disconnect();
 }
 
 bool Client::isConnected() const {
