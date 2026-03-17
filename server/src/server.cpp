@@ -630,9 +630,22 @@ namespace server
             }
 
             sender->setMeeting(meeting);
-            meeting->addParticipant(sender, "");
+            std::string encryptedNickname;
+            if (json.contains(ENCRYPTED_NICKNAME) && json[ENCRYPTED_NICKNAME].is_string()) {
+                encryptedNickname = json[ENCRYPTED_NICKNAME].get<std::string>();
+            }
+            meeting->addParticipant(sender, encryptedNickname);
 
-            auto packet = PacketFactory::getMeetingCreateResultPacket(true, meetingId);
+            std::optional<std::string> encryptedMeetingKey;
+            if (json.contains(ENCRYPTED_MEETING_KEY) && json[ENCRYPTED_MEETING_KEY].is_string()) {
+                encryptedMeetingKey = json[ENCRYPTED_MEETING_KEY].get<std::string>();
+            }
+            std::optional<std::string> packetKey;
+            if (json.contains(PACKET_KEY) && json[PACKET_KEY].is_string()) {
+                packetKey = json[PACKET_KEY].get<std::string>();
+            }
+
+            auto packet = PacketFactory::getMeetingCreateResultPacket(true, meetingId, encryptedMeetingKey, packetKey);
             sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_CREATE_RESULT), packet);
         }
         catch (const std::exception& e) {

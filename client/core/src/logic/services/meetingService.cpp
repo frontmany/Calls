@@ -2,6 +2,7 @@
 #include "constants/errorCode.h"
 #include "constants/packetType.h"
 #include "logic/packetFactory.h"
+#include "utilities/crypto.h"
 
 using namespace core::constant;
 
@@ -9,9 +10,11 @@ namespace core::logic
 {
     MeetingService::MeetingService(
         std::shared_ptr<ClientStateManager> stateManager,
+        std::shared_ptr<KeyManager> keyManager,
         std::shared_ptr<EventListener> eventListener,
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket)
         : m_stateManager(std::move(stateManager))
+        , m_keyManager(std::move(keyManager))
         , m_eventListener(std::move(eventListener))
         , m_sendPacket(std::move(sendPacket))
     {
@@ -23,8 +26,15 @@ namespace core::logic
         if (m_stateManager->isActiveCall()) return make_error_code(ErrorCode::active_call_exists);
         if (m_stateManager->isOutgoingCall()) return make_error_code(ErrorCode::operation_in_progress);
         if (m_stateManager->isActiveMeeting()) return make_error_code(ErrorCode::in_meeting);
+        if (!m_keyManager) return make_error_code(ErrorCode::network_error);
 
-        auto packet = PacketFactory::getMeetingCreatePacket(m_stateManager->getMyNickname());
+        CryptoPP::SecByteBlock meetingKey;
+        core::utilities::crypto::generateAESKey(meetingKey);
+
+        auto packet = PacketFactory::getMeetingCreatePacket(
+            m_stateManager->getMyNickname(),
+            m_keyManager->getMyPublicKey(),
+            meetingKey);
         auto ec = m_sendPacket(packet, PacketType::MEETING_CREATE);
         if (ec) return ec;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "logic/clientStateManager.h"
+#include "logic/keyManager.h"
 #include "constants/packetType.h"
 #include "eventListener.h"
 
@@ -16,6 +17,7 @@ namespace core::logic
     public:
         MeetingService(
             std::shared_ptr<ClientStateManager> stateManager,
+            std::shared_ptr<KeyManager> keyManager,
             std::shared_ptr<EventListener> eventListener,
             std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)>&& sendPacket
         );
@@ -32,6 +34,7 @@ namespace core::logic
         static constexpr std::chrono::seconds kJoinMeetingRequestTimeout{60};
 
         std::shared_ptr<ClientStateManager> m_stateManager;
+        std::shared_ptr<KeyManager> m_keyManager;
         std::shared_ptr<EventListener> m_eventListener;
         std::function<std::error_code(const std::vector<unsigned char>&, core::constant::PacketType)> m_sendPacket;
     };

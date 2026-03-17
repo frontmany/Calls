@@ -47,7 +47,10 @@ namespace core::logic
         static std::vector<unsigned char> getCameraSharingEndPacket(const std::string& myNickname);
 
         // Meeting
-        static std::vector<unsigned char> getMeetingCreatePacket(const std::string& myNickname);
+        static std::vector<unsigned char> getMeetingCreatePacket(
+            const std::string& myNickname,
+            const CryptoPP::RSA::PublicKey& myPublicKey,
+            const CryptoPP::SecByteBlock& meetingKey);
         static std::vector<unsigned char> getGetMeetingInfoRequestPacket(const std::string& myNickname, const std::string& meetingId);
         static std::vector<unsigned char> getMeetingJoinRequestPacket(
             const std::string& myNickname,

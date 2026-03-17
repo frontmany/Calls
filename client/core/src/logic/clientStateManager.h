@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <functional>
 #include <optional>
+#include <vector>
 
 #include "models/call.h"
 #include "models/incomingCall.h"
@@ -101,6 +102,7 @@ namespace core::logic
         void setActiveMeeting(const std::string& meetingId, const CryptoPP::SecByteBlock& meetingKey);
         void addMeetingParticipant(const core::User& user, bool isOwner);
         void removeMeetingParticipant(const std::string& nickname);
+        std::vector<std::string> getMeetingParticipantNicknames() const;
         void resetActiveMeeting();
 
         // ——— Outgoing join meeting request ———

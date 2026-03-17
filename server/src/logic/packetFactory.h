@@ -30,7 +30,11 @@ namespace server
         static std::pair<std::string, std::vector<unsigned char>> getConnectionRestoredWithUserPacket(const std::string& userNicknameHash);
         static std::pair<std::string, std::vector<unsigned char>> getUserLogoutPacket(const std::string& userNicknameHash);
         static std::vector<unsigned char> getCallEndPacket(const std::string& senderNicknameHash);
-        static std::vector<unsigned char> getMeetingCreateResultPacket(bool success, const std::string& meetingId = "");
+        static std::vector<unsigned char> getMeetingCreateResultPacket(
+            bool success,
+            const std::string& meetingId = "",
+            std::optional<std::string> encryptedMeetingKey = std::nullopt,
+            std::optional<std::string> packetKey = std::nullopt);
         static std::vector<unsigned char> getMeetingInfoResultPacket(bool found, const std::string& ownerPublicKey = "");
         static std::vector<unsigned char> getMeetingEndedPacket();
         static std::vector<unsigned char> getMeetingParticipantJoinedPacket(const std::string& encryptedNickname, const std::string& serializedPublicKey);

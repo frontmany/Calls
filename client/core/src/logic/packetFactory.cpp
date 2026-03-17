@@ -155,8 +155,25 @@ namespace core::logic
         return createBasePacketBytes(myNickname);
     }
 
-    std::vector<unsigned char> PacketFactory::getMeetingCreatePacket(const std::string& myNickname) {
-        return createBasePacketBytes(myNickname);
+    std::vector<unsigned char> PacketFactory::getMeetingCreatePacket(
+        const std::string& myNickname,
+        const CryptoPP::RSA::PublicKey& myPublicKey,
+        const CryptoPP::SecByteBlock& meetingKey)
+    {
+        CryptoPP::SecByteBlock packetKey;
+        generateAESKey(packetKey);
+
+        std::string uid = generateUID();
+        nlohmann::json jsonObject = createBasePacket(uid, myNickname);
+
+        // Store owner's nickname encrypted with meetingKey for roster snapshots.
+        jsonObject[ENCRYPTED_NICKNAME] = AESEncrypt(meetingKey, myNickname);
+
+        // Send meeting key encrypted using AES packet key, and packet key encrypted using RSA(public).
+        jsonObject[ENCRYPTED_MEETING_KEY] = AESEncrypt(packetKey, serializeAESKey(meetingKey));
+        jsonObject[PACKET_KEY] = RSAEncryptAESKey(myPublicKey, packetKey);
+
+        return toBytes(jsonObject.dump());
     }
 
     std::vector<unsigned char> PacketFactory::getGetMeetingInfoRequestPacket(const std::string& myNickname, const std::string& meetingId) {

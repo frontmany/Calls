@@ -167,15 +167,26 @@ namespace core::logic
 
                             // Remove participants that are not present in snapshot.
                             // Note: copy nicknames first, because removing mutates the underlying vector.
-                            std::vector<std::string> existingNicknames;
-                            existingNicknames.reserve(meeting.getParticipants().size());
+                            struct ExistingParticipant {
+                                std::string nickname;
+                                bool isOwner = false;
+                            };
+                            std::vector<ExistingParticipant> existingParticipants;
+                            existingParticipants.reserve(meeting.getParticipants().size());
                             for (const auto& p : meeting.getParticipants()) {
-                                existingNicknames.push_back(p.getUser().getNickname());
+                                ExistingParticipant ep;
+                                ep.nickname = p.getUser().getNickname();
+                                ep.isOwner = p.isOwner();
+                                existingParticipants.push_back(std::move(ep));
                             }
-                            for (const auto& existing : existingNicknames) {
-                                const bool stillThere = std::find(snapshotNicknames.begin(), snapshotNicknames.end(), existing) != snapshotNicknames.end();
+                            for (const auto& existing : existingParticipants) {
+                                // Preserve the current owner if the snapshot is incomplete.
+                                if (existing.isOwner) {
+                                    continue;
+                                }
+                                const bool stillThere = std::find(snapshotNicknames.begin(), snapshotNicknames.end(), existing.nickname) != snapshotNicknames.end();
                                 if (!stillThere) {
-                                    m_stateManager->removeMeetingParticipant(existing);
+                                    m_stateManager->removeMeetingParticipant(existing.nickname);
                                 }
                             }
 

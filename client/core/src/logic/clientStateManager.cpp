@@ -287,6 +287,21 @@ namespace core::logic
         m_activeMeeting->removeParticipant(nickname);
     }
 
+    std::vector<std::string> ClientStateManager::getMeetingParticipantNicknames() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        std::vector<std::string> out;
+        if (!m_activeMeeting.has_value()) {
+            return out;
+        }
+        const auto& participants = m_activeMeeting->getParticipants();
+        out.reserve(participants.size());
+        for (const auto& p : participants) {
+            out.push_back(p.getUser().getNickname());
+        }
+        return out;
+    }
+
     void ClientStateManager::resetActiveMeeting()
     {
         std::lock_guard<std::mutex> lock(m_mutex);

@@ -154,13 +154,23 @@ std::vector<unsigned char> PacketFactory::getCallEndPacket(const std::string& se
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getMeetingCreateResultPacket(bool success, const std::string& meetingId)
+std::vector<unsigned char> PacketFactory::getMeetingCreateResultPacket(
+    bool success,
+    const std::string& meetingId,
+    std::optional<std::string> encryptedMeetingKey,
+    std::optional<std::string> packetKey)
 {
     nlohmann::json jsonObject;
     jsonObject[UID] = crypto::generateUID();
     jsonObject[RESULT] = success;
     if (success) {
         jsonObject[MEETING_ID] = meetingId;
+        if (encryptedMeetingKey.has_value()) {
+            jsonObject[ENCRYPTED_MEETING_KEY] = encryptedMeetingKey.value();
+        }
+        if (packetKey.has_value()) {
+            jsonObject[PACKET_KEY] = packetKey.value();
+        }
     }
     return toBytes(jsonObject.dump());
 }

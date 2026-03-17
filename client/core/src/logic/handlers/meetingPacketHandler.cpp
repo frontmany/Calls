@@ -63,8 +63,17 @@ namespace core::logic
             std::string meetingId;
             if (jsonObject.contains(MEETING_ID)) meetingId = jsonObject[MEETING_ID].get<std::string>();
             if (meetingId.empty()) return;
-            CryptoPP::SecByteBlock meetingKey;
-            generateAESKey(meetingKey);
+
+            if (!jsonObject.contains(PACKET_KEY) || !jsonObject[PACKET_KEY].is_string()) return;
+            if (!jsonObject.contains(ENCRYPTED_MEETING_KEY) || !jsonObject[ENCRYPTED_MEETING_KEY].is_string()) return;
+
+            CryptoPP::SecByteBlock packetKey = RSADecryptAESKey(
+                m_keyManager->getMyPrivateKey(),
+                jsonObject[PACKET_KEY].get<std::string>());
+            std::string meetingKeyStr = AESDecrypt(packetKey, jsonObject[ENCRYPTED_MEETING_KEY].get<std::string>());
+            if (meetingKeyStr.empty()) return;
+            CryptoPP::SecByteBlock meetingKey = deserializeAESKey(meetingKeyStr);
+
             std::string meetingIdForEvent = meetingId;
             m_stateManager->setActiveMeeting(meetingId, meetingKey);
             core::User localUser(m_stateManager->getMyNickname(), m_keyManager->getMyPublicKey());

@@ -173,7 +173,7 @@ namespace core
         m_callService = std::make_unique<logic::CallService>(m_stateManager, keyManager,
             [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); });
 
-        m_meetingService = std::make_unique<logic::MeetingService>(m_stateManager, eventListener,
+        m_meetingService = std::make_unique<logic::MeetingService>(m_stateManager, keyManager, eventListener,
             [sendTcp](const std::vector<unsigned char>& p, constant::PacketType t) { return sendTcp(p, t); });
 
         m_mediaService = std::make_unique<logic::MediaService>(m_stateManager, m_audioEngine, mediaProcessingService, eventListener,
