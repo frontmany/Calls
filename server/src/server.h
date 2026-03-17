@@ -70,6 +70,7 @@ namespace server
         void removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user);
         void endMeetingCleanup(const MeetingPtr& meeting);
         void processConnectionDown(const UserPtr& user);
+        void sendMeetingConnectionDownStateToUser(const MeetingPtr& meeting, const std::string& receiverNicknameHash);
 
     private:
         mutable std::mutex m_mutex;

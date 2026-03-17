@@ -547,7 +547,6 @@ void MeetingManager::onLocalConnectionDownInMeeting()
                 const QString nick = QString::fromStdString(p);
                 m_meetingWidget->setParticipantScreenSharing(nick, false);
                 m_meetingWidget->setParticipantCameraEnabled(nick, false);
-                m_meetingWidget->setParticipantConnectionDown(nick, true);
                 m_meetingWidget->clearParticipantVideo(nick);
             }
         }
