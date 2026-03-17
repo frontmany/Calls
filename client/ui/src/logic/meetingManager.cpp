@@ -533,9 +533,24 @@ void MeetingManager::onLocalConnectionDownInMeeting()
                 m_meetingWidget->setParticipantScreenSharing(QString::fromStdString(myNick), false);
         }
         m_meetingWidget->hideMainScreen();
+        m_meetingWidget->hideEnterFullscreenButton();
         m_meetingWidget->setScreenShareButtonActive(false);
         m_meetingWidget->setCameraButtonActive(false);
         clearLocalParticipantVideo();
+
+        // Reset remote participant panel state (camera/screen flags) so UI doesn't
+        // keep stale media indicators during connection loss. After reconnect,
+        // server will replay *_SHARING_BEGIN for active sharers.
+        if (m_coreClient) {
+            const std::vector<std::string> participants = m_coreClient->getMeetingParticipants();
+            for (const auto& p : participants) {
+                const QString nick = QString::fromStdString(p);
+                m_meetingWidget->setParticipantScreenSharing(nick, false);
+                m_meetingWidget->setParticipantCameraEnabled(nick, false);
+                m_meetingWidget->setParticipantConnectionDown(nick, true);
+                m_meetingWidget->clearParticipantVideo(nick);
+            }
+        }
     }
     if (m_configManager) {
         m_configManager->setCameraActive(false);

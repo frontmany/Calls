@@ -838,6 +838,22 @@ namespace server
                 auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
                 sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
             }
+
+            // Send current connection-down state to the newly joined participant.
+            // Without this, users who are already "connection down" are rendered as normal until a new event arrives.
+            for (const auto& participant : meeting->getParticipants()) {
+                if (!participant.user) {
+                    continue;
+                }
+                const std::string participantHash = participant.user->getNicknameHash();
+                if (participantHash == requesterNicknameHash) {
+                    continue;
+                }
+                if (participant.user->isConnectionDown()) {
+                    auto [_, downPacket] = PacketFactory::getConnectionDownWithUserPacket(participantHash);
+                    sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::CONNECTION_DOWN_WITH_USER), downPacket);
+                }
+            }
         }
         catch (const std::exception& e) {
             LOG_ERROR("Meeting join accept error: {}", e.what());
