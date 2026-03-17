@@ -371,3 +371,20 @@ void CoreEventListener::onMeetingParticipantSpeaking(const std::string& nickname
             Q_ARG(bool, speaking));
     }
 }
+
+void CoreEventListener::onMeetingRosterResynced(const std::vector<std::string>& participants)
+{
+    if (!m_meetingManager) {
+        return;
+    }
+
+    QStringList list;
+    list.reserve(static_cast<int>(participants.size()));
+    for (const auto& p : participants) {
+        list << QString::fromStdString(p);
+    }
+
+    QMetaObject::invokeMethod(m_meetingManager, "onMeetingRosterResynced",
+        Qt::QueuedConnection,
+        Q_ARG(QStringList, list));
+}

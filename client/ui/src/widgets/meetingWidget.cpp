@@ -1015,6 +1015,11 @@ void MeetingWidget::addParticipant(const QString& nickname) {
     updateParticipantsContainerSize();
 }
 
+QStringList MeetingWidget::getParticipantNicknames() const
+{
+    return m_participantWidgets.keys();
+}
+
 
 void MeetingWidget::removeParticipant(const QString& nickname) {
     if (m_participantWidgets.contains(nickname)) {

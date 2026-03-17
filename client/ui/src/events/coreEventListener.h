@@ -55,6 +55,7 @@ public:
     void onMeetingParticipantConnectionDown(const std::string& nickname) override;
     void onMeetingParticipantConnectionRestored(const std::string& nickname) override;
     void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) override;
+    void onMeetingRosterResynced(const std::vector<std::string>& participants) override;
 
     void onConnectionDown() override;
     void onConnectionEstablished() override;

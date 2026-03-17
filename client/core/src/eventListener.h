@@ -52,6 +52,7 @@ namespace core
         virtual void onMeetingParticipantConnectionDown(const std::string& nickname) = 0;
         virtual void onMeetingParticipantConnectionRestored(const std::string& nickname) = 0;
         virtual void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) = 0;
+        virtual void onMeetingRosterResynced(const std::vector<std::string>& participants) = 0;
 
         virtual void onConnectionDown() = 0;
         virtual void onConnectionEstablished() = 0;

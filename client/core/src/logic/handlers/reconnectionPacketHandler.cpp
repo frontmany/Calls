@@ -5,6 +5,7 @@
 #include "utilities/crypto.h"
 #include "constants/jsonType.h"
 #include "constants/packetType.h"
+#include <algorithm>
 
 using namespace core;
 using namespace core::constant;
@@ -128,6 +129,61 @@ namespace core::logic
                     // фактическое состояние придёт отдельными *_SHARING_BEGIN пакетами.
                     m_stateManager->setViewingRemoteScreen(false);
                     m_stateManager->clearRemoteCameraSenders();
+
+                    // Resync meeting roster snapshot if provided (server is source of truth).
+                    if (jsonObject.contains(MEETING_ROSTER) && jsonObject[MEETING_ROSTER].is_array()) {
+                        auto meetingOpt = m_stateManager->getActiveMeeting();
+                        if (meetingOpt) {
+                            const auto& meeting = meetingOpt->get();
+                            const auto& meetingKey = meeting.getMeetingKey();
+
+                            std::vector<std::string> snapshotNicknames;
+                            snapshotNicknames.reserve(jsonObject[MEETING_ROSTER].size());
+
+                            // Build target set from snapshot, update state to match it.
+                            for (const auto& item : jsonObject[MEETING_ROSTER]) {
+                                if (!item.is_object()) continue;
+                                if (!item.contains(ENCRYPTED_NICKNAME) || !item[ENCRYPTED_NICKNAME].is_string()) continue;
+                                if (!item.contains(PUBLIC_KEY) || !item[PUBLIC_KEY].is_string()) continue;
+                                const bool isOwner = item.contains(IS_OWNER) && item[IS_OWNER].is_boolean() ? item[IS_OWNER].get<bool>() : false;
+
+                                std::string nickname;
+                                try {
+                                    nickname = utilities::crypto::AESDecrypt(meetingKey, item[ENCRYPTED_NICKNAME].get<std::string>());
+                                } catch (...) {
+                                    nickname.clear();
+                                }
+                                if (nickname.empty()) continue;
+
+                                try {
+                                    auto pk = utilities::crypto::deserializePublicKey(item[PUBLIC_KEY].get<std::string>());
+                                    m_stateManager->addMeetingParticipant(core::User(nickname, pk), isOwner);
+                                } catch (...) {
+                                    // If public key deserialization fails, still keep nickname for UI sync.
+                                }
+
+                                snapshotNicknames.push_back(nickname);
+                            }
+
+                            // Remove participants that are not present in snapshot.
+                            // Note: copy nicknames first, because removing mutates the underlying vector.
+                            std::vector<std::string> existingNicknames;
+                            existingNicknames.reserve(meeting.getParticipants().size());
+                            for (const auto& p : meeting.getParticipants()) {
+                                existingNicknames.push_back(p.getUser().getNickname());
+                            }
+                            for (const auto& existing : existingNicknames) {
+                                const bool stillThere = std::find(snapshotNicknames.begin(), snapshotNicknames.end(), existing) != snapshotNicknames.end();
+                                if (!stillThere) {
+                                    m_stateManager->removeMeetingParticipant(existing);
+                                }
+                            }
+
+                            if (m_eventListener) {
+                                m_eventListener->onMeetingRosterResynced(snapshotNicknames);
+                            }
+                        }
+                    }
                 }
             }
         }

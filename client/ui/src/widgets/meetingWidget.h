@@ -98,6 +98,7 @@ public:
     void setSpeakerMuted(bool muted);
     void addParticipant(const QString& nickname);
     void removeParticipant(const QString& nickname);
+    QStringList getParticipantNicknames() const;
     void updateParticipantVideo(const QString& nickname, const QPixmap& frame);
     void clearParticipantVideo(const QString& nickname);
     void setParticipantMuted(const QString& nickname, bool muted);

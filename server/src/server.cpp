@@ -302,8 +302,33 @@ namespace server
                 isInMeetingOpt = user->isInMeeting();
             }
 
+            std::optional<std::string> meetingRosterJson;
+            if (allowed && user->isInMeeting()) {
+                auto meeting = user->getMeeting();
+                if (meeting) {
+                    nlohmann::json roster = nlohmann::json::array();
+                    const auto owner = meeting->getOwner();
+                    const std::string ownerHash = owner ? owner->getNicknameHash() : "";
+
+                    for (const auto& participant : meeting->getParticipants()) {
+                        if (!participant.user) {
+                            continue;
+                        }
+                        nlohmann::json item;
+                        item[ENCRYPTED_NICKNAME] = participant.encryptedNickname;
+                        item[PUBLIC_KEY] = crypto::serializePublicKey(participant.user->getPublicKey());
+                        item[IS_OWNER] = (!ownerHash.empty() && participant.user->getNicknameHash() == ownerHash);
+                        roster.push_back(std::move(item));
+                    }
+                    meetingRosterJson = roster.dump();
+                }
+            }
+
             std::vector<unsigned char> packet = PacketFactory::getReconnectionResultPacket(
-                allowed, uid, senderNicknameHash, token, allowed && user->isInCall(), callPartnerHash, isInMeetingOpt);
+                allowed, uid, senderNicknameHash, token,
+                allowed && user->isInCall(), callPartnerHash,
+                isInMeetingOpt,
+                meetingRosterJson);
             sendTcp(conn, static_cast<uint32_t>(PacketType::RECONNECT_RESULT), packet);
 
             if (allowed) {

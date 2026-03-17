@@ -60,6 +60,7 @@ public slots:
     void onMeetingParticipantConnectionDown(const QString& nickname);
     void onMeetingParticipantConnectionRestored(const QString& nickname);
     void onLocalConnectionDownInMeeting();
+    void onMeetingRosterResynced(const QStringList& participants);
 
     // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
     void onLocalScreenFrame(QByteArray data, int width, int height);

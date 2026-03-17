@@ -18,6 +18,8 @@ namespace server::constant
     static constexpr const char* IS_ACTIVE_CALL = "is_active_call";
     static constexpr const char* CALL_PARTNER_NICKNAME_HASH = "call_partner_nickname_hash";
     static constexpr const char* IS_IN_MEETING = "is_in_meeting";
+    static constexpr const char* MEETING_ROSTER = "meeting_roster";
+    static constexpr const char* IS_OWNER = "is_owner";
     static constexpr const char* CPU_USAGE = "cpu_usage";
     static constexpr const char* MEMORY_USED = "memory_used";
     static constexpr const char* MEMORY_AVAILABLE = "memory_available";

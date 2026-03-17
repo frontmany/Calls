@@ -211,6 +211,11 @@ public:
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingParticipantSpeaking, nickname, speaking);
     }
 
+    void onMeetingRosterResynced(const std::vector<std::string>& participants) override
+    {
+        PYBIND11_OVERRIDE_PURE(void, core::EventListener, onMeetingRosterResynced, participants);
+    }
+
     void onConnectionDown() override
     {
         PYBIND11_OVERRIDE_PURE(void, core::EventListener, onConnectionDown);
@@ -289,6 +294,7 @@ PYBIND11_MODULE(callsClientPy, m) {
         .def("onMeetingParticipantConnectionDown", &core::EventListener::onMeetingParticipantConnectionDown, py::arg("nickname"))
         .def("onMeetingParticipantConnectionRestored", &core::EventListener::onMeetingParticipantConnectionRestored, py::arg("nickname"))
         .def("onMeetingParticipantSpeaking", &core::EventListener::onMeetingParticipantSpeaking, py::arg("nickname"), py::arg("speaking"))
+        .def("onMeetingRosterResynced", &core::EventListener::onMeetingRosterResynced, py::arg("participants"))
         .def("onConnectionDown", &core::EventListener::onConnectionDown)
         .def("onConnectionEstablished", &core::EventListener::onConnectionEstablished)
         .def("onConnectionEstablishedAuthorizationNeeded", &core::EventListener::onConnectionEstablishedAuthorizationNeeded);

@@ -59,7 +59,16 @@ std::vector<unsigned char> PacketFactory::getAuthorizationResultPacket(bool auth
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool reconnectedSuccessfully, const std::string& uid, const std::string& receiverNicknameHash, const std::string& receiverToken, std::optional<bool> activeCall, const std::string& callPartnerNicknameHash, std::optional<bool> isInMeeting) {
+std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(
+    bool reconnectedSuccessfully,
+    const std::string& uid,
+    const std::string& receiverNicknameHash,
+    const std::string& receiverToken,
+    std::optional<bool> activeCall,
+    const std::string& callPartnerNicknameHash,
+    std::optional<bool> isInMeeting,
+    std::optional<std::string> meetingRosterJson)
+{
     nlohmann::json jsonObject;
 
     jsonObject[UID] = uid;
@@ -75,6 +84,14 @@ std::vector<unsigned char> PacketFactory::getReconnectionResultPacket(bool recon
 
     if (reconnectedSuccessfully && isInMeeting.has_value()) {
         jsonObject[IS_IN_MEETING] = isInMeeting.value();
+    }
+
+    if (reconnectedSuccessfully && meetingRosterJson.has_value()) {
+        try {
+            jsonObject[MEETING_ROSTER] = nlohmann::json::parse(meetingRosterJson.value());
+        } catch (...) {
+            // Ignore parse errors; treat as absent roster.
+        }
     }
 
     return toBytes(jsonObject.dump());

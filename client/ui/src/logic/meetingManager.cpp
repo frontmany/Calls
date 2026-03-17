@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include <vector>
+#include <QSet>
 
 MeetingManager::MeetingManager(
     std::shared_ptr<core::Core> client,
@@ -479,6 +480,47 @@ void MeetingManager::onMeetingParticipantConnectionRestored(const QString& nickn
 {
     if (m_meetingWidget) {
         m_meetingWidget->setParticipantConnectionDown(nickname, false);
+    }
+}
+
+void MeetingManager::onMeetingRosterResynced(const QStringList& participants)
+{
+    if (!m_meetingWidget || !m_coreClient) {
+        return;
+    }
+
+    const QString myNicknameQ = QString::fromStdString(m_coreClient->getMyNickname());
+
+    // Target set from snapshot (server is truth). Always keep local participant if present.
+    QSet<QString> target;
+    for (const auto& n : participants) {
+        target.insert(n);
+    }
+    if (!myNicknameQ.isEmpty()) {
+        target.insert(myNicknameQ);
+    }
+
+    // Remove UI participants not in target.
+    const QStringList current = m_meetingWidget->getParticipantNicknames();
+    for (const auto& existing : current) {
+        if (!target.contains(existing)) {
+            m_meetingWidget->clearParticipantVideo(existing);
+            m_meetingWidget->removeParticipant(existing);
+        }
+    }
+
+    // Add missing UI participants.
+    for (const auto& n : target) {
+        m_meetingWidget->addParticipant(n);
+    }
+
+    if (hasRemoteParticipants()) {
+        unrestrictMediaButtons();
+        if (m_coreClient->isViewingRemoteScreen() && m_meetingWidget) {
+            m_meetingWidget->setScreenShareButtonRestricted(true);
+        }
+    } else {
+        restrictMediaButtons();
     }
 }
 
