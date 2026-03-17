@@ -7,7 +7,7 @@ struct StyleFirstLaunchDialog
 {
     static QString mainWidgetStyle(int radius, int border);
     static QString titleStyle();
-    static QString descriptionStyle(int fontSize, int padding);
+    static QString descriptionStyle(int padding);
     static QString okButtonStyle(int radius, int fontSize);
 };
 
