@@ -156,22 +156,35 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     m_meetingIdEdit = new QLineEdit();
     m_meetingIdEdit->setPlaceholderText("Paste meeting ID (e.g., abc-defg-hij)");
     m_meetingIdEdit->setFixedHeight(scale(50));
-    // Base main menu style, but without explicit border in meetings dialog
+    // Base main menu style, but make it more visible on white background.
     m_meetingIdEdit->setStyleSheet(
         StyleMainMenuWidget::lineEditStyle() +
         QString(
             "QLineEdit {"
-            "   background-color: rgba(244, 246, 250, 230);"
-            "   border: none;"
+            "   background-color: rgba(241, 245, 249, 255);"
+            "   color: rgb(25, 35, 45);"
+            "   border: 1px solid rgba(140, 155, 175, 160);"
+            "   border-radius: %1px;"
+            "   padding: 0 %2px;"
+            "   selection-background-color: rgba(80, 130, 230, 90);"
+            "}"
+            "QLineEdit:hover {"
+            "   background-color: rgba(238, 243, 249, 255);"
+            "   border: 1px solid rgba(120, 140, 165, 190);"
             "}"
             "QLineEdit:focus {"
-            "   background-color: rgba(238, 242, 250, 245);"
-            "   border: none;"
+            "   background-color: rgba(255, 255, 255, 255);"
+            "   border: 2px solid rgba(%3, %4, %5, 230);"
             "}"
             "QLineEdit::placeholder {"
-            "   color: rgba(60, 90, 130, 180);"
+            "   color: rgba(75, 95, 120, 200);"
             "}"
         )
+        .arg(scale(10))
+        .arg(scale(14))
+        .arg(COLOR_ACCENT.red())
+        .arg(COLOR_ACCENT.green())
+        .arg(COLOR_ACCENT.blue())
     );
     m_meetingIdEdit->setMaxLength(64);
 

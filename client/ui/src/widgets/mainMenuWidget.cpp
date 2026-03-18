@@ -61,15 +61,18 @@ QString StyleMainMenuWidget::updateButtonGlassStyle() {
         "   background-color: rgba(255, 255, 255, 70);"
         "   color: %4;"
         "   border: 1px solid rgba(255, 255, 255, 200);"
+        "   border-radius: %1px;"
         "}"
         "QPushButton:pressed {"
         "   background-color: rgba(255, 255, 255, 80);"
         "   color: %4;"
         "   border: 1px solid rgba(255, 255, 255, 220);"
+        "   border-radius: %1px;"
         "}"
         "QPushButton:focus {"
         "   outline: none;"
         "   border: 1px solid rgba(255, 255, 255, 200);"
+        "   border-radius: %1px;"
         "}")
         .arg(scale(19))
         .arg(scale(12))
