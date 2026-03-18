@@ -1883,8 +1883,8 @@ void MeetingWidget::setScreenShareButtonRestricted(bool restricted) {
         m_screenShareButton->setDisabled(false);
         m_screenShareButton->setIcons(m_screenShareIconNormal, m_screenShareIconHover,
             m_screenShareIconActive, m_screenShareIconActiveHover);
-        m_screenShareButton->setToggled(false);
-        m_screenShareButton->setToolTip("Start screen share");
+        // Don't force-toggle off here: restriction changes must not desync UI from actual sharing state.
+        m_screenShareButton->setToolTip(m_screenShareButton->isToggled() ? "Stop screen share" : "Start screen share");
     }
 }
 
@@ -2054,8 +2054,8 @@ void MeetingWidget::setCameraButtonRestricted(bool restricted) {
         m_cameraButton->setDisabled(false);
         m_cameraButton->setIcons(m_cameraIconDisabled, m_cameraIconDisabledHover,
             m_cameraIconActive, m_cameraIconActiveHover);
-        m_cameraButton->setToggled(false);
-        m_cameraButton->setToolTip("Enable camera");
+        // Don't force-toggle off here: restriction changes must not desync UI from actual camera sharing state.
+        m_cameraButton->setToolTip(m_cameraButton->isToggled() ? "Disable camera" : "Enable camera");
     }
 }
 

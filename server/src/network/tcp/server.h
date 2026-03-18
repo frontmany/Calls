@@ -3,6 +3,7 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <unordered_set>
 
@@ -42,6 +43,7 @@ namespace server::network::tcp
         asio::io_context m_ctx;
         asio::ip::tcp::acceptor m_acceptor;
         std::thread m_ctxThread;
+        std::optional<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
 
         OnPacket m_onPacket;
         OnDisconnect m_onDisconnect;

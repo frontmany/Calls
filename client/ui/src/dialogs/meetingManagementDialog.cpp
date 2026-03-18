@@ -13,11 +13,14 @@
 #include <QShortcut>
 #include <QRandomGenerator>
 #include <QIcon>
+#include <QApplication>
 
 MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
+    // Ensure this dialog can receive focus (important for keyboard shortcuts).
+    setFocusPolicy(Qt::StrongFocus);
 
     const int shadowMargin = scale(24);
 
@@ -342,6 +345,26 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         }
     });
     escShortcut->setContext(Qt::ApplicationShortcut);
+
+    // Enter / Return should trigger "Join Meeting" when in the initial dialog state.
+    // Use a shortcut so it works even if focus isn't inside the ID field.
+    auto joinWithEnter = [this]() {
+        if (!m_stackedWidget || !m_joinMeetingButton || !m_meetingIdEdit) return;
+        if (m_stackedWidget->currentWidget() != m_initialWidget) return;
+        m_joinMeetingButton->click();
+    };
+    auto* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this, joinWithEnter);
+    enterShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    auto* numpadEnterShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this, joinWithEnter);
+    numpadEnterShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+}
+
+void MeetingManagementDialog::focusMeetingIdInput()
+{
+    if (!m_stackedWidget || !m_meetingIdEdit) return;
+    if (m_stackedWidget->currentWidget() != m_initialWidget) return;
+    m_meetingIdEdit->setFocus(Qt::ShortcutFocusReason);
+    m_meetingIdEdit->selectAll();
 }
 
 QString MeetingManagementDialog::generateMeetingUid() const
@@ -379,6 +402,7 @@ void MeetingManagementDialog::showInitialState()
     m_cancelRequestButton->hide();
     m_stackedWidget->setCurrentWidget(m_initialWidget);
     setFixedHeight(m_initialHeight);
+    focusMeetingIdInput();
 }
 
 void MeetingManagementDialog::setJoinStatus(const QString& status)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 
 #include "network/tcp/packet.h"
 #include "utilities/safeQueue.h"
@@ -18,12 +19,16 @@ namespace server::network::tcp
         void send();
 
     private:
+        void startNextIfNeeded();
         void writeHeader();
-        void writeBody(const Packet* packet);
+        void writeBody();
         void resolveSending();
 
         asio::ip::tcp::socket& m_socket;
         utilities::SafeQueue<Packet>& m_queue;
         std::function<void()> m_onError;
+
+        // Keep the currently-sending packet alive across async callbacks.
+        std::optional<Packet> m_current;
     };
 }

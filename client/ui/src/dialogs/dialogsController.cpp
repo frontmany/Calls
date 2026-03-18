@@ -565,6 +565,11 @@ void DialogsController::showMeetingsManagementDialog()
     centerDialog();
     m_meetingsManagementDialog->show();
     QTimer::singleShot(0, this, centerDialog);
+    QTimer::singleShot(0, this, [this]() {
+        if (m_meetingsManagementDialog) {
+            m_meetingsManagementDialog->focusMeetingIdInput();
+        }
+    });
     QObject::connect(m_meetingsManagementOverlay, &OverlayWidget::geometryChanged, this, centerDialog);
 
     connect(m_meetingsManagementDialog, &MeetingManagementDialog::closeRequested, this, &DialogsController::hideMeetingsManagementDialog);

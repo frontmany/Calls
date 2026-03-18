@@ -27,6 +27,7 @@ namespace server::network::tcp
         if (m_running.exchange(true))
             return;
         LOG_INFO("[TCP] Control server starting on port {}", m_port);
+        m_workGuard.emplace(asio::make_work_guard(m_ctx));
         waitForClients();
         m_ctxThread = std::thread([this]() {
             while (m_running.load()) {
@@ -55,6 +56,7 @@ namespace server::network::tcp
                 c->close();
             m_connections.clear();
         }
+        m_workGuard.reset();
         m_ctx.stop();
         if (m_ctxThread.joinable())
             m_ctxThread.join();
@@ -99,8 +101,17 @@ namespace server::network::tcp
     void Server::processQueue() {
         while (m_running.load()) { 
             auto item = m_queue.pop_for(100ms);
-            if (item && m_onPacket)
+            if (!item || !m_onPacket)
+                continue;
+            try {
                 m_onPacket(std::move(*item));
+            }
+            catch (const std::exception& e) {
+                LOG_ERROR("[TCP] onPacket exception (queue loop continues): {}", e.what());
+            }
+            catch (...) {
+                LOG_ERROR("[TCP] onPacket unknown exception (queue loop continues)");
+            }
         }
     }
 

@@ -15,35 +15,63 @@ namespace server::network::tcp
     }
 
     void PacketSender::send() {
+        startNextIfNeeded();
+    }
+
+    void PacketSender::startNextIfNeeded() {
+        if (m_current.has_value()) {
+            return;
+        }
+
+        auto next = m_queue.try_pop();
+        if (!next.has_value()) {
+            return;
+        }
+
+        m_current = std::move(*next);
         writeHeader();
     }
 
     void PacketSender::writeHeader() {
-        const Packet* p = m_queue.front_ptr() ? &m_queue.unsafe_front() : nullptr;
-        if (!p) return;
+        if (!m_current.has_value()) {
+            startNextIfNeeded();
+            return;
+        }
 
         PacketHeader hdr;
-        hdr.type = p->type;
-        hdr.bodySize = static_cast<uint32_t>(p->body.size());
+        hdr.type = m_current->type;
+        hdr.bodySize = static_cast<uint32_t>(m_current->body.size());
         asio::async_write(m_socket, asio::buffer(&hdr, sizeof(hdr)),
-            [this, p](std::error_code ec, std::size_t) {
+            [this](std::error_code ec, std::size_t) {
                 if (ec) {
                     if (ec != asio::error::operation_aborted)
                         LOG_ERROR("[TCP] Write header error: {}", server::utilities::errorCodeForLog(ec));
                     m_onError();
                     return;
                 }
-                if (p->body.empty()) {
-                    m_queue.try_pop();
+
+                if (!m_current.has_value()) {
                     resolveSending();
-                } else {
-                    writeBody(p);
+                    return;
                 }
+
+                if (m_current->body.empty()) {
+                    m_current.reset();
+                    resolveSending();
+                    return;
+                }
+
+                writeBody();
             });
     }
 
-    void PacketSender::writeBody(const Packet* packet) {
-        asio::async_write(m_socket, asio::buffer(packet->body.data(), packet->body.size()),
+    void PacketSender::writeBody() {
+        if (!m_current.has_value()) {
+            resolveSending();
+            return;
+        }
+
+        asio::async_write(m_socket, asio::buffer(m_current->body.data(), m_current->body.size()),
             [this](std::error_code ec, std::size_t) {
                 if (ec) {
                     if (ec != asio::error::operation_aborted)
@@ -51,13 +79,12 @@ namespace server::network::tcp
                     m_onError();
                     return;
                 }
-                m_queue.try_pop();
+                m_current.reset();
                 resolveSending();
             });
     }
 
     void PacketSender::resolveSending() {
-        if (!m_queue.empty())
-            writeHeader();
+        startNextIfNeeded();
     }
 }

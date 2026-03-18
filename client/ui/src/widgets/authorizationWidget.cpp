@@ -292,6 +292,9 @@ void AuthorizationWidget::setupUI() {
 
     QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
     QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
+    // Limit Enter hotkey to Authorization subtree so other overlays/dialogs can use Enter too.
+    enterShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    returnShortcut->setContext(Qt::WidgetWithChildrenShortcut);
 
     connect(enterShortcut, &QShortcut::activated, this, &AuthorizationWidget::onAuthorizationClicked);
     connect(returnShortcut, &QShortcut::activated, this, &AuthorizationWidget::onAuthorizationClicked);

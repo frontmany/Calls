@@ -18,6 +18,7 @@ public:
     void showConnectingState(const QString& roomId);
     void showInitialState();
     void setJoinStatus(const QString& status);
+    void focusMeetingIdInput();
 
 signals:
     void closeRequested();

@@ -678,6 +678,9 @@ void MainMenuWidget::setupUI() {
 
     QShortcut* enterShortcut = new QShortcut(QKeySequence(Qt::Key_Return), this);
     QShortcut* returnShortcut = new QShortcut(QKeySequence(Qt::Key_Enter), this);
+    // Limit Enter hotkey to MainMenu subtree so overlays/dialogs can use Enter too.
+    enterShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    returnShortcut->setContext(Qt::WidgetWithChildrenShortcut);
 
     connect(enterShortcut, &QShortcut::activated, this, &MainMenuWidget::onCallButtonClicked);
     connect(returnShortcut, &QShortcut::activated, this, &MainMenuWidget::onCallButtonClicked);

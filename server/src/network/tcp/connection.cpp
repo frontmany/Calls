@@ -83,7 +83,9 @@ namespace server::network::tcp
     }
 
     void Connection::send(const Packet& packet) {
-        m_outQueue.push_with_limit(packet, m_maxOutQueueSize);
+        // TCP control packets must not evict the front item while it's being sent.
+        // Unbounded queue is handled via monitoring/metrics elsewhere.
+        m_outQueue.push(packet);
         if (m_outQueue.size() == 1)
             m_sender.send();
     }

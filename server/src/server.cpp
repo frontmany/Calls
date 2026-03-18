@@ -944,44 +944,77 @@ namespace server
     }
 
     void Server::redirectPacket(const nlohmann::json& json, PacketType type, network::tcp::ConnectionPtr conn) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (!json.contains(SENDER_NICKNAME_HASH)) return;
-        std::string senderHash = json[SENDER_NICKNAME_HASH].get<std::string>();
-        auto sender = m_userRepository.findUserByNickname(senderHash);
-        if (!sender || sender->getTcpConnection() != conn) return;
+        std::vector<network::tcp::ConnectionPtr> targets;
+        std::vector<unsigned char> body;
+        std::string partnerHash;
 
-        if (sender->isInMeeting()) {
-            auto meeting = sender->getMeeting();
-            if (!meeting) return;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (!json.contains(SENDER_NICKNAME_HASH)) return;
+            std::string senderHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto sender = m_userRepository.findUserByNickname(senderHash);
+            if (!sender || sender->getTcpConnection() != conn) return;
 
-            broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(type), toBytes(json.dump()));
+            body = toBytes(json.dump());
 
-            // Track media sharing state for meetings so that late joiners and
-            // reconnecting participants can be brought up to date.
-            switch (type) {
-            case PacketType::SCREEN_SHARING_BEGIN:
-                meeting->addScreenSharer(senderHash);
-                break;
-            case PacketType::SCREEN_SHARING_END:
-                meeting->removeScreenSharer(senderHash);
-                break;
-            case PacketType::CAMERA_SHARING_BEGIN:
-                meeting->addCameraSharer(senderHash);
-                break;
-            case PacketType::CAMERA_SHARING_END:
-                meeting->removeCameraSharer(senderHash);
-                break;
-            default:
-                break;
+            if (sender->isInMeeting()) {
+                auto meeting = sender->getMeeting();
+                if (!meeting) return;
+
+                // Gather recipients while holding server lock; perform actual sends after unlock.
+                for (const auto& participant : meeting->getParticipants()) {
+                    if (!participant.user) continue;
+                    if (participant.user->getNicknameHash() == senderHash) continue;
+                    if (participant.user->isConnectionDown()) continue;
+                    auto pConn = participant.user->getTcpConnection();
+                    if (!pConn) continue;
+                    targets.push_back(std::move(pConn));
+                }
+
+                // Track media sharing state for meetings so that late joiners and
+                // reconnecting participants can be brought up to date.
+                switch (type) {
+                case PacketType::SCREEN_SHARING_BEGIN:
+                    meeting->addScreenSharer(senderHash);
+                    break;
+                case PacketType::SCREEN_SHARING_END:
+                    meeting->removeScreenSharer(senderHash);
+                    break;
+                case PacketType::CAMERA_SHARING_BEGIN:
+                    meeting->addCameraSharer(senderHash);
+                    break;
+                case PacketType::CAMERA_SHARING_END:
+                    meeting->removeCameraSharer(senderHash);
+                    break;
+                default:
+                    break;
+                }
+
+                // meeting path only
             }
+            else if (sender->isInCall()) {
+                auto partner = sender->getCallPartner();
+                if (!partner) return;
+                if (!partner->isConnectionDown()) {
+                    partnerHash = partner->getNicknameHash();
+                }
+            }
+            else {
+                return;
+            }
+        }
 
+        // Perform I/O outside the global server mutex to avoid head-of-line blocking.
+        if (!targets.empty()) {
+            for (auto& c : targets) {
+                sendTcp(c, static_cast<uint32_t>(type), body);
+            }
             return;
         }
 
-        if (!sender->isInCall()) return;
-        auto partner = sender->getCallPartner();
-        if (!partner) return;
-        sendTcpToUser(partner->getNicknameHash(), static_cast<uint32_t>(type), json.dump());
+        if (!partnerHash.empty()) {
+            sendTcpToUser(partnerHash, static_cast<uint32_t>(type), json.dump());
+        }
     }
 
     void Server::processConnectionDown(const UserPtr& user) {
