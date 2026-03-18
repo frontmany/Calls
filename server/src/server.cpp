@@ -649,7 +649,7 @@ namespace server
 
             auto packet = PacketFactory::getMeetingCreateResultPacket(true, meetingId, encryptedMeetingKey, packetKey);
             sendTcp(conn, static_cast<uint32_t>(PacketType::MEETING_CREATE_RESULT), packet);
-        }
+        } 
         catch (const std::exception& e) {
             LOG_ERROR("Meeting create error: {}", e.what());
         }

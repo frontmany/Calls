@@ -527,6 +527,9 @@ void MeetingManager::onMeetingRosterResynced(const QStringList& participants)
 void MeetingManager::onLocalConnectionDownInMeeting()
 {
     if (m_meetingWidget) {
+        if (m_meetingWidget->isFullScreen()) {
+            emit endMeetingFullscreenExitRequested();
+        }
         if (m_coreClient) {
             const std::string myNick = m_coreClient->getMyNickname();
             if (!myNick.empty())
