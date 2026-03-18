@@ -48,13 +48,6 @@ if(FETCH_DEPENDENCIES)
     )
 
     FetchContent_Declare(
-        pybind11
-        GIT_REPOSITORY https://github.com/pybind/pybind11.git
-        GIT_TAG v2.12.0
-        SOURCE_DIR ${VENDOR_DIR}/pybind11
-    )
-
-    FetchContent_Declare(
         spdlog
         GIT_REPOSITORY https://github.com/gabime/spdlog.git
         GIT_TAG v1.14.1
@@ -82,7 +75,7 @@ if(FETCH_DEPENDENCIES)
     set(PA_BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
     set(PA_BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 
-    FetchContent_MakeAvailable(nlohmann_json cryptopp portaudio asio pybind11 spdlog ticTimer CrashCatch)
+    FetchContent_MakeAvailable(nlohmann_json cryptopp portaudio asio spdlog ticTimer CrashCatch)
 
     message(STATUS "Dependencies fetched successfully")
 endif()
@@ -91,7 +84,5 @@ add_subdirectory(client/core)
 add_subdirectory(client/updater)
 add_subdirectory(client/ui)
 add_subdirectory(clientUpdateApplier)
-add_subdirectory(clientCorePythonWrapper)
 add_subdirectory(server)
 add_subdirectory(serverUpdater)
-add_subdirectory(serverPythonWrapper)

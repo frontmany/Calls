@@ -30,11 +30,6 @@
   - Arch: `sudo pacman -S ffmpeg`
   - Windows: build from source or use vcpkg; place in `vendor/ffmpeg` (see project CMake for expected layout).
 
-- **Python development headers** - Required for pybind11 (Python bindings). Install with:
-  - Ubuntu/Debian: `sudo apt-get install python3-dev`
-  - Fedora/RHEL: `sudo dnf install python3-devel`
-  - Arch: `sudo pacman -S python`
-
 ### Qt6 Setup
 
 **Important:** Qt6 must be installed separately before building. The `FETCH_DEPENDENCIES` option does not install Qt.
@@ -182,14 +177,6 @@ cmake --build build --config Debug
 
 ## Build for Linux
 
-**Note:** It is recommended to exclude Python wrappers from the build on Linux to avoid issues with Position Independent Code (PIC) requirements. Python wrappers require all static libraries (portaudio, cryptopp, spdlog) to be compiled with `-fPIC`, which may require rebuilding these dependencies.
-
-To exclude Python wrappers, comment out the following lines in `CMakeLists.txt`:
-```cmake
-# add_subdirectory(clientCorePythonWrapper)
-# add_subdirectory(serverPythonWrapper)
-```
-
 **First build (fetch dependencies):**
 
 ```bash
@@ -218,3 +205,40 @@ cmake --build build
 cmake -DCMAKE_PREFIX_PATH=/opt/Qt/6.9.3/gcc_64 -B build
 cmake --build build
 ```
+
+## Docker (calliforniaServer + serverUpdater)
+
+You can run both servers as separate Docker containers using `docker-compose`.
+
+### 1) Run
+
+```bash
+docker compose up --build -d
+```
+
+After the build completes, check logs:
+
+```bash
+docker compose logs -f calliforniaServer
+docker compose logs -f serverUpdater
+```
+
+### 2) Exposed ports
+
+- `calliforniaServer`: `8081/tcp` and `8081/udp`
+- `serverUpdater`: `8082/tcp`
+
+### 3) Volumes
+
+The compose file mounts these folders:
+
+- `./volumes/calliforniaServer/logs` -> `/app/logs`
+- `./volumes/serverUpdater/logs` -> `/app/logs`
+- `./volumes/serverUpdater/versions` -> `/app/versions`
+
+`serverUpdater` expects a `versions/` directory with this structure:
+
+- `versions/<version_folder>/version.json`
+- `versions/<version_folder>/Linux/...` (and `Windows/`, `Mac/` depending on client OS)
+
+If `./volumes/serverUpdater/versions` is empty, the updater will start but won't have update files to serve.

@@ -1,0 +1,22 @@
+.git
+.github
+.cursor
+.vs
+out
+build
+*.user
+*.suo
+*.swp
+*.tmp
+node_modules
+vendor/**/.idea
+
+# Don't copy local build artifacts/cmake caches into the Docker build context.
+vendor/**/build
+vendor/**/CMakeCache.txt
+vendor/**/CMakeFiles
+**/.ninja_*
+**/CMakeFiles
+**/build-server
+**/build-updater
+

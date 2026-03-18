@@ -148,8 +148,8 @@ PortAudioCpp v19 revision 06 03/06/04:
 	- Changed error handling in System::terminate(), it can now throw an Exception.
 	- Added error handling in System::defaultHostApi().
 	- Added error handling in System::hostApisEnd().
-	- Changed some (but probably not all) C casts to C++ casts to avoid confusion with a 
-	certain Python person.
+	- Changed some (but probably not all) C casts to C++ casts to avoid confusion with a
+	certain person.
 	- Renamed RaiiSystem to AutoSystem (class and file) as this is a come common convention.
 	- Renamed System::numDevices() to System::deviceCount() to be more compatible with PortAudio 
 	(although PortAudio uses Pa_CountDevices() instead, see comment).
