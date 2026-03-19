@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Docker Build And Deploy
 
 on:
   push:
@@ -14,7 +14,6 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
     strategy:
       matrix:
         include:
@@ -43,8 +42,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.image }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
       - name: Build and push Docker image
@@ -57,3 +55,44 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/opt/callifornia"
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+
+            mkdir -p /opt/callifornia
+            cd /opt/callifornia
+
+            mkdir -p volumes/calliforniaServer/logs
+            mkdir -p volumes/serverUpdater/logs
+            mkdir -p volumes/serverUpdater/versions
+
+            cat > .env <<EOF
+            DOCKERHUB_NAMESPACE=${{ secrets.DOCKER_USERNAME }}
+            IMAGE_TAG=${{ github.ref_name }}
+            EOF
+
+            docker compose pull
+            docker compose up -d --no-build --remove-orphans
+            docker compose ps
+            docker image prune -f
