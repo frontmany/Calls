@@ -45,6 +45,11 @@ DialogsController::DialogsController(QWidget* parent)
     , m_endMeetingConfirmationOverlay(nullptr)
     , m_endMeetingConfirmationDialog(nullptr)
 {
+    m_meetingsJoinWaitingTimer.setSingleShot(true);
+    connect(&m_meetingsJoinWaitingTimer, &QTimer::timeout, this, [this]() {
+        if (!m_meetingsManagementDialog) return;
+        m_meetingsManagementDialog->showConnectingState(m_meetingsJoinWaitingRoomId);
+    });
 }
 
 DialogsController::~DialogsController()
@@ -578,7 +583,6 @@ void DialogsController::showMeetingsManagementDialog()
     });
     connect(m_meetingsManagementDialog, &MeetingManagementDialog::joinMeetingRequested, this, [this](const QString& uid) {
         emit meetingJoinRequested(uid);
-        m_meetingsManagementDialog->showConnectingState(uid);
     });
     connect(m_meetingsManagementDialog, &MeetingManagementDialog::joinCancelled, this, [this]() {
         emit meetingJoinCancelled();
@@ -592,6 +596,9 @@ void DialogsController::hideMeetingsManagementDialog()
 {
     if (m_meetingsManagementDialog)
     {
+        // Cancel delayed "waiting for approval" UI update.
+        m_meetingsJoinWaitingTimer.stop();
+        m_meetingsJoinWaitingRoomId.clear();
         m_meetingsManagementDialog->disconnect();
         m_meetingsManagementDialog->hide();
         m_meetingsManagementDialog->deleteLater();
@@ -610,7 +617,12 @@ void DialogsController::showMeetingsConnectingState(const QString& roomId)
 {
     if (m_meetingsManagementDialog)
     {
-        m_meetingsManagementDialog->showConnectingState(roomId);
+        // Avoid micro-flicker: if the join request fails immediately,
+        // we don't want to briefly show "waiting for approval".
+        constexpr int JOIN_WAITING_SHOW_DELAY_MS = 120;
+        m_meetingsJoinWaitingTimer.stop();
+        m_meetingsJoinWaitingRoomId = roomId;
+        m_meetingsJoinWaitingTimer.start(JOIN_WAITING_SHOW_DELAY_MS);
     }
 }
 
@@ -622,10 +634,13 @@ void DialogsController::setMeetingsJoinStatus(const QString& status)
     }
 }
 
-void DialogsController::showMeetingsJoinRequestTimeout()
+void DialogsController::resetMeetingsJoinRequestUI()
 {
     if (m_meetingsManagementDialog)
     {
+        // Cancel delayed "waiting for approval" UI updates.
+        m_meetingsJoinWaitingTimer.stop();
+        m_meetingsJoinWaitingRoomId.clear();
         m_meetingsManagementDialog->showInitialState();
     }
 }

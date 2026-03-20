@@ -133,7 +133,7 @@ void MeetingManager::onMeetingCreateRejected(std::error_code ec)
 void MeetingManager::onJoinMeetingRequestTimeout()
 {
     if (m_dialogsController) {
-        m_dialogsController->showMeetingsJoinRequestTimeout();
+        m_dialogsController->resetMeetingsJoinRequestUI();
     }
     if (m_notificationController) {
         m_notificationController->showErrorNotification("Join meeting request timed out", 2000);
@@ -273,6 +273,13 @@ void MeetingManager::onJoinMeetingRequested(const QString& meetingId)
     std::error_code ec = m_coreClient->joinMeeting(meetingId.toStdString());
     if (ec && m_notificationController) {
         m_notificationController->showErrorNotification("Failed to join meeting", 2000);
+        return;
+    }
+
+    // Show "waiting for approval" only if the join request was accepted locally.
+    // This prevents UI flicker for immediate failures (e.g. "meeting not found").
+    if (m_dialogsController) {
+        m_dialogsController->showMeetingsConnectingState(meetingId);
     }
 }
 
@@ -373,7 +380,7 @@ void MeetingManager::onJoinMeetingDeclined(const QString& meetingId)
 {
     (void)meetingId;
     if (m_dialogsController) {
-        m_dialogsController->showMeetingsJoinRequestTimeout();
+        m_dialogsController->resetMeetingsJoinRequestUI();
     }
     if (m_notificationController) {
         m_notificationController->showErrorNotification("Join meeting was declined", 2000);
@@ -386,7 +393,7 @@ void MeetingManager::onJoinMeetingDeclined(const QString& meetingId)
 void MeetingManager::onMeetingNotFound()
 {
     if (m_dialogsController) {
-        m_dialogsController->showMeetingsJoinRequestTimeout();
+        m_dialogsController->resetMeetingsJoinRequestUI();
     }
     if (m_notificationController) {
         m_notificationController->showErrorNotification("Meeting not found", 2000);

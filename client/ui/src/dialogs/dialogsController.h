@@ -6,6 +6,7 @@
 #include <QScreen>
 #include <QMap>
 #include <functional>
+#include <QTimer>
 
 class OverlayWidget;
 class AudioSettingsDialog;
@@ -53,7 +54,7 @@ public:
     void hideMeetingsManagementDialog();
     void showMeetingsConnectingState(const QString& roomId);
     void setMeetingsJoinStatus(const QString& status);
-    void showMeetingsJoinRequestTimeout();
+    void resetMeetingsJoinRequestUI();
 
     void showEndMeetingConfirmationDialog();
     void hideEndMeetingConfirmationDialog();
@@ -84,6 +85,8 @@ signals:
 private:
     QWidget* m_parent;
     QMap<QString, IncomingCallDialog*> m_incomingCallDialogs;
+    QTimer m_meetingsJoinWaitingTimer;
+    QString m_meetingsJoinWaitingRoomId;
 
     OverlayWidget* m_updatingOverlay = nullptr;
     UpdatingDialog* m_updatingDialog = nullptr;

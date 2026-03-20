@@ -144,3 +144,27 @@
 [2026-03-20 07:52:12.025] [info] [server] [thread 1] User logout: 3E23E
 [2026-03-20 07:52:12.392] [debug] [server] [thread 10] [TCP] Read header error: error 2 - disconnecting
 [2026-03-20 07:52:12.392] [info] [server] [thread 10] [TCP] Client disconnected (active: 0)
+[2026-03-20 10:17:52.672] [info] [server] [thread 1] [UDP] Media server initialized on port 8081
+[2026-03-20 10:17:52.673] [info] [server] [thread 1] [UDP] Media server starting on port 8081
+[2026-03-20 10:17:52.673] [info] [server] [thread 1] [TCP] Control server starting on port 8081
+[2026-03-20 10:18:03.386] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:51512
+[2026-03-20 10:18:03.387] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-20 10:18:03.387] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-20 10:18:03.968] [info] [server] [thread 1] User authorized: CA978
+[2026-03-20 10:18:21.274] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:37044
+[2026-03-20 10:18:21.275] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-20 10:18:21.275] [debug] [server] [thread 9] [TCP] Active connections: 2
+[2026-03-20 10:18:23.702] [info] [server] [thread 1] User authorized: 3E23E
+[2026-03-20 10:18:34.956] [info] [server] [thread 1] Call initiated from 3E23E to CA978
+[2026-03-20 10:18:36.434] [info] [server] [thread 1] Call accepted: 3E23E -> CA978
+[2026-03-20 10:18:43.706] [info] [server] [thread 1] Call ended: 3E23E ended call with CA978
+[2026-03-20 10:18:58.423] [info] [server] [thread 1] User logout: CA978
+[2026-03-20 10:18:58.503] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-20 10:18:58.503] [info] [server] [thread 9] [TCP] Client disconnected (active: 1)
+[2026-03-20 10:18:58.503] [debug] [server] [thread 9] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-20 10:18:59.473] [info] [server] [thread 1] User logout: 3E23E
+[2026-03-20 10:18:59.511] [debug] [server] [thread 8] [UDP] Media from unknown sender hash 3E23E81600:172.18.0.1
+[2026-03-20 10:18:59.511] [debug] [server] [thread 8] [UDP] Media from unknown sender hash 3E23E81600:172.18.0.1
+[2026-03-20 10:18:59.511] [debug] [server] [thread 8] [UDP] Media from unknown sender hash 3E23E81600:172.18.0.1
+[2026-03-20 10:18:59.973] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-20 10:18:59.973] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
