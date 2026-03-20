@@ -186,47 +186,53 @@ QString StyleMainMenuWidget::settingsButtonStyle() {
 }
 
 QString StyleMainMenuWidget::lineEditStyle() {
-    return QString("QLineEdit {"
-        "   background-color: rgba(%1, %2, %3, %4);"
-        "   border: 0px solid %5;"
-        "   border-radius: %17px;"
-        "   padding: %18px %19px;"
-        "   margin: 0px;"
-        "   color: %6;"
-        "   selection-background-color: %7;"
-        "}"
-        "QLineEdit:focus {"
-        "   border: 0px solid %8;"
-        "   background-color: rgba(%9, %10, %11, %12);"
-        "}"
-        "QLineEdit::placeholder {"
-        "   color: rgba(%13, %14, %15, %16);"
-        "}").arg(m_lineEditBackgroundColor.red()).arg(m_lineEditBackgroundColor.green())
-        .arg(m_lineEditBackgroundColor.blue()).arg(m_lineEditBackgroundColor.alpha())
-        .arg(m_textColor.name()).arg(m_textColor.name())
-        .arg(m_selectionColor.name())  
-        .arg(m_textColor.name()) 
-        .arg(m_lineEditFocusBackgroundColor.red()).arg(m_lineEditFocusBackgroundColor.green())
-        .arg(m_lineEditFocusBackgroundColor.blue()).arg(m_lineEditFocusBackgroundColor.alpha())
-        .arg(m_placeholderColor.red()).arg(m_placeholderColor.green())
-        .arg(m_placeholderColor.blue()).arg(m_placeholderColor.alpha())
-        .arg(QString::fromStdString(std::to_string(scale(15))))  // border-radius
-        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding vertical
-        .arg(QString::fromStdString(std::to_string(scale(15)))); // padding horizontal
-}
-
-QString StyleMainMenuWidget::disabledLineEditStyle() {
-    return QString("QLineEdit {"
-        "   background-color: rgba(235, 235, 235, 120);"
-        "   border: 0px solid %1;"
+    return QString(
+        "QLineEdit {"
+        "   background-color: rgba(255, 255, 255, 45);"
+        "   color: %1;"
+        "   border: 1px solid rgba(255, 255, 255, 140);"
         "   border-radius: %2px;"
         "   padding: %3px %4px;"
         "   margin: 0px;"
-        "   color: #888888;"
-        "}").arg(m_textColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(15))))  // border-radius
-        .arg(QString::fromStdString(std::to_string(scale(12))))  // padding vertical
-        .arg(QString::fromStdString(std::to_string(scale(15)))); // padding horizontal
+        "   selection-background-color: %5;"
+        "}"
+        "QLineEdit:hover {"
+        "   background-color: rgba(255, 255, 255, 60);"
+        "   border: 1px solid rgba(255, 255, 255, 185);"
+        "}"
+        "QLineEdit:focus {"
+        "   background-color: rgba(255, 255, 255, 82);"
+        "   border: 1px solid rgba(255, 255, 255, 220);"
+        "}"
+        "QLineEdit::placeholder {"
+        "   color: rgba(%6, %7, %8, 180);"
+        "}")
+        .arg(m_textColor.name())
+        .arg(scale(15))
+        .arg(scale(12))
+        .arg(scale(15))
+        .arg(m_selectionColor.name())
+        .arg(m_placeholderColor.red())
+        .arg(m_placeholderColor.green())
+        .arg(m_placeholderColor.blue());
+}
+
+QString StyleMainMenuWidget::disabledLineEditStyle() {
+    return QString(
+        "QLineEdit {"
+        "   background-color: rgba(255, 255, 255, 24);"
+        "   color: rgba(80, 80, 80, 140);"
+        "   border: 1px solid rgba(255, 255, 255, 80);"
+        "   border-radius: %1px;"
+        "   padding: %2px %3px;"
+        "   margin: 0px;"
+        "}"
+        "QLineEdit::placeholder {"
+        "   color: rgba(120, 120, 120, 140);"
+        "}")
+        .arg(scale(15))
+        .arg(scale(12))
+        .arg(scale(15));
 }
 
 QString StyleMainMenuWidget::notificationRedLabelStyle() {

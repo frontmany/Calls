@@ -161,30 +161,27 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         StyleMainMenuWidget::lineEditStyle() +
         QString(
             "QLineEdit {"
-            "   background-color: rgba(241, 245, 249, 255);"
+            "   background-color: rgba(255, 255, 255, 45);"
             "   color: rgb(25, 35, 45);"
-            "   border: none;"
+            "   border: 1px solid rgba(255, 255, 255, 140);"
             "   border-radius: %1px;"
             "   padding: 0 %2px;"
             "   selection-background-color: rgba(80, 130, 230, 90);"
             "}"
             "QLineEdit:hover {"
-            "   background-color: rgba(238, 243, 249, 255);"
-            "   border: none;"
+            "   background-color: rgba(255, 255, 255, 60);"
+            "   border: 1px solid rgba(255, 255, 255, 185);"
             "}"
             "QLineEdit:focus {"
-            "   background-color: rgba(255, 255, 255, 255);"
-            "   border: none;"
+            "   background-color: rgba(255, 255, 255, 82);"
+            "   border: 1px solid rgba(255, 255, 255, 220);"
             "}"
             "QLineEdit::placeholder {"
-            "   color: rgba(75, 95, 120, 200);"
+            "   color: rgba(105, 120, 140, 180);"
             "}"
         )
         .arg(scale(10))
         .arg(scale(14))
-        .arg(COLOR_ACCENT.red())
-        .arg(COLOR_ACCENT.green())
-        .arg(COLOR_ACCENT.blue())
     );
     m_meetingIdEdit->setMaxLength(64);
 

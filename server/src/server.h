@@ -71,6 +71,9 @@ namespace server
         void endMeetingCleanup(const MeetingPtr& meeting);
         void processConnectionDown(const UserPtr& user);
         void sendMeetingConnectionDownStateToUser(const MeetingPtr& meeting, const std::string& receiverNicknameHash);
+        bool canStartCallLocked(const UserPtr& sender, const UserPtr& receiver) const;
+        bool canAcceptCallLocked(const UserPtr& callee, const UserPtr& caller) const;
+        bool canJoinMeetingLocked(const UserPtr& user) const;
 
     private:
         mutable std::mutex m_mutex;

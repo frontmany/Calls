@@ -1,6 +1,7 @@
 .vscode/
 
 build
+volumes
 
 vendor/asio
 vendor/ffmpeg

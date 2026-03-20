@@ -68,7 +68,8 @@ namespace server::network::tcp
         , m_sender(
             m_socket,
             m_outQueue,
-            [this]() { m_onDisconnected(shared_from_this()); })
+            [this]() { m_onDisconnected(shared_from_this()); },
+            [this]() { return shared_from_this(); })
         , m_onPacket(std::move(onPacket))
         , m_onDisconnected(std::move(onDisconnected))
     {
@@ -78,16 +79,20 @@ namespace server::network::tcp
         std::mt19937_64 gen(rd());
         std::uniform_int_distribution<uint64_t> dis;
         m_handshakeOut = dis(gen);
+    }
 
+    void Connection::start() {
         writeHandshake();
     }
 
     void Connection::send(const Packet& packet) {
-        // TCP control packets must not evict the front item while it's being sent.
-        // Unbounded queue is handled via monitoring/metrics elsewhere.
-        m_outQueue.push(packet);
-        if (m_outQueue.size() == 1)
+        ConnectionPtr self = shared_from_this();
+        asio::post(m_ctx, [this, self, packet]() {
+            // TCP control packets must not evict the front item while it's being sent.
+            // Unbounded queue is handled via monitoring/metrics elsewhere.
+            m_outQueue.push(packet);
             m_sender.send();
+        });
     }
 
     void Connection::close() {
@@ -109,13 +114,14 @@ namespace server::network::tcp
     }
 
     void Connection::writeHandshake() {
+        ConnectionPtr self = shared_from_this();
         asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
-            [this](std::error_code ec, std::size_t) {
+            [this, self](std::error_code ec, std::size_t) {
                 if (ec) {
                     if (ec == asio::error::operation_aborted)
                         return;
                     LOG_ERROR("[TCP] Handshake write error: {}", server::utilities::errorCodeForLog(ec));
-                    m_onDisconnected(shared_from_this());
+                    m_onDisconnected(self);
                     return;
                 }
 

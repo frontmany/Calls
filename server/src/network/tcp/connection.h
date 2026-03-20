@@ -21,6 +21,7 @@ namespace server::network::tcp
             std::function<void(OwnedPacket&&)> onPacket,
             std::function<void(ConnectionPtr)> onDisconnected);
 
+        void start();
         void send(const Packet& packet);
         void close();
         asio::ip::tcp::endpoint remoteEndpoint() const;

@@ -274,9 +274,31 @@ void MeetingParticipantWidget::paintEvent(QPaintEvent* event)
     painter.setRenderHint(QPainter::Antialiasing);
 
     QRectF glassRect = rect().adjusted(1, 1, -1, -1);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(COLOR_OVERLAY_PURE_180);
-    painter.drawRoundedRect(glassRect, 12, 12);
+    const bool nicknameModeActive = (m_displayMode == DisplayMode::DisplayName);
+
+    if (nicknameModeActive) {
+        // Match the "glass" look used in main menu buttons:
+        // semi-transparent white fill + soft light border.
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(255, 255, 255, 45));
+        painter.drawRoundedRect(glassRect, 12, 12);
+
+        QLinearGradient gloss(glassRect.topLeft(), glassRect.bottomLeft());
+        gloss.setColorAt(0.0, QColor(255, 255, 255, 26));
+        gloss.setColorAt(0.45, QColor(255, 255, 255, 10));
+        gloss.setColorAt(1.0, QColor(255, 255, 255, 0));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(gloss);
+        painter.drawRoundedRect(glassRect, 12, 12);
+
+        painter.setPen(QPen(QColor(255, 255, 255, 140), 1));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(glassRect, 12, 12);
+    } else {
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(COLOR_OVERLAY_PURE_180);
+        painter.drawRoundedRect(glassRect, 12, 12);
+    }
 
     if (m_connectionDown) {
         painter.setPen(Qt::NoPen);

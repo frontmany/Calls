@@ -49,36 +49,40 @@ QString StyleAuthorizationWidget::glassButtonStyle() {
 }
 
 QString StyleAuthorizationWidget::glassLineEditStyle() {
-    return QString("QLineEdit {"
-        "   background-color: %7;"
-        "   border: 0px solid %1;"
-        "   border-radius: %4px;"
-        "   padding: %5px %6px;"
+    return QString(
+        "QLineEdit {"
+        "   background-color: rgba(255, 255, 255, 45);"
+        "   color: %1;"
+        "   border: 1px solid rgba(255, 255, 255, 140);"
+        "   border-radius: %2px;"
+        "   padding: %3px %4px;"
         "   margin: 0px;"
-        "   color: %2;"
-        "   selection-background-color: %3;"
+        "   selection-background-color: %5;"
+        "}"
+        "QLineEdit:hover {"
+        "   background-color: rgba(255, 255, 255, 60);"
+        "   border: 1px solid rgba(255, 255, 255, 185);"
         "}"
         "QLineEdit:focus {"
-        "   border: 0px solid %3;"
-        "   background-color: %8;"
+        "   background-color: rgba(255, 255, 255, 82);"
+        "   border: 1px solid rgba(255, 255, 255, 220);"
         "}"
         "QLineEdit:disabled {"
-        "   background-color: %9;"
-        "   border: 0px solid %1;"
-        "   opacity: 0.7;"
+        "   background-color: rgba(255, 255, 255, 24);"
+        "   color: rgba(80, 80, 80, 140);"
+        "   border: 1px solid rgba(255, 255, 255, 80);"
         "}"
         "QLineEdit::placeholder {"
-        "   color: %10;"
-        "}").arg(m_glassBorderColor.name())
+        "   color: rgba(%6, %7, %8, 180);"
+        "}")
         .arg(m_textColor.name())
-        .arg(m_primaryColor.name())
-        .arg(QString::fromStdString(std::to_string(scale(12))))
+        .arg(scale(12))
         .arg(scale(12))
         .arg(scale(15))
-        .arg(COLOR_OVERLAY_NEUTRAL_235.name())
-        .arg(COLOR_OVERLAY_PURE_235.name())
-        .arg(COLOR_OVERLAY_NEUTRAL_150.name())
-        .arg(COLOR_INPUT_PLACEHOLDER.name());
+        .arg(m_primaryColor.name())
+        .arg(COLOR_INPUT_PLACEHOLDER.red())
+        .arg(COLOR_INPUT_PLACEHOLDER.green())
+        .arg(COLOR_INPUT_PLACEHOLDER.blue());
 }
 
 QString StyleAuthorizationWidget::glassLabelStyle() {

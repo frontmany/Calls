@@ -96,6 +96,7 @@ namespace server::network::tcp
             m_connections.insert(conn);
             LOG_DEBUG("[TCP] Active connections: {}", m_connections.size());
         }
+        conn->start();
     }
 
     void Server::processQueue() {
@@ -116,9 +117,13 @@ namespace server::network::tcp
     }
 
     void Server::handleDisconnect(ConnectionPtr conn) {
-        std::lock_guard<std::mutex> lock(m_connMutex);
-        m_connections.erase(conn);
-        LOG_INFO("[TCP] Client disconnected (active: {})", m_connections.size());
+        size_t activeCount = 0;
+        {
+            std::lock_guard<std::mutex> lock(m_connMutex);
+            m_connections.erase(conn);
+            activeCount = m_connections.size();
+        }
+        LOG_INFO("[TCP] Client disconnected (active: {})", activeCount);
         if (m_onDisconnect)
             m_onDisconnect(conn);
     }

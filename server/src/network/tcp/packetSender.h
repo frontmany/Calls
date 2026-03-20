@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <optional>
+#include <atomic>
 
 #include "network/tcp/packet.h"
 #include "utilities/safeQueue.h"
@@ -14,7 +15,8 @@ namespace server::network::tcp
         PacketSender(
             asio::ip::tcp::socket& socket,
             utilities::SafeQueue<Packet>& queue,
-            std::function<void()> onError);
+            std::function<void()> onError,
+            std::function<ConnectionPtr()> lockConnection);
 
         void send();
 
@@ -27,8 +29,11 @@ namespace server::network::tcp
         asio::ip::tcp::socket& m_socket;
         utilities::SafeQueue<Packet>& m_queue;
         std::function<void()> m_onError;
+        std::function<ConnectionPtr()> m_lockConnection;
 
         // Keep the currently-sending packet alive across async callbacks.
         std::optional<Packet> m_current;
+        PacketHeader m_currentHeader{};
+        std::atomic_bool m_sending{false};
     };
 }

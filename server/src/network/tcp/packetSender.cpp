@@ -7,14 +7,20 @@ namespace server::network::tcp
     PacketSender::PacketSender(
         asio::ip::tcp::socket& socket,
         utilities::SafeQueue<Packet>& queue,
-        std::function<void()> onError)
+        std::function<void()> onError,
+        std::function<ConnectionPtr()> lockConnection)
         : m_socket(socket)
         , m_queue(queue)
         , m_onError(std::move(onError))
+        , m_lockConnection(std::move(lockConnection))
     {
     }
 
     void PacketSender::send() {
+        bool expected = false;
+        if (!m_sending.compare_exchange_strong(expected, true)) {
+            return;
+        }
         startNextIfNeeded();
     }
 
@@ -25,6 +31,11 @@ namespace server::network::tcp
 
         auto next = m_queue.try_pop();
         if (!next.has_value()) {
+            m_sending.store(false);
+            // Queue may become non-empty after we released sending flag.
+            if (m_queue.size() > 0) {
+                send();
+            }
             return;
         }
 
@@ -38,11 +49,11 @@ namespace server::network::tcp
             return;
         }
 
-        PacketHeader hdr;
-        hdr.type = m_current->type;
-        hdr.bodySize = static_cast<uint32_t>(m_current->body.size());
-        asio::async_write(m_socket, asio::buffer(&hdr, sizeof(hdr)),
-            [this](std::error_code ec, std::size_t) {
+        m_currentHeader.type = m_current->type;
+        m_currentHeader.bodySize = static_cast<uint32_t>(m_current->body.size());
+        auto self = m_lockConnection ? m_lockConnection() : ConnectionPtr{};
+        asio::async_write(m_socket, asio::buffer(&m_currentHeader, sizeof(m_currentHeader)),
+            [this, self](std::error_code ec, std::size_t) {
                 if (ec) {
                     if (ec != asio::error::operation_aborted)
                         LOG_ERROR("[TCP] Write header error: {}", server::utilities::errorCodeForLog(ec));
@@ -71,8 +82,9 @@ namespace server::network::tcp
             return;
         }
 
+        auto self = m_lockConnection ? m_lockConnection() : ConnectionPtr{};
         asio::async_write(m_socket, asio::buffer(m_current->body.data(), m_current->body.size()),
-            [this](std::error_code ec, std::size_t) {
+            [this, self](std::error_code ec, std::size_t) {
                 if (ec) {
                     if (ec != asio::error::operation_aborted)
                         LOG_ERROR("[TCP] Write body error: {}", server::utilities::errorCodeForLog(ec));
