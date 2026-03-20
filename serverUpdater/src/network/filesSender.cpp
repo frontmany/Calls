@@ -59,7 +59,10 @@ void FilesSender::sendFileChunk() {
 	if (bytesRead > 0) {
 		asio::async_write(
 			m_socket,
-			asio::buffer(m_buffer.data(), static_cast<size_t>(bytesRead)),
+			// Client updater receives fixed-size chunks (c_chunkSize) and truncates
+			// the final write using metadata.lastChunkSize.
+			// Keep wire format stable for protocol compatibility.
+			asio::buffer(m_buffer.data(), c_chunkSize),
 			[this](std::error_code ec, std::size_t) {
 				if (ec) 
 				{
