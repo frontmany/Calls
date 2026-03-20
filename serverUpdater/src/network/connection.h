@@ -27,6 +27,7 @@ public:
 		std::function<void(std::shared_ptr<Connection>)>&& onDisconnected
 	);
 	~Connection();
+    void start();
 	void sendPacket(const Packet& packet);
 	void sendFile(const std::filesystem::path& path);
 	void close();

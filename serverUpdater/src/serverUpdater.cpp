@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <fstream>
+#include <regex>
 
 #include "operationSystemType.h"
 #include "jsonType.h"
@@ -19,6 +20,8 @@ namespace serverUpdater
 {
 	constexpr const char* MAJOR_UPDATE = "major";
 	constexpr const char* MINOR_UPDATE = "minor";
+    constexpr size_t MAX_RELATIVE_PATH_LEN = 512;
+    constexpr size_t MAX_HASH_LEN = 128;
 
 	ServerUpdater::ServerUpdater(uint16_t port, const std::filesystem::path& versionsDirectory)
 		: m_port(port),
@@ -93,6 +96,9 @@ namespace serverUpdater
 						std::ifstream file(versionJsonPath);
 						nlohmann::json versionJson = nlohmann::json::parse(file);
 
+                        if (!versionJson.contains(VERSION) || !versionJson[VERSION].is_string()) {
+                            continue;
+                        }
 						std::string currentVersion = versionJson[VERSION].get<std::string>();
 						std::string updateType = versionJson[UPDATE_TYPE].get<std::string>();
 						validVersionFiles++;
@@ -100,13 +106,14 @@ namespace serverUpdater
 						LOG_DEBUG("Found version: {} (type: {}) in {}",
 							currentVersion, updateType, entry.path().string());
 
+                        Version currentVersionObj(currentVersion);
 						if (latestVersion.empty()) {
 							latestVersion = currentVersion;
 							latestVersionPath = entry.path();
 							LOG_DEBUG("Setting as initial latest version: {}", currentVersion);
 						}
 
-						if (currentVersion > latestVersion) {
+						if (currentVersionObj > Version(latestVersion)) {
 							LOG_DEBUG("New latest version found: {} (previous: {})",
 								currentVersion, latestVersion);
 							latestVersion = currentVersion;
@@ -171,7 +178,7 @@ namespace serverUpdater
 
 			if (!std::filesystem::exists(m_versionsDirectory) || !std::filesystem::is_directory(m_versionsDirectory)) {
 				LOG_ERROR("Versions directory does not exist or is not a directory: {}", m_versionsDirectory.string());
-				checkResult = CheckResult::UPDATE_NOT_NEEDED;
+				checkResult = CheckResult::UPDATE_CHECK_FAILED;
 			}
 			else {
 			for (const auto& entry : std::filesystem::directory_iterator(m_versionsDirectory)) {
@@ -251,10 +258,20 @@ namespace serverUpdater
 			return filePathsWithHashes;
 		}
 
+        static const std::regex shaLike("^[A-Fa-f0-9]{40,64}$");
 		for (const auto& fileInfo : jsonObject[FILES]) {
-			if (fileInfo.contains(RELATIVE_FILE_PATH) && fileInfo.contains(FILE_HASH)) {
+			if (fileInfo.contains(RELATIVE_FILE_PATH) && fileInfo.contains(FILE_HASH)
+                && fileInfo[RELATIVE_FILE_PATH].is_string() && fileInfo[FILE_HASH].is_string()) {
 				std::string relativePath = fileInfo[RELATIVE_FILE_PATH].get<std::string>();
 				std::string fileHash = fileInfo[FILE_HASH].get<std::string>();
+                if (relativePath.empty() || relativePath.size() > MAX_RELATIVE_PATH_LEN) {
+                    LOG_ERROR("Invalid relative path length in packet");
+                    continue;
+                }
+                if (fileHash.empty() || fileHash.size() > MAX_HASH_LEN || !std::regex_match(fileHash, shaLike)) {
+                    LOG_ERROR("Invalid file hash format in packet for file {}", relativePath);
+                    continue;
+                }
 				filePathsWithHashes.emplace_back(relativePath, fileHash);
 			}
 			else {
@@ -304,7 +321,11 @@ namespace serverUpdater
 			if (entry.is_regular_file()) {
 				std::filesystem::path relativePath = std::filesystem::relative(entry.path(), osSpecificPath);
 				std::string fileHash = utilities::calculateFileHash(entry.path());
-				serverFiles[relativePath] = fileHash;
+                if (!fileHash.empty()) {
+				    serverFiles[relativePath] = fileHash;
+                } else {
+                    LOG_WARN("Skipping file with failed hash calculation: {}", entry.path().string());
+                }
 			}
 		}
 
@@ -439,7 +460,17 @@ namespace serverUpdater
 			LOG_ERROR("Missing OPERATION_SYSTEM field in packet");
 			return;
 		}
-		OperationSystemType osType = static_cast<OperationSystemType>(jsonObject[OPERATION_SYSTEM].get<int>());
+        if (!jsonObject[OPERATION_SYSTEM].is_number_integer()) {
+            LOG_ERROR("Invalid OPERATION_SYSTEM type in packet");
+            return;
+        }
+        int osTypeRaw = jsonObject[OPERATION_SYSTEM].get<int>();
+        if (osTypeRaw < static_cast<int>(OperationSystemType::WINDOWS) ||
+            osTypeRaw > static_cast<int>(OperationSystemType::MAC)) {
+            LOG_ERROR("OPERATION_SYSTEM value out of range: {}", osTypeRaw);
+            return;
+        }
+		OperationSystemType osType = static_cast<OperationSystemType>(osTypeRaw);
 
 		std::vector<std::pair<std::filesystem::path, std::string>> clientFiles = parseClientFiles(jsonObject);
 		if (clientFiles.empty() && jsonObject.contains(FILES)) {

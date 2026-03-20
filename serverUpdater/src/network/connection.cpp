@@ -71,28 +71,34 @@ Connection::Connection(
 	std::mt19937_64 gen(rd());
 	std::uniform_int_distribution<uint64_t> dis;
 	m_handshakeOut = dis(gen);
-
-	readHandshake();
-	writeHandshake();
 }
 
 Connection::~Connection() 
 {
 }
 
+void Connection::start() {
+	readHandshake();
+	writeHandshake();
+}
+
 void Connection::sendPacket(const Packet& packet) {
-	m_queue.push_with_limit(packet, m_maxQueueSize);
-	if (m_queue.size() == 1) {
-		m_packetsSender.send();
-	}
+    auto self = shared_from_this();
+    asio::post(m_asioContext, [this, self, packet]() {
+        m_queue.push_with_limit(packet, m_maxQueueSize);
+        m_packetsSender.send();
+    });
 }
 
 void Connection::sendFile(const std::filesystem::path& path) {
-	bool wasEmpty = m_queue.empty();
-	m_queue.push_with_limit(path, m_maxQueueSize);
-	if (wasEmpty) {
-		m_filesSender.sendFile();
-	}
+    auto self = shared_from_this();
+    asio::post(m_asioContext, [this, self, path]() {
+        const bool wasIdle = !m_packetsSender.isSending() && m_queue.empty();
+        m_queue.push_with_limit(path, m_maxQueueSize);
+        if (wasIdle) {
+            m_filesSender.sendFile();
+        }
+    });
 }
 
 void Connection::close() {
@@ -104,6 +110,9 @@ void Connection::close() {
                 try {
                     std::error_code ec;
 
+                    std::error_code shutdownEc;
+                    m_socket.shutdown(asio::ip::tcp::socket::shutdown_both, shutdownEc);
+                    m_socket.cancel(ec);
                     m_socket.close(ec);
                     if (ec) {
                         LOG_ERROR("Socket close error: {}", utilities::errorCodeForLog(ec));
@@ -120,37 +129,39 @@ void Connection::close() {
 }
 
 void Connection::writeHandshake() {
+    auto self = shared_from_this();
 	asio::async_write(m_socket, asio::buffer(&m_handshakeOut, sizeof(uint64_t)),
-		[this](std::error_code ec, std::size_t length) {
+		[this, self](std::error_code ec, std::size_t) {
 			if (ec) {
 				LOG_ERROR("Handshake write error: {}", utilities::errorCodeForLog(ec));
-				m_onDisconnected(shared_from_this());
+				m_onDisconnected(self);
 			}
 		});
 }
 
 void Connection::readHandshake() {
+    auto self = shared_from_this();
 	asio::async_read(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
-		[this](std::error_code ec, std::size_t length) {
+		[this, self](std::error_code ec, std::size_t) {
 			if (ec) {
 				LOG_ERROR("Handshake read error: {}", utilities::errorCodeForLog(ec));
-				m_onDisconnected(shared_from_this());
+				m_onDisconnected(self);
 			}
 			else {
 				if (utilities::scramble(m_handshakeOut) == m_handshakeIn) {
 					LOG_DEBUG("Handshake successful");
 					asio::async_write(m_socket, asio::buffer(&m_handshakeIn, sizeof(uint64_t)),
-						[this](std::error_code ec, std::size_t length) {
+						[this, self](std::error_code ec, std::size_t) {
 							if (ec) {
 								LOG_ERROR("Handshake confirmation write error: {}", utilities::errorCodeForLog(ec));
-								m_onDisconnected(shared_from_this());
+								m_onDisconnected(self);
 							}
 						});
 					m_packetsReceiver.startReceiving();
 				}
 				else {
 					LOG_WARN("Handshake validation failed");
-					m_onDisconnected(shared_from_this());
+					m_onDisconnected(self);
 				}
 			}
 		});

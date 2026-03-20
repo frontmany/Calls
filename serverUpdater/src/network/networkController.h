@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include <atomic>
 #include <mutex>
+#include <optional>
 
 namespace serverUpdater
 {
@@ -44,6 +45,7 @@ private:
     std::thread m_contextThread;
 
     asio::io_context m_context;
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>> m_workGuard;
     asio::ip::tcp::acceptor m_asioAcceptor;
 
     std::function<void(ConnectionPtr, Packet&&)> m_onUpdatesCheck;

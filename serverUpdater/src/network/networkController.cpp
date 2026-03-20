@@ -28,16 +28,31 @@ NetworkController::~NetworkController() {
 }
 
 void NetworkController::start() {
+    if (m_running.exchange(true)) {
+        return;
+    }
     LOG_INFO("[SERVER] Starting network controller");
-    m_contextThread = std::thread([this]() {m_context.run(); });
     waitForClientConnections();
+    m_workGuard.emplace(asio::make_work_guard(m_context));
+    m_contextThread = std::thread([this]() { m_context.run(); });
 
-    m_running = true;
     processQueue();
 }
 
 void NetworkController::stop() {
-    m_running = false;
+    if (!m_running.exchange(false)) {
+        return;
+    }
+    std::error_code ec;
+    m_asioAcceptor.close(ec);
+    m_workGuard.reset();
+    {
+        std::lock_guard<std::mutex> lock(m_connectionsMutex);
+        for (auto& c : m_setConnections) {
+            c->close();
+        }
+        m_setConnections.clear();
+    }
     m_context.stop();
 
     if (m_contextThread.joinable())
@@ -47,17 +62,27 @@ void NetworkController::stop() {
 }
 
 void NetworkController::waitForClientConnections() {
+    if (!m_running.load() || !m_asioAcceptor.is_open()) {
+        return;
+    }
     m_asioAcceptor.async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
+        if (!m_running.load()) {
+            return;
+        }
         if (!ec) {
             auto endpoint = socket.remote_endpoint();
             LOG_INFO("[SERVER] New connection from {}:{}", endpoint.address().to_string(), endpoint.port());
             createConnection(std::move(socket));
         }
         else {
-            LOG_ERROR("[SERVER] Connection error: {}", utilities::errorCodeForLog(ec));
+            if (ec != asio::error::operation_aborted) {
+                LOG_ERROR("[SERVER] Connection error: {}", utilities::errorCodeForLog(ec));
+            }
         }
 
-        waitForClientConnections();
+        if (m_running.load()) {
+            waitForClientConnections();
+        }
     });
 }
 
@@ -104,5 +129,6 @@ void NetworkController::createConnection(asio::ip::tcp::socket socket)
         m_setConnections.insert(connection);
         LOG_INFO("[SERVER] New client connected (active connections: {})", m_setConnections.size());
     }
+    connection->start();
 }
 }

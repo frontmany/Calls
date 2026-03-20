@@ -78,49 +78,6 @@ namespace serverUpdater
             return item;
         }
 
-        const T* front_ptr() const {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return nullptr;
-            }
-            return &m_queue.front();
-        }
-
-        const T* back_ptr() const {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return nullptr;
-            }
-            return &m_queue.back();
-        }
-
-        T* front_ptr() {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return nullptr;
-            }
-            return &m_queue.front();
-        }
-
-        T* back_ptr() {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_queue.empty()) {
-                return nullptr;
-            }
-            return &m_queue.back();
-        }
-
-        const T& unsafe_front() const {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_queue.front();
-        }
-
-        const T& unsafe_back() const {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_queue.back();
-        }
-
-
         std::optional<T> front() const {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_queue.empty()) {

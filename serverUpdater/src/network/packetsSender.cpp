@@ -22,47 +22,78 @@ PacketsSender::PacketsSender(asio::io_context& asioContext,
 }
 
 void PacketsSender::send() {
-	writeHeader();
+    bool expected = false;
+    if (!m_sending.compare_exchange_strong(expected, true)) {
+        return;
+    }
+    startNextIfNeeded();
+}
+
+bool PacketsSender::isSending() const {
+    return m_sending.load();
+}
+
+void PacketsSender::startNextIfNeeded() {
+    if (m_currentPacket.has_value()) {
+        return;
+    }
+    auto front = m_queue.front();
+    if (!front.has_value()) {
+        m_sending.store(false);
+        if (!m_queue.empty()) {
+            send();
+        }
+        return;
+    }
+    if (auto packet = std::get_if<Packet>(&(*front))) {
+        m_currentPacket = *packet;
+        writeHeader();
+        return;
+    }
+    m_sending.store(false);
+    m_filesSender.sendFile();
 }
 
 void PacketsSender::writeHeader() {
-	auto* variantPtr = m_queue.front_ptr();
-	if (!variantPtr) {
-		return;
-	}
-
-	if (auto packet = std::get_if<Packet>(variantPtr)) {
-		asio::async_write(
-			m_socket,
-			asio::buffer(&packet->header(), Packet::sizeOfHeader()),
-			[this, packet](std::error_code ec, std::size_t length) {
-				if (ec)
-				{
-					LOG_ERROR("Packet header write error: {}", utilities::errorCodeForLog(ec));
-					m_onError();
-				}
-				else
-				{
-					if (packet->body().size() > 0)
-					{
-						writeBody(packet);
-					}
-					else
-					{
-						m_queue.try_pop();
-						resolveSending();
-					}
-				}
-			}
-		);
-	}
+    if (!m_currentPacket.has_value()) {
+        resolveSending();
+        return;
+    }
+    asio::async_write(
+        m_socket,
+        asio::buffer(&m_currentPacket->header(), Packet::sizeOfHeader()),
+        [this](std::error_code ec, std::size_t) {
+            if (ec)
+            {
+                LOG_ERROR("Packet header write error: {}", utilities::errorCodeForLog(ec));
+                m_onError();
+            }
+            else
+            {
+                if (m_currentPacket.has_value() && !m_currentPacket->body().empty())
+                {
+                    writeBody();
+                }
+                else
+                {
+                    m_currentPacket.reset();
+                    m_queue.try_pop();
+                    resolveSending();
+                }
+            }
+        }
+    );
 }
 
-void PacketsSender::writeBody(const Packet* packet) {
+void PacketsSender::writeBody() {
+    if (!m_currentPacket.has_value()) {
+        resolveSending();
+        return;
+    }
 	asio::async_write(
 		m_socket,
-		asio::buffer(packet->body().data(), packet->body().size()),
-		[this](std::error_code ec, std::size_t length) {
+		asio::buffer(m_currentPacket->body().data(), m_currentPacket->body().size()),
+		[this](std::error_code ec, std::size_t) {
 			if (ec) 
 			{
 				LOG_ERROR("Packet body write error: {}", utilities::errorCodeForLog(ec));
@@ -71,6 +102,7 @@ void PacketsSender::writeBody(const Packet* packet) {
 			else 
 			{
 				LOG_TRACE("Packet sent successfully");
+                m_currentPacket.reset();
 				m_queue.try_pop();
 				resolveSending();
 			}
@@ -79,16 +111,6 @@ void PacketsSender::writeBody(const Packet* packet) {
 }
 
 void PacketsSender::resolveSending() {
-	if (!m_queue.empty()) {
-		auto* variantPtr = m_queue.front_ptr();
-		if (variantPtr) {
-			if (auto packet = std::get_if<Packet>(variantPtr)) {
-				writeHeader();
-			}
-			else {
-				m_filesSender.sendFile();
-			}
-		}
-	}
+	startNextIfNeeded();
 }
 }

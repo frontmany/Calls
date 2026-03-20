@@ -22,21 +22,32 @@ void FilesSender::sendFile() {
 	sendFileChunk();
 } 
 
+bool FilesSender::prepareNextFile() {
+    auto front = m_queue.front();
+    if (!front.has_value()) {
+        return false;
+    }
+    auto path = std::get_if<std::filesystem::path>(&(*front));
+    if (!path) {
+        m_packetsSender.send();
+        return false;
+    }
+    m_currentFilePath = *path;
+    if (!openFile(*m_currentFilePath)) {
+        // Drop problematic file and continue with remaining queue.
+        m_queue.try_pop();
+        m_currentFilePath.reset();
+        if (!m_queue.empty()) {
+            sendFileChunk();
+        }
+        return false;
+    }
+    return true;
+}
+
 void FilesSender::sendFileChunk() {
 	if (!m_fileStream.is_open()) {
-		if (!m_queue.empty()) {
-			std::optional<std::filesystem::path> pathCopy;
-			auto* variantPtr = m_queue.front_ptr();
-			if (variantPtr) {
-				if (auto path = std::get_if<std::filesystem::path>(variantPtr)) {
-					pathCopy = *path;
-				}
-			}
-			if (!pathCopy.has_value() || !openFile(*pathCopy)) {
-				return;
-			}
-		}
-		else {
+        if (!prepareNextFile()) {
 			return;
 		}
 	}
@@ -48,8 +59,8 @@ void FilesSender::sendFileChunk() {
 	if (bytesRead > 0) {
 		asio::async_write(
 			m_socket,
-			asio::buffer(m_buffer.data(), c_chunkSize),
-			[this](std::error_code ec, std::size_t bytesSent) {
+			asio::buffer(m_buffer.data(), static_cast<size_t>(bytesRead)),
+			[this](std::error_code ec, std::size_t) {
 				if (ec) 
 				{
 					LOG_ERROR("Error sending file chunk: {}", utilities::errorCodeForLog(ec));
@@ -64,18 +75,16 @@ void FilesSender::sendFileChunk() {
 	else {
 		LOG_DEBUG("File transfer completed");
 		m_fileStream.close();
+        m_currentFilePath.reset();
 		m_queue.try_pop();
 		if (!m_queue.empty()) {
-			auto* variantPtr = m_queue.front_ptr();
-			if (variantPtr) {
-				if (auto path = std::get_if<std::filesystem::path>(variantPtr)) {
-					m_buffer.fill(0);
-					sendFileChunk();
-				}
-				else {
-					m_packetsSender.send();
-				}
-			}
+            auto front = m_queue.front();
+            if (front.has_value() && std::holds_alternative<std::filesystem::path>(*front)) {
+                m_buffer.fill(0);
+                sendFileChunk();
+            } else {
+                m_packetsSender.send();
+            }
 		}
 	}
 }

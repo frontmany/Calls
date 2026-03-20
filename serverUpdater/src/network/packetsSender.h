@@ -3,6 +3,8 @@
 #include <functional>
 #include <variant>
 #include <filesystem>
+#include <optional>
+#include <atomic>
 
 #include "utilities/safeQueue.h"
 #include "packet.h"
@@ -23,10 +25,12 @@ public:
 	);
 
 	void send();
+    bool isSending() const;
 
 private:
+	void startNextIfNeeded();
 	void writeHeader();
-	void writeBody(const Packet* packet);
+	void writeBody();
 	void resolveSending();
 
 private:
@@ -37,6 +41,8 @@ private:
 	asio::io_context& m_asioContext;
 
 	std::function<void()> m_onError;
+    std::optional<Packet> m_currentPacket;
+    std::atomic_bool m_sending{false};
 };
 }
 

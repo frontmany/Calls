@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <variant>
 #include <array>
+#include <optional>
 
 #include "packet.h"
 #include "../utilities/safeQueue.h"
@@ -29,6 +30,7 @@ public:
 
 private:
 	void sendFileChunk();
+    bool prepareNextFile();
 	bool openFile(const std::filesystem::path& path);
 
 private:
@@ -38,6 +40,7 @@ private:
 	static constexpr uint32_t c_chunkSize = 8192;
 	std::array<char, c_chunkSize> m_buffer{};
 	std::ifstream m_fileStream;
+    std::optional<std::filesystem::path> m_currentFilePath;
 
 	asio::io_context& m_asioContext;
 	asio::ip::tcp::socket& m_socket;

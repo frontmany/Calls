@@ -33,6 +33,11 @@ void PacketsReceiver::readHeader() {
 			}
 			else { 
 				LOG_TRACE("Received packet header, type: {}, size: {}", m_temporaryPacket.type(), m_temporaryPacket.size());
+                if (m_temporaryPacket.size() < Packet::sizeOfHeader() || m_temporaryPacket.size() > c_maxPacketSize) {
+                    LOG_WARN("[SERVER] Invalid packet size {}, disconnecting client", m_temporaryPacket.size());
+                    m_onDisconnect();
+                    return;
+                }
 				if (m_temporaryPacket.size() > Packet::sizeOfHeader()) {
 					m_temporaryPacket.body_mut().resize(m_temporaryPacket.size() - Packet::sizeOfHeader());
 					readBody();

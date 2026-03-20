@@ -20,6 +20,7 @@ public:
 private:
 	void readHeader();
 	void readBody();
+    static constexpr uint64_t c_maxPacketSize = 8 * 1024 * 1024;
 
 private:
 	asio::ip::tcp::socket& m_socket;
