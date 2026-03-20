@@ -1,6 +1,7 @@
 #include "dialogs/firstLaunchDialog.h"
 #include "utilities/utility.h"
 #include "constants/color.h"
+#include "constants/constant.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGraphicsDropShadowEffect>
@@ -149,7 +150,7 @@ FirstLaunchDialog::FirstLaunchDialog(QWidget* parent, const QString& imagePath, 
 
     QString actualDescription = descriptionText;
     if (actualDescription.isEmpty()) {
-        QFile textFile("welcomeText.txt");
+        QFile textFile(WELCOME_TEXT_FILE_NAME);
         if (textFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream in(&textFile);
             actualDescription = in.readAll();

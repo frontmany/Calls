@@ -55,3 +55,92 @@
 [2026-03-18 19:54:12.186] [info] [server] [thread 1] User logout: CA978
 [2026-03-18 19:54:12.280] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
 [2026-03-18 19:54:12.280] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-19 07:23:29.888] [info] [server] [thread 1] [UDP] Media server initialized on port 8081
+[2026-03-19 07:23:29.890] [info] [server] [thread 1] [UDP] Media server starting on port 8081
+[2026-03-19 07:23:29.890] [info] [server] [thread 1] [TCP] Control server starting on port 8081
+[2026-03-19 07:23:44.181] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:50022
+[2026-03-19 07:23:44.183] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 07:23:44.184] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-19 07:23:45.741] [info] [server] [thread 1] User authorized: CA978
+[2026-03-19 07:24:09.637] [info] [server] [thread 1] User logout: CA978
+[2026-03-19 07:24:09.732] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 07:24:09.732] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-19 07:24:09.732] [debug] [server] [thread 9] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-19 07:25:45.895] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:46254
+[2026-03-19 07:25:45.896] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 07:25:45.896] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-19 07:26:22.262] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 07:26:22.262] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-19 07:26:22.262] [debug] [server] [thread 9] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-19 07:27:03.004] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:37132
+[2026-03-19 07:27:03.005] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 07:27:03.005] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-19 07:27:05.766] [info] [server] [thread 1] User authorized: CA978
+[2026-03-19 07:27:50.455] [info] [server] [thread 1] User logout: CA978
+[2026-03-19 07:27:50.492] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 07:27:50.492] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-19 07:27:50.493] [debug] [server] [thread 9] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-19 07:30:05.899] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:39014
+[2026-03-19 07:30:05.900] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 07:30:05.901] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-19 07:30:06.952] [info] [server] [thread 1] User authorized: CA978
+[2026-03-19 07:30:38.222] [info] [server] [thread 1] User logout: CA978
+[2026-03-19 07:30:38.310] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 07:30:38.310] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-19 07:30:38.326] [debug] [server] [thread 9] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-19 07:30:42.140] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:48912
+[2026-03-19 07:30:42.156] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 07:30:42.156] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-19 07:30:45.940] [info] [server] [thread 1] User authorized: 8254C
+[2026-03-19 07:31:00.314] [info] [server] [thread 1] User logout: 8254C
+[2026-03-19 07:31:00.643] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 07:31:00.643] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-19 20:38:56.454] [info] [server] [thread 1] [UDP] Media server initialized on port 8081
+[2026-03-19 20:38:56.455] [info] [server] [thread 1] [UDP] Media server starting on port 8081
+[2026-03-19 20:38:56.455] [info] [server] [thread 1] [TCP] Control server starting on port 8081
+[2026-03-19 20:39:08.239] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:52796
+[2026-03-19 20:39:08.240] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 20:39:08.241] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-19 20:39:14.150] [info] [server] [thread 1] User authorized: CA978
+[2026-03-19 20:40:01.395] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:39532
+[2026-03-19 20:40:01.396] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-19 20:40:01.396] [debug] [server] [thread 9] [TCP] Active connections: 2
+[2026-03-19 20:40:02.081] [info] [server] [thread 1] User authorized: 3E23E
+[2026-03-19 20:40:15.957] [info] [server] [thread 1] User logout: CA978
+[2026-03-19 20:40:16.117] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 20:40:16.117] [info] [server] [thread 9] [TCP] Client disconnected (active: 1)
+[2026-03-19 20:40:16.118] [debug] [server] [thread 9] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-19 20:40:17.032] [info] [server] [thread 1] User logout: 3E23E
+[2026-03-19 20:40:17.521] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-19 20:40:17.521] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-20 07:22:09.158] [info] [server] [thread 1] [UDP] Media server initialized on port 8081
+[2026-03-20 07:22:09.160] [info] [server] [thread 1] [UDP] Media server starting on port 8081
+[2026-03-20 07:22:09.160] [info] [server] [thread 1] [TCP] Control server starting on port 8081
+[2026-03-20 07:22:17.957] [info] [server] [thread 9] [TCP] New connection from 172.18.0.1:53436
+[2026-03-20 07:22:17.958] [debug] [server] [thread 9] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-20 07:22:17.959] [debug] [server] [thread 9] [TCP] Active connections: 1
+[2026-03-20 07:22:19.112] [info] [server] [thread 1] User authorized: CA978
+[2026-03-20 07:22:43.752] [info] [server] [thread 1] User logout: CA978
+[2026-03-20 07:22:44.009] [debug] [server] [thread 9] [TCP] Read header error: error 2 - disconnecting
+[2026-03-20 07:22:44.009] [info] [server] [thread 9] [TCP] Client disconnected (active: 0)
+[2026-03-20 07:40:32.008] [info] [server] [thread 1] [UDP] Media server initialized on port 8081
+[2026-03-20 07:40:32.008] [info] [server] [thread 1] [UDP] Media server starting on port 8081
+[2026-03-20 07:40:32.008] [info] [server] [thread 1] [TCP] Control server starting on port 8081
+[2026-03-20 07:51:43.134] [info] [server] [thread 10] [TCP] New connection from 172.18.0.1:51320
+[2026-03-20 07:51:43.136] [debug] [server] [thread 10] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-20 07:51:43.136] [debug] [server] [thread 10] [TCP] Active connections: 1
+[2026-03-20 07:51:43.943] [info] [server] [thread 1] User authorized: CA978
+[2026-03-20 07:51:46.173] [info] [server] [thread 10] [TCP] New connection from 172.18.0.1:51336
+[2026-03-20 07:51:46.173] [debug] [server] [thread 10] [TCP] Keepalive enabled (idle=3s, interval=1s, probes=3)
+[2026-03-20 07:51:46.173] [debug] [server] [thread 10] [TCP] Active connections: 2
+[2026-03-20 07:51:46.750] [info] [server] [thread 1] User authorized: 3E23E
+[2026-03-20 07:51:48.890] [info] [server] [thread 1] Call initiated from 3E23E to CA978
+[2026-03-20 07:51:50.010] [info] [server] [thread 1] Call accepted: 3E23E -> CA978
+[2026-03-20 07:51:52.863] [info] [server] [thread 1] Call ended: 3E23E ended call with CA978
+[2026-03-20 07:52:10.355] [info] [server] [thread 1] User logout: CA978
+[2026-03-20 07:52:10.465] [debug] [server] [thread 10] [TCP] Read header error: error 2 - disconnecting
+[2026-03-20 07:52:10.465] [info] [server] [thread 10] [TCP] Client disconnected (active: 1)
+[2026-03-20 07:52:10.465] [debug] [server] [thread 10] [TCP] Disconnect: no user associated with connection (e.g. pre-auth or already reconnected)
+[2026-03-20 07:52:12.025] [info] [server] [thread 1] User logout: 3E23E
+[2026-03-20 07:52:12.392] [debug] [server] [thread 10] [TCP] Read header error: error 2 - disconnecting
+[2026-03-20 07:52:12.392] [info] [server] [thread 10] [TCP] Client disconnected (active: 0)
