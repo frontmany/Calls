@@ -7,7 +7,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY vendor /app/vendor
+
+# Vendor deps (same tags as root CMakeLists FetchContent). Use when vendor/ is not in git.
+RUN mkdir -p /app/vendor \
+    && git clone --depth 1 --branch v3.11.3 https://github.com/nlohmann/json.git /app/vendor/json \
+    && git clone --depth 1 --branch asio-1-30-2 https://github.com/chriskohlhoff/asio.git /app/vendor/asio \
+    && git clone --depth 1 --branch v1.14.1 https://github.com/gabime/spdlog.git /app/vendor/spdlog \
+    && test -f /app/vendor/json/include/nlohmann/json.hpp \
+    && test -f /app/vendor/asio/asio/include/asio.hpp \
+    && test -f /app/vendor/spdlog/CMakeLists.txt
+
 COPY serverUpdater /app/serverUpdater
 
 # Build static dependency expected by `serverUpdater/CMakeLists.txt` (Linux branch).

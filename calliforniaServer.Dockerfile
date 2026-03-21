@@ -7,7 +7,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY vendor /app/vendor
+
+# Vendor deps (same tags as root CMakeLists FetchContent). Use when vendor/ is not in git.
+RUN mkdir -p /app/vendor \
+    && git clone --depth 1 --branch v3.11.3 https://github.com/nlohmann/json.git /app/vendor/json \
+    && git clone --depth 1 --branch CRYPTOPP_8_9_0 https://github.com/weidai11/cryptopp.git /app/vendor/cryptopp \
+    && git clone --depth 1 --branch asio-1-30-2 https://github.com/chriskohlhoff/asio.git /app/vendor/asio \
+    && git clone --depth 1 --branch v1.14.1 https://github.com/gabime/spdlog.git /app/vendor/spdlog \
+    && git clone --depth 1 --branch main https://github.com/frontmany/ticTimer.git /app/vendor/ticTimer \
+    && test -f /app/vendor/json/include/nlohmann/json.hpp \
+    && test -f /app/vendor/asio/asio/include/asio.hpp \
+    && test -f /app/vendor/spdlog/CMakeLists.txt \
+    && test -f /app/vendor/ticTimer/ticTimer.h \
+    && ( test -f /app/vendor/cryptopp/GNUmakefile || test -f /app/vendor/cryptopp/Makefile )
+
 COPY server /app/server
 
 # Build static dependencies expected by `server/CMakeLists.txt` (Linux branch).

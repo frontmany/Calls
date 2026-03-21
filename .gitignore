@@ -3,9 +3,8 @@
 build
 volumes
 
-vendor/asio
-vendor/ffmpeg
-vendor/opus-main
-vendor/portaudio-master
+# Not in git: fetch with cmake -DFETCH_DEPENDENCIES=ON (see root CMakeLists.txt) or Dockerfiles clone into /app/vendor.
+vendor
+
 out/
 .vs/
