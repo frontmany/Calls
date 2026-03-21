@@ -4,7 +4,7 @@
 #include <string>
 #include "eventListener.h"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace core::logic
 {

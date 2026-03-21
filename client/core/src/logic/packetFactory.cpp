@@ -1,7 +1,7 @@
 #include "packetFactory.h"
 #include "constants/jsonType.h"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 using namespace core::constant;
 using namespace core::utilities::crypto;

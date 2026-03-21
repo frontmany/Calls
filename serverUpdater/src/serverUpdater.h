@@ -11,7 +11,7 @@
 #include "network/packet.h"
 #include "operationSystemType.h"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace serverUpdater
 {

@@ -2,7 +2,7 @@
 #include "../utilities/utilities.h"
 #include "../packetType.h"
 #include "../checkResult.h"
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 #include "../jsonType.h"
 
 #include <chrono>

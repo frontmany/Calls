@@ -18,7 +18,7 @@
 #include "logic/callManager.h"
 #include "logic/meetingManager.h"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace server
 {

@@ -8,7 +8,7 @@
 #include "packet.h"
 
 #include "asio.hpp"
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <unordered_set>
 #include <atomic>

@@ -7,7 +7,7 @@
 #include "media/processing/mediaProcessingService.h"
 #include "eventListener.h"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace core::logic
 {

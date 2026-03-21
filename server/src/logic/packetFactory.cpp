@@ -1,6 +1,6 @@
 #include "packetFactory.h"
 #include "constants/jsonType.h"
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <chrono>
 #include <ctime>

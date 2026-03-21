@@ -23,7 +23,7 @@
 #include "network/packet.h"
 #include "network/fileReceiver.h"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace updater
 {
