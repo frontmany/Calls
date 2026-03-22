@@ -78,6 +78,7 @@ struct StyleMeetingWidget
     static QString joinRequestDeclineButtonStyle();
     static QString callNamePanelStyle();
     static QString callNameLabelStyle();
+    static QString meetingDurationPanelStyle();
 };
 
 class MeetingWidget : public QWidget
@@ -175,6 +176,7 @@ private:
     void updateJoinRequestsPanelPosition();
     void updateJoinRequestsPanelSize();
     void updateCallNamePanelPosition();
+    void updateMeetingDurationPanelPosition();
     void showOverlayWithTimeout();
     void onOverlayHideTimerTimeout();
 
@@ -189,7 +191,9 @@ private:
     ButtonIcon* m_nextPageButton = nullptr;
     int m_currentPageIndex = 0;
 
-    QLabel* m_timerLabel = nullptr;
+    QWidget* m_meetingDurationPanel = nullptr;
+    QHBoxLayout* m_meetingDurationLayout = nullptr;
+    QLabel* m_meetingDurationLabel = nullptr;
     Screen* m_mainScreen = nullptr;
 
     QWidget* m_buttonsPanel = nullptr;

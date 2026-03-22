@@ -12,6 +12,7 @@
 
 #include "widgets/meetingParticipantWidget.h"
 #include "utilities/utility.h"
+#include "constants/constant.h"
 
 // Style definitions
 const QColor StyleMeetingWidget::m_primaryColor = QColor(21, 119, 232);
@@ -505,6 +506,23 @@ QString StyleMeetingWidget::callNameLabelStyle()
         .arg(QString::fromStdString(std::to_string(scale(13))));
 }
 
+QString StyleMeetingWidget::meetingDurationPanelStyle()
+{
+    const QString radius = QString::fromStdString(std::to_string(scale(20)));
+    return QString(
+        "QWidget#meetingDurationPanel {"
+        "   background: rgba(255, 255, 255, 60);"
+        "   border: 1px solid rgba(255, 255, 255, 140);"
+        "   border-radius: %1px;"
+        "   backdrop-filter: blur(12px);"
+        "}"
+        "QLabel {"
+        "   color: #1A1A1A;"
+        "   background: transparent;"
+        "}")
+        .arg(radius);
+}
+
 // MeetingWidget implementation
 MeetingWidget::MeetingWidget(QWidget* parent) : QWidget(parent) {
     setupUI();
@@ -513,7 +531,6 @@ MeetingWidget::MeetingWidget(QWidget* parent) : QWidget(parent) {
     m_callTimer = new QTimer(this);
     m_callDuration = new QTime(0, 0, 0);
     connect(m_callTimer, &QTimer::timeout, this, &MeetingWidget::updateCallTimer);
-    m_callTimer->start(1000);
 
     m_exitFullscreenHideTimer = new QTimer(this);
     m_exitFullscreenHideTimer->setSingleShot(true);
@@ -563,16 +580,6 @@ void MeetingWidget::setupUI() {
     // [prev] [panel_0/1/... по центру] [next]
     m_participantsContainerLayout->addWidget(m_prevPageButton);
     m_participantsContainerLayout->addWidget(m_nextPageButton);
-
-    // Timer label (hidden, but timer still runs)
-    m_timerLabel = new QLabel("00:00", this);
-    m_timerLabel->setAlignment(Qt::AlignCenter);
-    m_timerLabel->setStyleSheet(StyleMeetingWidget::timerStyle());
-    m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    m_timerLabel->setMinimumHeight(scale(46));
-    m_timerLabel->hide();
-    QFont initialTimerFont("Outfit", scale(34), QFont::Bold);
-    m_timerLabel->setFont(initialTimerFont);
 
     // Main screen
     m_mainScreen = new Screen(this);
@@ -752,6 +759,28 @@ void MeetingWidget::setupUI() {
     m_joinRequestsScrollArea->setWidget(m_joinRequestsContainer);
     m_joinRequestsLayout->addWidget(m_joinRequestsScrollArea);
 
+    m_meetingDurationPanel = new QWidget(this);
+    m_meetingDurationPanel->setObjectName("meetingDurationPanel");
+    m_meetingDurationPanel->setStyleSheet(StyleMeetingWidget::meetingDurationPanelStyle());
+    m_meetingDurationPanel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    m_meetingDurationPanel->setMouseTracking(true);
+    m_meetingDurationPanel->hide();
+
+    m_meetingDurationLayout = new QHBoxLayout(m_meetingDurationPanel);
+    m_meetingDurationLayout->setContentsMargins(scale(18), scale(12), scale(16), scale(12));
+    m_meetingDurationLayout->setSpacing(0);
+    m_meetingDurationLayout->setAlignment(Qt::AlignVCenter);
+
+    m_meetingDurationLabel = new QLabel("00:00", m_meetingDurationPanel);
+    m_meetingDurationLabel->setAlignment(Qt::AlignCenter);
+    QFont durationFont("Outfit", scale(13), QFont::Bold);
+    m_meetingDurationLabel->setFont(durationFont);
+    m_meetingDurationLabel->setStyleSheet(StyleMeetingWidget::callNameLabelStyle());
+    m_meetingDurationLabel->setWordWrap(false);
+    m_meetingDurationLabel->setMouseTracking(true);
+
+    m_meetingDurationLayout->addWidget(m_meetingDurationLabel);
+
     // Call name badge
     m_callNamePanel = new QWidget(this);
     m_callNamePanel->setObjectName("callNamePanel");
@@ -813,8 +842,8 @@ void MeetingWidget::setupUI() {
     // Ensure initial positioning of floating panels
     QTimer::singleShot(0, this, [this]()
     {
-        updateCallNamePanelPosition();
         updateJoinRequestsPanelPosition();
+        updateCallNamePanelPosition();
     });
 
     // Connect signals
@@ -914,8 +943,8 @@ void MeetingWidget::resizeEvent(QResizeEvent* event) {
     if (m_mainScreen->isVisible())
         updateMainScreenSize();
 
-    updateCallNamePanelPosition();
     updateJoinRequestsPanelPosition();
+    updateCallNamePanelPosition();
 
     QWidget::resizeEvent(event);
 }
@@ -964,11 +993,52 @@ void MeetingWidget::setCallName(const QString& callName) {
         m_callTimer->stop();
     }
 
-    m_callTimer->start(1000);
+    if (m_meetingDurationLabel)
+    {
+        m_meetingDurationLabel->setText("00:00");
+        m_meetingDurationLabel->setStyleSheet(StyleMeetingWidget::callNameLabelStyle());
+        QFont durationFont("Outfit", scale(13), QFont::Bold);
+        m_meetingDurationLabel->setFont(durationFont);
+    }
+
+    if (hasName)
+    {
+        m_callTimer->start(TIMER_INTERVAL_MS);
+    }
+    else if (m_meetingDurationPanel)
+    {
+        m_meetingDurationPanel->hide();
+    }
+
+    updateJoinRequestsPanelPosition();
 }
 
 void MeetingWidget::updateCallTimer() {
+    if (!m_callDuration || !m_meetingDurationLabel)
+    {
+        return;
+    }
+
     *m_callDuration = m_callDuration->addSecs(1);
+
+    const bool isLongCall = (m_callDuration->hour() > 0);
+    if (isLongCall)
+    {
+        QFont timerFont("Pacifico", scale(15), QFont::Bold);
+        m_meetingDurationLabel->setFont(timerFont);
+    }
+
+    QString timeFormat;
+    if (m_callDuration->hour() > 0)
+    {
+        timeFormat = "hh:mm:ss";
+    }
+    else
+    {
+        timeFormat = "mm:ss";
+    }
+
+    m_meetingDurationLabel->setText(m_callDuration->toString(timeFormat));
 }
 
 bool MeetingWidget::isFullScreen() const {
@@ -1147,6 +1217,15 @@ void MeetingWidget::resetMeetingState() {
     if (m_callNamePanel) {
         m_callNamePanel->hide();
     }
+    if (m_meetingDurationPanel) {
+        m_meetingDurationPanel->hide();
+    }
+    if (m_meetingDurationLabel) {
+        m_meetingDurationLabel->setText("00:00");
+        m_meetingDurationLabel->setStyleSheet(StyleMeetingWidget::callNameLabelStyle());
+        QFont durationFont("Outfit", scale(13), QFont::Bold);
+        m_meetingDurationLabel->setFont(durationFont);
+    }
 
     if (m_joinRequestsContainerLayout) {
         for (QWidget* item : m_joinRequestItems) {
@@ -1177,8 +1256,8 @@ void MeetingWidget::resetMeetingState() {
     }
 
     updateOverlayButtonsPosition();
-    updateCallNamePanelPosition();
     updateJoinRequestsPanelPosition();
+    updateCallNamePanelPosition();
     updateParticipantsContainerSize();
     updateMainScreenSize();
 }
@@ -1341,6 +1420,33 @@ void MeetingWidget::updateCallNamePanelPosition()
     m_callNamePanel->raise();
 }
 
+void MeetingWidget::updateMeetingDurationPanelPosition()
+{
+    if (!m_meetingDurationPanel)
+    {
+        return;
+    }
+
+    const int margin = scale(10);
+    const int topMargin = scale(10);
+    const int spacing = scale(10);
+
+    if (m_meetingDurationPanel->isVisible())
+    {
+        m_meetingDurationPanel->adjustSize();
+    }
+
+    int x = margin;
+    int y = topMargin;
+    if (m_joinRequestsPanel && m_joinRequestsPanel->isVisible() && !m_joinRequestItems.isEmpty())
+    {
+        y = topMargin + m_joinRequestsPanel->height() + spacing;
+    }
+
+    m_meetingDurationPanel->move(x, y);
+    m_meetingDurationPanel->raise();
+}
+
 void MeetingWidget::showOverlayWithTimeout()
 {
     if (m_screenFullscreenActive)
@@ -1351,6 +1457,8 @@ void MeetingWidget::showOverlayWithTimeout()
             m_settingsButton->hide();
         if (m_callNamePanel)
             m_callNamePanel->hide();
+        if (m_meetingDurationPanel)
+            m_meetingDurationPanel->hide();
         if (m_exitFullscreenHideTimer)
             m_exitFullscreenHideTimer->start();
     }
@@ -1365,13 +1473,18 @@ void MeetingWidget::showOverlayWithTimeout()
             m_callNamePanel->show();
             m_callNamePanel->adjustSize();
         }
+        if (m_meetingDurationPanel && !m_callName.isEmpty())
+        {
+            m_meetingDurationPanel->show();
+            m_meetingDurationPanel->adjustSize();
+        }
         if (m_joinRequestsPanel && !m_joinRequestItems.isEmpty())
             m_joinRequestsPanel->show();
     }
 
     updateOverlayButtonsPosition();
-    updateCallNamePanelPosition();
     updateJoinRequestsPanelPosition();
+    updateCallNamePanelPosition();
 
     if (m_overlayHideTimer)
     {
@@ -1394,24 +1507,27 @@ void MeetingWidget::onOverlayHideTimerTimeout()
         m_settingsButton->hide();
     if (m_callNamePanel)
         m_callNamePanel->hide();
+    if (m_meetingDurationPanel)
+        m_meetingDurationPanel->hide();
 }
 
 void MeetingWidget::updateJoinRequestsPanelPosition()
 {
-    if (!m_joinRequestsPanel) return;
+    if (m_joinRequestsPanel)
+    {
+        const int margin = scale(10);
+        const int topMargin = scale(10);
 
-    const int margin = scale(10);
-    const int topMargin = scale(10);
-    
-    m_joinRequestsPanel->adjustSize();
-    QSize panelSize = m_joinRequestsPanel->size();
-    
-    // Position panel in top-left corner
-    int x = margin;
-    int y = topMargin;
-    
-    m_joinRequestsPanel->move(x, y);
-    m_joinRequestsPanel->raise();
+        m_joinRequestsPanel->adjustSize();
+
+        const int x = margin;
+        const int y = topMargin;
+
+        m_joinRequestsPanel->move(x, y);
+        m_joinRequestsPanel->raise();
+    }
+
+    updateMeetingDurationPanelPosition();
 }
 
 void MeetingWidget::updateJoinRequestsPanelSize()
@@ -1927,6 +2043,8 @@ void MeetingWidget::enterFullscreen() {
         m_settingsButton->hide();
     if (m_callNamePanel)
         m_callNamePanel->hide();
+    if (m_meetingDurationPanel)
+        m_meetingDurationPanel->hide();
 
     m_participantsContainer->hide();
 
@@ -1947,6 +2065,7 @@ void MeetingWidget::setAudioSettingsDialogOpen(bool open) {
         if (!m_screenFullscreenActive) {
             if (m_settingsButton) m_settingsButton->hide();
             if (m_callNamePanel) m_callNamePanel->hide();
+            if (m_meetingDurationPanel) m_meetingDurationPanel->hide();
             if (m_joinRequestsPanel) m_joinRequestsPanel->hide();
         }
     }

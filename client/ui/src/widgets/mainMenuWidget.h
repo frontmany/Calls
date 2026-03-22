@@ -50,8 +50,6 @@ struct StyleMainMenuWidget {
     static QString nicknameStyle();
     static QString buttonStyle();
     static QString disabledButtonStyle();
-    static QString callButtonGlassStyle();
-    static QString disabledCallButtonGlassStyle();
     static QString settingsButtonStyle();
     static QString lineEditStyle();
     static QString disabledLineEditStyle();
