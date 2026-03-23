@@ -57,4 +57,4 @@ constexpr const char* IGNORED_DIRECTORY_CRASHES = "crashes"; // Crashes director
 
 // Call widget additional screen IDs
 constexpr const char* ADDITIONAL_SCREEN_ID_LOCAL_CAMERA = "localCamera";
-constexpr const char* ADDITIONAL_SCREEN_ID_REMOTE_CAMERA = "remoteCamera";
+constexpr const char* ADDITIONAL_SCREEN_ID_REMOTE_CAMERA = "remoteCamera"; 

@@ -16,6 +16,17 @@
 #include <cmath>
 #include <vector>
 #include <QSet>
+#include <string>
+
+namespace {
+    std::string preferredCameraDeviceArg(const ConfigManager* configManager)
+    {
+        if (!configManager) {
+            return {};
+        }
+        return configManager->getPreferredCameraDeviceId().toStdString();
+    }
+}
 
 MeetingManager::MeetingManager(
     std::shared_ptr<core::Core> client,
@@ -162,7 +173,7 @@ void MeetingManager::onCameraClicked(bool toggled)
             return;
         }
 
-        std::error_code ec = m_coreClient->startCameraSharing("");
+        std::error_code ec = m_coreClient->startCameraSharing(preferredCameraDeviceArg(m_configManager));
         if (ec) {
             onStartCameraSharingError();
         } else {
@@ -734,7 +745,7 @@ void MeetingManager::tryStartCameraWithSession()
         return;
     }
 
-    std::error_code ec = m_coreClient->startCameraSharing("");
+    std::error_code ec = m_coreClient->startCameraSharing(preferredCameraDeviceArg(m_configManager));
     if (ec) {
         onStartCameraSharingError();
         return;

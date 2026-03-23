@@ -7,9 +7,12 @@
 #include <QMap>
 #include <functional>
 #include <QTimer>
+#include <vector>
+
+#include "media/camera/cameraDeviceInfo.h"
 
 class OverlayWidget;
-class AudioSettingsDialog;
+class DeviceSettingsDialog;
 class UpdatingDialog;
 class ScreenShareDialog;
 class AlreadyRunningDialog;
@@ -42,9 +45,12 @@ public:
     void showFirstLaunchDialog(const QString& imagePath = ":/resources/welcome.jpg", const QString& descriptionText = "");
     void hideFirstLaunchDialog();
 
-    void showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice = -1, int currentOutputDevice = -1);
-    void hideAudioSettingsDialog();
-    void refreshAudioSettingsDialogDevices(int currentInputIndex, int currentOutputIndex);
+    void showDeviceSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume,
+        int currentInputDevice, int currentOutputDevice,
+        const std::vector<core::media::Camera>& cameras, const QString& currentCameraDeviceId);
+    void hideDeviceSettingsDialog();
+    void refreshDeviceSettingsDialog(int currentInputIndex, int currentOutputIndex,
+        const std::vector<core::media::Camera>& cameras, const QString& currentCameraDeviceId);
 
     void showIncomingCallsDialog(const QString& friendNickname, int remainingTime);
     void hideIncomingCallsDialog(const QString& friendNickname);
@@ -60,16 +66,15 @@ public:
     void hideEndMeetingConfirmationDialog();
 
 signals:
-    void audioSettingsDialogClosed();
+    void deviceSettingsDialogClosed();
     void inputDeviceSelected(int deviceIndex);
     void outputDeviceSelected(int deviceIndex);
+    void cameraDeviceSelected(const QString& deviceId);
     void inputVolumeChanged(int volume);
     void outputVolumeChanged(int volume);
     void muteMicrophoneClicked(bool mute);
     void muteSpeakerClicked(bool mute);
     void refreshAudioDevicesRequested();
-
-signals:
 	void closeRequested();
     void screenSelected(int screenIndex);
     void screenShareDialogCancelled();
@@ -100,8 +105,8 @@ private:
     OverlayWidget* m_firstLaunchOverlay = nullptr;
     FirstLaunchDialog* m_firstLaunchDialog = nullptr;
 
-    OverlayWidget* m_audioSettingsOverlay = nullptr;
-    AudioSettingsDialog* m_audioSettingsDialog = nullptr;
+    OverlayWidget* m_deviceSettingsOverlay = nullptr;
+    DeviceSettingsDialog* m_deviceSettingsDialog = nullptr;
 
     OverlayWidget* m_meetingsManagementOverlay = nullptr;
     MeetingManagementDialog* m_meetingsManagementDialog = nullptr;

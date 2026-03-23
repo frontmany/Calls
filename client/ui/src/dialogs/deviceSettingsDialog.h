@@ -9,20 +9,24 @@
 #include <QButtonGroup>
 #include <QAbstractButton>
 #include <QVariant>
+#include <QStackedWidget>
+#include <QResizeEvent>
 #include <vector>
 
 #include "widgets/components/button.h"
 #include "utilities/utilities.h"
 #include "media/audio/audioEngine.h"
+#include "media/camera/cameraDeviceInfo.h"
 
-class AudioSettingsDialog : public QDialog
+class DeviceSettingsDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AudioSettingsDialog(QWidget* parent = nullptr);
+    explicit DeviceSettingsDialog(QWidget* parent = nullptr);
 
     void refreshDevices(int currentInputIndex, int currentOutputIndex);
+    void refreshCameraDevices(const std::vector<core::media::Camera>& cameras, const QString& selectedDeviceId);
     void setInputVolume(int volume);
     void setOutputVolume(int volume);
     void setMicrophoneMuted(bool muted);
@@ -32,6 +36,7 @@ public:
 signals:
     void inputDeviceSelected(int deviceIndex);
     void outputDeviceSelected(int deviceIndex);
+    void cameraDeviceSelected(const QString& deviceId);
     void inputVolumeChanged(int volume);
     void outputVolumeChanged(int volume);
     void muteMicrophoneClicked(bool mute);
@@ -39,29 +44,56 @@ signals:
     void refreshAudioDevicesRequested();
     void closeRequested();
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
     void applyStyle();
     QString sliderStyle() const;
     QString scrollAreaStyle() const;
-    void buildDeviceList(QVBoxLayout* layout, QButtonGroup* group, const std::vector<core::media::DeviceInfo>& devices, int currentIndex, bool isInput);
+    void updateDeviceListElision();
+    int elideWidthForScrollArea(const QScrollArea* area) const;
+    void buildAudioDeviceList(QVBoxLayout* layout, QButtonGroup* group, QScrollArea* listArea,
+        const std::vector<core::media::DeviceInfo>& devices, int currentIndex, bool isInput);
+    void buildCameraDeviceList(const std::vector<core::media::Camera>& cameras, const QString& selectedDeviceId);
     void clearLayout(QLayout* layout);
-    void updateDeviceLogos(QButtonGroup* group);
+    void updateRowSelectionStyle(QButtonGroup* group);
 
     QWidget* m_container = nullptr;
     ButtonIcon* m_closeButton = nullptr;
+
+    QLabel* m_deviceCenterLabel = nullptr;
+    QButtonGroup* m_navButtonGroup = nullptr;
+    QPushButton* m_navInputButton = nullptr;
+    QPushButton* m_navOutputButton = nullptr;
+    QPushButton* m_navCameraButton = nullptr;
+    QWidget* m_navInputRow = nullptr;
+    QWidget* m_navOutputRow = nullptr;
+    QWidget* m_navCameraRow = nullptr;
+
+    QStackedWidget* m_stack = nullptr;
+
     QScrollArea* m_inputDevicesArea = nullptr;
     QScrollArea* m_outputDevicesArea = nullptr;
+    QScrollArea* m_cameraDevicesArea = nullptr;
     QWidget* m_inputDevicesWidget = nullptr;
     QWidget* m_outputDevicesWidget = nullptr;
+    QWidget* m_cameraDevicesWidget = nullptr;
     QVBoxLayout* m_inputDevicesLayout = nullptr;
     QVBoxLayout* m_outputDevicesLayout = nullptr;
+    QVBoxLayout* m_cameraDevicesLayout = nullptr;
     QButtonGroup* m_inputButtonsGroup = nullptr;
     QButtonGroup* m_outputButtonsGroup = nullptr;
+    QButtonGroup* m_cameraButtonsGroup = nullptr;
+
+    QWidget* m_inputPage = nullptr;
+    QWidget* m_outputPage = nullptr;
+    QWidget* m_cameraPage = nullptr;
+
     ToggleButtonIcon* m_micToggle = nullptr;
     ToggleButtonIcon* m_speakerToggle = nullptr;
-    QWidget* m_slidersContainer = nullptr;
     QSlider* m_micSlider = nullptr;
     QSlider* m_speakerSlider = nullptr;
-    int m_deviceNameMaxWidth = 0;
+
     bool m_blockDeviceSignals = false;
 };

@@ -46,6 +46,8 @@ public:
     void setCameraActive(bool active);
     void setStartCameraWithSession(bool startWithSession);
     void setFirstLaunch(bool firstLaunch);
+    QString getPreferredCameraDeviceId() const;
+    void setPreferredCameraDeviceId(const QString& deviceId);
 
 private:
     bool isFirstLaunchFromConfig();
@@ -67,6 +69,7 @@ private:
     QString getAppDirectoryFromConfig();
     QString getTemporaryUpdateDirectoryFromConfig();
     QString getDeletionListFileNameFromConfig();
+    QString getPreferredCameraDeviceIdFromConfig();
     std::unordered_set<std::string> getIgnoredFilesWhileCollectingForUpdateFromConfig();
     std::unordered_set<std::string> getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
     updater::OperationSystemType getOperationSystemTypeFromConfig();
@@ -98,4 +101,5 @@ private:
     std::unordered_set<std::string> m_ignoredFilesWhileCollectingForUpdate;
     std::unordered_set<std::string> m_ignoredDirectoriesWhileCollectingForUpdate;
     updater::OperationSystemType m_operationSystemType;
+    QString m_preferredCameraDeviceId;
 };

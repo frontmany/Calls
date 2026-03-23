@@ -22,7 +22,7 @@
 #include "constants/constant.h"
 
 #include "audio/audioEffectsManager.h"
-#include "audio/audioSettingsManager.h"
+#include "audio/deviceSettingsManager.h"
 #include "logic/updateManager.h"
 #include "logic/navigationController.h"
 #include "logic/authorizationManager.h"
@@ -63,7 +63,7 @@ void MainWindow::init() {
     initializeNotificationController();
     initializeAudioManager();
     initializeAudioDevicesWatcher();
-    initializeAudioSettingsManager();
+    initializeDeviceSettingsManager();
     initializeNavigationController();
     initializeUpdateManager();
     initializeAuthorizationManager();
@@ -241,8 +241,8 @@ void MainWindow::initializeAudioDevicesWatcher() {
     m_audioDevicesWatcher = new AudioDevicesWatcher(m_coreClient, this);
 }
 
-void MainWindow::initializeAudioSettingsManager() {
-    m_audioSettingsManager = new AudioSettingsManager(m_coreClient, m_configManager, this);
+void MainWindow::initializeDeviceSettingsManager() {
+    m_deviceSettingsManager = new DeviceSettingsManager(m_coreClient, m_configManager, this);
 }
 
 void MainWindow::initializeUpdateManager() {
@@ -343,11 +343,11 @@ void MainWindow::connectWidgetsToManagers() {
 
     // MainMenuWidget connections
     if (m_mainMenuWidget) {
-        if (m_audioSettingsManager) {
-            connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
-            connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
-            connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
-            connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+        if (m_deviceSettingsManager) {
+            connect(m_mainMenuWidget, &MainMenuWidget::inputVolumeChanged, m_deviceSettingsManager, &DeviceSettingsManager::onInputVolumeChanged);
+            connect(m_mainMenuWidget, &MainMenuWidget::outputVolumeChanged, m_deviceSettingsManager, &DeviceSettingsManager::onOutputVolumeChanged);
+            connect(m_mainMenuWidget, &MainMenuWidget::muteMicrophoneClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteMicrophoneButtonClicked);
+            connect(m_mainMenuWidget, &MainMenuWidget::muteSpeakerClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteSpeakerButtonClicked);
         }
         if (m_callManager) {
             connect(m_mainMenuWidget, &MainMenuWidget::audioDevicePickerRequested, m_callManager, &CallManager::onAudioDevicePickerRequested);
@@ -366,11 +366,11 @@ void MainWindow::connectWidgetsToManagers() {
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::audioSettingsRequested, m_callManager, &CallManager::onCallWidgetAudioSettingsRequested);
         }
-        if (m_audioSettingsManager) {
-            connect(m_callWidget, &CallWidget::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
-            connect(m_callWidget, &CallWidget::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
-            connect(m_callWidget, &CallWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
-            connect(m_callWidget, &CallWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
+        if (m_deviceSettingsManager) {
+            connect(m_callWidget, &CallWidget::inputVolumeChanged, m_deviceSettingsManager, &DeviceSettingsManager::onInputVolumeChanged);
+            connect(m_callWidget, &CallWidget::outputVolumeChanged, m_deviceSettingsManager, &DeviceSettingsManager::onOutputVolumeChanged);
+            connect(m_callWidget, &CallWidget::muteSpeakerClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteSpeakerButtonClicked);
+            connect(m_callWidget, &CallWidget::muteMicrophoneClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteMicrophoneButtonClicked);
         }
         if (m_callManager) {
             connect(m_callWidget, &CallWidget::hangupClicked, m_callManager, &CallManager::onEndCallButtonClicked);
@@ -449,27 +449,29 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_meetingWidget, &MeetingWidget::cameraClicked, m_meetingManager, &MeetingManager::onCameraClicked);
         connect(m_meetingWidget, &MeetingWidget::screenShareClicked, m_meetingManager, &MeetingManager::onScreenShareClicked);
     }
-    if (m_meetingWidget && m_audioSettingsManager) {
-        connect(m_meetingWidget, &MeetingWidget::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
-        connect(m_meetingWidget, &MeetingWidget::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+    if (m_meetingWidget && m_deviceSettingsManager) {
+        connect(m_meetingWidget, &MeetingWidget::muteMicrophoneClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteMicrophoneButtonClicked);
+        connect(m_meetingWidget, &MeetingWidget::muteSpeakerClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteSpeakerButtonClicked);
     }
     if (m_meetingWidget && m_dialogsController && m_coreClient) {
         connect(m_meetingWidget, &MeetingWidget::audioSettingsRequested, this, [this]() {
-            m_dialogsController->showAudioSettingsDialog(
+            m_dialogsController->showDeviceSettingsDialog(
                 true,
                 m_coreClient->isMicrophoneMuted(),
                 m_coreClient->isSpeakerMuted(),
                 m_coreClient->getInputVolume(),
                 m_coreClient->getOutputVolume(),
                 m_coreClient->getCurrentInputDevice(),
-                m_coreClient->getCurrentOutputDevice());
+                m_coreClient->getCurrentOutputDevice(),
+                m_coreClient->getCameraDevices(),
+                m_configManager ? m_configManager->getPreferredCameraDeviceId() : QString());
             if (m_meetingWidget)
                 m_meetingWidget->setAudioSettingsDialogOpen(true);
         });
     }
     if (m_dialogsController) {
         connect(m_dialogsController, &DialogsController::endMeetingConfirmed, this, &MainWindow::onEndMeetingRequested);
-        connect(m_dialogsController, &DialogsController::audioSettingsDialogClosed, this, [this]() {
+        connect(m_dialogsController, &DialogsController::deviceSettingsDialogClosed, this, [this]() {
             if (m_meetingWidget)
                 m_meetingWidget->setAudioSettingsDialogOpen(false);
         });
@@ -491,18 +493,19 @@ void MainWindow::connectWidgetsToManagers() {
                 m_callManager->onScreenShareDialogCancelled();
             }
         });
-        connect(m_dialogsController, &DialogsController::audioSettingsDialogClosed, m_callManager, &CallManager::onAudioSettingsDialogClosed);
+        connect(m_dialogsController, &DialogsController::deviceSettingsDialogClosed, m_callManager, &CallManager::onDeviceSettingsDialogClosed);
     }
 
     // Audio settings dialog connections
-    if (m_dialogsController && m_audioSettingsManager) {
-        connect(m_dialogsController, &DialogsController::refreshAudioDevicesRequested, m_audioSettingsManager, &AudioSettingsManager::onRefreshAudioDevicesButtonClicked);
-        connect(m_dialogsController, &DialogsController::inputDeviceSelected, m_audioSettingsManager, &AudioSettingsManager::onInputDeviceSelected);
-        connect(m_dialogsController, &DialogsController::outputDeviceSelected, m_audioSettingsManager, &AudioSettingsManager::onOutputDeviceSelected);
-        connect(m_dialogsController, &DialogsController::inputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onInputVolumeChanged);
-        connect(m_dialogsController, &DialogsController::outputVolumeChanged, m_audioSettingsManager, &AudioSettingsManager::onOutputVolumeChanged);
-        connect(m_dialogsController, &DialogsController::muteMicrophoneClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteMicrophoneButtonClicked);
-        connect(m_dialogsController, &DialogsController::muteSpeakerClicked, m_audioSettingsManager, &AudioSettingsManager::onMuteSpeakerButtonClicked);
+    if (m_dialogsController && m_deviceSettingsManager) {
+        connect(m_dialogsController, &DialogsController::refreshAudioDevicesRequested, m_deviceSettingsManager, &DeviceSettingsManager::onRefreshAudioDevicesButtonClicked);
+        connect(m_dialogsController, &DialogsController::inputDeviceSelected, m_deviceSettingsManager, &DeviceSettingsManager::onInputDeviceSelected);
+        connect(m_dialogsController, &DialogsController::outputDeviceSelected, m_deviceSettingsManager, &DeviceSettingsManager::onOutputDeviceSelected);
+        connect(m_dialogsController, &DialogsController::cameraDeviceSelected, m_deviceSettingsManager, &DeviceSettingsManager::onCameraDeviceSelected);
+        connect(m_dialogsController, &DialogsController::inputVolumeChanged, m_deviceSettingsManager, &DeviceSettingsManager::onInputVolumeChanged);
+        connect(m_dialogsController, &DialogsController::outputVolumeChanged, m_deviceSettingsManager, &DeviceSettingsManager::onOutputVolumeChanged);
+        connect(m_dialogsController, &DialogsController::muteMicrophoneClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteMicrophoneButtonClicked);
+        connect(m_dialogsController, &DialogsController::muteSpeakerClicked, m_deviceSettingsManager, &DeviceSettingsManager::onMuteSpeakerButtonClicked);
     }
 
     // Keep UI widgets in sync when audio settings change from the dialog (e.g. opened from main menu settings panel).
@@ -525,10 +528,14 @@ void MainWindow::connectWidgetsToManagers() {
         });
     }
 
-    // Refresh audio settings dialog when system audio devices change (e.g. plug/unplug)
+    // Refresh device settings dialog when system audio devices change (e.g. plug/unplug)
     if (m_audioDevicesWatcher && m_dialogsController && m_coreClient) {
         connect(m_audioDevicesWatcher, &AudioDevicesWatcher::devicesChanged, [this]() {
-            m_dialogsController->refreshAudioSettingsDialogDevices(m_coreClient->getCurrentInputDevice(), m_coreClient->getCurrentOutputDevice());
+            m_dialogsController->refreshDeviceSettingsDialog(
+                m_coreClient->getCurrentInputDevice(),
+                m_coreClient->getCurrentOutputDevice(),
+                m_coreClient->getCameraDevices(),
+                m_configManager ? m_configManager->getPreferredCameraDeviceId() : QString());
         });
     }
 

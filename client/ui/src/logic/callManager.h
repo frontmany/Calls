@@ -46,7 +46,7 @@ public slots:
 
     void onAudioDevicePickerRequested();
     void onCallWidgetAudioSettingsRequested();
-    void onAudioSettingsDialogClosed();
+    void onDeviceSettingsDialogClosed();
     void onActivateCameraClicked(bool active);
     void onScreenShareClicked(bool toggled);
     void onScreenSelected(int screenIndex);

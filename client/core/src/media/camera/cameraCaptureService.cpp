@@ -207,11 +207,13 @@ namespace core::media
         pDevEnum->Release();
 
 #elif defined(__APPLE__)
-        snprintf(devices[deviceCount], 256, "0");
-        deviceCount++;
-        if (deviceCount < maxDevices) {
-            snprintf(devices[deviceCount], 256, "1");
-            deviceCount++;
+        // FFmpeg avfoundation uses numeric device indices; list a small range (avoid huge fake menus).
+        {
+            const int cap = maxDevices < 6 ? maxDevices : 6;
+            for (int i = 0; i < cap; ++i) {
+                snprintf(devices[deviceCount], 256, "%d", i);
+                deviceCount++;
+            }
         }
 #else
         for (int i = 0; i < maxDevices; ++i) {

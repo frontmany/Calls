@@ -20,7 +20,7 @@
 #include <QCursor>
 #include <QFontMetrics>
 #include <QPointer>
-#include "dialogs/audioSettingsDialog.h"
+#include "dialogs/deviceSettingsDialog.h"
 #include "dialogs/updatingDialog.h"
 #include "dialogs/meetingManagementDialog.h"
 #include "dialogs/endMeetingConfirmationDialog.h"
@@ -38,8 +38,8 @@ DialogsController::DialogsController(QWidget* parent)
     , m_alreadyRunningDialog(nullptr)
     , m_firstLaunchOverlay(nullptr)
     , m_firstLaunchDialog(nullptr)
-    , m_audioSettingsOverlay(nullptr)
-    , m_audioSettingsDialog(nullptr)
+    , m_deviceSettingsOverlay(nullptr)
+    , m_deviceSettingsDialog(nullptr)
     , m_meetingsManagementOverlay(nullptr)
     , m_meetingsManagementDialog(nullptr)
     , m_endMeetingConfirmationOverlay(nullptr)
@@ -59,7 +59,7 @@ DialogsController::~DialogsController()
     hideCameraShareDialog();
     hideAlreadyRunningDialog();
     hideFirstLaunchDialog();
-    hideAudioSettingsDialog();
+    hideDeviceSettingsDialog();
     hideMeetingsManagementDialog();
     hideEndMeetingConfirmationDialog();
 
@@ -404,81 +404,86 @@ void DialogsController::hideFirstLaunchDialog()
 
 }
 
-void DialogsController::showAudioSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume, int currentInputDevice, int currentOutputDevice)
+void DialogsController::showDeviceSettingsDialog(bool showSliders, bool micMuted, bool speakerMuted, int inputVolume, int outputVolume,
+    int currentInputDevice, int currentOutputDevice,
+    const std::vector<core::media::Camera>& cameras, const QString& currentCameraDeviceId)
 {
-    if (!m_audioSettingsDialog) {
-        m_audioSettingsDialog = new AudioSettingsDialog(m_parent);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::inputDeviceSelected, this, &DialogsController::inputDeviceSelected);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::outputDeviceSelected, this, &DialogsController::outputDeviceSelected);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::inputVolumeChanged, this, &DialogsController::inputVolumeChanged);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::outputVolumeChanged, this, &DialogsController::outputVolumeChanged);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::muteMicrophoneClicked, this, &DialogsController::muteMicrophoneClicked);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::muteSpeakerClicked, this, &DialogsController::muteSpeakerClicked);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::refreshAudioDevicesRequested, this, &DialogsController::refreshAudioDevicesRequested);
-        connect(m_audioSettingsDialog, &AudioSettingsDialog::closeRequested, this, &DialogsController::hideAudioSettingsDialog);
+    if (!m_deviceSettingsDialog) {
+        m_deviceSettingsDialog = new DeviceSettingsDialog(m_parent);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::inputDeviceSelected, this, &DialogsController::inputDeviceSelected);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::outputDeviceSelected, this, &DialogsController::outputDeviceSelected);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::cameraDeviceSelected, this, &DialogsController::cameraDeviceSelected);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::inputVolumeChanged, this, &DialogsController::inputVolumeChanged);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::outputVolumeChanged, this, &DialogsController::outputVolumeChanged);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::muteMicrophoneClicked, this, &DialogsController::muteMicrophoneClicked);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::muteSpeakerClicked, this, &DialogsController::muteSpeakerClicked);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::refreshAudioDevicesRequested, this, &DialogsController::refreshAudioDevicesRequested);
+        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::closeRequested, this, &DialogsController::hideDeviceSettingsDialog);
     }
 
-    if (m_audioSettingsDialog) {
-        if (!m_audioSettingsOverlay) {
-            m_audioSettingsOverlay = new OverlayWidget(m_parent);
-            m_audioSettingsOverlay->setAttribute(Qt::WA_TranslucentBackground);
-            m_audioSettingsOverlay->show();
-            m_audioSettingsOverlay->raise();
+    if (m_deviceSettingsDialog) {
+        if (!m_deviceSettingsOverlay) {
+            m_deviceSettingsOverlay = new OverlayWidget(m_parent);
+            m_deviceSettingsOverlay->setAttribute(Qt::WA_TranslucentBackground);
+            m_deviceSettingsOverlay->show();
+            m_deviceSettingsOverlay->raise();
         }
 
-        // Refresh device list before displaying the dialog
         emit refreshAudioDevicesRequested();
 
-        auto centerAudioDialog = [this]() {
-            if (!m_audioSettingsDialog || !m_audioSettingsOverlay) return;
-            m_audioSettingsDialog->adjustSize();
-            QRect overlayRect = m_audioSettingsOverlay->rect();
-            QSize dlgSize = m_audioSettingsDialog->size();
+        auto centerDeviceDialog = [this]() {
+            if (!m_deviceSettingsDialog || !m_deviceSettingsOverlay) return;
+            m_deviceSettingsDialog->adjustSize();
+            QRect overlayRect = m_deviceSettingsOverlay->rect();
+            QSize dlgSize = m_deviceSettingsDialog->size();
             int x = overlayRect.center().x() - dlgSize.width() / 2;
             int y = overlayRect.center().y() - dlgSize.height() / 2;
-            m_audioSettingsDialog->move(x, y);
-            m_audioSettingsDialog->raise();
+            m_deviceSettingsDialog->move(x, y);
+            m_deviceSettingsDialog->raise();
         };
 
-        m_audioSettingsDialog->setParent(m_audioSettingsOverlay);
-        m_audioSettingsDialog->setSlidersVisible(showSliders);
-        m_audioSettingsDialog->setMicrophoneMuted(micMuted);
-        m_audioSettingsDialog->setSpeakerMuted(speakerMuted);
-        m_audioSettingsDialog->setInputVolume(inputVolume);
-        m_audioSettingsDialog->setOutputVolume(outputVolume);
-        m_audioSettingsDialog->refreshDevices(currentInputDevice, currentOutputDevice);
-        centerAudioDialog();
+        m_deviceSettingsDialog->setParent(m_deviceSettingsOverlay);
+        m_deviceSettingsDialog->setSlidersVisible(showSliders);
+        m_deviceSettingsDialog->setMicrophoneMuted(micMuted);
+        m_deviceSettingsDialog->setSpeakerMuted(speakerMuted);
+        m_deviceSettingsDialog->setInputVolume(inputVolume);
+        m_deviceSettingsDialog->setOutputVolume(outputVolume);
+        m_deviceSettingsDialog->refreshDevices(currentInputDevice, currentOutputDevice);
+        m_deviceSettingsDialog->refreshCameraDevices(cameras, currentCameraDeviceId);
+        centerDeviceDialog();
 
-        connect(m_audioSettingsOverlay, &OverlayWidget::geometryChanged, this, centerAudioDialog);
+        connect(m_deviceSettingsOverlay, &OverlayWidget::geometryChanged, this, centerDeviceDialog);
 
-        m_audioSettingsDialog->show();
-        m_audioSettingsDialog->raise();
-        m_audioSettingsOverlay->raise();
+        m_deviceSettingsDialog->show();
+        m_deviceSettingsDialog->raise();
+        m_deviceSettingsOverlay->raise();
     }
 }
 
-void DialogsController::refreshAudioSettingsDialogDevices(int currentInputIndex, int currentOutputIndex)
+void DialogsController::refreshDeviceSettingsDialog(int currentInputIndex, int currentOutputIndex,
+    const std::vector<core::media::Camera>& cameras, const QString& currentCameraDeviceId)
 {
-    if (m_audioSettingsDialog && m_audioSettingsDialog->isVisible()) {
-        m_audioSettingsDialog->refreshDevices(currentInputIndex, currentOutputIndex);
+    if (m_deviceSettingsDialog && m_deviceSettingsDialog->isVisible()) {
+        m_deviceSettingsDialog->refreshDevices(currentInputIndex, currentOutputIndex);
+        m_deviceSettingsDialog->refreshCameraDevices(cameras, currentCameraDeviceId);
     }
 }
 
-void DialogsController::hideAudioSettingsDialog()
+void DialogsController::hideDeviceSettingsDialog()
 {
-    if (m_audioSettingsDialog) {
-        m_audioSettingsDialog->hide();
+    if (m_deviceSettingsDialog) {
+        m_deviceSettingsDialog->hide();
     }
-    if (m_audioSettingsOverlay) {
-        m_audioSettingsOverlay->close();
-        m_audioSettingsOverlay->deleteLater();
-        m_audioSettingsOverlay = nullptr;
+    if (m_deviceSettingsOverlay) {
+        m_deviceSettingsOverlay->close();
+        m_deviceSettingsOverlay->deleteLater();
+        m_deviceSettingsOverlay = nullptr;
     }
 
-    if (m_audioSettingsDialog) {
-        m_audioSettingsDialog->setParent(nullptr);
+    if (m_deviceSettingsDialog) {
+        m_deviceSettingsDialog->setParent(nullptr);
     }
-    emit audioSettingsDialogClosed();
+    emit deviceSettingsDialogClosed();
 }
 
 void DialogsController::showIncomingCallsDialog(const QString& friendNickname, int remainingTime)

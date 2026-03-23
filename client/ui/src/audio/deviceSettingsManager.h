@@ -6,11 +6,11 @@
 
 class ConfigManager;
 
-class AudioSettingsManager : public QObject {
+class DeviceSettingsManager : public QObject {
     Q_OBJECT
 
 public:
-    explicit AudioSettingsManager(std::shared_ptr<core::Core> client, ConfigManager* configManager, QObject* parent = nullptr);
+    explicit DeviceSettingsManager(std::shared_ptr<core::Core> client, ConfigManager* configManager, QObject* parent = nullptr);
 
 public slots:
     void onRefreshAudioDevicesButtonClicked();
@@ -20,6 +20,7 @@ public slots:
     void onMuteSpeakerButtonClicked(bool mute);
     void onInputDeviceSelected(int deviceIndex);
     void onOutputDeviceSelected(int deviceIndex);
+    void onCameraDeviceSelected(const QString& deviceId);
 
 private:
     std::shared_ptr<core::Core> m_coreClient = nullptr;

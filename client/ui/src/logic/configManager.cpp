@@ -54,6 +54,7 @@ void ConfigManager::loadConfig() {
             m_ignoredFilesWhileCollectingForUpdate = getIgnoredFilesWhileCollectingForUpdateFromConfig();
             m_ignoredDirectoriesWhileCollectingForUpdate = getIgnoredDirectoriesWhileCollectingForUpdateFromConfig();
             m_operationSystemType = getOperationSystemTypeFromConfig();
+            m_preferredCameraDeviceId = getPreferredCameraDeviceIdFromConfig();
         }
 
         m_isConfigLoaded = true;
@@ -85,6 +86,7 @@ void ConfigManager::saveConfig() {
         configObject[SPEAKER_MUTED] = m_isSpeakerMuted ? "1" : "0";
         configObject[CAMERA_ENABLED] = m_isCameraActive ? "1" : "0";
         configObject[START_CAMERA_WITH_CALL] = m_startCameraWithSession ? "1" : "0";
+        configObject[PREFERRED_CAMERA_DEVICE_ID] = m_preferredCameraDeviceId;
         configObject[FIRST_LAUNCH] = m_firstLaunch ? "1" : "0";
         configObject[LOG_DIRECTORY] = m_logDirectory;
         configObject[CRASH_DUMP_DIRECTORY] = m_crashDumpDirectory;
@@ -170,6 +172,7 @@ void ConfigManager::setDefaultValues() {
     m_ignoredFilesWhileCollectingForUpdate = std::unordered_set<std::string>();
     m_ignoredDirectoriesWhileCollectingForUpdate = std::unordered_set<std::string>{IGNORED_DIRECTORY_LOGS, IGNORED_DIRECTORY_CRASHES};
     m_operationSystemType = operationSystemType;
+    m_preferredCameraDeviceId.clear();
 }
 
 const QString& ConfigManager::getUpdaterHost() const {
@@ -776,6 +779,45 @@ bool ConfigManager::isStartCameraWithSessionFromConfig() {
         return (value.toInt() == 1);
     }
     return false;
+}
+
+QString ConfigManager::getPreferredCameraDeviceIdFromConfig()
+{
+    QFile file(m_configPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        return {};
+    }
+
+    const QJsonObject jsonObj = doc.object();
+    if (!jsonObj.contains(PREFERRED_CAMERA_DEVICE_ID)) {
+        return {};
+    }
+
+    return jsonObj[PREFERRED_CAMERA_DEVICE_ID].toString();
+}
+
+QString ConfigManager::getPreferredCameraDeviceId() const
+{
+    return m_preferredCameraDeviceId;
+}
+
+void ConfigManager::setPreferredCameraDeviceId(const QString& deviceId)
+{
+    if (m_preferredCameraDeviceId == deviceId) {
+        return;
+    }
+    m_preferredCameraDeviceId = deviceId;
+    saveConfig();
 }
 
 const QString& ConfigManager::getLogDirectoryPath() const {

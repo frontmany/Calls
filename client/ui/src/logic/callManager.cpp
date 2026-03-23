@@ -18,6 +18,17 @@
 #include <QGuiApplication>
 #include <QTimer>
 #include <cmath>
+#include <string>
+
+namespace {
+    std::string preferredCameraDeviceArg(const ConfigManager* configManager)
+    {
+        if (!configManager) {
+            return {};
+        }
+        return configManager->getPreferredCameraDeviceId().toStdString();
+    }
+}
 
 CallManager::CallManager(std::shared_ptr<core::Core> client, AudioEffectsManager* audioManager, NavigationController* navigationController, DialogsController* dialogsController, UpdateManager* updateManager, QObject* parent)
     : QObject(parent)
@@ -141,7 +152,7 @@ void CallManager::switchToActiveCall(const QString& friendNickname)
     }
     if (m_configManager && m_configManager->isStartCameraWithSession() && m_coreClient && m_callWidget) {
         if (m_coreClient->isCameraAvailable()) {
-            std::error_code ec = m_coreClient->startCameraSharing("");
+            std::error_code ec = m_coreClient->startCameraSharing(preferredCameraDeviceArg(m_configManager));
             if (ec) {
                 onStartCameraSharingError();
             } else {
@@ -200,17 +211,19 @@ void CallManager::onAudioDevicePickerRequested()
 {
     if (!m_dialogsController || !m_coreClient) return;
 
-    m_dialogsController->showAudioSettingsDialog(
+    m_dialogsController->showDeviceSettingsDialog(
         true,
         m_coreClient->isMicrophoneMuted(),
         m_coreClient->isSpeakerMuted(),
         m_coreClient->getInputVolume(),
         m_coreClient->getOutputVolume(),
         m_coreClient->getCurrentInputDevice(),
-        m_coreClient->getCurrentOutputDevice());
+        m_coreClient->getCurrentOutputDevice(),
+        m_coreClient->getCameraDevices(),
+        m_configManager ? m_configManager->getPreferredCameraDeviceId() : QString());
 }
 
-void CallManager::onAudioSettingsDialogClosed()
+void CallManager::onDeviceSettingsDialogClosed()
 {
     if (m_callWidget)
         m_callWidget->setAudioSettingsDialogOpen(false);
@@ -220,14 +233,16 @@ void CallManager::onCallWidgetAudioSettingsRequested()
 {
     if (!m_dialogsController || !m_coreClient) return;
 
-    m_dialogsController->showAudioSettingsDialog(
+    m_dialogsController->showDeviceSettingsDialog(
         true,
         m_coreClient->isMicrophoneMuted(),
         m_coreClient->isSpeakerMuted(),
         m_coreClient->getInputVolume(),
         m_coreClient->getOutputVolume(),
         m_coreClient->getCurrentInputDevice(),
-        m_coreClient->getCurrentOutputDevice());
+        m_coreClient->getCurrentOutputDevice(),
+        m_coreClient->getCameraDevices(),
+        m_configManager ? m_configManager->getPreferredCameraDeviceId() : QString());
     if (m_callWidget)
         m_callWidget->setAudioSettingsDialogOpen(true);
 }
@@ -329,7 +344,7 @@ void CallManager::onCallWidgetCameraClicked(bool toggled)
             }
             return;
         }
-        std::error_code ec = m_coreClient->startCameraSharing("");
+        std::error_code ec = m_coreClient->startCameraSharing(preferredCameraDeviceArg(m_configManager));
         if (ec) {
             onStartCameraSharingError();
         } else {
@@ -456,7 +471,7 @@ void CallManager::onOutgoingCallAccepted(const QString& nickname)
     }
     if (m_configManager && m_configManager->isStartCameraWithSession() && m_coreClient && m_callWidget) {
         if (m_coreClient->isCameraAvailable()) {
-            std::error_code ec = m_coreClient->startCameraSharing("");
+            std::error_code ec = m_coreClient->startCameraSharing(preferredCameraDeviceArg(m_configManager));
             if (ec) {
                 onStartCameraSharingError();
             } else {

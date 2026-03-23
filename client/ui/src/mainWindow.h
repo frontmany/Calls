@@ -18,7 +18,7 @@ class MeetingWidget;
  
 class ConfigManager;
 class AudioEffectsManager;
-class AudioSettingsManager;
+class DeviceSettingsManager;
 class AudioDevicesWatcher;
 class UpdateManager;
 class NavigationController;
@@ -58,7 +58,7 @@ private:
     void initializeCentralStackedWidget();
     void initializeAudioManager();
     void initializeAudioDevicesWatcher();
-    void initializeAudioSettingsManager();
+    void initializeDeviceSettingsManager();
     void initializeUpdateManager();
     void initializeDialogsController();
     void initializeNotificationController();
@@ -97,7 +97,7 @@ private:
 
     AudioEffectsManager* m_audioManager = nullptr;
     AudioDevicesWatcher* m_audioDevicesWatcher = nullptr;
-    AudioSettingsManager* m_audioSettingsManager = nullptr;
+    DeviceSettingsManager* m_deviceSettingsManager = nullptr;
     UpdateManager* m_updateManager = nullptr;
     NavigationController* m_navigationController = nullptr;
     AuthorizationManager* m_authorizationManager = nullptr;
