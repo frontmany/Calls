@@ -58,7 +58,6 @@ private:
     void processReceivedPackets();
     void initPendingPacket(PendingPacket& packet, uint64_t packetId, uint16_t totalChunks, uint32_t packetType,
         std::chrono::steady_clock::time_point now);
-    void pruneExpiredPackets(PendingPacketMap& packets, std::chrono::steady_clock::time_point now);
     void evictOldestPacket(PendingPacketMap& packets);
     uint16_t readUint16(const unsigned char* data);
     uint32_t readUint32(const unsigned char* data);
@@ -79,7 +78,6 @@ private:
     const std::size_t m_maxPendingPackets = 8;
     static constexpr std::size_t m_maxAssemblyQueueSize = 64;
     static constexpr std::size_t m_maxReceivedPacketsQueueSize = 64;
-    const std::chrono::milliseconds m_pendingPacketTimeout{3000};
     std::function<void(const unsigned char*, int, uint32_t)> m_onPacketReceived;
     asio::ip::udp::endpoint m_serverEndpoint;
 };

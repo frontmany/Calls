@@ -172,7 +172,6 @@ void PacketReceiver::processDatagram(std::size_t bytesTransferred) {
             return;
         }
         const auto now = std::chrono::steady_clock::now();
-        pruneExpiredPackets(m_pendingPackets, now);
 
         auto packetIt = m_pendingPackets.find(packetId);
         if (packetIt == m_pendingPackets.end()) {
@@ -225,15 +224,6 @@ void PacketReceiver::initPendingPacket(PendingPacket& packet, uint64_t packetId,
     packet.receivedChunks = 0;
     packet.type = packetType;
     packet.lastUpdated = now;
-}
-
-void PacketReceiver::pruneExpiredPackets(PendingPacketMap& packets, std::chrono::steady_clock::time_point now) {
-    for (auto it = packets.begin(); it != packets.end(); ) {
-        if (now - it->second.lastUpdated > m_pendingPacketTimeout)
-            it = packets.erase(it);
-        else
-            ++it;
-    }
 }
 
 void PacketReceiver::evictOldestPacket(PendingPacketMap& packets) {

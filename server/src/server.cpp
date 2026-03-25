@@ -94,9 +94,6 @@ namespace server
             if (!partner || !m_userRepository.containsUser(partner->getNicknameHash())) {
                 return;
             }
-            if (partner->isConnectionDown()) {
-                return;
-            }
 
             m_networkController.sendUdp(data, size, rawType, partner->getEndpoint());
             return;
@@ -117,9 +114,6 @@ namespace server
                 continue;
             }
             if (participant.user->getNicknameHash() == senderHash) {
-                continue;
-            }
-            if (participant.user->isConnectionDown()) {
                 continue;
             }
             m_networkController.sendUdp(data, size, rawType, participant.user->getEndpoint());
@@ -912,14 +906,16 @@ namespace server
                     continue;
                 }
                 auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
-                sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN), beginPacket);
+                sendTcpToUser(requesterNicknameHash, static_cast<uint32_t>(PacketType::SCREEN_SHARING_BEGIN),
+                    std::string(beginPacket.begin(), beginPacket.end()));
             }
             for (const auto& sharerHash : meeting->getCameraSharers()) {
                 if (sharerHash == requesterNicknameHash) {
                     continue;
                 }
                 auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
-                sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
+                sendTcpToUser(requesterNicknameHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN),
+                    std::string(beginPacket.begin(), beginPacket.end()));
             }
             for (const auto& mutedHash : meeting->getMutedParticipants()) {
                 if (mutedHash == requesterNicknameHash) {
@@ -1053,7 +1049,16 @@ namespace server
                 for (const auto& participant : meeting->getParticipants()) {
                     if (!participant.user) continue;
                     if (participant.user->getNicknameHash() == senderHash) continue;
-                    if (participant.user->isConnectionDown()) continue;
+                    // Grace period: late joiners must still receive Screen/Camera begin/end events
+                    // even if their TCP channel is temporarily marked as down.
+                    if (participant.user->isConnectionDown()) {
+                        const bool isMediaShareEvent =
+                            type == PacketType::SCREEN_SHARING_BEGIN ||
+                            type == PacketType::SCREEN_SHARING_END ||
+                            type == PacketType::CAMERA_SHARING_BEGIN ||
+                            type == PacketType::CAMERA_SHARING_END;
+                        if (!isMediaShareEvent) continue;
+                    }
                     auto pConn = participant.user->getTcpConnection();
                     if (!pConn) continue;
                     targets.push_back(std::move(pConn));

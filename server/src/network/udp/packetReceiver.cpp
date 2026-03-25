@@ -221,7 +221,6 @@ namespace server::network::udp
 
             const auto now = std::chrono::steady_clock::now();
             auto& pendingPackets = m_pendingPackets[endpointKey];
-            pruneExpiredPackets(pendingPackets, now);
 
             auto packetIt = pendingPackets.find(packetId);
             if (packetIt == pendingPackets.end()) {
@@ -294,18 +293,6 @@ namespace server::network::udp
         packet.type = packetType;
         packet.senderNicknameHash = senderNicknameHash;
         packet.lastUpdated = now;
-    }
-
-    void PacketReceiver::pruneExpiredPackets(PendingPacketMap& packets, std::chrono::steady_clock::time_point now)
-    {
-        for (auto it = packets.begin(); it != packets.end(); ) {
-            if (now - it->second.lastUpdated > m_pendingPacketTimeout) {
-                it = packets.erase(it);
-            }
-            else {
-                ++it;
-            }
-        }
     }
 
     void PacketReceiver::evictOldestPacket(PendingPacketMap& packets)
