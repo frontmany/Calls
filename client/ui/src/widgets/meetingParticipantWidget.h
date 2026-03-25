@@ -56,6 +56,7 @@ private:
 
     Screen* m_videoScreen = nullptr;
     QLabel* m_nameLabel = nullptr;
+    QLabel* m_mutedLabel = nullptr;
     QLabel* m_connectionDownLabel = nullptr;
     QGridLayout* m_mainLayout = nullptr;
     QGraphicsDropShadowEffect* m_shadowEffect = nullptr;

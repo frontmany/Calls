@@ -71,7 +71,12 @@ namespace core::logic
     }
 
     void CallPacketHandler::handleIncomingCallBegin(const nlohmann::json& jsonObject) {
-        if (!m_stateManager->isAuthorized() || m_stateManager->isConnectionDown()) return;
+        if (!m_stateManager->isAuthorized() || m_stateManager->isConnectionDown()) {
+            LOG_WARN("CALLING_BEGIN ignored: authorized={}, connectionDown={}",
+                m_stateManager->isAuthorized(),
+                m_stateManager->isConnectionDown());
+            return;
+        }
         
         const std::string& encryptedPacketKey = jsonObject[PACKET_KEY].get<std::string>();
         auto packetKey = RSADecryptAESKey(m_keyManager->getMyPrivateKey(), encryptedPacketKey);
@@ -86,13 +91,19 @@ namespace core::logic
         auto callKey = RSADecryptAESKey(m_keyManager->getMyPrivateKey(), encryptedCallKey);
 
         auto& incomingCalls = m_stateManager->getIncomingCalls();
-        if (incomingCalls.contains(senderNickname)) return;
+        if (incomingCalls.contains(senderNickname)) {
+            LOG_INFO("CALLING_BEGIN duplicate for {}", senderNickname);
+            // Re-notify UI in case popup was obscured (e.g. active fullscreen meeting).
+            m_eventListener->onIncomingCall(senderNickname);
+            return;
+        }
 
         m_stateManager->addIncomingCall(senderNickname, publicKey, callKey, 32s, [this, senderNickname]() {
             m_stateManager->removeIncomingCall(senderNickname);
             m_eventListener->onIncomingCallExpired({}, senderNickname);
         });
 
+        LOG_INFO("Incoming call added for {} (inMeeting={})", senderNickname, m_stateManager->isInMeeting());
         m_eventListener->onIncomingCall(senderNickname);
     }
 

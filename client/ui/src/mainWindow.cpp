@@ -521,10 +521,12 @@ void MainWindow::connectWidgetsToManagers() {
         connect(m_dialogsController, &DialogsController::muteMicrophoneClicked, this, [this](bool muted) {
             if (m_mainMenuWidget) m_mainMenuWidget->setMicrophoneMuted(muted);
             if (m_meetingWidget) m_meetingWidget->setMicrophoneMuted(muted);
+            if (m_callWidget) m_callWidget->setMicrophoneMuted(muted);
         });
         connect(m_dialogsController, &DialogsController::muteSpeakerClicked, this, [this](bool muted) {
             if (m_mainMenuWidget) m_mainMenuWidget->setSpeakerMuted(muted);
             if (m_meetingWidget) m_meetingWidget->setSpeakerMuted(muted);
+            if (m_callWidget) m_callWidget->setSpeakerMuted(muted);
         });
     }
 

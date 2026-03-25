@@ -15,6 +15,7 @@
 
 #include "widgets/components/button.h"
 #include "widgets/components/screen.h"
+#include "widgets/callParticipantWidget.h"
 #include "constants/constant.h"
 
 class QResizeEvent;
@@ -42,6 +43,7 @@ struct StyleCallWidget {
     static QString containerStyle();
     static QString titleStyle();
     static QString timerStyle();
+    static QString timerContainerStyle();
     static QString controlButtonStyle();
     static QString hangupButtonStyle();
     static QString disabledHangupButtonStyle();
@@ -74,6 +76,8 @@ public:
     void setHangupButtonRestricted(bool restricted);
     void setScreenShareButtonRestricted(bool restricted);
     void setCameraButtonRestricted(bool restricted);
+    void setParticipantSpeaking(bool speaking);
+    void setParticipantMuted(bool muted);
 
     void hideMainScreen();
     void hideAdditionalScreens();
@@ -134,11 +138,7 @@ private:
     QVBoxLayout* m_mainLayout;
 
     // Call info section
-    QLabel* m_timerLabel;
-    QWidget* m_participantInfoContainer;
-    QHBoxLayout* m_participantInfoLayout;
-    QLabel* m_friendNicknameLabel;
-    QLabel* m_connectionErrorLabel;
+    CallParticipantWidget* m_participantInfoWidget;
     QWidget* m_participantConnectionErrorBanner;
     QLabel* m_participantConnectionErrorBannerLabel;
     Screen* m_mainScreen;

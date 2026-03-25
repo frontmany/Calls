@@ -506,12 +506,18 @@ void CallManager::onOutgoingCallDeclined()
 void CallManager::onIncomingCall(const QString& friendNickname)
 {
     if (!m_coreClient) return;
+    LOG_INFO("UI incoming call received: {} (inMeeting={})",
+        friendNickname.toStdString(),
+        m_coreClient->isInMeeting());
 
-    if (m_audioManager) {
+    const bool isDuplicateIncoming = m_incomingCalls.contains(friendNickname);
+    if (!isDuplicateIncoming && m_audioManager) {
         m_audioManager->playIncomingCallRingtone();
     }
 
-    m_incomingCalls.insert(friendNickname, { friendNickname, DEFAULT_INCOMING_CALL_SECONDS });
+    if (!isDuplicateIncoming) {
+        m_incomingCalls.insert(friendNickname, { friendNickname, DEFAULT_INCOMING_CALL_SECONDS });
+    }
     updateIncomingCallsUi();
 }
 
@@ -625,6 +631,37 @@ void CallManager::onCallParticipantConnectionRestored()
         
         const int restoredDurationMs = ERROR_MESSAGE_DURATION_MS;
         m_notificationController->showConnectionRestoredWithUser("Connection with participant restored", restoredDurationMs);
+    }
+}
+
+void CallManager::onCallParticipantSpeaking(const QString& nickname, bool speaking)
+{
+    if (!m_callWidget || !m_coreClient || !m_coreClient->isActiveCall()) {
+        return;
+    }
+
+    const QString activeCallNickname = QString::fromStdString(m_coreClient->getNicknameInCallWith());
+    if (!activeCallNickname.isEmpty() && nickname != activeCallNickname) {
+        return;
+    }
+
+    m_callWidget->setParticipantSpeaking(speaking);
+}
+
+void CallManager::onCallParticipantMuted(const QString& nickname, bool muted)
+{
+    if (!m_callWidget || !m_coreClient || !m_coreClient->isActiveCall()) {
+        return;
+    }
+
+    const QString activeCallNickname = QString::fromStdString(m_coreClient->getNicknameInCallWith());
+    if (!activeCallNickname.isEmpty() && nickname != activeCallNickname) {
+        return;
+    }
+
+    m_callWidget->setParticipantMuted(muted);
+    if (muted) {
+        m_callWidget->setParticipantSpeaking(false);
     }
 }
 
@@ -894,6 +931,7 @@ void CallManager::updateIncomingCallsUi()
     {
         return;
     }
+    LOG_INFO("Updating incoming call dialogs: activeCount={}", m_incomingCalls.size());
 
     QSet<QString> current;
     for (const auto& entry : m_incomingCalls)

@@ -10,6 +10,7 @@
 #endif
 
 #include "mainWindow.h"
+#include "utilities/utility.h"
 
 int main(int argc, char* argv[])
 {
@@ -18,7 +19,7 @@ int main(int argc, char* argv[])
     MainWindow* mainWindow = new MainWindow();
     mainWindow->init();
 
-    mainWindow->resize(800, 650);
+    mainWindow->resize(scale(810), scale(700));
     if (mainWindow->isFirstLaunch())
         mainWindow->showMaximized();
     else

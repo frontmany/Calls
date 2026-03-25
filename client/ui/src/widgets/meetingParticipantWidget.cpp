@@ -73,6 +73,23 @@ void MeetingParticipantWidget::setupUI()
     ).arg(COLOR_TEXT_MUTED.name()));
     m_connectionDownLabel->hide();
 
+    m_mutedLabel = new QLabel(this);
+    m_mutedLabel->setAlignment(Qt::AlignCenter);
+    m_mutedLabel->setText(QStringLiteral("Muted"));
+    QFont mutedFont(QStringLiteral("Outfit"), scale(11));
+    m_mutedLabel->setFont(mutedFont);
+    m_mutedLabel->setStyleSheet(QString(
+        "QLabel {"
+        "   color: %1;"
+        "   background-color: rgba(111, 124, 142, 135);"
+        "   border: none;"
+        "   border-radius: %2px;"
+        "   padding: 2px 10px;"
+        "   font-weight: 600;"
+        "}"
+    ).arg(COLOR_TEXT_SECONDARY.name()).arg(scale(8)));
+    m_mutedLabel->hide();
+
     m_videoScreen = new Screen(this);
     m_videoScreen->setStyleSheet("background-color: rgba(240, 240, 240, 100); border: none; border-radius: 8px;");
     m_videoScreen->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -89,6 +106,7 @@ void MeetingParticipantWidget::setupUI()
     overlayLayout->setSpacing(scale(4));
     overlayLayout->addStretch();
     overlayLayout->addWidget(m_nameLabel, 0, Qt::AlignCenter);
+    overlayLayout->addWidget(m_mutedLabel, 0, Qt::AlignCenter);
     overlayLayout->addWidget(m_connectionDownLabel, 0, Qt::AlignCenter);
     overlayLayout->addStretch();
 
@@ -226,11 +244,15 @@ void MeetingParticipantWidget::setMuted(bool muted)
         return;
 
     m_muted = muted;
+    if (m_mutedLabel) {
+        m_mutedLabel->setVisible(m_muted);
+    }
 
     if (muted && m_speaking) {
         m_speaking = false;
-        applyShadowForSpeaking(false);
     }
+    applyShadowForSpeaking(m_speaking);
+    update();
 }
 
 void MeetingParticipantWidget::setSpeaking(bool speaking)

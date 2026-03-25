@@ -680,6 +680,18 @@ void MeetingManager::onMeetingParticipantSpeaking(const QString& nickname, bool 
     }
 }
 
+void MeetingManager::onMeetingParticipantMuted(const QString& nickname, bool muted)
+{
+    if (!m_meetingWidget) {
+        return;
+    }
+
+    m_meetingWidget->setParticipantMuted(nickname, muted);
+    if (muted) {
+        m_meetingWidget->setParticipantSpeaking(nickname, false);
+    }
+}
+
 void MeetingManager::onIncomingCameraSharingStarted(const QString& nickname)
 {
     Q_UNUSED(nickname);

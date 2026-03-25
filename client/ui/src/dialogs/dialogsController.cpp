@@ -24,6 +24,7 @@
 #include "dialogs/updatingDialog.h"
 #include "dialogs/meetingManagementDialog.h"
 #include "dialogs/endMeetingConfirmationDialog.h"
+#include "utilities/logger.h"
 #include "updater.h"
 #include <algorithm>
 
@@ -489,6 +490,7 @@ void DialogsController::hideDeviceSettingsDialog()
 void DialogsController::showIncomingCallsDialog(const QString& friendNickname, int remainingTime)
 {
     IncomingCallDialog* dialog = m_incomingCallDialogs.value(friendNickname, nullptr);
+    const bool isNewDialog = (dialog == nullptr);
     if (!dialog)
     {
         dialog = new IncomingCallDialog(nullptr, friendNickname, remainingTime);
@@ -513,13 +515,18 @@ void DialogsController::showIncomingCallsDialog(const QString& friendNickname, i
 
     QRect avail = screen->availableGeometry();
 
-    dialog->adjustSize();
-    dialog->show();
-    dialog->raise();
+    if (isNewDialog)
+    {
+        dialog->adjustSize();
+        dialog->show();
 
-    int x = avail.x() + (avail.width() - dialog->width()) / 2;
-    int y = avail.y() + (avail.height() - dialog->height()) / 2 + scale(15);
-    dialog->move(x, y);
+        int x = avail.x() + (avail.width() - dialog->width()) / 2;
+        int y = avail.y() + (avail.height() - dialog->height()) / 2 + scale(15);
+        dialog->move(x, y);
+        LOG_INFO("IncomingCallDialog shown for {} at ({}, {})", friendNickname.toStdString(), x, y);
+    }
+    dialog->raise();
+    dialog->activateWindow();
 }
 
 void DialogsController::hideIncomingCallsDialog(const QString& friendNickname)

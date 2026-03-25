@@ -43,6 +43,8 @@ namespace core::logic
         // Media (screen / camera)
         static std::vector<unsigned char> getScreenSharingBeginPacket(const std::string& myNickname);
         static std::vector<unsigned char> getScreenSharingEndPacket(const std::string& myNickname);
+        static std::vector<unsigned char> getMuteBeginPacket(const std::string& myNickname);
+        static std::vector<unsigned char> getMuteEndPacket(const std::string& myNickname);
         static std::vector<unsigned char> getCameraSharingBeginPacket(const std::string& myNickname);
         static std::vector<unsigned char> getCameraSharingEndPacket(const std::string& myNickname);
 

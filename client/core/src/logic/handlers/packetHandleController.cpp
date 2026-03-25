@@ -10,6 +10,7 @@
 #include "logic/handlers/mediaPacketHandler.h"
 #include "logic/handlers/meetingPacketHandler.h"
 #include "logic/handlers/reconnectionPacketHandler.h"
+#include "utilities/crypto.h"
 #include "utilities/logger.h"
 
 using namespace core::constant;
@@ -18,6 +19,38 @@ using namespace std::chrono_literals;
 
 namespace core::logic
 {
+    namespace
+    {
+        std::string resolveNicknameByHash(const std::shared_ptr<ClientStateManager>& stateManager, const std::string& senderHash)
+        {
+            if (!stateManager) {
+                return {};
+            }
+
+            auto activeCall = stateManager->getActiveCall();
+            if (activeCall) {
+                const std::string& callNickname = activeCall->get().getNickname();
+                if (core::utilities::crypto::calculateHash(callNickname) == senderHash) {
+                    return callNickname;
+                }
+                return {};
+            }
+
+            auto activeMeeting = stateManager->getActiveMeeting();
+            if (!activeMeeting) {
+                return {};
+            }
+
+            for (const auto& participant : activeMeeting->get().getParticipants()) {
+                const std::string& nickname = participant.getUser().getNickname();
+                if (core::utilities::crypto::calculateHash(nickname) == senderHash) {
+                    return nickname;
+                }
+            }
+            return {};
+        }
+    }
+
     PacketHandleController::PacketHandleController(
         std::shared_ptr<ClientStateManager>& stateManager,
         std::shared_ptr<KeyManager>& keyManager,
@@ -34,6 +67,7 @@ namespace core::logic
         , m_stopAudioSharing(std::move(stopAudioSharing))
         , m_stopScreenSharing(std::move(stopScreenSharing))
         , m_stopCameraSharing(std::move(stopCameraSharing))
+        , m_eventListener(eventListener)
         , m_stateManager(stateManager)
     {
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
@@ -56,6 +90,8 @@ namespace core::logic
         m_packetHandlers.emplace(PacketType::CALL_END, [this](const nlohmann::json& json) {handleCallEndedByRemote(json); });
         m_packetHandlers.emplace(PacketType::SCREEN_SHARING_BEGIN, [this](const nlohmann::json& json) {handleScreenSharingStarted(json); });
         m_packetHandlers.emplace(PacketType::SCREEN_SHARING_END, [this](const nlohmann::json& json) {handleScreenSharingStopped(json); });
+        m_packetHandlers.emplace(PacketType::MUTE_BEGIN, [this](const nlohmann::json& json) {handleMuteStarted(json); });
+        m_packetHandlers.emplace(PacketType::MUTE_END, [this](const nlohmann::json& json) {handleMuteStopped(json); });
         m_packetHandlers.emplace(PacketType::CAMERA_SHARING_BEGIN, [this](const nlohmann::json& json) {handleCameraSharingStarted(json); });
         m_packetHandlers.emplace(PacketType::CAMERA_SHARING_END, [this](const nlohmann::json& json) {handleCameraSharingStopped(json); });
         m_packetHandlers.emplace(PacketType::CONNECTION_DOWN_WITH_USER, [this](const nlohmann::json& json) {handleRemoteUserConnectionDown(json); });
@@ -181,6 +217,40 @@ namespace core::logic
 
     void PacketHandleController::handleScreenSharingStopped(const nlohmann::json& jsonObject) {
         m_mediaPacketHandler->handleIncomingScreenSharingStopped(jsonObject);
+    }
+
+    void PacketHandleController::handleMuteStarted(const nlohmann::json& jsonObject) {
+        if (!jsonObject.contains(SENDER_NICKNAME_HASH) || !jsonObject[SENDER_NICKNAME_HASH].is_string()) {
+            return;
+        }
+        const std::string senderHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+        const std::string nickname = resolveNicknameByHash(m_stateManager, senderHash);
+        if (nickname.empty() || !m_eventListener) {
+            return;
+        }
+
+        if (m_stateManager->isActiveCall()) {
+            m_eventListener->onCallParticipantMuted(nickname, true);
+        } else if (m_stateManager->isActiveMeeting()) {
+            m_eventListener->onMeetingParticipantMuted(nickname, true);
+        }
+    }
+
+    void PacketHandleController::handleMuteStopped(const nlohmann::json& jsonObject) {
+        if (!jsonObject.contains(SENDER_NICKNAME_HASH) || !jsonObject[SENDER_NICKNAME_HASH].is_string()) {
+            return;
+        }
+        const std::string senderHash = jsonObject[SENDER_NICKNAME_HASH].get<std::string>();
+        const std::string nickname = resolveNicknameByHash(m_stateManager, senderHash);
+        if (nickname.empty() || !m_eventListener) {
+            return;
+        }
+
+        if (m_stateManager->isActiveCall()) {
+            m_eventListener->onCallParticipantMuted(nickname, false);
+        } else if (m_stateManager->isActiveMeeting()) {
+            m_eventListener->onMeetingParticipantMuted(nickname, false);
+        }
     }
 
     void PacketHandleController::handleCameraSharingStarted(const nlohmann::json& jsonObject) {

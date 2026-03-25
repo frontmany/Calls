@@ -147,6 +147,14 @@ namespace core::logic
         return createBasePacketBytes(myNickname);
     }
 
+    std::vector<unsigned char> PacketFactory::getMuteBeginPacket(const std::string& myNickname) {
+        return createBasePacketBytes(myNickname);
+    }
+
+    std::vector<unsigned char> PacketFactory::getMuteEndPacket(const std::string& myNickname) {
+        return createBasePacketBytes(myNickname);
+    }
+
     std::vector<unsigned char> PacketFactory::getCameraSharingBeginPacket(const std::string& myNickname) {
         return createBasePacketBytes(myNickname);
     }

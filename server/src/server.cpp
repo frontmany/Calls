@@ -52,6 +52,8 @@ namespace server
         m_packetHandlers.emplace(PacketType::CALL_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleEndCall(json, conn); });
         m_packetHandlers.emplace(PacketType::SCREEN_SHARING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::SCREEN_SHARING_BEGIN, conn); });
         m_packetHandlers.emplace(PacketType::SCREEN_SHARING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::SCREEN_SHARING_END, conn); });
+        m_packetHandlers.emplace(PacketType::MUTE_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::MUTE_BEGIN, conn); });
+        m_packetHandlers.emplace(PacketType::MUTE_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::MUTE_END, conn); });
         m_packetHandlers.emplace(PacketType::CAMERA_SHARING_BEGIN, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::CAMERA_SHARING_BEGIN, conn); });
         m_packetHandlers.emplace(PacketType::CAMERA_SHARING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { redirectPacket(json, PacketType::CAMERA_SHARING_END, conn); });
         m_packetHandlers.emplace(PacketType::MEETING_CREATE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingCreate(json, conn); });
@@ -380,6 +382,13 @@ namespace server
                     auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
                     sendTcp(conn, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
                 }
+                for (const auto& mutedHash : meeting->getMutedParticipants()) {
+                    if (mutedHash == userHash) {
+                        continue;
+                    }
+                    auto beginPacket = PacketFactory::getMuteBeginPacket(mutedHash);
+                    sendTcp(conn, static_cast<uint32_t>(PacketType::MUTE_BEGIN), beginPacket);
+                }
                 sendMeetingConnectionDownStateToUser(meeting, userHash);
 
                 auto [_, restoredPacket] = PacketFactory::getConnectionRestoredWithUserPacket(user->getNicknameHash());
@@ -458,7 +467,28 @@ namespace server
             auto sender = m_userRepository.findUserByNickname(senderNicknameHash);
             if (!receiver || !sender) return;
             if (sender->getTcpConnection() != conn) return;
-            if (!canStartCallLocked(sender, receiver)) return;
+            if (!canStartCallLocked(sender, receiver)) {
+                std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                LOG_INFO(
+                    "Call start rejected: {} -> {} (senderInCall={}, senderInMeeting={}, senderPendingCall={}, senderPendingJoin={}, receiverInCall={}, receiverPendingCall={}, receiverPendingJoin={})",
+                    sp,
+                    rp,
+                    sender->isInCall(),
+                    sender->isInMeeting(),
+                    sender->isPendingCall(),
+                    sender->hasPendingMeetingJoinRequest(),
+                    receiver->isInCall(),
+                    receiver->isPendingCall(),
+                    receiver->hasPendingMeetingJoinRequest());
+                return;
+            }
+
+            if (receiver->isInMeeting()) {
+                std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
+                std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
+                LOG_INFO("Call allowed to meeting participant: {} -> {}", sp, rp);
+            }
 
             auto pending = std::make_shared<PendingCall>(sender, receiver, [this, receiver, sender]() {
                 auto out = sender->getOutgoingPendingCall();
@@ -891,6 +921,13 @@ namespace server
                 auto beginPacket = PacketFactory::getMediaSharingBeginPacket(sharerHash);
                 sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_BEGIN), beginPacket);
             }
+            for (const auto& mutedHash : meeting->getMutedParticipants()) {
+                if (mutedHash == requesterNicknameHash) {
+                    continue;
+                }
+                auto beginPacket = PacketFactory::getMuteBeginPacket(mutedHash);
+                sendTcpToUserIfConnected(requesterNicknameHash, static_cast<uint32_t>(PacketType::MUTE_BEGIN), beginPacket);
+            }
             sendMeetingConnectionDownStateToUser(meeting, requesterNicknameHash);
         }
         catch (const std::exception& e) {
@@ -1037,6 +1074,12 @@ namespace server
                 case PacketType::CAMERA_SHARING_END:
                     meeting->removeCameraSharer(senderHash);
                     break;
+                case PacketType::MUTE_BEGIN:
+                    meeting->addMutedParticipant(senderHash);
+                    break;
+                case PacketType::MUTE_END:
+                    meeting->removeMutedParticipant(senderHash);
+                    break;
                 default:
                     break;
                 }
@@ -1154,6 +1197,12 @@ namespace server
                     auto endPacket = PacketFactory::getMediaSharingEndPacket(disconnectedHash);
                     broadcastToMeeting(meeting, disconnectedHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), endPacket);
                     meeting->removeCameraSharer(disconnectedHash);
+                }
+                auto mutedParticipants = meeting->getMutedParticipants();
+                if (std::find(mutedParticipants.begin(), mutedParticipants.end(), disconnectedHash) != mutedParticipants.end()) {
+                    auto unmutePacket = PacketFactory::getMuteEndPacket(disconnectedHash);
+                    broadcastToMeeting(meeting, disconnectedHash, static_cast<uint32_t>(PacketType::MUTE_END), unmutePacket);
+                    meeting->removeMutedParticipant(disconnectedHash);
                 }
             }
 
@@ -1327,6 +1376,12 @@ namespace server
                 broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(PacketType::CAMERA_SHARING_END), packet);
                 meeting->removeCameraSharer(senderHash);
             }
+            auto mutedParticipants = meeting->getMutedParticipants();
+            if (std::find(mutedParticipants.begin(), mutedParticipants.end(), senderHash) != mutedParticipants.end()) {
+                auto packet = PacketFactory::getMuteEndPacket(senderHash);
+                broadcastToMeeting(meeting, senderHash, static_cast<uint32_t>(PacketType::MUTE_END), packet);
+                meeting->removeMutedParticipant(senderHash);
+            }
         }
 
         if (!meeting->removeParticipant(senderHash).has_value()) {
@@ -1394,9 +1449,7 @@ namespace server
         if (sender->isInCall() || sender->isInMeeting() || sender->isPendingCall() || sender->hasPendingMeetingJoinRequest()) {
             return false;
         }
-        if (receiver->isInCall() || receiver->isInMeeting() || receiver->isPendingCall() || receiver->hasPendingMeetingJoinRequest()) {
-            return false;
-        }
+        // Deliver incoming calls regardless of receiver call/meeting state.
         return true;
     }
 

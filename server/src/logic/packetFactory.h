@@ -45,5 +45,7 @@ namespace server
         // Helper packets for media sharing state (used for late joiners / reconnect).
         static std::vector<unsigned char> getMediaSharingBeginPacket(const std::string& senderNicknameHash);
         static std::vector<unsigned char> getMediaSharingEndPacket(const std::string& senderNicknameHash);
+        static std::vector<unsigned char> getMuteBeginPacket(const std::string& senderNicknameHash);
+        static std::vector<unsigned char> getMuteEndPacket(const std::string& senderNicknameHash);
     };
 }

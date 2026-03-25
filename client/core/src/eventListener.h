@@ -37,6 +37,8 @@ namespace core
 
         virtual void onCallParticipantConnectionDown() = 0;
         virtual void onCallParticipantConnectionRestored() = 0;
+        virtual void onCallParticipantSpeaking(const std::string& nickname, bool speaking) = 0;
+        virtual void onCallParticipantMuted(const std::string& nickname, bool muted) = 0;
 
         virtual void onMeetingCreated(const std::string& meetingId) = 0;
         virtual void onMeetingCreateRejected(std::error_code ec) = 0;
@@ -52,6 +54,7 @@ namespace core
         virtual void onMeetingParticipantConnectionDown(const std::string& nickname) = 0;
         virtual void onMeetingParticipantConnectionRestored(const std::string& nickname) = 0;
         virtual void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) = 0;
+        virtual void onMeetingParticipantMuted(const std::string& nickname, bool muted) = 0;
         virtual void onMeetingRosterResynced(const std::vector<std::string>& participants) = 0;
 
         virtual void onConnectionDown() = 0;

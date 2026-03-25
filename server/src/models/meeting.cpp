@@ -156,10 +156,29 @@ namespace server
         return std::vector<std::string>(m_cameraSharers.begin(), m_cameraSharers.end());
     }
 
+    void Meeting::addMutedParticipant(const std::string& nicknameHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_mutedParticipants.insert(nicknameHash);
+    }
+
+    void Meeting::removeMutedParticipant(const std::string& nicknameHash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_mutedParticipants.erase(nicknameHash);
+    }
+
+    std::vector<std::string> Meeting::getMutedParticipants() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return std::vector<std::string>(m_mutedParticipants.begin(), m_mutedParticipants.end());
+    }
+
     void Meeting::clearMediaState()
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_screenSharers.clear();
         m_cameraSharers.clear();
+        m_mutedParticipants.clear();
     }
 }

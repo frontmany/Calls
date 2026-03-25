@@ -46,6 +46,7 @@ signals:
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     void applyStyle();
@@ -58,6 +59,8 @@ private:
     void buildCameraDeviceList(const std::vector<core::media::Camera>& cameras, const QString& selectedDeviceId);
     void clearLayout(QLayout* layout);
     void updateRowSelectionStyle(QButtonGroup* group);
+    QScrollArea* hoveredScrollAreaForObject(QObject* watched) const;
+    void setScrollBarVisibleOnHover(QScrollArea* area, bool visible);
 
     QWidget* m_container = nullptr;
     ButtonIcon* m_closeButton = nullptr;

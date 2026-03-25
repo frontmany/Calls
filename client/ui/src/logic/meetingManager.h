@@ -72,6 +72,7 @@ public slots:
     void onIncomingScreenSharingStarted(const QString& sharerNickname);
     void onIncomingScreenSharingStopped(const QString& sharerNickname);
     void onMeetingParticipantSpeaking(const QString& nickname, bool speaking);
+    void onMeetingParticipantMuted(const QString& nickname, bool muted);
     void onIncomingCameraSharingStarted(const QString& nickname);
     void onIncomingCameraSharingStopped(const QString& nickname);
     void onStartScreenSharingError();

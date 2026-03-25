@@ -49,6 +49,10 @@ namespace server
         void removeCameraSharer(const std::string& nicknameHash);
         std::vector<std::string> getCameraSharers() const;
 
+        void addMutedParticipant(const std::string& nicknameHash);
+        void removeMutedParticipant(const std::string& nicknameHash);
+        std::vector<std::string> getMutedParticipants() const;
+
         void clearMediaState();
 
     private:
@@ -60,5 +64,6 @@ namespace server
         std::unordered_map<std::string, PendingMeetingJoinRequestPtr> m_pendingJoinRequests;
         std::unordered_set<std::string> m_screenSharers;
         std::unordered_set<std::string> m_cameraSharers;
+        std::unordered_set<std::string> m_mutedParticipants;
     };
 }

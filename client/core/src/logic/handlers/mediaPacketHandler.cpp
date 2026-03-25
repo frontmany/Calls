@@ -172,6 +172,42 @@ namespace core::logic
             m_stateManager->isConnectionDown() ||
             !m_audioEngine->isStream()) return;
 
+        auto updateSpeakingState = [this](const std::string& nickname, const std::vector<float>& audioFrame, bool isCallContext) {
+            if (nickname.empty() || !m_eventListener || audioFrame.empty()) {
+                return;
+            }
+
+            const float rms = core::constant::computeRms(audioFrame.data(), static_cast<int>(audioFrame.size()));
+            RemoteParticipantSpeakingState& state = m_remoteParticipantSpeakingState[nickname];
+            state.smoothedRms = core::constant::smoothRms(state.smoothedRms, rms);
+
+            if (state.smoothedRms > core::constant::kSpeakingRmsThreshold) {
+                state.silenceCount = 0;
+                if (!state.speaking) {
+                    state.speaking = true;
+                    if (isCallContext) {
+                        m_eventListener->onCallParticipantSpeaking(nickname, true);
+                    } else {
+                        m_eventListener->onMeetingParticipantSpeaking(nickname, true);
+                    }
+                }
+                return;
+            }
+
+            state.silenceCount++;
+            if (state.silenceCount >= core::constant::kSpeakingSilenceFrames) {
+                state.silenceCount = core::constant::kSpeakingSilenceFrames;
+                if (state.speaking) {
+                    state.speaking = false;
+                    if (isCallContext) {
+                        m_eventListener->onCallParticipantSpeaking(nickname, false);
+                    } else {
+                        m_eventListener->onMeetingParticipantSpeaking(nickname, false);
+                    }
+                }
+            }
+        };
+
         auto activeOpt = m_stateManager->getActiveCall();
         if (activeOpt) {
             auto decryptedData = m_mediaProcessingService->decryptData(data, length, activeOpt->get().getCallKey());
@@ -179,6 +215,7 @@ namespace core::logic
             auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
             if (!audioFrame.empty()) {
                 m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(audioFrame.size()));
+                updateSpeakingState(activeOpt->get().getNickname(), audioFrame, true);
             }
             return;
         }
@@ -207,25 +244,7 @@ namespace core::logic
         if (!frame.senderHash.empty() && m_eventListener) {
             const std::string nickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);
             if (!nickname.empty()) {
-                const float rms = core::constant::computeRms(audioFrame.data(), static_cast<int>(audioFrame.size()));
-                RemoteParticipantSpeakingState& state = m_remoteParticipantSpeakingState[nickname];
-                state.smoothedRms = core::constant::smoothRms(state.smoothedRms, rms);
-                if (state.smoothedRms > core::constant::kSpeakingRmsThreshold) {
-                    state.silenceCount = 0;
-                    if (!state.speaking) {
-                        state.speaking = true;
-                        m_eventListener->onMeetingParticipantSpeaking(nickname, true);
-                    }
-                } else {
-                    state.silenceCount++;
-                    if (state.silenceCount >= core::constant::kSpeakingSilenceFrames) {
-                        state.silenceCount = core::constant::kSpeakingSilenceFrames;
-                        if (state.speaking) {
-                            state.speaking = false;
-                            m_eventListener->onMeetingParticipantSpeaking(nickname, false);
-                        }
-                    }
-                }
+                updateSpeakingState(nickname, audioFrame, false);
             }
         }
     }

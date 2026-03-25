@@ -23,6 +23,8 @@ namespace core::constant
         CALL_END,
         SCREEN_SHARING_BEGIN,
         SCREEN_SHARING_END,
+        MUTE_BEGIN,
+        MUTE_END,
         SCREEN,
         CAMERA_SHARING_BEGIN,
         CAMERA_SHARING_END,
@@ -77,6 +79,8 @@ namespace core::constant
             case PacketType::CALL_END: return "CALL_END";
             case PacketType::SCREEN_SHARING_BEGIN: return "SCREEN_SHARING_BEGIN";
             case PacketType::SCREEN_SHARING_END: return "SCREEN_SHARING_END";
+            case PacketType::MUTE_BEGIN: return "MUTE_BEGIN";
+            case PacketType::MUTE_END: return "MUTE_END";
             case PacketType::SCREEN: return "SCREEN";
             case PacketType::CAMERA_SHARING_BEGIN: return "CAMERA_SHARING_BEGIN";
             case PacketType::CAMERA_SHARING_END: return "CAMERA_SHARING_END";

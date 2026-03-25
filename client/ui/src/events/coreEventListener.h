@@ -40,6 +40,8 @@ public:
 
     void onCallParticipantConnectionDown() override;
     void onCallParticipantConnectionRestored() override;
+    void onCallParticipantSpeaking(const std::string& nickname, bool speaking) override;
+    void onCallParticipantMuted(const std::string& nickname, bool muted) override;
 
     void onMeetingCreated(const std::string& meetingId) override;
     void onMeetingCreateRejected(std::error_code ec) override;
@@ -55,6 +57,7 @@ public:
     void onMeetingParticipantConnectionDown(const std::string& nickname) override;
     void onMeetingParticipantConnectionRestored(const std::string& nickname) override;
     void onMeetingParticipantSpeaking(const std::string& nickname, bool speaking) override;
+    void onMeetingParticipantMuted(const std::string& nickname, bool muted) override;
     void onMeetingRosterResynced(const std::vector<std::string>& participants) override;
 
     void onConnectionDown() override;

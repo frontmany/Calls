@@ -54,6 +54,8 @@ namespace core::logic
         void handleCallEndedByRemote(const nlohmann::json& jsonObject);
         void handleScreenSharingStarted(const nlohmann::json& jsonObject);
         void handleScreenSharingStopped(const nlohmann::json& jsonObject);
+        void handleMuteStarted(const nlohmann::json& jsonObject);
+        void handleMuteStopped(const nlohmann::json& jsonObject);
         void handleCameraSharingStarted(const nlohmann::json& jsonObject);
         void handleCameraSharingStopped(const nlohmann::json& jsonObject);
         void handleRemoteUserConnectionDown(const nlohmann::json& jsonObject);
@@ -66,6 +68,7 @@ namespace core::logic
         std::function<void()> m_stopAudioSharing;
         std::function<void()> m_stopScreenSharing;
         std::function<void()> m_stopCameraSharing;
+        std::shared_ptr<EventListener> m_eventListener;
         std::unique_ptr<AuthorizationPacketHandler> m_authorizationPacketHandler;
         std::unique_ptr<CallPacketHandler> m_callPacketHandler;
         std::unique_ptr<MediaPacketHandler> m_mediaPacketHandler;

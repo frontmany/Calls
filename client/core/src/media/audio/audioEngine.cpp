@@ -65,6 +65,46 @@ namespace core::media
             }
             return device;
         }
+
+        int resolvePreferredHostApiIndex()
+        {
+            bool needsInit = (Pa_GetDeviceCount() < 0);
+            if (needsInit) {
+                PaError err = Pa_Initialize();
+                if (err != paNoError) {
+                    return -1;
+                }
+            }
+
+            const int hostApiCount = Pa_GetHostApiCount();
+            if (hostApiCount <= 0) {
+                if (needsInit) {
+                    Pa_Terminate();
+                }
+                return -1;
+            }
+
+            // Pick a single Host API to avoid duplicates caused by exposing the same
+            // physical device via multiple host APIs.
+            const PaHostApiTypeId preferredTypes[] = { paWASAPI, paDirectSound, paMME };
+            for (PaHostApiTypeId preferredType : preferredTypes) {
+                for (int apiIndex = 0; apiIndex < hostApiCount; ++apiIndex) {
+                    const PaHostApiInfo* apiInfo = Pa_GetHostApiInfo(apiIndex);
+                    if (apiInfo && apiInfo->type == preferredType) {
+                        if (needsInit) {
+                            Pa_Terminate();
+                        }
+                        return apiIndex;
+                    }
+                }
+            }
+
+            if (needsInit) {
+                Pa_Terminate();
+            }
+            // Fallback: just use the first host api we can find.
+            return 0;
+        }
     }
 
     bool AudioEngine::initializeInternal() {
@@ -414,6 +454,7 @@ namespace core::media
 
         DeviceInfo info;
         info.deviceIndex = deviceIndex;
+        info.hostApiIndex = static_cast<int>(paDeviceInfo->hostApi);
         info.name = paDeviceInfo->name ? paDeviceInfo->name : "";
         info.maxInputChannels = paDeviceInfo->maxInputChannels;
         info.maxOutputChannels = paDeviceInfo->maxOutputChannels;
@@ -435,10 +476,14 @@ namespace core::media
     std::vector<DeviceInfo> AudioEngine::getInputDevices() {
         std::vector<DeviceInfo> devices;
         int deviceCount = getDeviceCount();
+        const int preferredHostApiIndex = resolvePreferredHostApiIndex();
 
         for (int i = 0; i < deviceCount; ++i) {
             auto info = getDeviceInfo(i);
             if (info.has_value() && info->maxInputChannels > 0) {
+                if (preferredHostApiIndex >= 0 && info->hostApiIndex != preferredHostApiIndex) {
+                    continue;
+                }
                 devices.push_back(info.value());
             }
         }
@@ -449,10 +494,14 @@ namespace core::media
     std::vector<DeviceInfo> AudioEngine::getOutputDevices() {
         std::vector<DeviceInfo> devices;
         int deviceCount = getDeviceCount();
+        const int preferredHostApiIndex = resolvePreferredHostApiIndex();
 
         for (int i = 0; i < deviceCount; ++i) {
             auto info = getDeviceInfo(i);
             if (info.has_value() && info->maxOutputChannels > 0) {
+                if (preferredHostApiIndex >= 0 && info->hostApiIndex != preferredHostApiIndex) {
+                    continue;
+                }
                 devices.push_back(info.value());
             }
         }
@@ -463,10 +512,14 @@ namespace core::media
     std::vector<DeviceInfo> AudioEngine::getAllDevices() {
         std::vector<DeviceInfo> devices;
         int deviceCount = getDeviceCount();
+        const int preferredHostApiIndex = resolvePreferredHostApiIndex();
 
         for (int i = 0; i < deviceCount; ++i) {
             auto info = getDeviceInfo(i);
             if (info.has_value()) {
+                if (preferredHostApiIndex >= 0 && info->hostApiIndex != preferredHostApiIndex) {
+                    continue;
+                }
                 devices.push_back(info.value());
             }
         }

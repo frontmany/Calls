@@ -8,6 +8,7 @@
 #include "logic/callManager.h"
 #include "logic/meetingManager.h"
 #include "logic/coreNetworkErrorHandler.h"
+#include "utilities/logger.h"
 
 CoreEventListener::CoreEventListener(AuthorizationManager* authorizationManager, CallManager* callManager, MeetingManager* meetingManager, CoreNetworkErrorHandler* networkErrorHandler)
     : m_authorizationManager(authorizationManager)
@@ -192,6 +193,8 @@ void CoreEventListener::onOutgoingCallTimeout(std::error_code ec)
 
 void CoreEventListener::onIncomingCall(const std::string& friendNickname)
 {
+    const bool inMeeting = m_meetingManager && m_meetingManager->isInMeeting();
+    LOG_INFO("CoreEventListener incoming call: {} (inMeeting={})", friendNickname, inMeeting);
     if (m_callManager) {
         QString qFriendNickname = QString::fromStdString(friendNickname);
         QMetaObject::invokeMethod(m_callManager, "onIncomingCall",
@@ -221,6 +224,26 @@ void CoreEventListener::onCallParticipantConnectionRestored()
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onCallParticipantConnectionRestored",
             Qt::QueuedConnection);
+    }
+}
+
+void CoreEventListener::onCallParticipantSpeaking(const std::string& nickname, bool speaking)
+{
+    if (m_callManager) {
+        QMetaObject::invokeMethod(m_callManager, "onCallParticipantSpeaking",
+            Qt::QueuedConnection,
+            Q_ARG(QString, QString::fromStdString(nickname)),
+            Q_ARG(bool, speaking));
+    }
+}
+
+void CoreEventListener::onCallParticipantMuted(const std::string& nickname, bool muted)
+{
+    if (m_callManager) {
+        QMetaObject::invokeMethod(m_callManager, "onCallParticipantMuted",
+            Qt::QueuedConnection,
+            Q_ARG(QString, QString::fromStdString(nickname)),
+            Q_ARG(bool, muted));
     }
 }
 
@@ -369,6 +392,16 @@ void CoreEventListener::onMeetingParticipantSpeaking(const std::string& nickname
             Qt::QueuedConnection,
             Q_ARG(QString, QString::fromStdString(nickname)),
             Q_ARG(bool, speaking));
+    }
+}
+
+void CoreEventListener::onMeetingParticipantMuted(const std::string& nickname, bool muted)
+{
+    if (m_meetingManager) {
+        QMetaObject::invokeMethod(m_meetingManager, "onMeetingParticipantMuted",
+            Qt::QueuedConnection,
+            Q_ARG(QString, QString::fromStdString(nickname)),
+            Q_ARG(bool, muted));
     }
 }
 

@@ -60,10 +60,22 @@ QString StyleCallWidget::titleStyle() {
 
 QString StyleCallWidget::timerStyle() {
     return QString("QLabel {"
-        "   color: %1;"
+        "   color: rgba(255, 255, 255, 245);"
+        "   font-weight: 700;"
+        "   letter-spacing: 0.4px;"
         "   margin: 0px;"
         "   padding: 0px;"
-        "}").arg(m_whiteColor.name());
+    "}");
+}
+
+QString StyleCallWidget::timerContainerStyle() {
+    return QString(
+        "QWidget#callTimerChip {"
+        "   background-color: rgba(255, 255, 255, 36);"
+        "   border: 1px solid rgba(255, 255, 255, 125);"
+        "   border-radius: %1px;"
+        "}"
+    ).arg(scale(18));
 }
 
 QString StyleCallWidget::controlButtonStyle() {
@@ -241,11 +253,6 @@ CallWidget::CallWidget(QWidget* parent) : QWidget(parent) {
 void CallWidget::setupUI() {
     setFocusPolicy(Qt::StrongFocus);
 
-    m_timerLabel = new QLabel("00:00", this);
-    m_timerLabel->setAlignment(Qt::AlignCenter);
-    m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
-    m_timerLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-
     m_mainScreen = new Screen(this);
     m_mainScreen->setStyleSheet("background-color: transparent; border: none;");
     m_mainScreen->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
@@ -264,31 +271,7 @@ void CallWidget::setupUI() {
     m_additionalScreensLayout->setSpacing(scale(10));
     m_additionalScreensLayout->setAlignment(Qt::AlignCenter);
 
-    m_participantInfoContainer = new QWidget(this);
-    m_participantInfoContainer->setAttribute(Qt::WA_TranslucentBackground);
-    m_participantInfoLayout = new QHBoxLayout(m_participantInfoContainer);
-    m_participantInfoLayout->setContentsMargins(0, 0, 0, 0);
-    m_participantInfoLayout->setSpacing(scale(10));
-    m_participantInfoLayout->setAlignment(Qt::AlignCenter);
-
-    m_friendNicknameLabel = new QLabel("Friend", m_participantInfoContainer);
-    m_friendNicknameLabel->setAlignment(Qt::AlignCenter);
-    m_friendNicknameLabel->setStyleSheet(StyleCallWidget::titleStyle());
-    m_friendNicknameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    QFont nicknameFont("Outfit", scale(18), QFont::Normal);
-    m_friendNicknameLabel->setFont(nicknameFont);
-
-    m_connectionErrorLabel = new QLabel(m_participantInfoContainer);
-    m_connectionErrorLabel->setAlignment(Qt::AlignCenter);
-    m_connectionErrorLabel->setStyleSheet(QString("color: %1; background: transparent; font-size: %2px; margin: 0px; padding: 0px;")
-        .arg(COLOR_STATUS_ERROR.name())
-        .arg(scale(12)));
-    QFont connectionErrorFont("Outfit", scale(11), QFont::Medium);
-    m_connectionErrorLabel->setFont(connectionErrorFont);
-    m_connectionErrorLabel->hide();
-
-    m_participantInfoLayout->addWidget(m_friendNicknameLabel);
-    m_participantInfoLayout->addWidget(m_connectionErrorLabel);
+    m_participantInfoWidget = new CallParticipantWidget(this);
 
     m_participantConnectionErrorBanner = new QWidget(this);
     m_participantConnectionErrorBanner->setStyleSheet(QString("background-color: %1;").arg(COLOR_BANNER_ERROR.name()));
@@ -417,10 +400,9 @@ void CallWidget::setupUI() {
     m_mainLayout->setAlignment(Qt::AlignCenter);
 
     m_mainLayout->addSpacerItem(m_topMainLayoutSpacer);
-    m_mainLayout->addWidget(m_timerLabel);
+    m_mainLayout->addWidget(m_participantInfoWidget, 0, Qt::AlignHCenter);
     m_mainLayout->addWidget(m_additionalScreensContainer);
     m_mainLayout->addWidget(m_mainScreen);
-    m_mainLayout->addWidget(m_participantInfoContainer);
     m_mainLayout->addSpacerItem(m_middleMainLayoutSpacer);
     m_mainLayout->addWidget(m_buttonsPanel);
 
@@ -442,8 +424,6 @@ void CallWidget::setupUI() {
 }
 
 void CallWidget::setupShadowEffect() {
-    setupElementShadow(m_timerLabel, scale(15), COLOR_SHADOW_MEDIUM_60);
-    setupElementShadow(m_friendNicknameLabel, scale(10), COLOR_SHADOW_MEDIUM_50);
     setupElementShadow(m_enterFullscreenButton, scale(10), COLOR_SHADOW_MEDIUM_50);
     setupElementShadow(m_microphoneButton, scale(10), COLOR_SHADOW_MEDIUM_50);
     setupElementShadow(m_screenShareButton, scale(10), COLOR_SHADOW_MEDIUM_50);
@@ -491,27 +471,37 @@ void CallWidget::resizeEvent(QResizeEvent* event)
 
 void CallWidget::setCallInfo(const QString& friendNickname) {
     m_friendNickname = friendNickname;
-    m_friendNicknameLabel->setText(friendNickname);
+    if (m_participantInfoWidget) {
+        m_participantInfoWidget->setNickname(friendNickname);
+        m_participantInfoWidget->setSpeaking(false);
+        m_participantInfoWidget->setMuted(false);
+        m_participantInfoWidget->setTimerText("00:00");
+        m_participantInfoWidget->setTimerLongFormat(false);
+    }
 
     *m_callDuration = QTime(0, 0, 0);
-    m_timerLabel->setText("00:00");
-
-    m_timerLabel->setStyleSheet(StyleCallWidget::timerStyle());
-    QFont timerFont("Outfit", scale(48), QFont::Bold);
-    m_timerLabel->setFont(timerFont);
 
     m_callTimer->start(TIMER_INTERVAL_MS);
+}
+
+void CallWidget::setParticipantSpeaking(bool speaking)
+{
+    if (m_participantInfoWidget) {
+        m_participantInfoWidget->setSpeaking(speaking);
+    }
+}
+
+void CallWidget::setParticipantMuted(bool muted)
+{
+    if (m_participantInfoWidget) {
+        m_participantInfoWidget->setMuted(muted);
+    }
 }
 
 void CallWidget::updateCallTimer() {
     *m_callDuration = m_callDuration->addSecs(1);
 
     bool isLongCall = (m_callDuration->hour() > 0);
-
-    if (isLongCall) {
-        QFont timerFont("Pacifico", scale(52), QFont::Bold);
-        m_timerLabel->setFont(timerFont);
-    }
 
     QString timeFormat;
     if (m_callDuration->hour() > 0) {
@@ -521,7 +511,10 @@ void CallWidget::updateCallTimer() {
         timeFormat = "mm:ss";
     }
 
-    m_timerLabel->setText(m_callDuration->toString(timeFormat));
+    if (m_participantInfoWidget) {
+        m_participantInfoWidget->setTimerLongFormat(isLongCall);
+        m_participantInfoWidget->setTimerText(m_callDuration->toString(timeFormat));
+    }
 }
 
 bool CallWidget::isFullScreen() const {
@@ -663,8 +656,7 @@ void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode s
     if (!m_mainScreen->isVisible())
     {
         m_mainScreen->show();
-        m_timerLabel->hide();
-        m_participantInfoContainer->hide();
+        m_participantInfoWidget->hide();
     }
 }
 
@@ -803,8 +795,7 @@ void CallWidget::hideMainScreen()
         m_mainScreen->hide();
     }
 
-    m_timerLabel->show();
-    m_participantInfoContainer->show();
+    m_participantInfoWidget->show();
 }
 
 void CallWidget::updateOverlayButtonsPosition() {

@@ -18,7 +18,7 @@ IncomingCallDialog::IncomingCallDialog(QWidget* parent, const QString& friendNic
 {
     setModal(false);
     setAttribute(Qt::WA_DeleteOnClose, false);
-    setWindowFlags(windowFlags() | Qt::Window | Qt::WindowStaysOnTopHint);
+    setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_TranslucentBackground, false);
     setStyleSheet("QDialog { background: transparent; }");
     setWindowTitle("Incoming call");

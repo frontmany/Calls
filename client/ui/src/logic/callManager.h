@@ -61,6 +61,8 @@ public slots:
     void onIncomingCallExpired(const QString& friendNickname);
     void onCallParticipantConnectionDown();
     void onCallParticipantConnectionRestored();
+    void onCallParticipantSpeaking(const QString& nickname, bool speaking);
+    void onCallParticipantMuted(const QString& nickname, bool muted);
     void onLocalConnectionDown();
     void onLocalConnectionDownInCall();
 

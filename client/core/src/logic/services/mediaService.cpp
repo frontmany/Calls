@@ -66,6 +66,16 @@ namespace core::logic
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
+        if (m_stateManager && (m_stateManager->isActiveCall() || m_stateManager->isInMeeting())) {
+            const std::string& myNickname = m_stateManager->getMyNickname();
+            if (!myNickname.empty()) {
+                auto packet = isMuted
+                    ? PacketFactory::getMuteBeginPacket(myNickname)
+                    : PacketFactory::getMuteEndPacket(myNickname);
+                (void)m_sendPacket(packet, isMuted ? PacketType::MUTE_BEGIN : PacketType::MUTE_END);
+            }
+        }
+
         if (isMuted && m_localParticipantSpeaking && m_eventListener) {
             const std::string& myNick = m_stateManager->getMyNickname();
             if (!myNick.empty()) {
@@ -206,6 +216,17 @@ namespace core::logic
         }
 
         m_stateManager->setMediaState(MediaType::Audio, MediaState::Active);
+
+        // If microphone was muted before entering call/meeting, broadcast this state
+        // right after audio sharing starts so remote participants receive initial mute.
+        if (m_audioEngine && m_audioEngine->isMicrophoneMuted()
+            && (m_stateManager->isActiveCall() || m_stateManager->isInMeeting())) {
+            const std::string& myNickname = m_stateManager->getMyNickname();
+            if (!myNickname.empty()) {
+                auto packet = PacketFactory::getMuteBeginPacket(myNickname);
+                (void)m_sendPacket(packet, PacketType::MUTE_BEGIN);
+            }
+        }
 
         return {};
     }

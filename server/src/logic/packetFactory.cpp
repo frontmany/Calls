@@ -247,4 +247,20 @@ std::vector<unsigned char> PacketFactory::getMediaSharingEndPacket(const std::st
     jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
     return toBytes(jsonObject.dump());
 }
+
+std::vector<unsigned char> PacketFactory::getMuteBeginPacket(const std::string& senderNicknameHash)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
+    return toBytes(jsonObject.dump());
+}
+
+std::vector<unsigned char> PacketFactory::getMuteEndPacket(const std::string& senderNicknameHash)
+{
+    nlohmann::json jsonObject;
+    jsonObject[UID] = crypto::generateUID();
+    jsonObject[SENDER_NICKNAME_HASH] = senderNicknameHash;
+    return toBytes(jsonObject.dump());
+}
 } // namespace server
