@@ -101,11 +101,11 @@ jobs:
 
             # Legacy path: free ports if a previous deploy used /opt/callifornia
             if [ -f /opt/callifornia/docker-compose.yml ]; then
-              docker compose -f /opt/callifornia/docker-compose.yml --project-directory /opt/callifornia down --remove-orphans 2>/dev/null || true
+              (cd /opt/callifornia && docker-compose down --remove-orphans) 2>/dev/null || true
             fi
-            docker compose down --remove-orphans 2>/dev/null || true
+            docker-compose down --remove-orphans 2>/dev/null || true
 
-            docker compose pull
-            docker compose up -d --no-build --remove-orphans
-            docker compose ps
+            docker-compose pull
+            docker-compose up -d --no-build --remove-orphans
+            docker-compose ps
             docker image prune -f
