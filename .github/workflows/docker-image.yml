@@ -143,17 +143,18 @@ jobs:
               [ -n "$id" ] && docker rm -f "$id" 2>/dev/null || true
             done
 
-            # If ports still held by docker-proxy (stale state), kill only docker-proxy PIDs on 8081/8082
+            # Orphan docker-proxy on 8081/8082 (no running container, ports still bound). Needs sudo on most hosts.
+            # Optional sudoers for deploy user: NOPASSWD for /usr/bin/ss and /bin/kill (or /usr/bin/kill)
             if command -v ss >/dev/null 2>&1; then
-              for port in 8081 8082; do
-                ss -ltnp 2>/dev/null | grep ":$port" | while read -r line; do
-                  pid=$(echo "$line" | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1)
-                  [ -n "$pid" ] || continue
-                  comm=$(ps -p "$pid" -o comm= 2>/dev/null | tr -d ' ')
-                  case "$comm" in
-                    docker-proxy*) kill -9 "$pid" 2>/dev/null || true ;;
-                  esac
-                done
+              _ss_out=$(sudo -n ss -ltnp 2>/dev/null || ss -ltnp 2>/dev/null || true)
+              for pid in $(echo "$_ss_out" | grep -E ':8081|:8082' | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | sort -u); do
+                [ -n "$pid" ] || continue
+                comm=$(ps -p "$pid" -o comm= 2>/dev/null | tr -d ' ')
+                case "$comm" in
+                  docker-proxy*)
+                    sudo -n kill -9 "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+                    ;;
+                esac
               done
             fi
 
