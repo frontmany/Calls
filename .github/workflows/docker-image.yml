@@ -101,64 +101,13 @@ jobs:
 
             COMPOSE="docker-compose -p callifornia -f $DEPLOY_ROOT/docker-compose.yml"
 
-            # Legacy path: free ports if a previous deploy used /opt/callifornia
+            # Stop previous containers so `up -d` can recreate them.
+            # Legacy path: if a previous deploy used /opt/callifornia, stop that stack too.
             if [ -f /opt/callifornia/docker-compose.yml ]; then
-              (cd /opt/callifornia && docker-compose -p callifornia -f docker-compose.yml kill 2>/dev/null || true)
               (cd /opt/callifornia && docker-compose -p callifornia -f docker-compose.yml down --remove-orphans) 2>/dev/null || true
             fi
-            $COMPOSE kill 2>/dev/null || true
             $COMPOSE down --remove-orphans 2>/dev/null || true
-            $COMPOSE rm -f -s 2>/dev/null || true
-
-            # By compose label (when present)
-            docker ps -aq --filter "label=com.docker.compose.project=callifornia" | while read -r id; do
-              [ -n "$id" ] && docker rm -f "$id" 2>/dev/null || true
-            done
-
-            # By container name substring (does not rely on labels; matches callifornia_*)
-            docker ps -aq --filter "name=callifornia" | while read -r id; do
-              [ -n "$id" ] && docker rm -f "$id" 2>/dev/null || true
-            done
-
-            # HostPort from inspect (bridge + published ports)
-            for id in $(docker ps -q); do
-              _hp=$(docker inspect -f '{{range $p, $conf := .NetworkSettings.Ports}}{{range $conf}}{{.HostPort}} {{end}}{{end}}' "$id" 2>/dev/null)
-              for port in 8081 8082; do
-                if echo "$_hp" | grep -wq "$port" 2>/dev/null; then
-                  docker rm -f "$id" 2>/dev/null || true
-                  break
-                fi
-              done
-            done
-
-            for port in 8081 8082; do
-              for id in $(docker ps -q --filter "publish=$port" 2>/dev/null); do
-                [ -n "$id" ] && docker rm -f "$id" 2>/dev/null || true
-              done
-            done
-            for id in $(docker ps -q); do
-              docker port "$id" 2>/dev/null | grep -qE '^8081/|^8082/' && docker rm -f "$id" 2>/dev/null || true
-            done
-            docker ps --format '{{.ID}} {{.Ports}}' | { grep -E '8081->|8082->' || true; } | awk '{print $1}' | while read -r id; do
-              [ -n "$id" ] && docker rm -f "$id" 2>/dev/null || true
-            done
-
-            # Orphan docker-proxy on 8081/8082 (no running container, ports still bound). Needs sudo on most hosts.
-            # Optional sudoers for deploy user: NOPASSWD for /usr/bin/ss and /bin/kill (or /usr/bin/kill)
-            if command -v ss >/dev/null 2>&1; then
-              _ss_out=$(sudo -n ss -ltnp 2>/dev/null || ss -ltnp 2>/dev/null || true)
-              for pid in $(echo "$_ss_out" | grep -E ':8081|:8082' | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | sort -u); do
-                [ -n "$pid" ] || continue
-                comm=$(ps -p "$pid" -o comm= 2>/dev/null | tr -d ' ')
-                case "$comm" in
-                  docker-proxy*)
-                    sudo -n kill -9 "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
-                    ;;
-                esac
-              done
-            fi
 
             $COMPOSE pull
             $COMPOSE up -d --no-build --remove-orphans
             $COMPOSE ps
-            docker image prune -f
