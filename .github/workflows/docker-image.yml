@@ -99,13 +99,20 @@ jobs:
             IMAGE_TAG=${{ github.ref_name }}
             EOF
 
+            COMPOSE="docker-compose -p callifornia -f docker-compose.yml"
+
             # Legacy path: free ports if a previous deploy used /opt/callifornia
             if [ -f /opt/callifornia/docker-compose.yml ]; then
-              (cd /opt/callifornia && docker-compose down --remove-orphans) 2>/dev/null || true
+              (cd /opt/callifornia && docker-compose -p callifornia -f docker-compose.yml down --remove-orphans) 2>/dev/null || true
             fi
-            docker-compose down --remove-orphans 2>/dev/null || true
+            $COMPOSE down --remove-orphans 2>/dev/null || true
 
-            docker-compose pull
-            docker-compose up -d --no-build --remove-orphans
-            docker-compose ps
+            # Anything still bound to 8081/8082 (other project name, failed run, manual container)
+            for id in $(docker ps -q); do
+              docker port "$id" 2>/dev/null | grep -qE ':8081->|:8082->' && docker stop "$id" 2>/dev/null || true
+            done
+
+            $COMPOSE pull
+            $COMPOSE up -d --no-build --remove-orphans
+            $COMPOSE ps
             docker image prune -f
