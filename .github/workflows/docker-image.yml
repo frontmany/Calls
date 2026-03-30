@@ -107,10 +107,17 @@ jobs:
             fi
             $COMPOSE down --remove-orphans 2>/dev/null || true
 
-            # Anything still bound to 8081/8082 (other project name, failed run, manual container)
-            for id in $(docker ps -q); do
-              docker port "$id" 2>/dev/null | grep -qE ':8081->|:8082->' && docker stop "$id" 2>/dev/null || true
+            # Free host TCP/UDP 8081 and 8082 (wrong grep before: docker port uses "8081/tcp -> 0.0.0.0:8081", not ":8081->")
+            for port in 8081 8082; do
+              for id in $(docker ps -q --filter "publish=$port" 2>/dev/null); do
+                [ -n "$id" ] && docker stop "$id" 2>/dev/null || true
+              done
             done
+            for id in $(docker ps -q); do
+              docker port "$id" 2>/dev/null | grep -qE '^8081/|^8082/' && docker stop "$id" 2>/dev/null || true
+            done
+            _busy=$(docker ps --format '{{.ID}} {{.Ports}}' | { grep -E '8081->|8082->' || true; } | awk '{print $1}' | sort -u)
+            if [ -n "$_busy" ]; then docker stop $_busy 2>/dev/null || true; fi
 
             $COMPOSE pull
             $COMPOSE up -d --no-build --remove-orphans
