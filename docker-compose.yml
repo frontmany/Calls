@@ -1,5 +1,6 @@
 services:
   calliforniaServer:
+    container_name: callifornia_calliforniaServer
     image: ${DOCKERHUB_NAMESPACE}/callifornia-server:${IMAGE_TAG}
     build:
       context: .
@@ -12,6 +13,7 @@ services:
     restart: unless-stopped
 
   calliforniaServerUpdater:
+    container_name: callifornia_calliforniaServerUpdater
     image: ${DOCKERHUB_NAMESPACE}/callifornia-server-updater:${IMAGE_TAG}
     build:
       context: .
