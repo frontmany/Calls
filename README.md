@@ -206,7 +206,7 @@ cmake -DCMAKE_PREFIX_PATH=/opt/Qt/6.9.3/gcc_64 -B build
 cmake --build build
 ```
 
-## Docker (calliforniaServer + serverUpdater)
+## Docker (calliforniaServer + calliforniaServerUpdater)
 
 You can run both servers as separate Docker containers using `docker-compose`.
 
@@ -220,25 +220,25 @@ After the build completes, check logs:
 
 ```bash
 docker compose logs -f calliforniaServer
-docker compose logs -f serverUpdater
+docker compose logs -f calliforniaServerUpdater
 ```
 
 ### 2) Exposed ports
 
 - `calliforniaServer`: `8081/tcp` and `8081/udp`
-- `serverUpdater`: `8082/tcp`
+- `calliforniaServerUpdater`: `8082/tcp`
 
 ### 3) Volumes
 
 The compose file mounts these folders:
 
 - `./volumes/calliforniaServer/logs` -> `/app/logs`
-- `./volumes/serverUpdater/logs` -> `/app/logs`
-- `./volumes/serverUpdater/versions` -> `/app/versions`
+- `./volumes/calliforniaServerUpdater/logs` -> `/app/logs`
+- `./volumes/calliforniaServerUpdater/versions` -> `/app/versions`
 
-`serverUpdater` expects a `versions/` directory with this structure:
+`calliforniaServerUpdater` expects a `versions/` directory with this structure:
 
 - `versions/<version_folder>/version.json`
 - `versions/<version_folder>/Linux/...` (and `Windows/`, `Mac/` depending on client OS)
 
-If `./volumes/serverUpdater/versions` is empty, the updater will start but won't have update files to serve.
+If `./volumes/calliforniaServerUpdater/versions` is empty, the updater will start but won't have update files to serve.

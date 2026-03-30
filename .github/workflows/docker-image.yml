@@ -72,7 +72,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           source: "docker-compose.yml"
-          target: "/opt/callifornia"
+          target: "/home/lpvoid/callifornia"
 
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -85,19 +85,27 @@ jobs:
           script: |
             set -e
 
-            mkdir -p /opt/callifornia
-            cd /opt/callifornia
+            DEPLOY_ROOT=/home/lpvoid/callifornia
+            mkdir -p "$DEPLOY_ROOT"
+            cd "$DEPLOY_ROOT"
 
             mkdir -p volumes/calliforniaServer/logs
-            mkdir -p volumes/serverUpdater/logs
-            mkdir -p volumes/serverUpdater/versions
+            mkdir -p volumes/calliforniaServerUpdater/logs
+            mkdir -p volumes/calliforniaServerUpdater/versions
 
             cat > .env <<EOF
+            COMPOSE_PROJECT_NAME=callifornia
             DOCKERHUB_NAMESPACE=${{ secrets.DOCKER_USERNAME }}
             IMAGE_TAG=${{ github.ref_name }}
             EOF
 
-            docker-compose pull
-            docker-compose up -d --no-build --remove-orphans
-            docker-compose ps
+            # Legacy path: free ports if a previous deploy used /opt/callifornia
+            if [ -f /opt/callifornia/docker-compose.yml ]; then
+              docker compose -f /opt/callifornia/docker-compose.yml --project-directory /opt/callifornia down --remove-orphans 2>/dev/null || true
+            fi
+            docker compose down --remove-orphans 2>/dev/null || true
+
+            docker compose pull
+            docker compose up -d --no-build --remove-orphans
+            docker compose ps
             docker image prune -f
