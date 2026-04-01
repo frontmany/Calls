@@ -76,18 +76,19 @@ void MeetingParticipantWidget::setupUI()
     m_mutedLabel = new QLabel(this);
     m_mutedLabel->setAlignment(Qt::AlignCenter);
     m_mutedLabel->setText(QStringLiteral("Muted"));
-    QFont mutedFont(QStringLiteral("Outfit"), scale(11));
+    QFont mutedFont(QStringLiteral("Outfit"), scale(13));
     m_mutedLabel->setFont(mutedFont);
     m_mutedLabel->setStyleSheet(QString(
         "QLabel {"
         "   color: %1;"
-        "   background-color: rgba(111, 124, 142, 135);"
-        "   border: none;"
+        "   background-color: rgba(255, 255, 255, 62);"
+        "   border: 1px solid rgba(255, 255, 255, 165);"
         "   border-radius: %2px;"
-        "   padding: 2px 10px;"
-        "   font-weight: 600;"
+        "   padding: %3px %4px;"
+        "   font-weight: 700;"
+        "   letter-spacing: 0.4px;"
         "}"
-    ).arg(COLOR_TEXT_SECONDARY.name()).arg(scale(8)));
+    ).arg(COLOR_TEXT_SECONDARY.name()).arg(scale(16)).arg(scale(6)).arg(scale(16)));
     m_mutedLabel->hide();
 
     m_videoScreen = new Screen(this);

@@ -13,12 +13,14 @@ CallParticipantWidget::CallParticipantWidget(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground, true);
-    setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     setMinimumHeight(scale(156));
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(scale(28), scale(18), scale(28), scale(18));
-    layout->setSpacing(scale(10));
+    const int rowGap = scale(10);
+    const int mutedGap = scale(12);
+    layout->setSpacing(rowGap);
 
     m_timerLabel = new QLabel("00:00", this);
     m_timerLabel->setAlignment(Qt::AlignCenter);
@@ -53,23 +55,26 @@ CallParticipantWidget::CallParticipantWidget(QWidget* parent)
     QFont nicknameFont("Outfit", scale(20), QFont::DemiBold);
     m_nicknameLabel->setFont(nicknameFont);
     layout->addWidget(m_nicknameLabel, 0, Qt::AlignCenter);
+    layout->addSpacing(mutedGap);
 
     m_mutedLabel = new QLabel("Muted", this);
     m_mutedLabel->setAlignment(Qt::AlignCenter);
     m_mutedLabel->setStyleSheet(QString(
         "QLabel {"
         " color: %1;"
-        " background-color: rgba(111, 124, 142, 135);"
+        " background-color: rgba(255, 255, 255, 62);"
+        " border: 1px solid rgba(255, 255, 255, 165);"
         " border-radius: %2px;"
         " font-size: %3px;"
-        " font-weight: 600;"
+        " font-weight: 700;"
+        " letter-spacing: 0.4px;"
         " padding: %4px %5px;"
         "}"
     ).arg(COLOR_TEXT_SECONDARY.name())
-     .arg(scale(8))
-     .arg(scale(12))
-     .arg(scale(3))
-     .arg(scale(8)));
+     .arg(scale(14))
+     .arg(scale(13))
+     .arg(scale(6))
+     .arg(scale(16)));
     m_mutedLabel->hide();
     layout->addWidget(m_mutedLabel, 0, Qt::AlignCenter);
 
@@ -78,6 +83,12 @@ CallParticipantWidget::CallParticipantWidget(QWidget* parent)
     m_shadowEffect->setBlurRadius(scale(8));
     m_shadowEffect->setColor(QColor(0, 0, 0, 35));
     setGraphicsEffect(m_shadowEffect);
+
+    const int stableWidth = qMax(
+        sizeHint().width(),
+        m_mutedLabel->sizeHint().width() + layout->contentsMargins().left() + layout->contentsMargins().right());
+    setMinimumWidth(stableWidth);
+    setMaximumWidth(stableWidth);
 }
 
 void CallParticipantWidget::setNickname(const QString& nickname)

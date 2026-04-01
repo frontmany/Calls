@@ -88,8 +88,6 @@ namespace
         return profile.maxLayerCap;
     }
 
-    constexpr auto kMetricsLogInterval = std::chrono::seconds(5);
-
 }
 
 namespace server
@@ -1206,26 +1204,6 @@ namespace server
             }
             state.currentLayer = nextLayer;
 
-            if (state.lastMetricsLogAt.time_since_epoch().count() == 0
-                || now - state.lastMetricsLogAt >= kMetricsLogInterval) {
-                state.lastMetricsLogAt = now;
-                const char* context = inMeeting ? "meeting" : (inCall ? "call" : "other");
-                std::string hashPrefix = receiverHash;
-                if (hashPrefix.size() > 8) {
-                    hashPrefix = hashPrefix.substr(0, 8);
-                }
-                LOG_INFO(
-                    "[ABR] receiver={} context={} loss={:.2f}% rtt={}ms ewmaLoss={:.2f}% ewmaRtt={:.1f}ms thresholdLayer={} currentLayer={}",
-                    hashPrefix,
-                    context,
-                    measuredLoss,
-                    static_cast<int>(measuredRtt),
-                    state.lossEwma,
-                    state.rttEwma,
-                    thresholdLayer,
-                    state.currentLayer
-                );
-            }
             if (state.currentLayer != previousLayer) {
                 LOG_INFO("[ABR] layer-change receiver={} context={} {} -> {}",
                     receiverHash.substr(0, std::min<size_t>(8, receiverHash.size())),
