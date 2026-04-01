@@ -154,4 +154,5 @@ namespace core::logic
         m_stateManager->resetIncomingMeetingJoinRequests();
         return {};
     }
+
 }

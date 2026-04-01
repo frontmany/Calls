@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <chrono>
 
 using namespace core::constant;
 using namespace core::media;
@@ -16,6 +17,14 @@ namespace core::logic
     {
         void appendU16BE(std::vector<unsigned char>& out, uint16_t value)
         {
+            out.push_back(static_cast<unsigned char>((value >> 8) & 0xFF));
+            out.push_back(static_cast<unsigned char>(value & 0xFF));
+        }
+
+        void appendU32BE(std::vector<unsigned char>& out, uint32_t value)
+        {
+            out.push_back(static_cast<unsigned char>((value >> 24) & 0xFF));
+            out.push_back(static_cast<unsigned char>((value >> 16) & 0xFF));
             out.push_back(static_cast<unsigned char>((value >> 8) & 0xFF));
             out.push_back(static_cast<unsigned char>(value & 0xFF));
         }
@@ -102,7 +111,7 @@ namespace core::logic
         auto packet = PacketFactory::getScreenSharingBeginPacket(myNickname);
         m_sendPacket(packet, PacketType::SCREEN_SHARING_BEGIN);
 
-        constexpr int kScreenBitrate = 1800000;
+        constexpr int kScreenBitrate = 3500000;
         if (!m_mediaProcessingService->initializeVideoProcessing(MediaType::Screen, kScreenBitrate)) {
             m_stateManager->setMediaState(MediaType::Screen, MediaState::Stopped);
             return make_error_code(ErrorCode::network_error);
@@ -328,7 +337,11 @@ namespace core::logic
                 return;
             }
 
-            std::vector<unsigned char> framed = buildMeetingFrame(meetingId, senderHash, encryptedAudio);
+            const uint32_t frameSeq = nextFrameSeq(MediaType::Audio);
+            const uint32_t ts = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count() & 0xFFFFFFFF);
+            std::vector<unsigned char> framed = buildMeetingFrame(meetingId, senderHash, MediaFrameKind::Voice, 0, frameSeq, ts, encryptedAudio);
             if (!framed.empty()) {
                 m_sendMediaFrame(framed, PacketType::VOICE);
             }
@@ -339,7 +352,18 @@ namespace core::logic
             return;
         }
 
-        m_sendMediaFrame(encryptedAudio, PacketType::VOICE);
+        const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
+        if (senderHash.size() > 0xFFFF) {
+            return;
+        }
+        const uint32_t frameSeq = nextFrameSeq(MediaType::Audio);
+        const uint32_t ts = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count() & 0xFFFFFFFF);
+        std::vector<unsigned char> framed = buildMeetingFrame(std::string(), senderHash, MediaFrameKind::Voice, 0, frameSeq, ts, encryptedAudio);
+        if (!framed.empty()) {
+            m_sendMediaFrame(framed, PacketType::VOICE);
+        }
     }
 
     void MediaService::onRawFrame(const media::Frame& frame, MediaType type) {
@@ -368,19 +392,99 @@ namespace core::logic
             }
         }
 
-        // Encode, encrypt, send
+        PacketType packetType = (type == MediaType::Screen) ? PacketType::SCREEN : PacketType::CAMERA;
+        const uint32_t frameSeq = nextFrameSeq(type);
+        const uint32_t ts = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count() & 0xFFFFFFFF);
+
+        if (type == MediaType::Camera) {
+            auto layers = m_mediaProcessingService->encodeCameraSimulcastFrames(frame.data, frame.width, frame.height);
+            if (layers.empty()) {
+                return;
+            }
+            if (isActiveCall) {
+                const auto& selectedLayer = layers.back().first;
+                const auto& encodedVideo = layers.back().second;
+                auto encryptedVideo = encryptWithCallKey(encodedVideo);
+                if (!encryptedVideo.empty()) {
+                    const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
+                    if (senderHash.size() > 0xFFFF) {
+                        return;
+                    }
+                    std::vector<unsigned char> framed = buildMeetingFrame(
+                        std::string(),
+                        senderHash,
+                        MediaFrameKind::Camera,
+                        static_cast<uint8_t>(selectedLayer),
+                        frameSeq,
+                        ts,
+                        encryptedVideo);
+                    if (!framed.empty()) {
+                        m_sendMediaFrame(framed, packetType);
+                    }
+                }
+                return;
+            }
+
+            auto meetingOpt = m_stateManager->getActiveMeeting();
+            if (!meetingOpt) return;
+            const std::string& meetingId = meetingOpt->get().getMeetingId();
+            const auto& meetingKey = meetingOpt->get().getMeetingKey();
+            if (meetingKey.empty()) return;
+            const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
+            if (meetingId.size() > 0xFFFF || senderHash.size() > 0xFFFF) return;
+            std::vector<unsigned char> keyVec(meetingKey.begin(), meetingKey.end());
+
+            for (const auto& [layer, encodedVideo] : layers) {
+                auto encryptedVideo = m_mediaProcessingService->encryptData(
+                    encodedVideo.data(),
+                    static_cast<int>(encodedVideo.size()),
+                    keyVec
+                );
+                if (encryptedVideo.empty()) {
+                    continue;
+                }
+                std::vector<unsigned char> framed = buildMeetingFrame(
+                    meetingId,
+                    senderHash,
+                    MediaFrameKind::Camera,
+                    static_cast<uint8_t>(layer),
+                    frameSeq,
+                    ts,
+                    encryptedVideo);
+                if (!framed.empty()) {
+                    m_sendMediaFrame(framed, packetType);
+                }
+            }
+            return;
+        }
+
+        // Screen encode, encrypt, send
         auto encodedVideo = m_mediaProcessingService->encodeVideoFrame(type, frame.data, frame.width, frame.height);
         if (encodedVideo.empty()) {
             return;
         }
-
-        PacketType packetType = (type == MediaType::Screen) ? PacketType::SCREEN : PacketType::CAMERA;
         if (isActiveCall) {
             auto encryptedVideo = encryptWithCallKey(encodedVideo);
             if (encryptedVideo.empty()) {
                 return;
             }
-            m_sendMediaFrame(encryptedVideo, packetType);
+            const std::string senderHash = core::utilities::crypto::calculateHash(m_stateManager->getMyNickname());
+            if (senderHash.size() > 0xFFFF) {
+                return;
+            }
+            std::vector<unsigned char> framed = buildMeetingFrame(
+                std::string(),
+                senderHash,
+                MediaFrameKind::Screen,
+                0,
+                frameSeq,
+                ts,
+                encryptedVideo);
+            if (!framed.empty()) {
+                m_sendMediaFrame(framed, packetType);
+            }
             return;
         }
 
@@ -408,7 +512,14 @@ namespace core::logic
         if (senderHash.size() > 0xFFFF) {
             return;
         }
-        std::vector<unsigned char> framed = buildMeetingFrame(meetingId, senderHash, encryptedVideo);
+        std::vector<unsigned char> framed = buildMeetingFrame(
+            meetingId,
+            senderHash,
+            MediaFrameKind::Screen,
+            0,
+            frameSeq,
+            ts,
+            encryptedVideo);
         if (!framed.empty()) {
             m_sendMediaFrame(framed, packetType);
         }
@@ -416,16 +527,31 @@ namespace core::logic
 
     std::vector<unsigned char> MediaService::buildMeetingFrame(const std::string& meetingId,
         const std::string& senderHash,
+        MediaFrameKind kind,
+        uint8_t layerId,
+        uint32_t frameSeq,
+        uint32_t timestampMs,
         const std::vector<unsigned char>& encryptedPayload)
     {
         std::vector<unsigned char> framed;
-        framed.reserve(2 + meetingId.size() + 2 + senderHash.size() + encryptedPayload.size());
+        framed.reserve(1 + 2 + meetingId.size() + 2 + senderHash.size() + 1 + 1 + 4 + 4 + encryptedPayload.size());
+        framed.push_back(1); // protocol version
         appendU16BE(framed, static_cast<uint16_t>(meetingId.size()));
         framed.insert(framed.end(), meetingId.begin(), meetingId.end());
         appendU16BE(framed, static_cast<uint16_t>(senderHash.size()));
         framed.insert(framed.end(), senderHash.begin(), senderHash.end());
+        framed.push_back(static_cast<uint8_t>(kind));
+        framed.push_back(layerId);
+        appendU32BE(framed, frameSeq);
+        appendU32BE(framed, timestampMs);
         framed.insert(framed.end(), encryptedPayload.begin(), encryptedPayload.end());
         return framed;
+    }
+
+    uint32_t MediaService::nextFrameSeq(media::MediaType type)
+    {
+        uint32_t& seq = m_mediaSeqCounters[static_cast<int>(type)];
+        return ++seq;
     }
 
     std::vector<unsigned char> MediaService::encryptWithCallKey(const std::vector<unsigned char>& data) {

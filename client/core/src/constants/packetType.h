@@ -36,6 +36,8 @@ namespace core::constant
         MEETING_JOIN_CANCEL,
         MEETING_JOIN_ACCEPT,
         MEETING_JOIN_DECLINE,
+        MEDIA_RECEIVER_STATS,
+        MEDIA_RTT_PING,
 
         // meeting: send
         MEETING_CREATE,
@@ -50,6 +52,8 @@ namespace core::constant
         MEETING_PARTICIPANT_LEFT,
         MEETING_ENDED,
         MEETING_JOIN_REJECTED,
+        MEDIA_ADAPT_COMMAND,
+        MEDIA_RTT_PONG,
 
         // only receive
         AUTHORIZATION_RESULT,
@@ -92,6 +96,8 @@ namespace core::constant
             case PacketType::MEETING_JOIN_CANCEL: return "MEETING_JOIN_CANCEL";
             case PacketType::MEETING_JOIN_ACCEPT: return "MEETING_JOIN_ACCEPT";
             case PacketType::MEETING_JOIN_DECLINE: return "MEETING_JOIN_DECLINE";
+            case PacketType::MEDIA_RECEIVER_STATS: return "MEDIA_RECEIVER_STATS";
+            case PacketType::MEDIA_RTT_PING: return "MEDIA_RTT_PING";
             case PacketType::MEETING_LEAVE: return "MEETING_LEAVE";
             case PacketType::MEETING_END: return "MEETING_END";
             case PacketType::MEETING_CREATE_RESULT: return "MEETING_CREATE_RESULT";
@@ -100,6 +106,8 @@ namespace core::constant
             case PacketType::MEETING_PARTICIPANT_JOINED: return "MEETING_PARTICIPANT_JOINED";
             case PacketType::MEETING_PARTICIPANT_LEFT: return "MEETING_PARTICIPANT_LEFT";
             case PacketType::MEETING_JOIN_REJECTED: return "MEETING_JOIN_REJECTED";
+            case PacketType::MEDIA_ADAPT_COMMAND: return "MEDIA_ADAPT_COMMAND";
+            case PacketType::MEDIA_RTT_PONG: return "MEDIA_RTT_PONG";
 
             // only receive
             case PacketType::AUTHORIZATION_RESULT: return "AUTHORIZATION_RESULT";

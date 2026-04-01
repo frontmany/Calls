@@ -491,6 +491,12 @@ void DeviceSettingsDialog::applyStyle()
 
 QString DeviceSettingsDialog::sliderStyle() const
 {
+    const int grooveHeight = qMax(6, scale(8));
+    const int grooveRadius = qMax(3, grooveHeight / 2);
+    const int handleSize = qMax(14, scale(17));
+    const int handleRadius = qMax(7, handleSize / 2);
+    const int handleMargin = -(handleSize - grooveHeight) / 2;
+
     return QString(R"(
         QSlider::groove:horizontal {
             height: %1px;
@@ -529,18 +535,18 @@ QString DeviceSettingsDialog::sliderStyle() const
             background-color: %11;
         }
     )")
-        .arg(QString::number(scale(8)))
-        .arg(QString::number(scale(4)))
-        .arg(QString::number(scale(17)))
-        .arg(QString::number(scale(17)))
-        .arg(QString::number(scale(8)))
-        .arg(QString::number(scale(4)))
+        .arg(QString::number(grooveHeight))
+        .arg(QString::number(grooveRadius))
+        .arg(QString::number(handleSize))
+        .arg(QString::number(handleSize))
+        .arg(QString::number(handleRadius))
+        .arg(QString::number(grooveRadius))
         .arg(COLOR_NEUTRAL_200.name())
         .arg(COLOR_SLIDER_TRACK.name())
         .arg(COLOR_SLIDER_FILL.name())
         .arg(COLOR_NEUTRAL_180.name())
         .arg(COLOR_SLIDER_HANDLE_NEUTRAL.name())
-        .arg(QString::number(scale(-4)));
+        .arg(QString::number(handleMargin));
 }
 
 QString DeviceSettingsDialog::scrollAreaStyle() const

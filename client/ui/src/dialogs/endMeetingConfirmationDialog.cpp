@@ -96,6 +96,10 @@ EndMeetingConfirmationDialog::EndMeetingConfirmationDialog(QWidget* parent)
         "QPushButton:pressed {"
         "   background-color: #d0d0d0;"
         "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
         ).arg(scale(8)).arg(scale(10)).arg(scale(20)).arg(scale(13)));
     m_cancelButton->setFont(font);
 
@@ -120,6 +124,10 @@ EndMeetingConfirmationDialog::EndMeetingConfirmationDialog(QWidget* parent)
         "}"
         "QPushButton:pressed {"
         "   background-color: rgba(232, 53, 53, 0.35);"
+        "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
         "}"
         ).arg(COLOR_BANNER_ERROR.name()).arg(scale(8)).arg(scale(10)).arg(scale(20)).arg(scale(13)).arg(COLOR_BANNER_ERROR_HOVER.name()));
     m_okButton->setFont(font);

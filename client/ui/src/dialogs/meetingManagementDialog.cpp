@@ -315,7 +315,8 @@ MeetingManagementDialog::MeetingManagementDialog(QWidget* parent)
         "}"
         "QPushButton:pressed {"
         "   background-color: rgb(245, 235, 235);"
-        "}")
+        "}"
+        "QPushButton:focus { outline: none; border: none; }")
         .arg(scale(16)).arg(scale(12)).arg(scale(24)).arg(scale(14)));
     m_cancelRequestButton->hide();
 

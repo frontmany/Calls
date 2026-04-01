@@ -60,6 +60,8 @@ namespace server
         void handleMeetingJoinDecline(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleMeetingLeave(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void handleMeetingEnd(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMediaReceiverStats(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
+        void handleMediaRttPing(const nlohmann::json& json, network::tcp::ConnectionPtr conn);
         void redirectPacket(const nlohmann::json& json, constant::PacketType type, network::tcp::ConnectionPtr conn);
 
         void processUserLogout(const UserPtr& user);
@@ -70,12 +72,25 @@ namespace server
         void removeMeetingParticipant(const MeetingPtr& meeting, const UserPtr& user);
         void endMeetingCleanup(const MeetingPtr& meeting);
         void processConnectionDown(const UserPtr& user);
+        void resetAbrStateForUser(const std::string& receiverHash, bool inMeeting, bool inCall);
         void sendMeetingConnectionDownStateToUser(const MeetingPtr& meeting, const std::string& receiverNicknameHash);
         bool canStartCallLocked(const UserPtr& sender, const UserPtr& receiver) const;
         bool canAcceptCallLocked(const UserPtr& callee, const UserPtr& caller) const;
         bool canJoinMeetingLocked(const UserPtr& user) const;
 
     private:
+        struct ReceiverAbrState {
+            bool initialized = false;
+            double lossEwma = 0.0;
+            double rttEwma = 0.0;
+            int currentLayer = 2;
+            bool upgradeCandidateActive = false;
+            std::chrono::steady_clock::time_point upgradeCandidateSince{};
+            std::chrono::steady_clock::time_point lastMetricsLogAt{};
+            std::chrono::steady_clock::time_point lastStatsAt{};
+            std::chrono::steady_clock::time_point fastProbeUntil{};
+        };
+
         mutable std::mutex m_mutex;
 
         server::network::NetworkController m_networkController;
@@ -86,5 +101,6 @@ namespace server
 
         std::unordered_map<constant::PacketType, TcpPacketHandler> m_packetHandlers;
         std::unordered_map<network::tcp::ConnectionPtr, UserPtr> m_connToUser;
+        std::unordered_map<std::string, ReceiverAbrState> m_receiverAbrStates;
     };
 }

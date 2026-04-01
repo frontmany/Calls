@@ -181,4 +181,41 @@ namespace server
         m_cameraSharers.clear();
         m_mutedParticipants.clear();
     }
+
+    void Meeting::setCameraSubscriptionLayer(const std::string& receiverHash, const std::string& senderHash, uint8_t maxLayer)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_cameraSubscriptions[receiverHash][senderHash] = maxLayer;
+    }
+
+    uint8_t Meeting::getCameraSubscriptionLayer(const std::string& receiverHash, const std::string& senderHash) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto receiverIt = m_cameraSubscriptions.find(receiverHash);
+        if (receiverIt == m_cameraSubscriptions.end()) {
+            return 2;
+        }
+        auto senderIt = receiverIt->second.find(senderHash);
+        if (senderIt == receiverIt->second.end()) {
+            return 2;
+        }
+        return senderIt->second;
+    }
+
+    uint8_t Meeting::getRequiredSenderLayer(const std::string& senderHash) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        bool found = false;
+        uint8_t required = 0;
+        for (const auto& [receiverHash, perSender] : m_cameraSubscriptions) {
+            (void)receiverHash;
+            auto it = perSender.find(senderHash);
+            if (it == perSender.end()) {
+                continue;
+            }
+            found = true;
+            required = std::max(required, it->second);
+        }
+        return found ? required : 2;
+    }
 }

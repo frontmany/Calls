@@ -62,6 +62,10 @@ QString StyleAlreadyRunningDialog::closeButtonStyle(int radius, int paddingH, in
         "QPushButton:pressed {"
         "   background-color: %9;"
         "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
     ).arg(QColor(232, 53, 53, 51).name(QColor::HexArgb))  // %1 - background-color (0.20 * 255 ≈ 51)
      .arg(COLOR_BANNER_ERROR.name())                        // %2 - color
      .arg(radius)                                           // %3 - border-radius

@@ -34,6 +34,8 @@ namespace server::constant
     MEETING_JOIN_CANCEL,
     MEETING_JOIN_ACCEPT,
     MEETING_JOIN_DECLINE,
+    MEDIA_RECEIVER_STATS,
+    MEDIA_RTT_PING,
     MEETING_CREATE,
     GET_MEETING_INFO,
     MEETING_LEAVE,
@@ -44,6 +46,8 @@ namespace server::constant
     MEETING_PARTICIPANT_LEFT,
     MEETING_ENDED,
     MEETING_JOIN_REJECTED,
+    MEDIA_ADAPT_COMMAND,
+    MEDIA_RTT_PONG,
 
     // only send
     AUTHORIZATION_RESULT,
@@ -84,6 +88,8 @@ inline std::string packetTypeToString(PacketType type) {
         case PacketType::MEETING_JOIN_CANCEL: return "MEETING_JOIN_CANCEL";
         case PacketType::MEETING_JOIN_ACCEPT: return "MEETING_JOIN_ACCEPT";
         case PacketType::MEETING_JOIN_DECLINE: return "MEETING_JOIN_DECLINE";
+        case PacketType::MEDIA_RECEIVER_STATS: return "MEDIA_RECEIVER_STATS";
+        case PacketType::MEDIA_RTT_PING: return "MEDIA_RTT_PING";
         case PacketType::MEETING_CREATE: return "MEETING_CREATE";
         case PacketType::GET_MEETING_INFO: return "GET_MEETING_INFO";
         case PacketType::MEETING_LEAVE: return "MEETING_LEAVE";
@@ -94,6 +100,8 @@ inline std::string packetTypeToString(PacketType type) {
         case PacketType::MEETING_PARTICIPANT_LEFT: return "MEETING_PARTICIPANT_LEFT";
         case PacketType::MEETING_ENDED: return "MEETING_ENDED";
         case PacketType::MEETING_JOIN_REJECTED: return "MEETING_JOIN_REJECTED";
+        case PacketType::MEDIA_ADAPT_COMMAND: return "MEDIA_ADAPT_COMMAND";
+        case PacketType::MEDIA_RTT_PONG: return "MEDIA_RTT_PONG";
 
         // only send
         case PacketType::AUTHORIZATION_RESULT: return "AUTHORIZATION_RESULT";

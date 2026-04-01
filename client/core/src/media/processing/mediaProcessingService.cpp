@@ -7,6 +7,7 @@
 #include <libavutil/pixfmt.h>
 #include <cstring>
 #include <stdexcept>
+#include <algorithm>
 
 namespace core::media
 {
@@ -71,9 +72,24 @@ namespace core::media
 
     bool MediaProcessingService::initializeVideoProcessing(MediaType type, int bitrate)
     {
+        if (type == MediaType::Camera) {
+            m_cameraEncodePipelines.clear();
+            for (const auto layer : { CameraLayer::Low, CameraLayer::Mid, CameraLayer::High }) {
+                VideoPipeline pipeline;
+                pipeline.bitrate = (layer == CameraLayer::Low) ? m_cameraLowProfile.bitrate :
+                    (layer == CameraLayer::Mid) ? m_cameraMidProfile.bitrate : m_cameraHighProfile.bitrate;
+                pipeline.fps = (layer == CameraLayer::Low) ? m_cameraLowProfile.fps :
+                    (layer == CameraLayer::Mid) ? m_cameraMidProfile.fps : m_cameraHighProfile.fps;
+                pipeline.encoder = std::make_unique<H264Encoder>();
+                pipeline.initialized = true;
+                m_cameraEncodePipelines[layer] = std::move(pipeline);
+            }
+        }
+
         auto& pipeline = getPipeline(type);
         pipeline.cleanup();
         pipeline.bitrate = bitrate;
+        pipeline.fps = (type == MediaType::Screen) ? m_screenBaseProfile.fps : 30;
 
         pipeline.encoder = std::make_unique<H264Encoder>();
         pipeline.decoder = std::make_unique<H264Decoder>();
@@ -86,6 +102,24 @@ namespace core::media
 
         pipeline.initialized = true;
         return true;
+    }
+
+    void MediaProcessingService::setCameraQualityProfiles(const VideoProfile& low, const VideoProfile& mid, const VideoProfile& high)
+    {
+        m_cameraLowProfile = low;
+        m_cameraMidProfile = mid;
+        m_cameraHighProfile = high;
+    }
+
+    void MediaProcessingService::setScreenQualityProfile(const VideoProfile& baseProfile, const VideoProfile& minProfile)
+    {
+        m_screenBaseProfile = baseProfile;
+        m_screenMinProfile = minProfile;
+    }
+
+    void MediaProcessingService::setCameraTargetLayer(CameraLayer layer)
+    {
+        m_cameraTargetLayer = layer;
     }
 
     void MediaProcessingService::cleanupAudio()
@@ -106,6 +140,10 @@ namespace core::media
                 pipeline.cleanup();
             }
             m_cameraDecodePipelines.clear();
+            for (auto& [layer, pipeline] : m_cameraEncodePipelines) {
+                pipeline.cleanup();
+            }
+            m_cameraEncodePipelines.clear();
         }
     }
 
@@ -208,7 +246,15 @@ namespace core::media
         // Ленивая инициализация энкодера при первом кадре или реинициализация при смене разрешения
         // (H264Encoder::encodeFrame сам обнаружит смену разрешения и вызовет reinitialize)
         if (!pipeline.encoder->isInitialized()) {
-            if (!pipeline.encoder->initialize(width, height, 30, pipeline.bitrate)) {
+            int targetWidth = width;
+            int targetHeight = height;
+            int targetFps = pipeline.fps;
+            if (type == MediaType::Screen) {
+                targetWidth = std::min(width, m_screenBaseProfile.width);
+                targetHeight = std::min(height, m_screenBaseProfile.height);
+                targetFps = m_screenBaseProfile.fps;
+            }
+            if (!pipeline.encoder->initialize(targetWidth, targetHeight, targetFps, pipeline.bitrate)) {
                 return {};
             }
         }
@@ -234,6 +280,52 @@ namespace core::media
         pipeline.height = pipeline.encoder->getHeight();
              
         return pipeline.lastEncodedFrame;
+    }
+
+    std::vector<std::pair<MediaProcessingService::CameraLayer, std::vector<unsigned char>>> MediaProcessingService::encodeCameraSimulcastFrames(
+        const unsigned char* rawData,
+        int width,
+        int height)
+    {
+        std::vector<std::pair<CameraLayer, std::vector<unsigned char>>> out;
+        auto encodeLayer = [&](CameraLayer layer, const VideoProfile& profile) {
+            auto it = m_cameraEncodePipelines.find(layer);
+            if (it == m_cameraEncodePipelines.end()) return;
+            auto& pipeline = it->second;
+            if (!pipeline.initialized || !pipeline.encoder) return;
+
+            pipeline.lastEncodedFrame.clear();
+            pipeline.encoder->setEncodedDataCallback([&pipeline](const uint8_t* data, size_t size, int64_t pts) {
+                pipeline.lastEncodedFrame.assign(data, data + size);
+            });
+
+            const int targetWidth = std::min(width, profile.width);
+            const int targetHeight = std::min(height, profile.height);
+            if (!pipeline.encoder->isInitialized()) {
+                if (!pipeline.encoder->initialize(targetWidth, targetHeight, profile.fps, profile.bitrate)) {
+                    return;
+                }
+            }
+
+            Frame frame(rawData, width * height * 3, width, height, AV_PIX_FMT_RGB24);
+            if (!pipeline.encoder->encodeFrame(frame)) {
+                return;
+            }
+            pipeline.width = pipeline.encoder->getWidth();
+            pipeline.height = pipeline.encoder->getHeight();
+            if (!pipeline.lastEncodedFrame.empty()) {
+                out.emplace_back(layer, pipeline.lastEncodedFrame);
+            }
+        };
+
+        encodeLayer(CameraLayer::Low, m_cameraLowProfile);
+        if (m_cameraTargetLayer >= CameraLayer::Mid) {
+            encodeLayer(CameraLayer::Mid, m_cameraMidProfile);
+        }
+        if (m_cameraTargetLayer >= CameraLayer::High) {
+            encodeLayer(CameraLayer::High, m_cameraHighProfile);
+        }
+        return out;
     }
 
     std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize)

@@ -4,6 +4,7 @@
 #include "utilities/crypto.h"
 #include "utilities/logger.h"
 #include "utilities/metrics.h"
+#include "constants/mediaPolicy.h"
 #include "models/pendingCall.h"
 #include "models/meeting.h"
 #include "models/pendingMeetingJoinRequest.h"
@@ -13,6 +14,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <string>
 
 using namespace server;
@@ -24,6 +26,70 @@ namespace
     std::vector<unsigned char> toBytes(const std::string& s) {
         return std::vector<unsigned char>(s.begin(), s.end());
     }
+
+    struct MediaFrameMeta {
+        uint8_t version = 0;
+        std::string meetingId;
+        std::string senderHash;
+        uint8_t mediaKind = 0;
+        uint8_t layerId = 0;
+    };
+
+    std::optional<MediaFrameMeta> parseMediaFrameMeta(const unsigned char* data, int size)
+    {
+        if (!data || size < 1 + 2) {
+            return std::nullopt;
+        }
+        MediaFrameMeta meta;
+        meta.version = data[0];
+        if (meta.version != 1) {
+            return std::nullopt;
+        }
+        const size_t meetingLenOffset = 1;
+        const uint16_t meetingIdLen = (static_cast<uint16_t>(data[meetingLenOffset]) << 8)
+            | static_cast<uint16_t>(data[meetingLenOffset + 1]);
+        const size_t meetingIdOffset = meetingLenOffset + 2;
+        if (size < static_cast<int>(meetingIdOffset + meetingIdLen + 2)) {
+            return std::nullopt;
+        }
+        meta.meetingId.assign(reinterpret_cast<const char*>(data + meetingIdOffset), meetingIdLen);
+        const size_t senderLenOffset = meetingIdOffset + meetingIdLen;
+        const uint16_t senderHashLen = (static_cast<uint16_t>(data[senderLenOffset]) << 8)
+            | static_cast<uint16_t>(data[senderLenOffset + 1]);
+        const size_t senderOffset = senderLenOffset + 2;
+        if (size < static_cast<int>(senderOffset + senderHashLen + 2)) {
+            return std::nullopt;
+        }
+        meta.senderHash.assign(reinterpret_cast<const char*>(data + senderOffset), senderHashLen);
+        const size_t mediaOffset = senderOffset + senderHashLen;
+        meta.mediaKind = data[mediaOffset];
+        meta.layerId = data[mediaOffset + 1];
+        return meta;
+    }
+
+    bool shouldKeepLayer1(double lossEwma, double rttEwma, const server::constant::AbrProfile& profile)
+    {
+        return lossEwma <= profile.lossUpToMid && rttEwma <= static_cast<double>(profile.rttUpToMidMs);
+    }
+
+    bool shouldKeepLayer2(double lossEwma, double rttEwma, const server::constant::AbrProfile& profile)
+    {
+        return lossEwma <= profile.lossUpToHigh && rttEwma <= static_cast<double>(profile.rttUpToHighMs);
+    }
+
+    int computeTargetLayerFromThresholds(double lossEwma, double rttEwma, const server::constant::AbrProfile& profile)
+    {
+        if (lossEwma >= profile.lossDownToLow || rttEwma >= static_cast<double>(profile.rttDownToLowMs)) {
+            return 0;
+        }
+        if (lossEwma >= profile.lossDownToMid || rttEwma >= static_cast<double>(profile.rttDownToMidMs)) {
+            return 1;
+        }
+        return profile.maxLayerCap;
+    }
+
+    constexpr auto kMetricsLogInterval = std::chrono::seconds(5);
+
 }
 
 namespace server
@@ -64,6 +130,8 @@ namespace server
         m_packetHandlers.emplace(PacketType::MEETING_JOIN_DECLINE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingJoinDecline(json, conn); });
         m_packetHandlers.emplace(PacketType::MEETING_LEAVE, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingLeave(json, conn); });
         m_packetHandlers.emplace(PacketType::MEETING_END, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMeetingEnd(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEDIA_RECEIVER_STATS, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMediaReceiverStats(json, conn); });
+        m_packetHandlers.emplace(PacketType::MEDIA_RTT_PING, [this](const nlohmann::json& json, network::tcp::ConnectionPtr conn) { handleMediaRttPing(json, conn); });
     }
 
     void Server::run() {
@@ -88,13 +156,15 @@ namespace server
         }
 
         m_userRepository.updateUserUdpEndpoint(senderHashHex, endpointFrom);
+        const auto now = std::chrono::steady_clock::now();
 
         if (sender->isInCall()) {
             UserPtr partner = sender->getCallPartner();
             if (!partner || !m_userRepository.containsUser(partner->getNicknameHash())) {
                 return;
             }
-
+            // In 1:1 calls we avoid receiver-side layer filtering to prevent startup blackouts.
+            // Sender-side ABR (MEDIA_ADAPT_COMMAND) remains enabled and is sufficient for call stability.
             m_networkController.sendUdp(data, size, rawType, partner->getEndpoint());
             return;
         }
@@ -109,12 +179,28 @@ namespace server
         }
 
         const std::string senderHash = sender->getNicknameHash();
+        const auto mediaMeta = parseMediaFrameMeta(data, size);
         for (const auto& participant : meeting->getParticipants()) {
             if (!participant.user) {
                 continue;
             }
             if (participant.user->getNicknameHash() == senderHash) {
                 continue;
+            }
+            if (type == PacketType::CAMERA && mediaMeta && mediaMeta->version == 1 && mediaMeta->mediaKind == 2) {
+                uint8_t maxLayer = meeting->getCameraSubscriptionLayer(participant.user->getNicknameHash(), senderHash);
+                auto it = m_receiverAbrStates.find(participant.user->getNicknameHash());
+                if (it != m_receiverAbrStates.end()
+                    && it->second.lastStatsAt.time_since_epoch().count() != 0
+                    && std::chrono::duration_cast<std::chrono::milliseconds>(now - it->second.lastStatsAt).count() > constant::kStatsTimeoutMs) {
+                    maxLayer = 0;
+                }
+                // Forward exactly one selected simulcast layer per receiver/sender pair.
+                // Sending multiple layers to a receiver that decodes into a single stream key
+                // causes frequent resolution switches and visible artifacts.
+                if (mediaMeta->layerId != maxLayer) {
+                    continue;
+                }
             }
             m_networkController.sendUdp(data, size, rawType, participant.user->getEndpoint());
         }
@@ -189,6 +275,24 @@ namespace server
         return true;
     }
 
+    void Server::resetAbrStateForUser(const std::string& receiverHash, bool inMeeting, bool inCall)
+    {
+        auto& state = m_receiverAbrStates[receiverHash];
+        state = ReceiverAbrState{};
+        if (!inMeeting && !inCall) {
+            // User is not in active media session yet; do not enforce ABR filtering.
+            return;
+        }
+        state.initialized = true;
+        state.currentLayer = inMeeting ? constant::kReconnectConservativeMeetingLayer :
+            constant::kReconnectConservativeCallLayer;
+        state.lossEwma = 0.0;
+        state.rttEwma = 0.0;
+        const auto now = std::chrono::steady_clock::now();
+        state.lastStatsAt = now;
+        state.fastProbeUntil = now + std::chrono::milliseconds(constant::kFastProbeHoldMs);
+    }
+
     void Server::handleAuthorization(const nlohmann::json& json, network::tcp::ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(m_mutex);
         try {
@@ -225,6 +329,7 @@ namespace server
                 user->setTcpConnection(conn);
                 m_userRepository.addUser(user);
                 m_connToUser[conn] = user;
+                resetAbrStateForUser(nicknameHash, false, false);
                 authorized = true;
                 std::string prefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
                 LOG_INFO("User authorized: {}", prefix);
@@ -296,6 +401,7 @@ namespace server
                         }
                         userInCall = user->isInCall();
                         userInMeeting = user->isInMeeting();
+                        resetAbrStateForUser(senderNicknameHash, userInMeeting, userInCall);
                         if (userInCall) {
                             auto partner = user->getCallPartner();
                             if (partner) callPartnerHash = partner->getNicknameHash();
@@ -575,6 +681,8 @@ namespace server
             auto call = m_callManager.createCall(receiver, sender);
             receiver->setCall(call);
             sender->setCall(call);
+            resetAbrStateForUser(receiverNicknameHash, false, true);
+            resetAbrStateForUser(senderNicknameHash, false, true);
 
             std::string sp = senderNicknameHash.length() >= 5 ? senderNicknameHash.substr(0, 5) : senderNicknameHash;
             std::string rp = receiverNicknameHash.length() >= 5 ? receiverNicknameHash.substr(0, 5) : receiverNicknameHash;
@@ -635,9 +743,11 @@ namespace server
             if (receiver) {
                 std::string rp = receiver->getNicknameHash().length() >= 5 ? receiver->getNicknameHash().substr(0, 5) : receiver->getNicknameHash();
                 LOG_INFO("Call ended: {} ended call with {}", sp, rp);
+                m_receiverAbrStates.erase(receiver->getNicknameHash());
                 receiver->resetCall();
             }
             m_callManager.endCall(sender->getCall());
+            m_receiverAbrStates.erase(senderNicknameHash);
             sender->resetCall();
         }
         catch (const std::exception& e) {
@@ -1027,6 +1137,163 @@ namespace server
         }
     }
 
+    void Server::handleMediaReceiverStats(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        try {
+            const std::string receiverHash = json[SENDER_NICKNAME_HASH].get<std::string>();
+            auto receiver = m_userRepository.findUserByNickname(receiverHash);
+            if (!receiver || receiver->getTcpConnection() != conn) {
+                return;
+            }
+
+            const bool inMeeting = receiver->isInMeeting();
+            const bool inCall = receiver->isInCall();
+            const auto& profile = inMeeting ? constant::kAbrMeetingProfile : constant::kAbrCallProfile;
+
+            const double measuredLoss = std::max(0.0, json.value(LOSS_PCT, 0.0));
+            const double measuredRtt = static_cast<double>(std::max(0, json.value(RTT_MS, 0)));
+
+            auto& state = m_receiverAbrStates[receiverHash];
+            const auto now = std::chrono::steady_clock::now();
+            state.lastStatsAt = now;
+            if (!state.initialized) {
+                state.initialized = true;
+                state.lossEwma = measuredLoss;
+                state.rttEwma = measuredRtt;
+                state.currentLayer = inMeeting ? constant::kReconnectConservativeMeetingLayer :
+                    (inCall ? constant::kReconnectConservativeCallLayer : profile.maxLayerCap);
+                state.fastProbeUntil = now + std::chrono::milliseconds(constant::kFastProbeHoldMs);
+            } else {
+                state.lossEwma = profile.ewmaAlpha * measuredLoss + (1.0 - profile.ewmaAlpha) * state.lossEwma;
+                state.rttEwma = profile.ewmaAlpha * measuredRtt + (1.0 - profile.ewmaAlpha) * state.rttEwma;
+            }
+
+            const int thresholdLayer = computeTargetLayerFromThresholds(state.lossEwma, state.rttEwma, profile);
+            int nextLayer = std::min(state.currentLayer, profile.maxLayerCap);
+            const int effectiveUpgradeHoldMs = (state.fastProbeUntil.time_since_epoch().count() != 0 && now < state.fastProbeUntil)
+                ? constant::kFastProbeHoldMs
+                : profile.upgradeHoldMs;
+
+            const int previousLayer = state.currentLayer;
+            if (thresholdLayer < nextLayer) {
+                // Fast downgrade.
+                nextLayer = thresholdLayer;
+                state.upgradeCandidateActive = false;
+            } else if (thresholdLayer > nextLayer) {
+                // Slow upgrade with hold period.
+                bool allowUpgrade = false;
+                const int candidate = nextLayer + 1;
+                if (candidate == 1) {
+                    allowUpgrade = shouldKeepLayer1(state.lossEwma, state.rttEwma, profile);
+                } else {
+                    allowUpgrade = shouldKeepLayer2(state.lossEwma, state.rttEwma, profile);
+                }
+
+                if (allowUpgrade) {
+                    if (!state.upgradeCandidateActive) {
+                        state.upgradeCandidateActive = true;
+                        state.upgradeCandidateSince = now;
+                    } else if (std::chrono::duration_cast<std::chrono::milliseconds>(now - state.upgradeCandidateSince).count() >= effectiveUpgradeHoldMs) {
+                        nextLayer = std::min(profile.maxLayerCap, candidate);
+                        state.upgradeCandidateActive = false;
+                    }
+                } else {
+                    state.upgradeCandidateActive = false;
+                }
+            } else {
+                state.upgradeCandidateActive = false;
+            }
+            state.currentLayer = nextLayer;
+
+            if (state.lastMetricsLogAt.time_since_epoch().count() == 0
+                || now - state.lastMetricsLogAt >= kMetricsLogInterval) {
+                state.lastMetricsLogAt = now;
+                const char* context = inMeeting ? "meeting" : (inCall ? "call" : "other");
+                std::string hashPrefix = receiverHash;
+                if (hashPrefix.size() > 8) {
+                    hashPrefix = hashPrefix.substr(0, 8);
+                }
+                LOG_INFO(
+                    "[ABR] receiver={} context={} loss={:.2f}% rtt={}ms ewmaLoss={:.2f}% ewmaRtt={:.1f}ms thresholdLayer={} currentLayer={}",
+                    hashPrefix,
+                    context,
+                    measuredLoss,
+                    static_cast<int>(measuredRtt),
+                    state.lossEwma,
+                    state.rttEwma,
+                    thresholdLayer,
+                    state.currentLayer
+                );
+            }
+            if (state.currentLayer != previousLayer) {
+                LOG_INFO("[ABR] layer-change receiver={} context={} {} -> {}",
+                    receiverHash.substr(0, std::min<size_t>(8, receiverHash.size())),
+                    inMeeting ? "meeting" : (inCall ? "call" : "other"),
+                    previousLayer,
+                    state.currentLayer);
+            }
+
+            if (inMeeting) {
+                auto meeting = receiver->getMeeting();
+                if (meeting) {
+                    const std::string receiverHash = receiver->getNicknameHash();
+                    for (const auto& participant : meeting->getParticipants()) {
+                        if (!participant.user) continue;
+                        const std::string senderHash = participant.user->getNicknameHash();
+                        if (senderHash == receiverHash) continue;
+                        meeting->setCameraSubscriptionLayer(receiverHash, senderHash, static_cast<uint8_t>(state.currentLayer));
+                    }
+
+                    // Sender-side encode cap is computed independently as max required layer.
+                    for (const auto& participant : meeting->getParticipants()) {
+                        if (!participant.user) continue;
+                        const std::string senderHash = participant.user->getNicknameHash();
+                        const uint8_t senderRequiredLayer = meeting->getRequiredSenderLayer(senderHash);
+                        auto senderConn = participant.user->getTcpConnection();
+                        if (!senderConn) continue;
+                        nlohmann::json adaptToSender{
+                            { RESULT, true },
+                            { MAX_LAYER, static_cast<int>(senderRequiredLayer) }
+                        };
+                        sendTcp(senderConn, static_cast<uint32_t>(PacketType::MEDIA_ADAPT_COMMAND), toBytes(adaptToSender.dump()));
+                    }
+                }
+            }
+            else if (inCall) {
+                UserPtr partner = receiver->getCallPartner();
+                if (partner) {
+                    auto senderConn = partner->getTcpConnection();
+                    if (senderConn) {
+                        nlohmann::json adaptToSender{
+                            { RESULT, true },
+                            { MAX_LAYER, state.currentLayer }
+                        };
+                        sendTcp(senderConn, static_cast<uint32_t>(PacketType::MEDIA_ADAPT_COMMAND), toBytes(adaptToSender.dump()));
+                    }
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Media receiver stats error: {}", e.what());
+        }
+    }
+
+    void Server::handleMediaRttPing(const nlohmann::json& json, network::tcp::ConnectionPtr conn)
+    {
+        try {
+            nlohmann::json pong{
+                { RESULT, true },
+                { PING_ID, json.value(PING_ID, 0ULL) },
+                { CLIENT_TS_MS, json.value(CLIENT_TS_MS, 0ULL) }
+            };
+            sendTcp(conn, static_cast<uint32_t>(PacketType::MEDIA_RTT_PONG), toBytes(pong.dump()));
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("Media RTT ping handling error: {}", e.what());
+        }
+    }
+
     void Server::redirectPacket(const nlohmann::json& json, PacketType type, network::tcp::ConnectionPtr conn) {
         std::vector<network::tcp::ConnectionPtr> targets;
         std::vector<unsigned char> body;
@@ -1117,6 +1384,9 @@ namespace server
     }
 
     void Server::processConnectionDown(const UserPtr& user) {
+        if (user) {
+            m_receiverAbrStates.erase(user->getNicknameHash());
+        }
         if (user->hasOutgoingPendingCall()) {
             auto out = user->getOutgoingPendingCall();
             auto receiver = out->getReceiver();
@@ -1227,6 +1497,7 @@ namespace server
     void Server::processUserLogout(const UserPtr& user) {
         if (!user || !m_userRepository.containsUser(user->getNicknameHash())) return;
         std::string nicknameHash = user->getNicknameHash();
+        m_receiverAbrStates.erase(nicknameHash);
         std::string prefix = nicknameHash.length() >= 5 ? nicknameHash.substr(0, 5) : nicknameHash;
         LOG_INFO("User logout: {}", prefix);
 

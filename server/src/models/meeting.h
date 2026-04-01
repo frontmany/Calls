@@ -54,6 +54,9 @@ namespace server
         std::vector<std::string> getMutedParticipants() const;
 
         void clearMediaState();
+        void setCameraSubscriptionLayer(const std::string& receiverHash, const std::string& senderHash, uint8_t maxLayer);
+        uint8_t getCameraSubscriptionLayer(const std::string& receiverHash, const std::string& senderHash) const;
+        uint8_t getRequiredSenderLayer(const std::string& senderHash) const;
 
     private:
         mutable std::mutex m_mutex;
@@ -65,5 +68,6 @@ namespace server
         std::unordered_set<std::string> m_screenSharers;
         std::unordered_set<std::string> m_cameraSharers;
         std::unordered_set<std::string> m_mutedParticipants;
+        std::unordered_map<std::string, std::unordered_map<std::string, uint8_t>> m_cameraSubscriptions;
     };
 }

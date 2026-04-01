@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <system_error>
+#include <unordered_map>
 
 #include "media/mediaType.h"
 #include "media/mediaState.h"
@@ -22,6 +23,13 @@
 namespace core::logic
 {
     class MediaService {
+    private:
+        enum class MediaFrameKind : uint8_t {
+            Voice = 0,
+            Screen = 1,
+            Camera = 2,
+        };
+
     public:
         MediaService(
             std::shared_ptr<ClientStateManager> stateManager,
@@ -53,7 +61,12 @@ namespace core::logic
         std::vector<unsigned char> encryptWithCallKey(const std::vector<unsigned char>& data);
         std::vector<unsigned char> buildMeetingFrame(const std::string& meetingId,
             const std::string& senderHash,
+            MediaFrameKind kind,
+            uint8_t layerId,
+            uint32_t frameSeq,
+            uint32_t timestampMs,
             const std::vector<unsigned char>& encryptedPayload);
+        uint32_t nextFrameSeq(media::MediaType type);
 
     private:
         mutable std::mutex m_mutex;
@@ -69,5 +82,6 @@ namespace core::logic
         bool m_localParticipantSpeaking = false;
         int m_silenceFramesCount = 0;
         float m_localSmoothedRms = 0.f;
+        std::unordered_map<int, uint32_t> m_mediaSeqCounters;
     };
 }

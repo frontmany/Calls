@@ -6,6 +6,7 @@
 #include <QByteArray>
 #include <QMap>
 #include <QTimer>
+#include <QString>
 #include <memory>
 
 #include "core.h"

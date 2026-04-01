@@ -62,6 +62,10 @@ QString StyleUpdatingDialog::exitButtonStyle(int radius, int paddingH, int paddi
         "QPushButton:pressed {"
         "   background-color: rgba(%11, %12, %13, %14);"
         "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
     ).arg(COLOR_TEXT_PLACEHOLDER.name())
      .arg(radius).arg(paddingV).arg(paddingH).arg(fontSize)
      .arg(COLOR_SHADOW_SUBTLE_8.red())

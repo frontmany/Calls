@@ -122,6 +122,13 @@ namespace core
         keyManager->generateKeys();
 
         auto mediaProcessingService = std::make_shared<media::MediaProcessingService>();
+        media::MediaProcessingService::VideoProfile camLow{ 320, 180, 30, 300000 };
+        media::MediaProcessingService::VideoProfile camMid{ 640, 360, 30, 900000 };
+        media::MediaProcessingService::VideoProfile camHigh{ 1280, 720, 30, 2200000 };
+        media::MediaProcessingService::VideoProfile screenBase{ 1920, 1080, 30, 3500000 };
+        media::MediaProcessingService::VideoProfile screenMin{ 1280, 720, 20, 1800000 };
+        mediaProcessingService->setCameraQualityProfiles(camLow, camMid, camHigh);
+        mediaProcessingService->setScreenQualityProfile(screenBase, screenMin);
         bool audioProcessingInitialized = mediaProcessingService->initializeAudioProcessing();
         bool screenVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Screen, 2400000);
         bool cameraVideoInitialized = mediaProcessingService->initializeVideoProcessing(media::MediaType::Camera, 900000);

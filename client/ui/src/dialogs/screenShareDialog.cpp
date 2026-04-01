@@ -80,6 +80,10 @@ QString StyleScreenShareDialog::shareButtonStyle(int radius, int paddingH, int p
         "   background-color: %9;"
         "   color: %10;"
         "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
+        "}"
     ).arg(COLOR_ACCENT.name())
      .arg(COLOR_BACKGROUND_PURE.name())
      .arg(radius)
@@ -111,6 +115,10 @@ QString StyleScreenShareDialog::closeButtonStyle(int radius, int paddingH, int p
         "QPushButton:pressed {"
         "   background-color: %9;"
         "   color: %10;"
+        "}"
+        "QPushButton:focus {"
+        "   outline: none;"
+        "   border: none;"
         "}"
     ).arg(COLOR_OVERLAY_ACCENT_8.name(QColor::HexArgb))
      .arg(COLOR_ACCENT.name())

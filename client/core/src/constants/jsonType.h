@@ -35,4 +35,11 @@ namespace core::constant
     static constexpr const char* FRIEND_NICKNAME = "friend_nickname";
     static constexpr const char* NICKNAME = "nickname";
     static constexpr const char* IS_OWNER = "is_owner";
+    static constexpr const char* MAX_LAYER = "max_layer";
+    static constexpr const char* LOSS_PCT = "loss_pct";
+    static constexpr const char* JITTER_MS = "jitter_ms";
+    static constexpr const char* RTT_MS = "rtt_ms";
+    static constexpr const char* RECV_BITRATE_KBPS = "recv_bitrate_kbps";
+    static constexpr const char* PING_ID = "ping_id";
+    static constexpr const char* CLIENT_TS_MS = "client_ts_ms";
 }

@@ -73,7 +73,12 @@ namespace core::logic
         m_authorizationPacketHandler = std::make_unique<AuthorizationPacketHandler>(stateManager, keyManager, eventListener);
         m_callPacketHandler = std::make_unique<CallPacketHandler>(stateManager, keyManager, eventListener,
             [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
-        m_mediaPacketHandler = std::make_unique<MediaPacketHandler>(stateManager, audioEngine, mediaProcessingService, eventListener);
+        m_mediaPacketHandler = std::make_unique<MediaPacketHandler>(
+            stateManager,
+            audioEngine,
+            mediaProcessingService,
+            eventListener,
+            [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
         m_meetingPacketHandler = std::make_unique<MeetingPacketHandler>(stateManager, keyManager, eventListener,
             [this](const std::vector<unsigned char>& p, core::constant::PacketType t) { return m_sendPacket(p, t); });
         m_reconnectionPacketHandler = std::make_unique<ReconnectionPacketHandler>(stateManager, eventListener,
@@ -125,6 +130,8 @@ namespace core::logic
         });
         m_packetHandlers.emplace(PacketType::MEETING_PARTICIPANT_JOINED, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingParticipantJoined(json); });
         m_packetHandlers.emplace(PacketType::MEETING_PARTICIPANT_LEFT, [this](const nlohmann::json& json) { m_meetingPacketHandler->handleMeetingParticipantLeft(json); });
+        m_packetHandlers.emplace(PacketType::MEDIA_ADAPT_COMMAND, [this](const nlohmann::json& json) { m_mediaPacketHandler->handleAdaptCommand(json); });
+        m_packetHandlers.emplace(PacketType::MEDIA_RTT_PONG, [this](const nlohmann::json& json) { m_mediaPacketHandler->handleRttPong(json); });
     }
 
     PacketHandleController::~PacketHandleController() = default;
@@ -199,7 +206,7 @@ namespace core::logic
     }
 
     void PacketHandleController::handleCallEndedByRemote(const nlohmann::json& jsonObject) {
-        m_callPacketHandler->handleCallEndedByRemote(jsonObject);
+        // Stop local media while active call context is still present.
         if (m_stopScreenSharing) {
             m_stopScreenSharing();
         }
@@ -209,6 +216,8 @@ namespace core::logic
         if (m_stopAudioSharing) {
             m_stopAudioSharing();
         }
+
+        m_callPacketHandler->handleCallEndedByRemote(jsonObject);
     }
 
     void PacketHandleController::handleScreenSharingStarted(const nlohmann::json& jsonObject) {
@@ -282,9 +291,18 @@ namespace core::logic
     }
 
     void PacketHandleController::handleRemoteUserLogout(const nlohmann::json& jsonObject) {
-        m_callPacketHandler->handleRemoteUserLogout(jsonObject);
+        // Same ordering as CALL_END: ensure local media teardown
+        // runs before call state is reset by packet handlers.
+        if (m_stopScreenSharing && m_stateManager->isActiveCall()) {
+            m_stopScreenSharing();
+        }
+        if (m_stopCameraSharing && m_stateManager->isActiveCall()) {
+            m_stopCameraSharing();
+        }
         if (m_stopAudioSharing && m_stateManager->isActiveCall()) {
             m_stopAudioSharing();
         }
+
+        m_callPacketHandler->handleRemoteUserLogout(jsonObject);
     }
 }
