@@ -11,6 +11,10 @@
 #include "core.h"
 #include "updater.h"
 
+namespace core {
+class EventListener;
+}
+
 class AuthorizationWidget;
 class MainMenuWidget;
 class CallWidget;
@@ -78,6 +82,7 @@ private:
     void applyAudioSettings();
     void connectWidgetsToManagers();
     QString getConfigFilePath() const;
+    std::shared_ptr<core::EventListener> createCoreEventListener();
 
 private:
     QWidget* m_centralWidget = nullptr;

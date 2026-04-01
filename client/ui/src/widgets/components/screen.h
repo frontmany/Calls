@@ -3,6 +3,8 @@
 #include <QWidget>
 #include <QPixmap>
 #include <QMouseEvent>
+#include <QRect>
+#include <QResizeEvent>
 
 class Screen : public QWidget
 {
@@ -24,10 +26,17 @@ protected:
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
     void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
-    QPixmap m_pixmap;
+    void rebuildScaledPixmap();
+
+    QPixmap m_sourcePixmap;
+    QPixmap m_scaledPixmap;
+    QRect m_drawTargetRect;
+    QRect m_drawSourceRect;
+    bool m_hasPreparedDraw = false;
     bool m_clearToWhite = false;
     bool m_roundedCornersEnabled = true;
     ScaleMode m_scaleMode = ScaleMode::KeepAspectRatio;

@@ -5,6 +5,7 @@
 #include <QPainterPath>
 #include <QPaintEvent>
 #include <QMouseEvent>
+#include <QResizeEvent>
 #include <QCoreApplication>
 
 Screen::Screen(QWidget* parent)
@@ -14,16 +15,55 @@ Screen::Screen(QWidget* parent)
     setMouseTracking(true);
 }
 
+void Screen::rebuildScaledPixmap()
+{
+    m_hasPreparedDraw = false;
+    m_scaledPixmap = QPixmap();
+
+    if (m_sourcePixmap.isNull())
+        return;
+
+    const QRect widgetRect = rect();
+    if (widgetRect.isEmpty())
+        return;
+
+    if (m_scaleMode == ScaleMode::CropToFit)
+    {
+        m_scaledPixmap = m_sourcePixmap.scaled(widgetRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+
+        const int offsetX = (m_scaledPixmap.width() - widgetRect.width()) / 2;
+        const int offsetY = (m_scaledPixmap.height() - widgetRect.height()) / 2;
+
+        m_drawSourceRect = QRect(offsetX, offsetY, widgetRect.width(), widgetRect.height());
+        m_drawTargetRect = widgetRect;
+    }
+    else
+    {
+        m_scaledPixmap = m_sourcePixmap.scaled(widgetRect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        const int x = widgetRect.x() + (widgetRect.width() - m_scaledPixmap.width()) / 2;
+        const int y = widgetRect.y() + (widgetRect.height() - m_scaledPixmap.height()) / 2;
+
+        m_drawTargetRect = QRect(x, y, m_scaledPixmap.width(), m_scaledPixmap.height());
+        m_drawSourceRect = QRect(QPoint(0, 0), m_scaledPixmap.size());
+    }
+
+    m_hasPreparedDraw = !m_scaledPixmap.isNull();
+}
+
 void Screen::setPixmap(const QPixmap& pixmap)
 {
-    m_pixmap = pixmap;
+    m_sourcePixmap = pixmap;
+    rebuildScaledPixmap();
     updateGeometry();
     update();
 }
 
 void Screen::clear()
 {
-    m_pixmap = QPixmap();
+    m_sourcePixmap = QPixmap();
+    m_scaledPixmap = QPixmap();
+    m_hasPreparedDraw = false;
     m_clearToWhite = true;
     setRoundedCornersEnabled(true);
     updateGeometry();
@@ -41,13 +81,14 @@ void Screen::setScaleMode(ScaleMode mode)
     if (m_scaleMode != mode)
     {
         m_scaleMode = mode;
+        rebuildScaledPixmap();
         update();
     }
 }
 
 QSize Screen::contentSize() const
 {
-    return m_pixmap.isNull() ? QSize() : m_pixmap.size();
+    return m_sourcePixmap.isNull() ? QSize() : m_sourcePixmap.size();
 }
 
 QSize Screen::sizeHint() const
@@ -60,6 +101,12 @@ QSize Screen::sizeHint() const
 QSize Screen::minimumSizeHint() const
 {
     return QSize(scale(100), scale(100));
+}
+
+void Screen::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    rebuildScaledPixmap();
 }
 
 void Screen::paintEvent(QPaintEvent* event)
@@ -81,7 +128,7 @@ void Screen::paintEvent(QPaintEvent* event)
         painter.setClipPath(clipPath);
     }
 
-    if (m_pixmap.isNull() && m_clearToWhite)
+    if (m_sourcePixmap.isNull() && m_clearToWhite)
     {
         painter.fillRect(widgetRect, Qt::white);
     }
@@ -91,47 +138,21 @@ void Screen::paintEvent(QPaintEvent* event)
         m_clearToWhite = false;
     }
 
-    if (!m_pixmap.isNull())
+    if (m_hasPreparedDraw && !m_scaledPixmap.isNull())
     {
-        QPixmap scaledPixmap;
-        QRect targetRect;
-        QRect sourceRect;
-
-        if (m_scaleMode == ScaleMode::CropToFit)
-        {
-            scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-
-            const int offsetX = (scaledPixmap.width() - widgetRect.width()) / 2;
-            const int offsetY = (scaledPixmap.height() - widgetRect.height()) / 2;
-
-            sourceRect = QRect(offsetX, offsetY, widgetRect.width(), widgetRect.height());
-            targetRect = widgetRect;
-        }
-        else
-        {
-            scaledPixmap = m_pixmap.scaled(widgetRect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-            const int x = widgetRect.x() + (widgetRect.width() - scaledPixmap.width()) / 2;
-            const int y = widgetRect.y() + (widgetRect.height() - scaledPixmap.height()) / 2;
-
-            targetRect = QRect(x, y, scaledPixmap.width(), scaledPixmap.height());
-            sourceRect = QRect(QPoint(0, 0), scaledPixmap.size());
-        }
-
         if (m_roundedCornersEnabled)
         {
             QPainterPath pixmapClip;
-            pixmapClip.addRoundedRect(targetRect, m_cornerRadius, m_cornerRadius);
+            pixmapClip.addRoundedRect(m_drawTargetRect, m_cornerRadius, m_cornerRadius);
             painter.setClipPath(pixmapClip, Qt::IntersectClip);
         }
 
-        painter.drawPixmap(targetRect, scaledPixmap, sourceRect);
+        painter.drawPixmap(m_drawTargetRect, m_scaledPixmap, m_drawSourceRect);
     }
 }
 
 void Screen::mouseMoveEvent(QMouseEvent* event)
 {
-    // Передаем событие родительскому виджету для обработки показа кнопок
     if (parentWidget()) {
         QPoint parentPos = mapToParent(event->pos());
         QMouseEvent parentEvent(

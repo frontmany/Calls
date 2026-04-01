@@ -775,7 +775,7 @@ void CallManager::onLocalScreenFrame(QByteArray data, int width, int height)
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
     m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
 }
 
@@ -793,7 +793,7 @@ void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
 
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
     const bool bothCameras = m_coreClient && m_coreClient->isCameraSharing() && m_coreClient->isViewingAnyRemoteCamera();
@@ -816,7 +816,7 @@ void CallManager::onIncomingScreenFrame(QByteArray data, int width, int height)
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
     m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
 }
 
@@ -834,7 +834,7 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
 
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
     if (screenSharingActive) {

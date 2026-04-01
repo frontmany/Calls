@@ -587,7 +587,7 @@ void MeetingManager::onLocalScreenFrame(QByteArray data, int width, int height)
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
     m_meetingWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
 }
 
@@ -601,7 +601,7 @@ void MeetingManager::onLocalCameraFrame(QByteArray data, int width, int height)
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
 
     const std::string myNickname = m_coreClient->getMyNickname();
     if (!myNickname.empty()) {
@@ -619,7 +619,7 @@ void MeetingManager::onIncomingScreenFrame(QByteArray data, int width, int heigh
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
     m_meetingWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
 }
 
@@ -633,7 +633,7 @@ void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int heigh
     }
 
     QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image.copy());
+    QPixmap pixmap = QPixmap::fromImage(image);
 
     m_meetingWidget->updateParticipantVideo(nickname, pixmap);
 }

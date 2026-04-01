@@ -1,4 +1,5 @@
 #include "mainWindow.h"
+#include <functional>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QTimer>
@@ -129,7 +130,7 @@ void MainWindow::customEvent(QEvent* event) {
             m_configManager->getServerHost().toStdString(),
             m_configManager->getMainServerTcpPort().toStdString(),
             m_configManager->getMainServerUdpPort().toStdString(),
-            std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_meetingManager, m_coreNetworkErrorHandler)
+            createCoreEventListener()
         );
 
         if (coreStarted) {
@@ -742,7 +743,7 @@ void MainWindow::onCoreRestartRequested()
         m_configManager->getServerHost().toStdString(),
         m_configManager->getMainServerTcpPort().toStdString(),
         m_configManager->getMainServerUdpPort().toStdString(),
-        std::make_shared<CoreEventListener>(m_authorizationManager, m_callManager, m_meetingManager, m_coreNetworkErrorHandler)
+        createCoreEventListener()
     );
 
     if (coreStarted) {
@@ -782,4 +783,16 @@ QString MainWindow::getConfigFilePath() const
     }
 
     return configNextToApp;
+}
+
+std::shared_ptr<core::EventListener> MainWindow::createCoreEventListener()
+{
+    return std::make_shared<CoreEventListener>(
+        m_authorizationManager,
+        m_callManager,
+        m_meetingManager,
+        m_coreNetworkErrorHandler,
+        [this](std::function<void()> fn) {
+            QTimer::singleShot(0, this, [fn = std::move(fn)]() mutable { fn(); });
+        });
 }
