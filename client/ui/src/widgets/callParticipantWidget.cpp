@@ -62,19 +62,17 @@ CallParticipantWidget::CallParticipantWidget(QWidget* parent)
     m_mutedLabel->setStyleSheet(QString(
         "QLabel {"
         " color: %1;"
-        " background-color: rgba(255, 255, 255, 62);"
-        " border: 1px solid rgba(255, 255, 255, 165);"
+        " background-color: rgba(111, 124, 142, 135);"
         " border-radius: %2px;"
         " font-size: %3px;"
-        " font-weight: 700;"
-        " letter-spacing: 0.4px;"
+        " font-weight: 600;"
         " padding: %4px %5px;"
         "}"
     ).arg(COLOR_TEXT_SECONDARY.name())
-     .arg(scale(14))
-     .arg(scale(13))
-     .arg(scale(6))
-     .arg(scale(16)));
+     .arg(scale(8))
+     .arg(scale(12))
+     .arg(scale(3))
+     .arg(scale(8)));
     m_mutedLabel->hide();
     layout->addWidget(m_mutedLabel, 0, Qt::AlignCenter);
 
