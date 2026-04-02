@@ -8,6 +8,7 @@
 #include "widgets/mainMenuWidget.h"
 #include "widgets/callWidget.h"
 #include "widgets/components/screen.h"
+#include "videoFrameBuffer.h"
 #include "utilities/logger.h"
 #include "constants/constant.h"
 #include "constants/errorCode.h"
@@ -19,8 +20,52 @@
 #include <QTimer>
 #include <cmath>
 #include <string>
+#include <cstring>
 
 namespace {
+    bool fillVideoFrameFromDelivery(
+        const QByteArray& data,
+        int width,
+        int height,
+        quint8 formatByte,
+        int strideY,
+        int strideUV,
+        int uvOffset,
+        core::VideoFrameBuffer& out)
+    {
+        if (width <= 0 || height <= 0)
+            return false;
+
+        out.width = width;
+        out.height = height;
+        out.data.resize(static_cast<size_t>(data.size()));
+        if (!out.data.empty())
+            std::memcpy(out.data.data(), data.constData(), out.data.size());
+
+        if (formatByte == static_cast<quint8>(core::VideoPixelFormat::Nv12))
+        {
+            out.format = core::VideoPixelFormat::Nv12;
+            out.strideY = strideY > 0 ? strideY : width;
+            out.strideUV = strideUV > 0 ? strideUV : width;
+            out.uvOffset = uvOffset;
+            const size_t uvOff = out.uvByteOffset();
+            const int chromaH = height / 2;
+            const size_t need = uvOff + static_cast<size_t>(out.strideUV) * static_cast<size_t>(chromaH);
+            if (out.data.size() < need)
+                return false;
+            return true;
+        }
+
+        out.format = core::VideoPixelFormat::Rgb24;
+        out.strideY = strideY > 0 ? strideY : width * 3;
+        out.strideUV = 0;
+        out.uvOffset = 0;
+        const size_t need = static_cast<size_t>(out.strideY) * static_cast<size_t>(height);
+        if (out.data.size() < need)
+            return false;
+        return true;
+    }
+
     std::string preferredCameraDeviceArg(const ConfigManager* configManager)
     {
         if (!configManager) {
@@ -765,24 +810,24 @@ void CallManager::onRemoteUserEndedCall()
 
 // --- Media frame slots ---
 
-void CallManager::onLocalScreenFrame(QByteArray data, int width, int height)
+void CallManager::onLocalScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_callWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_callWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isScreenSharing()) {
         m_callWidget->hideMainScreen();
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-    m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
 }
 
-void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
+void CallManager::onLocalCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_callWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_callWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isCameraSharing()) {
         m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
         const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
@@ -792,38 +837,35 @@ void CallManager::onLocalCameraFrame(QByteArray data, int width, int height)
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
     const bool bothCameras = m_coreClient && m_coreClient->isCameraSharing() && m_coreClient->isViewingAnyRemoteCamera();
     if (screenSharingActive || bothCameras) {
-        m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
+        m_callWidget->showFrameInAdditionalScreen(frame, ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
     } else {
         // Ensure local camera is not duplicated in additionalScreens when it moves to mainScreen.
         m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_LOCAL_CAMERA);
-        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+        m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
     }
 }
 
-void CallManager::onIncomingScreenFrame(QByteArray data, int width, int height)
+void CallManager::onIncomingScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_callWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_callWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isViewingRemoteScreen()) {
         m_callWidget->hideMainScreen();
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-    m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
 }
 
-void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
+void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_callWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_callWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isViewingAnyRemoteCamera()) {
         m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
         const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
@@ -833,16 +875,13 @@ void CallManager::onIncomingCameraFrame(QByteArray data, int width, int height)
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-
     const bool screenSharingActive = m_coreClient && (m_coreClient->isScreenSharing() || m_coreClient->isViewingRemoteScreen());
     if (screenSharingActive) {
-        m_callWidget->showFrameInAdditionalScreen(pixmap, ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
+        m_callWidget->showFrameInAdditionalScreen(frame, ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
     } else {
         // Ensure remote camera is not duplicated in additionalScreens when it moves to mainScreen.
         m_callWidget->removeAdditionalScreen(ADDITIONAL_SCREEN_ID_REMOTE_CAMERA);
-        m_callWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+        m_callWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
     }
 }
 

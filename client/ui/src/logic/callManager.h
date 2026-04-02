@@ -67,10 +67,10 @@ public slots:
     void onLocalConnectionDownInCall();
 
     // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
-    void onLocalScreenFrame(QByteArray data, int width, int height);
-    void onLocalCameraFrame(QByteArray data, int width, int height);
-    void onIncomingScreenFrame(QByteArray data, int width, int height);
-    void onIncomingCameraFrame(QByteArray data, int width, int height);
+    void onLocalScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
+    void onLocalCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
+    void onIncomingScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
+    void onIncomingCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
 
     // Media state slots
     void onIncomingScreenSharingStarted();

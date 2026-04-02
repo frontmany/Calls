@@ -483,14 +483,13 @@ QString StyleMeetingWidget::callNamePanelStyle()
         "QWidget#callNamePanel {"
         "   background: rgba(255, 255, 255, 60);"
         "   border: 1px solid rgba(255, 255, 255, 140);"
-        "   border-radius: %5px;"
+        "   border-radius: %1px;"
         "   backdrop-filter: blur(12px);"
         "}"
         "QLabel {"
         "   color: #1A1A1A;"
         "   background: transparent;"
         "}")
-        .arg(QString::fromStdString(std::to_string(scale(20))))
         .arg(QString::fromStdString(std::to_string(scale(20))));
 }
 
@@ -1108,6 +1107,12 @@ void MeetingWidget::removeParticipant(const QString& nickname) {
 }
 
 void MeetingWidget::updateParticipantVideo(const QString& nickname, const QPixmap& frame) {
+    if (m_participantWidgets.contains(nickname)) {
+        m_participantWidgets[nickname]->updateVideoFrame(frame);
+    }
+}
+
+void MeetingWidget::updateParticipantVideo(const QString& nickname, const core::VideoFrameBuffer& frame) {
     if (m_participantWidgets.contains(nickname)) {
         m_participantWidgets[nickname]->updateVideoFrame(frame);
     }
@@ -1967,6 +1972,23 @@ void MeetingWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMod
 
     m_mainScreen->setScaleMode(scaleMode);
     m_mainScreen->setPixmap(frame);
+
+    if (!m_mainScreen->isVisible()) {
+        m_mainScreen->show();
+        if (!m_participantWidgets.isEmpty()) {
+            m_participantsContainer->show();
+            updateParticipantPanels();
+            updateParticipantsContainerSize();
+        }
+        updateMainScreenSize();
+    }
+}
+
+void MeetingWidget::showFrameInMainScreen(const core::VideoFrameBuffer& frame, Screen::ScaleMode scaleMode) {
+    if (frame.isEmpty()) return;
+
+    m_mainScreen->setScaleMode(scaleMode);
+    m_mainScreen->setVideoFrame(frame);
 
     if (!m_mainScreen->isVisible()) {
         m_mainScreen->show();

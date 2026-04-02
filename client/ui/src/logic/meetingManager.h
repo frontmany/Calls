@@ -64,10 +64,10 @@ public slots:
     void onMeetingRosterResynced(const QStringList& participants);
 
     // Media frame slots (called from CoreEventListener via QMetaObject::invokeMethod)
-    void onLocalScreenFrame(QByteArray data, int width, int height);
-    void onLocalCameraFrame(QByteArray data, int width, int height);
-    void onIncomingScreenFrame(QByteArray data, int width, int height);
-    void onIncomingCameraFrame(QByteArray data, int width, int height, const QString& nickname);
+    void onLocalScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
+    void onLocalCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
+    void onIncomingScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset);
+    void onIncomingCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset, const QString& nickname);
 
     // Media state slots
     void onIncomingScreenSharingStarted(const QString& sharerNickname);

@@ -25,12 +25,10 @@ CoreEventListener::CoreEventListener(
 {
     m_videoFrameCoalescer = std::make_unique<core::VideoFrameCoalescer>(
         std::move(scheduleUiFlush),
-        [this](const std::vector<unsigned char>& d, int w, int h) { deliverIncomingScreen(d, w, h); },
-        [this](const std::vector<unsigned char>& d, int w, int h) { deliverLocalScreen(d, w, h); },
-        [this](const std::vector<unsigned char>& d, int w, int h) { deliverLocalCamera(d, w, h); },
-        [this](const std::vector<unsigned char>& d, int w, int h, const std::string& n) {
-            deliverIncomingCamera(d, w, h, n);
-        });
+        [this](const core::VideoFrameBuffer& f) { deliverIncomingScreen(f); },
+        [this](const core::VideoFrameBuffer& f) { deliverLocalScreen(f); },
+        [this](const core::VideoFrameBuffer& f) { deliverLocalCamera(f); },
+        [this](const core::VideoFrameBuffer& f, const std::string& n) { deliverIncomingCamera(f, n); });
 }
 
 CoreEventListener::~CoreEventListener() = default;
@@ -77,21 +75,36 @@ void CoreEventListener::onIncomingScreenSharingStopped(const std::string& sharer
     }
 }
 
-void CoreEventListener::onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) {
+void CoreEventListener::onIncomingScreen(const core::VideoFrameBuffer& frame) {
     if (m_videoFrameCoalescer)
-        m_videoFrameCoalescer->pushIncomingScreen(data, width, height);
+        m_videoFrameCoalescer->pushIncomingScreen(frame);
 }
 
-void CoreEventListener::deliverIncomingScreen(const std::vector<unsigned char>& data, int width, int height) {
-    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+void CoreEventListener::deliverIncomingScreen(const core::VideoFrameBuffer& frame) {
+    QByteArray bytes(reinterpret_cast<const char*>(frame.data.data()), static_cast<int>(frame.data.size()));
+    const quint8 fmt = static_cast<quint8>(frame.format);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onIncomingScreenFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
         return;
     }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingScreenFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
     }
 }
 
@@ -107,21 +120,36 @@ void CoreEventListener::onStartScreenSharingError() {
     }
 }
 
-void CoreEventListener::onLocalScreen(const std::vector<unsigned char>& data, int width, int height) {
+void CoreEventListener::onLocalScreen(const core::VideoFrameBuffer& frame) {
     if (m_videoFrameCoalescer)
-        m_videoFrameCoalescer->pushLocalScreen(data, width, height);
+        m_videoFrameCoalescer->pushLocalScreen(frame);
 }
 
-void CoreEventListener::deliverLocalScreen(const std::vector<unsigned char>& data, int width, int height) {
-    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+void CoreEventListener::deliverLocalScreen(const core::VideoFrameBuffer& frame) {
+    QByteArray bytes(reinterpret_cast<const char*>(frame.data.data()), static_cast<int>(frame.data.size()));
+    const quint8 fmt = static_cast<quint8>(frame.format);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onLocalScreenFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
         return;
     }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onLocalScreenFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
     }
 }
 
@@ -153,25 +181,37 @@ void CoreEventListener::onIncomingCameraSharingStopped(const std::string& nickna
     }
 }
 
-void CoreEventListener::onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) {
+void CoreEventListener::onIncomingCamera(const core::VideoFrameBuffer& frame, const std::string& nickname) {
     if (m_videoFrameCoalescer)
-        m_videoFrameCoalescer->pushIncomingCamera(data, width, height, nickname);
+        m_videoFrameCoalescer->pushIncomingCamera(frame, nickname);
 }
 
-void CoreEventListener::deliverIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) {
-    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+void CoreEventListener::deliverIncomingCamera(const core::VideoFrameBuffer& frame, const std::string& nickname) {
+    QByteArray bytes(reinterpret_cast<const char*>(frame.data.data()), static_cast<int>(frame.data.size()));
+    const quint8 fmt = static_cast<quint8>(frame.format);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onIncomingCameraFrame",
             Qt::AutoConnection,
-            Q_ARG(QByteArray, frameData),
-            Q_ARG(int, width),
-            Q_ARG(int, height),
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset),
             Q_ARG(QString, QString::fromStdString(nickname)));
         return;
     }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onIncomingCameraFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
     }
 }
 
@@ -187,21 +227,36 @@ void CoreEventListener::onStartCameraSharingError() {
     }
 }
 
-void CoreEventListener::onLocalCamera(const std::vector<unsigned char>& data, int width, int height) {
+void CoreEventListener::onLocalCamera(const core::VideoFrameBuffer& frame) {
     if (m_videoFrameCoalescer)
-        m_videoFrameCoalescer->pushLocalCamera(data, width, height);
+        m_videoFrameCoalescer->pushLocalCamera(frame);
 }
 
-void CoreEventListener::deliverLocalCamera(const std::vector<unsigned char>& data, int width, int height) {
-    QByteArray frameData(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size()));
+void CoreEventListener::deliverLocalCamera(const core::VideoFrameBuffer& frame) {
+    QByteArray bytes(reinterpret_cast<const char*>(frame.data.data()), static_cast<int>(frame.data.size()));
+    const quint8 fmt = static_cast<quint8>(frame.format);
     if (m_meetingManager && m_meetingManager->isInMeeting()) {
         QMetaObject::invokeMethod(m_meetingManager, "onLocalCameraFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
         return;
     }
     if (m_callManager) {
         QMetaObject::invokeMethod(m_callManager, "onLocalCameraFrame",
-            Qt::AutoConnection, Q_ARG(QByteArray, frameData), Q_ARG(int, width), Q_ARG(int, height));
+            Qt::AutoConnection,
+            Q_ARG(QByteArray, bytes),
+            Q_ARG(int, frame.width),
+            Q_ARG(int, frame.height),
+            Q_ARG(quint8, fmt),
+            Q_ARG(int, frame.strideY),
+            Q_ARG(int, frame.strideUV),
+            Q_ARG(int, frame.uvOffset));
     }
 }
 

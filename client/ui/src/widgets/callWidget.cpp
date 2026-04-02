@@ -660,6 +660,65 @@ void CallWidget::showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode s
     }
 }
 
+void CallWidget::showFrameInMainScreen(const core::VideoFrameBuffer& frame, Screen::ScaleMode scaleMode)
+{
+    if (frame.isEmpty() || !m_mainScreen) return;
+
+    m_mainScreen->setScaleMode(scaleMode);
+    m_mainScreen->setVideoFrame(frame);
+
+    if (!m_screenFullscreenActive) {
+        updateMainScreenSize();
+    }
+
+    if (!m_mainScreen->isVisible())
+    {
+        m_mainScreen->show();
+        m_participantInfoWidget->hide();
+    }
+}
+
+void CallWidget::showFrameInAdditionalScreen(const core::VideoFrameBuffer& frame, const std::string& screenId)
+{
+    if (frame.isEmpty()) return;
+
+    bool wasEmpty = m_additionalScreens.isEmpty();
+
+    if (wasEmpty)
+        m_topMainLayoutSpacer->changeSize(0, scale(20), QSizePolicy::Minimum, QSizePolicy::Fixed);
+
+    Screen* screen = nullptr;
+    if (m_additionalScreens.contains(screenId))
+    {
+        screen = m_additionalScreens[screenId];
+    }
+    else
+    {
+        screen = new Screen(m_additionalScreensContainer);
+        screen->setRoundedCornersEnabled(true);
+        screen->setScaleMode(Screen::ScaleMode::CropToFit);
+
+        const int scaledWidth = scale(256);
+        const int scaledHeight = scale(144);
+        screen->setFixedSize(scaledWidth, scaledHeight);
+
+        m_additionalScreens[screenId] = screen;
+        m_additionalScreensLayout->addWidget(screen);
+
+        if (wasEmpty && !m_screenFullscreenActive)
+        {
+            updateMainScreenSize();
+        }
+    }
+
+    if (m_screenFullscreenActive)
+        m_additionalScreensContainer->hide();
+    else
+        m_additionalScreensContainer->show();
+
+    screen->setVideoFrame(frame);
+}
+
 void CallWidget::showFrameInAdditionalScreen(const QPixmap& frame, const std::string& screenId)
 {
     if (frame.isNull()) return;

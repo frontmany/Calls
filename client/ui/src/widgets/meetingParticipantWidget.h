@@ -7,6 +7,7 @@
 #include <QPixmap>
 
 #include "widgets/components/screen.h"
+#include "videoFrameBuffer.h"
 
 class MeetingParticipantWidget : public QWidget
 {
@@ -27,6 +28,7 @@ public:
     void setDisplayMode(DisplayMode mode);
 
     void updateVideoFrame(const QPixmap& frame);
+    void updateVideoFrame(const core::VideoFrameBuffer& frame);
     void clearVideoFrame();
     void setCameraEnabled(bool enabled);
     void setCompactSize(bool compact);

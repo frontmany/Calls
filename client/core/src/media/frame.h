@@ -11,6 +11,7 @@ namespace core::media
         int width = 0;
         int height = 0;
         int linesize = 0;  // row stride in bytes (0 = packed, assume width * bytesPerPixel)
+        int linesizeUV = 0; // NV12: UV plane stride; RGB: unused
         int format = 0;    // AVPixelFormat
         int64_t pts = 0;   // Presentation timestamp
 

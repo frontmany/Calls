@@ -15,6 +15,7 @@
 
 #include "widgets/components/button.h"
 #include "widgets/components/screen.h"
+#include "videoFrameBuffer.h"
 #include "widgets/callParticipantWidget.h"
 #include "constants/constant.h"
 
@@ -85,7 +86,9 @@ public:
     void exitFullscreen();
     void updateMainScreenSize();
     void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode);
+    void showFrameInMainScreen(const core::VideoFrameBuffer& frame, Screen::ScaleMode scaleMode);
     void showFrameInAdditionalScreen(const QPixmap& frame, const std::string& screenId);
+    void showFrameInAdditionalScreen(const core::VideoFrameBuffer& frame, const std::string& screenId);
     void removeAdditionalScreen(const std::string& screenId);
     void showEnterFullscreenButton();
     void hideEnterFullscreenButton();

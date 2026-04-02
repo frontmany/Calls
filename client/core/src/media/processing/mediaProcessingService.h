@@ -9,6 +9,7 @@
 
 #include "secblock.h"
 #include "media/mediaType.h"
+#include "videoFrameBuffer.h"
 
 namespace core::media
 {
@@ -37,12 +38,14 @@ namespace core::media
             std::unique_ptr<H264Encoder> encoder;
             std::unique_ptr<H264Decoder> decoder;
             std::vector<unsigned char> lastEncodedFrame;
-            std::vector<unsigned char> lastDecodedFrame;
+            core::VideoFrameBuffer lastViewFrame;
             int width = 0;
             int height = 0;
             int fps = 30;
             int bitrate = 1800000;
             bool initialized = false;
+            /** One-time log: first NV12 frame from this decode pipeline. */
+            bool nv12DecodeLogged = false;
 
             void cleanup();
         };
@@ -71,8 +74,8 @@ namespace core::media
 
         std::vector<unsigned char> encodeVideoFrame(MediaType type, const unsigned char* rawData, int width, int height);
         std::vector<std::pair<CameraLayer, std::vector<unsigned char>>> encodeCameraSimulcastFrames(const unsigned char* rawData, int width, int height);
-        std::vector<unsigned char> decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize);
-        std::vector<unsigned char> decodeVideoFrame(MediaType type, const std::string& streamKey, const unsigned char* h264Data, int dataSize);
+        core::VideoFrameBuffer decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize);
+        core::VideoFrameBuffer decodeVideoFrame(MediaType type, const std::string& streamKey, const unsigned char* h264Data, int dataSize);
         
         std::vector<unsigned char> encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key);
         std::vector<unsigned char> decryptData(const unsigned char* encryptedData, int size, const CryptoPP::SecByteBlock& key);

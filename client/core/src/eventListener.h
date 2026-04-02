@@ -4,6 +4,8 @@
 #include <vector>
 #include <system_error>
 
+#include "videoFrameBuffer.h"
+
 namespace core
 {
     class EventListener {
@@ -15,17 +17,17 @@ namespace core
 
         virtual void onIncomingScreenSharingStarted(const std::string& sharerNickname) = 0;
         virtual void onIncomingScreenSharingStopped(const std::string& sharerNickname) = 0;
-        virtual void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) = 0;
+        virtual void onIncomingScreen(const VideoFrameBuffer& frame) = 0;
 
         virtual void onStartScreenSharingError() = 0;
-        virtual void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) = 0;
+        virtual void onLocalScreen(const VideoFrameBuffer& frame) = 0;
 
         virtual void onIncomingCameraSharingStarted(const std::string& nickname) = 0;
         virtual void onIncomingCameraSharingStopped(const std::string& nickname) = 0;
-        virtual void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) = 0;
+        virtual void onIncomingCamera(const VideoFrameBuffer& frame, const std::string& nickname) = 0;
 
         virtual void onStartCameraSharingError() = 0;
-        virtual void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) = 0;
+        virtual void onLocalCamera(const VideoFrameBuffer& frame) = 0;
 
         virtual void onOutgoingCallAccepted(const std::string& nickname) = 0;
         virtual void onOutgoingCallDeclined() = 0;

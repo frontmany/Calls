@@ -45,7 +45,7 @@ else()
     set(CMAKE_PREFIX_PATH "${QT6_DEFAULT_PATH}")
 endif()
 
-find_package(Qt6 COMPONENTS Widgets Core Multimedia REQUIRED)
+find_package(Qt6 COMPONENTS Widgets Core Multimedia OpenGL OpenGLWidgets REQUIRED)
 qt_standard_project_setup()
 set(CMAKE_AUTOMOC ON)
 
@@ -54,7 +54,7 @@ set(RC_FILE resources/app_icon.rc)
 
 if(WIN32)
     set(RC_FILE resources/app_icon.rc)
-    add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${QRC_FILES} ${RC_FILE})
+    add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES} ${RC_FILE})
 else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${QRC_FILES})
 endif()
@@ -81,6 +81,8 @@ if(WIN32)
         Qt6::Widgets
         Qt6::Core
         Qt6::Multimedia
+        Qt6::OpenGL
+        Qt6::OpenGLWidgets
         calliforniaCore
         calliforniaUpdater
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"
@@ -90,7 +92,7 @@ else()
         "${SPDLOG_DIR}"
     )
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia calliforniaCore calliforniaUpdater libspdlog.a)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Core Qt6::Multimedia Qt6::OpenGL Qt6::OpenGLWidgets calliforniaCore calliforniaUpdater libspdlog.a)
 endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE 

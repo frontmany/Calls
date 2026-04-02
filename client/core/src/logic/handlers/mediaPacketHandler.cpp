@@ -348,9 +348,9 @@ namespace core::logic
             updateMetricsFromFrame(makeStreamMetricsKey(frame.senderHash, "screen", frame.layerId), frame.frameSeq, frame.timestampMs, frame.payloadLen);
         }
         if (decryptedData.empty()) return;
-        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Screen, decryptedData.data(), static_cast<int>(decryptedData.size()));
-        if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingScreen(videoFrame, m_mediaProcessingService->getWidth(MediaType::Screen), m_mediaProcessingService->getHeight(MediaType::Screen));
+        const auto videoFrame = m_mediaProcessingService->decodeVideoFrame(MediaType::Screen, decryptedData.data(), static_cast<int>(decryptedData.size()));
+        if (!videoFrame.isEmpty() && m_eventListener) {
+            m_eventListener->onIncomingScreen(videoFrame);
         }
         sendRttPingIfNeeded();
         sendStatsIfNeeded();
@@ -408,16 +408,13 @@ namespace core::logic
             updateMetricsFromFrame(makeStreamMetricsKey(frame.senderHash, "camera", frame.layerId), frame.frameSeq, frame.timestampMs, frame.payloadLen);
         }
         if (decryptedData.empty() || senderNickname.empty() || senderStreamKey.empty()) return;
-        auto videoFrame = m_mediaProcessingService->decodeVideoFrame(
+        const auto videoFrame = m_mediaProcessingService->decodeVideoFrame(
             MediaType::Camera,
             senderStreamKey,
             decryptedData.data(),
             static_cast<int>(decryptedData.size()));
-        if (!videoFrame.empty() && m_eventListener) {
-            m_eventListener->onIncomingCamera(videoFrame,
-                m_mediaProcessingService->getWidth(MediaType::Camera, senderStreamKey),
-                m_mediaProcessingService->getHeight(MediaType::Camera, senderStreamKey),
-                senderNickname);
+        if (!videoFrame.isEmpty() && m_eventListener) {
+            m_eventListener->onIncomingCamera(videoFrame, senderNickname);
         }
         sendRttPingIfNeeded();
         sendStatsIfNeeded();

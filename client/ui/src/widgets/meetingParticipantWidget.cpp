@@ -195,6 +195,16 @@ void MeetingParticipantWidget::updateVideoFrame(const QPixmap& frame)
     m_cameraEnabled = true;
 }
 
+void MeetingParticipantWidget::updateVideoFrame(const core::VideoFrameBuffer& frame)
+{
+    if (!m_videoScreen || frame.isEmpty()) return;
+
+    setDisplayMode(DisplayMode::DisplayCamera);
+
+    m_videoScreen->setVideoFrame(frame);
+    m_cameraEnabled = true;
+}
+
 void MeetingParticipantWidget::clearVideoFrame()
 {
     if (m_videoScreen) {

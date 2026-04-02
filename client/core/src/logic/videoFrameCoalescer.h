@@ -1,17 +1,17 @@
 #pragma once
 
+#include "videoFrameBuffer.h"
+
 #include <atomic>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace core
 {
     /**
-     * Buffers the latest RGB frame per logical stream and schedules a single UI-thread flush per burst.
-     * Not an EventListener: UI wires CoreEventListener to forward video callbacks here.
+     * Buffers the latest frame per logical stream and schedules a single UI-thread flush per burst.
      */
     class VideoFrameCoalescer
     {
@@ -20,33 +20,28 @@ namespace core
 
         VideoFrameCoalescer(
             ScheduleOnUi scheduleOnUi,
-            std::function<void(const std::vector<unsigned char>&, int, int)> onIncomingScreen,
-            std::function<void(const std::vector<unsigned char>&, int, int)> onLocalScreen,
-            std::function<void(const std::vector<unsigned char>&, int, int)> onLocalCamera,
-            std::function<void(const std::vector<unsigned char>&, int, int, const std::string&)> onIncomingCamera);
+            std::function<void(const VideoFrameBuffer&)> onIncomingScreen,
+            std::function<void(const VideoFrameBuffer&)> onLocalScreen,
+            std::function<void(const VideoFrameBuffer&)> onLocalCamera,
+            std::function<void(const VideoFrameBuffer&, const std::string&)> onIncomingCamera);
 
-        void pushIncomingScreen(const std::vector<unsigned char>& data, int width, int height);
-        void pushLocalScreen(const std::vector<unsigned char>& data, int width, int height);
-        void pushLocalCamera(const std::vector<unsigned char>& data, int width, int height);
-        void pushIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname);
+        void pushIncomingScreen(const VideoFrameBuffer& frame);
+        void pushLocalScreen(const VideoFrameBuffer& frame);
+        void pushLocalCamera(const VideoFrameBuffer& frame);
+        void pushIncomingCamera(const VideoFrameBuffer& frame, const std::string& nickname);
 
         void dropPendingRemoteCamera(const std::string& nickname);
 
     private:
-        struct RgbFrame
+        struct PendingVideo
         {
-            std::vector<unsigned char> data;
-            int width = 0;
-            int height = 0;
+            VideoFrameBuffer frame;
             bool dirty = false;
         };
 
-        struct RemoteCamFrame
+        struct RemoteCamPending
         {
-            std::vector<unsigned char> data;
-            int width = 0;
-            int height = 0;
-            std::string nickname;
+            VideoFrameBuffer frame;
             bool dirty = false;
         };
 
@@ -55,16 +50,16 @@ namespace core
         void flushPendingToCallbacks();
 
         ScheduleOnUi m_scheduleOnUi;
-        std::function<void(const std::vector<unsigned char>&, int, int)> m_onIncomingScreen;
-        std::function<void(const std::vector<unsigned char>&, int, int)> m_onLocalScreen;
-        std::function<void(const std::vector<unsigned char>&, int, int)> m_onLocalCamera;
-        std::function<void(const std::vector<unsigned char>&, int, int, const std::string&)> m_onIncomingCamera;
+        std::function<void(const VideoFrameBuffer&)> m_onIncomingScreen;
+        std::function<void(const VideoFrameBuffer&)> m_onLocalScreen;
+        std::function<void(const VideoFrameBuffer&)> m_onLocalCamera;
+        std::function<void(const VideoFrameBuffer&, const std::string&)> m_onIncomingCamera;
 
         std::mutex m_mutex;
-        RgbFrame m_incomingScreen;
-        RgbFrame m_localScreen;
-        RgbFrame m_localCamera;
-        std::unordered_map<std::string, RemoteCamFrame> m_incomingCameraByNickname;
+        PendingVideo m_incomingScreen;
+        PendingVideo m_localScreen;
+        PendingVideo m_localCamera;
+        std::unordered_map<std::string, RemoteCamPending> m_incomingCameraByNickname;
 
         std::atomic<bool> m_uiFlushPending{false};
     };

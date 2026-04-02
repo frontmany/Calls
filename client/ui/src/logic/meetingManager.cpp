@@ -6,6 +6,7 @@
 #include "audio/audioEffectsManager.h"
 #include "widgets/meetingWidget.h"
 #include "widgets/components/screen.h"
+#include "videoFrameBuffer.h"
 
 #include <QGuiApplication>
 #include <QScreen>
@@ -17,8 +18,52 @@
 #include <vector>
 #include <QSet>
 #include <string>
+#include <cstring>
 
 namespace {
+    bool fillVideoFrameFromDelivery(
+        const QByteArray& data,
+        int width,
+        int height,
+        quint8 formatByte,
+        int strideY,
+        int strideUV,
+        int uvOffset,
+        core::VideoFrameBuffer& out)
+    {
+        if (width <= 0 || height <= 0)
+            return false;
+
+        out.width = width;
+        out.height = height;
+        out.data.resize(static_cast<size_t>(data.size()));
+        if (!out.data.empty())
+            std::memcpy(out.data.data(), data.constData(), out.data.size());
+
+        if (formatByte == static_cast<quint8>(core::VideoPixelFormat::Nv12))
+        {
+            out.format = core::VideoPixelFormat::Nv12;
+            out.strideY = strideY > 0 ? strideY : width;
+            out.strideUV = strideUV > 0 ? strideUV : width;
+            out.uvOffset = uvOffset;
+            const size_t uvOff = out.uvByteOffset();
+            const int chromaH = height / 2;
+            const size_t need = uvOff + static_cast<size_t>(out.strideUV) * static_cast<size_t>(chromaH);
+            if (out.data.size() < need)
+                return false;
+            return true;
+        }
+
+        out.format = core::VideoPixelFormat::Rgb24;
+        out.strideY = strideY > 0 ? strideY : width * 3;
+        out.strideUV = 0;
+        out.uvOffset = 0;
+        const size_t need = static_cast<size_t>(out.strideY) * static_cast<size_t>(height);
+        if (out.data.size() < need)
+            return false;
+        return true;
+    }
+
     std::string preferredCameraDeviceArg(const ConfigManager* configManager)
     {
         if (!configManager) {
@@ -577,65 +622,59 @@ void MeetingManager::onLocalConnectionDownInMeeting()
     }
 }
 
-void MeetingManager::onLocalScreenFrame(QByteArray data, int width, int height)
+void MeetingManager::onLocalScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_meetingWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_meetingWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isScreenSharing()) {
         m_meetingWidget->hideMainScreen();
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-    m_meetingWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    m_meetingWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
 }
 
-void MeetingManager::onLocalCameraFrame(QByteArray data, int width, int height)
+void MeetingManager::onLocalCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_meetingWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_meetingWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isCameraSharing()) {
         clearLocalParticipantVideo();
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-
     const std::string myNickname = m_coreClient->getMyNickname();
     if (!myNickname.empty()) {
-        m_meetingWidget->updateParticipantVideo(QString::fromStdString(myNickname), pixmap);
+        m_meetingWidget->updateParticipantVideo(QString::fromStdString(myNickname), frame);
     }
 }
 
-void MeetingManager::onIncomingScreenFrame(QByteArray data, int width, int height)
+void MeetingManager::onIncomingScreenFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset)
 {
-    if (!m_meetingWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_meetingWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isViewingRemoteScreen()) {
         m_meetingWidget->hideMainScreen();
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-    m_meetingWidget->showFrameInMainScreen(pixmap, Screen::ScaleMode::KeepAspectRatio);
+    m_meetingWidget->showFrameInMainScreen(frame, Screen::ScaleMode::KeepAspectRatio);
 }
 
-void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int height, const QString& nickname)
+void MeetingManager::onIncomingCameraFrame(QByteArray data, int width, int height, quint8 formatByte, int strideY, int strideUV, int uvOffset, const QString& nickname)
 {
-    if (!m_meetingWidget || width <= 0 || height <= 0) return;
-    if (data.size() < width * height * 3) return;
+    core::VideoFrameBuffer frame;
+    if (!m_meetingWidget || !fillVideoFrameFromDelivery(data, width, height, formatByte, strideY, strideUV, uvOffset, frame))
+        return;
     if (!m_coreClient || !m_coreClient->isViewingAnyRemoteCamera()) {
         m_meetingWidget->clearParticipantVideo(nickname);
         return;
     }
 
-    QImage image(reinterpret_cast<const uchar*>(data.constData()), width, height, width * 3, QImage::Format_RGB888);
-    QPixmap pixmap = QPixmap::fromImage(image);
-
-    m_meetingWidget->updateParticipantVideo(nickname, pixmap);
+    m_meetingWidget->updateParticipantVideo(nickname, frame);
 }
 
 void MeetingManager::onIncomingScreenSharingStarted(const QString& sharerNickname)

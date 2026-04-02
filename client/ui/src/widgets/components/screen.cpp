@@ -1,5 +1,7 @@
 #include "screen.h"
+#include "gpuNv12VideoSurface.h"
 #include "utilities/utility.h"
+#include "utilities/logger.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -8,17 +10,29 @@
 #include <QResizeEvent>
 #include <QCoreApplication>
 
+namespace
+{
+    bool s_loggedNv12GpuPresent = false;
+}
+
 Screen::Screen(QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);
+
+    m_gpuSurface = new GpuNv12VideoSurface(this);
+    m_gpuSurface->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_gpuSurface->hide();
 }
 
 void Screen::rebuildScaledPixmap()
 {
     m_hasPreparedDraw = false;
     m_scaledPixmap = QPixmap();
+
+    if (m_useGpu)
+        return;
 
     if (m_sourcePixmap.isNull())
         return;
@@ -53,14 +67,75 @@ void Screen::rebuildScaledPixmap()
 
 void Screen::setPixmap(const QPixmap& pixmap)
 {
+    m_useGpu = false;
+    if (m_gpuSurface)
+    {
+        m_gpuSurface->hide();
+        m_gpuSurface->setNv12Frame(core::VideoFrameBuffer{});
+    }
     m_sourcePixmap = pixmap;
     rebuildScaledPixmap();
     updateGeometry();
     update();
 }
 
+void Screen::setVideoFrame(const core::VideoFrameBuffer& frame)
+{
+    if (frame.format == core::VideoPixelFormat::Nv12 && !frame.isEmpty())
+    {
+        if (!s_loggedNv12GpuPresent)
+        {
+            s_loggedNv12GpuPresent = true;
+            LOG_INFO("Screen: NV12 -> GpuNv12VideoSurface (OpenGL Y/UV textures, {}x{})", frame.width, frame.height);
+        }
+        m_useGpu = true;
+        m_gpuW = frame.width;
+        m_gpuH = frame.height;
+        m_sourcePixmap = QPixmap();
+        m_scaledPixmap = QPixmap();
+        m_hasPreparedDraw = false;
+        if (m_gpuSurface)
+        {
+            m_gpuSurface->setGeometry(rect());
+            m_gpuSurface->setNv12Frame(frame);
+            m_gpuSurface->show();
+            m_gpuSurface->raise();
+        }
+        updateGeometry();
+        update();
+        return;
+    }
+
+    m_useGpu = false;
+    if (m_gpuSurface)
+    {
+        m_gpuSurface->hide();
+        m_gpuSurface->setNv12Frame(core::VideoFrameBuffer{});
+    }
+
+    if (frame.format == core::VideoPixelFormat::Rgb24 && !frame.isEmpty())
+    {
+        const int rowBytes = frame.strideY > 0 ? frame.strideY : frame.width * 3;
+        const QImage image(
+            reinterpret_cast<const uchar*>(frame.data.data()),
+            frame.width,
+            frame.height,
+            rowBytes,
+            QImage::Format_RGB888);
+        setPixmap(QPixmap::fromImage(image));
+    }
+}
+
 void Screen::clear()
 {
+    m_useGpu = false;
+    m_gpuW = 0;
+    m_gpuH = 0;
+    if (m_gpuSurface)
+    {
+        m_gpuSurface->hide();
+        m_gpuSurface->setNv12Frame(core::VideoFrameBuffer{});
+    }
     m_sourcePixmap = QPixmap();
     m_scaledPixmap = QPixmap();
     m_hasPreparedDraw = false;
@@ -88,6 +163,8 @@ void Screen::setScaleMode(ScaleMode mode)
 
 QSize Screen::contentSize() const
 {
+    if (m_useGpu && m_gpuW > 0 && m_gpuH > 0)
+        return QSize(m_gpuW, m_gpuH);
     return m_sourcePixmap.isNull() ? QSize() : m_sourcePixmap.size();
 }
 
@@ -106,12 +183,17 @@ QSize Screen::minimumSizeHint() const
 void Screen::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
+    if (m_useGpu && m_gpuSurface)
+        m_gpuSurface->setGeometry(rect());
     rebuildScaledPixmap();
 }
 
 void Screen::paintEvent(QPaintEvent* event)
 {
     Q_UNUSED(event);
+
+    if (m_useGpu)
+        return;
 
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);

@@ -52,6 +52,8 @@ if(WIN32)
         "${FFMPEG_DIR}/lib/avdevice.lib"
         "${FFMPEG_DIR}/lib/avutil.lib"
         "${FFMPEG_DIR}/lib/swscale.lib"
+        d3d11
+        dxgi
         strmiids
         "${CRYPTOPP_DIR}/$<CONFIG>/cryptlib.lib"
         "$<IF:$<CONFIG:Debug>,${SPDLOG_DIR}/Debug/spdlogd.lib,${SPDLOG_DIR}/Release/spdlog.lib>"

@@ -20,6 +20,7 @@
 #include <QScrollArea>
 
 #include "widgets/components/button.h"
+#include "videoFrameBuffer.h"
 #include "widgets/components/screen.h"
 
 class QResizeEvent;
@@ -101,6 +102,7 @@ public:
     void removeParticipant(const QString& nickname);
     QStringList getParticipantNicknames() const;
     void updateParticipantVideo(const QString& nickname, const QPixmap& frame);
+    void updateParticipantVideo(const QString& nickname, const core::VideoFrameBuffer& frame);
     void clearParticipantVideo(const QString& nickname);
     void setParticipantMuted(const QString& nickname, bool muted);
     void setParticipantSpeaking(const QString& nickname, bool speaking);
@@ -115,6 +117,7 @@ public:
     void exitFullscreen();
     void updateMainScreenSize();
     void showFrameInMainScreen(const QPixmap& frame, Screen::ScaleMode scaleMode = Screen::ScaleMode::KeepAspectRatio);
+    void showFrameInMainScreen(const core::VideoFrameBuffer& frame, Screen::ScaleMode scaleMode = Screen::ScaleMode::KeepAspectRatio);
     void setHangupButtonRestricted(bool restricted);
     void setScreenShareButtonRestricted(bool restricted);
     void setScreenShareButtonActive(bool active);

@@ -33,17 +33,17 @@ public:
 
     void onIncomingScreenSharingStarted(const std::string& sharerNickname) override;
     void onIncomingScreenSharingStopped(const std::string& sharerNickname) override;
-    void onIncomingScreen(const std::vector<unsigned char>& data, int width, int height) override;
+    void onIncomingScreen(const core::VideoFrameBuffer& frame) override;
 
     void onStartScreenSharingError() override;
-    void onLocalScreen(const std::vector<unsigned char>& data, int width, int height) override;
+    void onLocalScreen(const core::VideoFrameBuffer& frame) override;
 
     void onIncomingCameraSharingStarted(const std::string& nickname) override;
     void onIncomingCameraSharingStopped(const std::string& nickname) override;
-    void onIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname) override;
+    void onIncomingCamera(const core::VideoFrameBuffer& frame, const std::string& nickname) override;
 
     void onStartCameraSharingError() override;
-    void onLocalCamera(const std::vector<unsigned char>& data, int width, int height) override;
+    void onLocalCamera(const core::VideoFrameBuffer& frame) override;
 
     void onOutgoingCallAccepted(const std::string& nickname) override;
     void onOutgoingCallDeclined() override;
@@ -79,10 +79,10 @@ public:
     void onConnectionEstablishedAuthorizationNeeded() override;
 
 private:
-    void deliverIncomingScreen(const std::vector<unsigned char>& data, int width, int height);
-    void deliverLocalScreen(const std::vector<unsigned char>& data, int width, int height);
-    void deliverIncomingCamera(const std::vector<unsigned char>& data, int width, int height, const std::string& nickname);
-    void deliverLocalCamera(const std::vector<unsigned char>& data, int width, int height);
+    void deliverIncomingScreen(const core::VideoFrameBuffer& frame);
+    void deliverLocalScreen(const core::VideoFrameBuffer& frame);
+    void deliverIncomingCamera(const core::VideoFrameBuffer& frame, const std::string& nickname);
+    void deliverLocalCamera(const core::VideoFrameBuffer& frame);
 
     AuthorizationManager* m_authorizationManager;
     CallManager* m_callManager;

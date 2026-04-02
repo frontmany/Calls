@@ -1,4 +1,5 @@
 #include "mediaService.h"
+#include "videoFrameBuffer.h"
 #include "logic/packetFactory.h"
 #include "constants/errorCode.h"
 #include "utilities/logger.h"
@@ -382,13 +383,21 @@ namespace core::logic
             return;
         }
 
-        // Send local preview to UI
+        // Send local preview to UI (RGB capture)
         if (m_eventListener) {
-            std::vector<unsigned char> rawData(frame.data, frame.data + frame.size);
+            core::VideoFrameBuffer vb;
+            vb.format = core::VideoPixelFormat::Rgb24;
+            vb.width = frame.width;
+            vb.height = frame.height;
+            const int rowBytes = frame.width * 3;
+            vb.strideY = (frame.linesize > 0) ? frame.linesize : rowBytes;
+            vb.strideUV = 0;
+            vb.uvOffset = 0;
+            vb.data.assign(frame.data, frame.data + frame.size);
             if (type == MediaType::Screen) {
-                m_eventListener->onLocalScreen(rawData, frame.width, frame.height);
+                m_eventListener->onLocalScreen(vb);
             } else {
-                m_eventListener->onLocalCamera(rawData, frame.width, frame.height);
+                m_eventListener->onLocalCamera(vb);
             }
         }
 

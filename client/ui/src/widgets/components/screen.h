@@ -6,6 +6,10 @@
 #include <QRect>
 #include <QResizeEvent>
 
+#include "videoFrameBuffer.h"
+
+class GpuNv12VideoSurface;
+
 class Screen : public QWidget
 {
 public:
@@ -17,6 +21,7 @@ public:
     explicit Screen(QWidget* parent);
     void clear();
     void setPixmap(const QPixmap& pixmap);
+    void setVideoFrame(const core::VideoFrameBuffer& frame);
     void setRoundedCornersEnabled(bool enabled);
     void setScaleMode(ScaleMode mode);
     ScaleMode scaleMode() const { return m_scaleMode; }
@@ -31,6 +36,11 @@ protected:
 
 private:
     void rebuildScaledPixmap();
+
+    GpuNv12VideoSurface* m_gpuSurface = nullptr;
+    bool m_useGpu = false;
+    int m_gpuW = 0;
+    int m_gpuH = 0;
 
     QPixmap m_sourcePixmap;
     QPixmap m_scaledPixmap;

@@ -1,6 +1,7 @@
 #include "mediaProcessingService.h"
 #include "media/processing/encode/h264Encoder.h"
 #include "media/processing/decode/h264Decoder.h"
+#include "utilities/logger.h"
 #include "media/processing/encryption/mediaEncryptionService.h"
 #include "media/processing/encode/opusEncoder.h"
 #include "media/processing/decode/opusDecoder.h"
@@ -21,10 +22,11 @@ namespace core::media
             decoder.reset();
         }
         lastEncodedFrame.clear();
-        lastDecodedFrame.clear();
+        lastViewFrame = core::VideoFrameBuffer{};
         width = 0;
         height = 0;
         initialized = false;
+        nv12DecodeLogged = false;
     }
 
     MediaProcessingService::MediaProcessingService()
@@ -328,12 +330,12 @@ namespace core::media
         return out;
     }
 
-    std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize)
+    core::VideoFrameBuffer MediaProcessingService::decodeVideoFrame(MediaType type, const unsigned char* h264Data, int dataSize)
     {
         return decodeVideoFrame(type, std::string(), h264Data, dataSize);
     }
 
-    std::vector<unsigned char> MediaProcessingService::decodeVideoFrame(
+    core::VideoFrameBuffer MediaProcessingService::decodeVideoFrame(
         MediaType type,
         const std::string& streamKey,
         const unsigned char* h264Data,
@@ -363,34 +365,70 @@ namespace core::media
                 pipeline.decoder.reset();
                 return {};
             }
+            pipeline.decoder->setSurfaceFormat(DecoderSurfaceFormat::Nv12);
+            if (type == MediaType::Camera && !streamKey.empty()) {
+                LOG_INFO("MediaProcessingService: H264 decode surface NV12 (camera stream \"{}\")", streamKey);
+            } else {
+                LOG_INFO("MediaProcessingService: H264 decode surface NV12 (media type {})",
+                    type == MediaType::Screen ? "Screen" : (type == MediaType::Camera ? "Camera" : "Audio"));
+            }
         }
 
-        pipeline.lastDecodedFrame.clear();
+        pipeline.lastViewFrame = core::VideoFrameBuffer{};
 
         pipeline.decoder->setDecodedFrameCallback([&pipeline](const Frame& frame) {
-            if (!frame.isValid()) return;
+            if (!frame.isValid())
+                return;
             pipeline.width = frame.width;
             pipeline.height = frame.height;
+
+            if (frame.format == AV_PIX_FMT_NV12)
+            {
+                pipeline.lastViewFrame.format = core::VideoPixelFormat::Nv12;
+                pipeline.lastViewFrame.width = frame.width;
+                pipeline.lastViewFrame.height = frame.height;
+                pipeline.lastViewFrame.strideY = frame.linesize;
+                pipeline.lastViewFrame.strideUV = frame.linesizeUV > 0 ? frame.linesizeUV : frame.linesize;
+                pipeline.lastViewFrame.uvOffset = 0;
+                pipeline.lastViewFrame.data.assign(frame.data, frame.data + frame.size);
+                if (!pipeline.nv12DecodeLogged)
+                {
+                    pipeline.nv12DecodeLogged = true;
+                    LOG_INFO("MediaProcessingService: first decoded video frame is NV12 ({}x{})", frame.width, frame.height);
+                }
+                return;
+            }
+
             const int bytesPerPixel = 3;
             const int rowBytes = frame.width * bytesPerPixel;
             const int srcStride = (frame.linesize > 0) ? frame.linesize : rowBytes;
-            if (srcStride == rowBytes) {
-                pipeline.lastDecodedFrame.assign(frame.data, frame.data + frame.size);
+            pipeline.lastViewFrame.format = core::VideoPixelFormat::Rgb24;
+            pipeline.lastViewFrame.width = frame.width;
+            pipeline.lastViewFrame.height = frame.height;
+            pipeline.lastViewFrame.strideY = rowBytes;
+            pipeline.lastViewFrame.strideUV = 0;
+            pipeline.lastViewFrame.uvOffset = 0;
+
+            if (srcStride == rowBytes)
+            {
+                pipeline.lastViewFrame.data.assign(frame.data, frame.data + frame.size);
                 return;
             }
-            pipeline.lastDecodedFrame.resize(static_cast<size_t>(frame.height) * rowBytes);
-            unsigned char* dst = pipeline.lastDecodedFrame.data();
-            for (int y = 0; y < frame.height; ++y) {
-                memcpy(dst, frame.data + static_cast<size_t>(y) * srcStride, rowBytes);
+            pipeline.lastViewFrame.data.resize(static_cast<size_t>(frame.height) * rowBytes);
+            unsigned char* dst = pipeline.lastViewFrame.data.data();
+            for (int y = 0; y < frame.height; ++y)
+            {
+                std::memcpy(dst, frame.data + static_cast<size_t>(y) * srcStride, rowBytes);
                 dst += rowBytes;
             }
         });
 
-        if (!pipeline.decoder->decodePacket(h264Data, dataSize, 0)) {
+        if (!pipeline.decoder->decodePacket(h264Data, static_cast<size_t>(dataSize), 0))
+        {
             return {};
         }
 
-        return pipeline.lastDecodedFrame;
+        return pipeline.lastViewFrame;
     }
 
     std::vector<unsigned char> MediaProcessingService::encryptData(const unsigned char* data, int size, const std::vector<unsigned char>& key)

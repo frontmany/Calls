@@ -6,10 +6,10 @@ namespace core
 {
     VideoFrameCoalescer::VideoFrameCoalescer(
         ScheduleOnUi scheduleOnUi,
-        std::function<void(const std::vector<unsigned char>&, int, int)> onIncomingScreen,
-        std::function<void(const std::vector<unsigned char>&, int, int)> onLocalScreen,
-        std::function<void(const std::vector<unsigned char>&, int, int)> onLocalCamera,
-        std::function<void(const std::vector<unsigned char>&, int, int, const std::string&)> onIncomingCamera)
+        std::function<void(const VideoFrameBuffer&)> onIncomingScreen,
+        std::function<void(const VideoFrameBuffer&)> onLocalScreen,
+        std::function<void(const VideoFrameBuffer&)> onLocalCamera,
+        std::function<void(const VideoFrameBuffer&, const std::string&)> onIncomingCamera)
         : m_scheduleOnUi(std::move(scheduleOnUi))
         , m_onIncomingScreen(std::move(onIncomingScreen))
         , m_onLocalScreen(std::move(onLocalScreen))
@@ -46,10 +46,10 @@ namespace core
     {
         while (true)
         {
-            RgbFrame incomingScreen;
-            RgbFrame localScreen;
-            RgbFrame localCamera;
-            std::vector<std::pair<std::string, RemoteCamFrame>> incomingCameras;
+            PendingVideo incomingScreen;
+            PendingVideo localScreen;
+            PendingVideo localCamera;
+            std::vector<std::pair<std::string, VideoFrameBuffer>> incomingCameras;
             bool hadIncomingScreen = false;
             bool hadLocalScreen = false;
             bool hadLocalCamera = false;
@@ -65,19 +65,19 @@ namespace core
                 if (m_incomingScreen.dirty)
                 {
                     incomingScreen = std::move(m_incomingScreen);
-                    m_incomingScreen = RgbFrame{};
+                    m_incomingScreen = PendingVideo{};
                     hadIncomingScreen = true;
                 }
                 if (m_localScreen.dirty)
                 {
                     localScreen = std::move(m_localScreen);
-                    m_localScreen = RgbFrame{};
+                    m_localScreen = PendingVideo{};
                     hadLocalScreen = true;
                 }
                 if (m_localCamera.dirty)
                 {
                     localCamera = std::move(m_localCamera);
-                    m_localCamera = RgbFrame{};
+                    m_localCamera = PendingVideo{};
                     hadLocalCamera = true;
                 }
                 for (auto it = m_incomingCameraByNickname.begin(); it != m_incomingCameraByNickname.end();)
@@ -85,9 +85,9 @@ namespace core
                     if (it->second.dirty)
                     {
                         std::string nick = it->first;
-                        RemoteCamFrame f = std::move(it->second);
+                        RemoteCamPending f = std::move(it->second);
                         it = m_incomingCameraByNickname.erase(it);
-                        incomingCameras.emplace_back(std::move(nick), std::move(f));
+                        incomingCameras.emplace_back(std::move(nick), std::move(f.frame));
                     }
                     else
                     {
@@ -98,76 +98,63 @@ namespace core
 
             if (hadIncomingScreen && m_onIncomingScreen)
             {
-                m_onIncomingScreen(incomingScreen.data, incomingScreen.width, incomingScreen.height);
+                m_onIncomingScreen(incomingScreen.frame);
             }
             if (hadLocalScreen && m_onLocalScreen)
             {
-                m_onLocalScreen(localScreen.data, localScreen.width, localScreen.height);
+                m_onLocalScreen(localScreen.frame);
             }
             if (hadLocalCamera && m_onLocalCamera)
             {
-                m_onLocalCamera(localCamera.data, localCamera.width, localCamera.height);
+                m_onLocalCamera(localCamera.frame);
             }
             if (m_onIncomingCamera)
             {
                 for (const auto& e : incomingCameras)
                 {
-                    m_onIncomingCamera(e.second.data, e.second.width, e.second.height, e.first);
+                    m_onIncomingCamera(e.second, e.first);
                 }
             }
         }
     }
 
-    void VideoFrameCoalescer::pushIncomingScreen(const std::vector<unsigned char>& data, int width, int height)
+    void VideoFrameCoalescer::pushIncomingScreen(const VideoFrameBuffer& frame)
     {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_incomingScreen.data = data;
-            m_incomingScreen.width = width;
-            m_incomingScreen.height = height;
+            m_incomingScreen.frame = frame;
             m_incomingScreen.dirty = true;
         }
         scheduleFlushIfNeeded();
     }
 
-    void VideoFrameCoalescer::pushLocalScreen(const std::vector<unsigned char>& data, int width, int height)
+    void VideoFrameCoalescer::pushLocalScreen(const VideoFrameBuffer& frame)
     {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_localScreen.data = data;
-            m_localScreen.width = width;
-            m_localScreen.height = height;
+            m_localScreen.frame = frame;
             m_localScreen.dirty = true;
         }
         scheduleFlushIfNeeded();
     }
 
-    void VideoFrameCoalescer::pushIncomingCamera(
-        const std::vector<unsigned char>& data,
-        int width,
-        int height,
-        const std::string& nickname)
+    void VideoFrameCoalescer::pushIncomingCamera(const VideoFrameBuffer& frame, const std::string& nickname)
     {
-        RemoteCamFrame frame;
-        frame.data = data;
-        frame.width = width;
-        frame.height = height;
-        frame.nickname = nickname;
-        frame.dirty = true;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_incomingCameraByNickname[nickname] = std::move(frame);
+            RemoteCamPending p;
+            p.frame = frame;
+            p.dirty = true;
+            m_incomingCameraByNickname[nickname] = std::move(p);
         }
         scheduleFlushIfNeeded();
     }
 
-    void VideoFrameCoalescer::pushLocalCamera(const std::vector<unsigned char>& data, int width, int height)
+    void VideoFrameCoalescer::pushLocalCamera(const VideoFrameBuffer& frame)
     {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_localCamera.data = data;
-            m_localCamera.width = width;
-            m_localCamera.height = height;
+            m_localCamera.frame = frame;
             m_localCamera.dirty = true;
         }
         scheduleFlushIfNeeded();
