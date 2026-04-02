@@ -36,6 +36,8 @@ protected:
 
 private:
     void rebuildScaledPixmap();
+    void updateGpuMask();
+    void ensureGpuSurface();
 
     GpuNv12VideoSurface* m_gpuSurface = nullptr;
     bool m_useGpu = false;
@@ -51,4 +53,6 @@ private:
     bool m_roundedCornersEnabled = true;
     ScaleMode m_scaleMode = ScaleMode::KeepAspectRatio;
     static constexpr qreal m_cornerRadius = 4.0;
+    QSize m_lastMaskSize;
+    bool m_hasGpuMask = false;
 };

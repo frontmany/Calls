@@ -21,6 +21,8 @@ public:
     ~GpuNv12VideoSurface() override;
 
     void setNv12Frame(const core::VideoFrameBuffer& frame);
+    /** false = CropToFit (fill, center-crop), true = KeepAspectRatio (letterbox). Matches Screen::ScaleMode. */
+    void setKeepAspectRatio(bool keep);
 
 protected:
     void initializeGL() override;
@@ -30,6 +32,7 @@ protected:
 private:
     void buildShader();
     void uploadTextures(const core::VideoFrameBuffer& frame);
+    void updateQuadGeometry();
 
     std::unique_ptr<QOpenGLShaderProgram> m_program;
     GLuint m_vbo = 0;
@@ -40,6 +43,7 @@ private:
     int m_uTexUvLoc = -1;
 
     bool m_hasFrame = false;
+    bool m_keepAspectRatio = true;
     core::VideoFrameBuffer m_lastFrame;
     std::vector<uint8_t> m_padY;
     std::vector<uint8_t> m_padUv;

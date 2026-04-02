@@ -2,6 +2,7 @@
 
 #include <QOpenGLShader>
 #include <QOpenGLShaderProgram>
+#include <algorithm>
 #include <cstring>
 
 namespace
@@ -35,18 +36,36 @@ void main() {
 GpuNv12VideoSurface::GpuNv12VideoSurface(QWidget* parent)
     : QOpenGLWidget(parent)
 {
-    setUpdateBehavior(QOpenGLWidget::PartialUpdate);
+    // PartialUpdate is known to cause GL issues on some platforms when the widget is resized
+    // (e.g. window drag / layout changes during screen share).
+    setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
+}
+
+void GpuNv12VideoSurface::setKeepAspectRatio(bool keep)
+{
+    if (m_keepAspectRatio == keep)
+        return;
+    m_keepAspectRatio = keep;
+    update();
 }
 
 GpuNv12VideoSurface::~GpuNv12VideoSurface()
 {
+    if (!isValid())
+        return;
     makeCurrent();
+    if (!context() || !context()->isValid())
+    {
+        doneCurrent();
+        return;
+    }
     if (m_texY)
         glDeleteTextures(1, &m_texY);
     if (m_texUv)
         glDeleteTextures(1, &m_texUv);
     if (m_vbo)
         glDeleteBuffers(1, &m_vbo);
+    m_texY = m_texUv = m_vbo = 0;
     m_program.reset();
     doneCurrent();
 }
@@ -54,9 +73,13 @@ GpuNv12VideoSurface::~GpuNv12VideoSurface()
 void GpuNv12VideoSurface::buildShader()
 {
     m_program = std::make_unique<QOpenGLShaderProgram>();
-    m_program->addShaderFromSourceCode(QOpenGLShader::Vertex, kVs);
-    m_program->addShaderFromSourceCode(QOpenGLShader::Fragment, kFs);
-    m_program->link();
+    if (!m_program->addShaderFromSourceCode(QOpenGLShader::Vertex, kVs)
+        || !m_program->addShaderFromSourceCode(QOpenGLShader::Fragment, kFs)
+        || !m_program->link())
+    {
+        m_program.reset();
+        return;
+    }
     m_uTexYLoc = m_program->uniformLocation("texY");
     m_uTexUvLoc = m_program->uniformLocation("texUv");
 }
@@ -65,7 +88,9 @@ void GpuNv12VideoSurface::initializeGL()
 {
     initializeOpenGLFunctions();
     glDisable(GL_DEPTH_TEST);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // Make letterbox bars match the Screen background (transparent),
+    // so aspect-correct rendering doesn't look like black stripes.
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     buildShader();
 
     const float verts[] = {
@@ -86,6 +111,71 @@ void GpuNv12VideoSurface::resizeGL(int w, int h)
 {
     Q_UNUSED(w);
     Q_UNUSED(h);
+    // Do not call update() here: combined with repeated parent resize it can re-enter
+    // paint/resize on some stacks. Qt repaints after resizeGL.
+}
+
+void GpuNv12VideoSurface::updateQuadGeometry()
+{
+    if (!m_vbo || width() <= 0 || height() <= 0 || m_lastFrame.isEmpty())
+        return;
+
+    const float rw = static_cast<float>(width());
+    const float rh = static_cast<float>(height());
+    const float vw = static_cast<float>(m_lastFrame.width);
+    const float vh = static_cast<float>(m_lastFrame.height);
+    if (vw <= 0.f || vh <= 0.f)
+        return;
+
+    float u0 = 0.f;
+    float u1 = 1.f;
+    float v0 = 0.f;
+    float v1 = 1.f;
+    float x0 = -1.f;
+    float x1 = 1.f;
+    float y0 = -1.f;
+    float y1 = 1.f;
+
+    if (m_keepAspectRatio)
+    {
+        const float scale = std::min(rw / vw, rh / vh);
+        const float dw = vw * scale;
+        const float dh = vh * scale;
+        const float ox = (rw - dw) * 0.5f;
+        const float oy = (rh - dh) * 0.5f;
+        x0 = 2.f * ox / rw - 1.f;
+        x1 = 2.f * (ox + dw) / rw - 1.f;
+        const float yBottom = rh - oy - dh;
+        const float yTop = rh - oy;
+        y0 = 2.f * yBottom / rh - 1.f;
+        y1 = 2.f * yTop / rh - 1.f;
+    }
+    else
+    {
+        const float s = std::max(rw / vw, rh / vh);
+        const float sx = rw / (vw * s);
+        const float sy = rh / (vh * s);
+        if (sx < 1.f - 1e-6f)
+        {
+            u0 = (1.f - sx) * 0.5f;
+            u1 = 1.f - u0;
+        }
+        if (sy < 1.f - 1e-6f)
+        {
+            v0 = (1.f - sy) * 0.5f;
+            v1 = 1.f - v0;
+        }
+    }
+
+    const float verts[] = {
+        x0, y0, u0, v1,
+        x1, y0, u1, v1,
+        x0, y1, u0, v0,
+        x1, y1, u1, v0,
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_DYNAMIC_DRAW);
 }
 
 void GpuNv12VideoSurface::setNv12Frame(const core::VideoFrameBuffer& frame)
@@ -103,8 +193,12 @@ void GpuNv12VideoSurface::setNv12Frame(const core::VideoFrameBuffer& frame)
 
 void GpuNv12VideoSurface::uploadTextures(const core::VideoFrameBuffer& frame)
 {
+    if (!m_texY || !m_texUv)
+        return;
     const int w = frame.width;
     const int h = frame.height;
+    if (w <= 0 || h <= 0)
+        return;
     const std::size_t yOff = 0;
     const std::size_t uvOff = frame.uvByteOffset();
     const uint8_t* base = frame.data.data();
@@ -153,11 +247,19 @@ void GpuNv12VideoSurface::uploadTextures(const core::VideoFrameBuffer& frame)
 
 void GpuNv12VideoSurface::paintGL()
 {
+    if (width() <= 0 || height() <= 0)
+        return;
+    if (!isValid())
+        return;
+
     glClear(GL_COLOR_BUFFER_BIT);
-    if (!m_hasFrame || !m_program || m_lastFrame.isEmpty())
+    if (!m_hasFrame || !m_program || !m_program->isLinked() || m_lastFrame.isEmpty())
+        return;
+    if (!m_texY || !m_texUv || !m_vbo)
         return;
 
     uploadTextures(m_lastFrame);
+    updateQuadGeometry();
 
     m_program->bind();
     glActiveTexture(GL_TEXTURE0);
@@ -169,6 +271,11 @@ void GpuNv12VideoSurface::paintGL()
 
     const GLint posLoc = m_program->attributeLocation("aPos");
     const GLint uvLoc = m_program->attributeLocation("aUv");
+    if (posLoc < 0 || uvLoc < 0)
+    {
+        m_program->release();
+        return;
+    }
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
     glEnableVertexAttribArray(posLoc);
     glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>(0));

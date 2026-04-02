@@ -20,8 +20,15 @@ Screen::Screen(QWidget* parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);
+}
+
+void Screen::ensureGpuSurface()
+{
+    if (m_gpuSurface)
+        return;
 
     m_gpuSurface = new GpuNv12VideoSurface(this);
+    m_gpuSurface->setAttribute(Qt::WA_TranslucentBackground, true);
     m_gpuSurface->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     m_gpuSurface->hide();
 }
@@ -71,6 +78,7 @@ void Screen::setPixmap(const QPixmap& pixmap)
     if (m_gpuSurface)
     {
         m_gpuSurface->hide();
+        m_gpuSurface->clearMask();
         m_gpuSurface->setNv12Frame(core::VideoFrameBuffer{});
     }
     m_sourcePixmap = pixmap;
@@ -94,13 +102,13 @@ void Screen::setVideoFrame(const core::VideoFrameBuffer& frame)
         m_sourcePixmap = QPixmap();
         m_scaledPixmap = QPixmap();
         m_hasPreparedDraw = false;
-        if (m_gpuSurface)
-        {
-            m_gpuSurface->setGeometry(rect());
-            m_gpuSurface->setNv12Frame(frame);
-            m_gpuSurface->show();
-            m_gpuSurface->raise();
-        }
+        ensureGpuSurface();
+        m_gpuSurface->setKeepAspectRatio(m_scaleMode == ScaleMode::KeepAspectRatio);
+        m_gpuSurface->setGeometry(rect());
+        m_gpuSurface->setNv12Frame(frame);
+        m_gpuSurface->show();
+        m_gpuSurface->raise();
+        updateGpuMask();
         updateGeometry();
         update();
         return;
@@ -134,6 +142,7 @@ void Screen::clear()
     if (m_gpuSurface)
     {
         m_gpuSurface->hide();
+        m_gpuSurface->clearMask();
         m_gpuSurface->setNv12Frame(core::VideoFrameBuffer{});
     }
     m_sourcePixmap = QPixmap();
@@ -148,6 +157,7 @@ void Screen::clear()
 void Screen::setRoundedCornersEnabled(bool enabled)
 {
     m_roundedCornersEnabled = enabled;
+    updateGpuMask();
     update();
 }
 
@@ -156,6 +166,8 @@ void Screen::setScaleMode(ScaleMode mode)
     if (m_scaleMode != mode)
     {
         m_scaleMode = mode;
+        if (m_useGpu && m_gpuSurface)
+            m_gpuSurface->setKeepAspectRatio(mode == ScaleMode::KeepAspectRatio);
         rebuildScaledPixmap();
         update();
     }
@@ -184,8 +196,43 @@ void Screen::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
     if (m_useGpu && m_gpuSurface)
+    {
         m_gpuSurface->setGeometry(rect());
+        updateGpuMask();
+    }
     rebuildScaledPixmap();
+}
+
+void Screen::updateGpuMask()
+{
+    if (!m_gpuSurface)
+        return;
+    // Applying mask too early (before the underlying native widget exists) can
+    // cause context/window recreation problems on some platforms.
+    if (!m_gpuSurface->windowHandle() || !m_gpuSurface->isVisible())
+        return;
+    if (!m_roundedCornersEnabled)
+    {
+        if (m_hasGpuMask)
+        {
+            m_gpuSurface->clearMask();
+            m_hasGpuMask = false;
+            m_lastMaskSize = {};
+        }
+        return;
+    }
+    const QRect r = m_gpuSurface->rect();
+    if (r.isEmpty())
+        return;
+    const QSize s = r.size();
+    if (m_hasGpuMask && m_lastMaskSize == s)
+        return;
+
+    QPainterPath path;
+    path.addRoundedRect(QRectF(r), m_cornerRadius, m_cornerRadius);
+    m_gpuSurface->setMask(QRegion(path.toFillPolygon().toPolygon()));
+    m_lastMaskSize = s;
+    m_hasGpuMask = true;
 }
 
 void Screen::paintEvent(QPaintEvent* event)
