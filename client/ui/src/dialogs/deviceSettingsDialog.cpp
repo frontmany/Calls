@@ -140,7 +140,9 @@ namespace {
 DeviceSettingsDialog::DeviceSettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
-    setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+    // Keep the dialog as a child widget of OverlayWidget; Qt::Dialog makes it a
+    // separate top-level window and breaks local centering coordinates.
+    setWindowFlags(Qt::Widget | Qt::FramelessWindowHint);
     setModal(false);
     setAttribute(Qt::WA_TranslucentBackground);
 

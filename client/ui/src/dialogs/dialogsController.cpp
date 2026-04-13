@@ -409,56 +409,55 @@ void DialogsController::showDeviceSettingsDialog(bool showSliders, bool micMuted
     int currentInputDevice, int currentOutputDevice,
     const std::vector<core::media::Camera>& cameras, const QString& currentCameraDeviceId)
 {
-    if (!m_deviceSettingsDialog) {
-        m_deviceSettingsDialog = new DeviceSettingsDialog(m_parent);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::inputDeviceSelected, this, &DialogsController::inputDeviceSelected);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::outputDeviceSelected, this, &DialogsController::outputDeviceSelected);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::cameraDeviceSelected, this, &DialogsController::cameraDeviceSelected);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::inputVolumeChanged, this, &DialogsController::inputVolumeChanged);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::outputVolumeChanged, this, &DialogsController::outputVolumeChanged);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::muteMicrophoneClicked, this, &DialogsController::muteMicrophoneClicked);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::muteSpeakerClicked, this, &DialogsController::muteSpeakerClicked);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::refreshAudioDevicesRequested, this, &DialogsController::refreshAudioDevicesRequested);
-        connect(m_deviceSettingsDialog, &DeviceSettingsDialog::closeRequested, this, &DialogsController::hideDeviceSettingsDialog);
+    if (m_deviceSettingsDialog) {
+        hideDeviceSettingsDialog();
     }
 
-    if (m_deviceSettingsDialog) {
-        if (!m_deviceSettingsOverlay) {
-            m_deviceSettingsOverlay = new OverlayWidget(m_parent);
-            m_deviceSettingsOverlay->setAttribute(Qt::WA_TranslucentBackground);
-            m_deviceSettingsOverlay->show();
-            m_deviceSettingsOverlay->raise();
-        }
-
-        emit refreshAudioDevicesRequested();
-
-        auto centerDeviceDialog = [this]() {
-            if (!m_deviceSettingsDialog || !m_deviceSettingsOverlay) return;
-            m_deviceSettingsDialog->adjustSize();
-            QRect overlayRect = m_deviceSettingsOverlay->rect();
-            QSize dlgSize = m_deviceSettingsDialog->size();
-            int x = overlayRect.center().x() - dlgSize.width() / 2;
-            int y = overlayRect.center().y() - dlgSize.height() / 2;
-            m_deviceSettingsDialog->move(x, y);
-            m_deviceSettingsDialog->raise();
-        };
-
-        m_deviceSettingsDialog->setParent(m_deviceSettingsOverlay);
-        m_deviceSettingsDialog->setSlidersVisible(showSliders);
-        m_deviceSettingsDialog->setMicrophoneMuted(micMuted);
-        m_deviceSettingsDialog->setSpeakerMuted(speakerMuted);
-        m_deviceSettingsDialog->setInputVolume(inputVolume);
-        m_deviceSettingsDialog->setOutputVolume(outputVolume);
-        m_deviceSettingsDialog->refreshDevices(currentInputDevice, currentOutputDevice);
-        m_deviceSettingsDialog->refreshCameraDevices(cameras, currentCameraDeviceId);
-        centerDeviceDialog();
-
-        connect(m_deviceSettingsOverlay, &OverlayWidget::geometryChanged, this, centerDeviceDialog);
-
-        m_deviceSettingsDialog->show();
-        m_deviceSettingsDialog->raise();
+    if (!m_deviceSettingsOverlay) {
+        m_deviceSettingsOverlay = new OverlayWidget(m_parent);
+        m_deviceSettingsOverlay->setAttribute(Qt::WA_TranslucentBackground);
+        m_deviceSettingsOverlay->show();
         m_deviceSettingsOverlay->raise();
     }
+
+    m_deviceSettingsDialog = new DeviceSettingsDialog(m_deviceSettingsOverlay);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::inputDeviceSelected, this, &DialogsController::inputDeviceSelected);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::outputDeviceSelected, this, &DialogsController::outputDeviceSelected);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::cameraDeviceSelected, this, &DialogsController::cameraDeviceSelected);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::inputVolumeChanged, this, &DialogsController::inputVolumeChanged);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::outputVolumeChanged, this, &DialogsController::outputVolumeChanged);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::muteMicrophoneClicked, this, &DialogsController::muteMicrophoneClicked);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::muteSpeakerClicked, this, &DialogsController::muteSpeakerClicked);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::refreshAudioDevicesRequested, this, &DialogsController::refreshAudioDevicesRequested);
+    connect(m_deviceSettingsDialog, &DeviceSettingsDialog::closeRequested, this, &DialogsController::hideDeviceSettingsDialog);
+
+    emit refreshAudioDevicesRequested();
+
+    auto centerDeviceDialog = [this]() {
+        if (!m_deviceSettingsDialog || !m_deviceSettingsOverlay) return;
+        m_deviceSettingsDialog->adjustSize();
+        QRect overlayRect = m_deviceSettingsOverlay->rect();
+        QSize dlgSize = m_deviceSettingsDialog->size();
+        int x = overlayRect.center().x() - dlgSize.width() / 2;
+        int y = overlayRect.center().y() - dlgSize.height() / 2;
+        m_deviceSettingsDialog->move(x, y);
+        m_deviceSettingsDialog->raise();
+    };
+
+    m_deviceSettingsDialog->setSlidersVisible(showSliders);
+    m_deviceSettingsDialog->setMicrophoneMuted(micMuted);
+    m_deviceSettingsDialog->setSpeakerMuted(speakerMuted);
+    m_deviceSettingsDialog->setInputVolume(inputVolume);
+    m_deviceSettingsDialog->setOutputVolume(outputVolume);
+    m_deviceSettingsDialog->refreshDevices(currentInputDevice, currentOutputDevice);
+    m_deviceSettingsDialog->refreshCameraDevices(cameras, currentCameraDeviceId);
+    centerDeviceDialog();
+
+    connect(m_deviceSettingsOverlay, &OverlayWidget::geometryChanged, this, centerDeviceDialog);
+
+    m_deviceSettingsDialog->show();
+    m_deviceSettingsDialog->raise();
+    m_deviceSettingsOverlay->raise();
 }
 
 void DialogsController::refreshDeviceSettingsDialog(int currentInputIndex, int currentOutputIndex,
@@ -473,16 +472,16 @@ void DialogsController::refreshDeviceSettingsDialog(int currentInputIndex, int c
 void DialogsController::hideDeviceSettingsDialog()
 {
     if (m_deviceSettingsDialog) {
+        m_deviceSettingsDialog->disconnect();
         m_deviceSettingsDialog->hide();
+        m_deviceSettingsDialog->deleteLater();
+        m_deviceSettingsDialog = nullptr;
     }
     if (m_deviceSettingsOverlay) {
+        m_deviceSettingsOverlay->disconnect();
         m_deviceSettingsOverlay->close();
         m_deviceSettingsOverlay->deleteLater();
         m_deviceSettingsOverlay = nullptr;
-    }
-
-    if (m_deviceSettingsDialog) {
-        m_deviceSettingsDialog->setParent(nullptr);
     }
     emit deviceSettingsDialogClosed();
 }
