@@ -304,7 +304,7 @@ namespace core::logic
         updateMetricsFromFrame(makeStreamMetricsKey(frame.senderHash, "voice", frame.layerId), frame.frameSeq, frame.timestampMs, frame.payloadLen);
         auto audioFrame = m_mediaProcessingService->decodeAudioFrame(decryptedData.data(), static_cast<int>(decryptedData.size()));
         if (!audioFrame.empty()) {
-            m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(audioFrame.size()));
+            m_audioEngine->playAudio(audioFrame.data(), static_cast<int>(audioFrame.size()), frame.senderHash);
         }
         if (!frame.senderHash.empty() && m_eventListener) {
             const std::string nickname = meetingParticipantNicknameByHash(m_stateManager, frame.senderHash);

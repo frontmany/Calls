@@ -6,8 +6,11 @@
 #include <memory>
 #include <atomic>
 #include <queue>
+#include <deque>
 #include <string>
 #include <optional>
+#include <unordered_map>
+#include <chrono>
 
 #include "deviceInfo.h"
 #include "audioPacket.h"
@@ -30,7 +33,7 @@ namespace core::media
         bool startAudioCapture();
         bool stopAudioCapture();
 
-        void playAudio(const float* data, int length);
+        void playAudio(const float* data, int length, const std::string& streamKey = {});
         void muteMicrophone(bool isMute);
         void muteSpeaker(bool isMute);
         bool isSpeakerMuted() const;
@@ -58,6 +61,8 @@ namespace core::media
     private:
         bool initializeInternal();
         float softClip(float x);
+        void mixPacketIntoBuffer(const AudioPacket& packet, float* output, unsigned long frameCount) const;
+        void clearOutputBuffers();
         void processInputAudio(const float* input, unsigned long frameCount);
         void processOutputAudio(float* output, unsigned long frameCount);
 
@@ -66,6 +71,11 @@ namespace core::media
             PaStreamCallbackFlags statusFlags, void* userData);
 
     private:
+        struct RemoteAudioStreamState {
+            std::deque<AudioPacket> packets;
+            std::chrono::steady_clock::time_point lastEnqueueAt{};
+        };
+
         PaStream* m_stream = nullptr;
         std::atomic<bool> m_isInitialized = false;
         std::atomic<bool> m_isStream = false;
@@ -74,8 +84,10 @@ namespace core::media
 
         PaError m_lastError = paNoError;
         std::queue<AudioPacket> m_outputAudioQueue;
+        std::unordered_map<std::string, RemoteAudioStreamState> m_remoteAudioStreams;
         std::mutex m_outputAudioQueueMutex;
         static constexpr size_t m_maxOutputAudioQueueSize = 128;  // ~2.5 sec at 50 pkt/s
+        static constexpr size_t m_maxRemoteStreamQueueSize = 8;   // ~160 ms per participant at 20 ms packets
         std::mutex m_inputAudioMutex;
         std::function<void(const float* data, int length)> m_inputCallback;
 

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <string>
+#include <algorithm>
 
 namespace core::media
 {
@@ -186,17 +187,21 @@ namespace core::media
         m_inputCallback = inputCallback;
     }
 
+    void AudioEngine::clearOutputBuffers()
+    {
+        std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
+        std::queue<AudioPacket> emptyQueue;
+        std::swap(m_outputAudioQueue, emptyQueue);
+        m_remoteAudioStreams.clear();
+    }
+
     void AudioEngine::refreshAudioDevices() {
         bool wasStreaming = m_isStream;
         if (wasStreaming) {
             stopAudioCapture();
         }
 
-        {
-            std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
-            std::queue<AudioPacket> emptyQueue;
-            std::swap(m_outputAudioQueue, emptyQueue);
-        }
+        clearOutputBuffers();
 
         if (m_isInitialized) {
             if (m_stream) {
@@ -257,7 +262,7 @@ namespace core::media
         return static_cast<int>(m_outputVolume * 100.0f);
     }
 
-    void AudioEngine::playAudio(const float* data, int length) {
+    void AudioEngine::playAudio(const float* data, int length, const std::string& streamKey) {
         if (!m_isInitialized || !m_isStream || !data || length <= 0) return;
 
         AudioPacket packet;
@@ -265,14 +270,37 @@ namespace core::media
         packet.samples = length;
 
         std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
-        while (m_outputAudioQueue.size() >= m_maxOutputAudioQueueSize) {
-            m_outputAudioQueue.pop();
+        if (streamKey.empty()) {
+            while (m_outputAudioQueue.size() >= m_maxOutputAudioQueueSize) {
+                m_outputAudioQueue.pop();
+            }
+            m_outputAudioQueue.push(std::move(packet));
+            return;
         }
-        m_outputAudioQueue.push(std::move(packet));
+
+        auto& streamState = m_remoteAudioStreams[streamKey];
+        while (streamState.packets.size() >= m_maxRemoteStreamQueueSize) {
+            streamState.packets.pop_front();
+        }
+        streamState.packets.push_back(std::move(packet));
+        streamState.lastEnqueueAt = std::chrono::steady_clock::now();
     }
 
     float AudioEngine::softClip(float x) {
         return std::tanh(x);
+    }
+
+    void AudioEngine::mixPacketIntoBuffer(const AudioPacket& packet, float* output, unsigned long frameCount) const
+    {
+        if (!output) {
+            return;
+        }
+
+        const size_t maxSamples = static_cast<size_t>(frameCount) * static_cast<size_t>(m_outputChannels);
+        const size_t samplesToMix = std::min(packet.audioData.size(), maxSamples);
+        for (size_t i = 0; i < samplesToMix; ++i) {
+            output[i] += packet.audioData[i];
+        }
     }
 
     void AudioEngine::processInputAudio(const float* input, unsigned long frameCount) {
@@ -298,29 +326,38 @@ namespace core::media
 
         std::fill_n(output, frameCount * m_outputChannels, 0.0f);
 
-        if (output) {
+        if (!output || m_speakerMuted) {
+            return;
+        }
+
+        {
             std::lock_guard<std::mutex> lock(m_outputAudioQueueMutex);
 
             if (!m_outputAudioQueue.empty()) {
-                const auto& currentPacket = m_outputAudioQueue.front();
-
-                if (!m_speakerMuted) {
-                    if (size_t samplesToCopy = currentPacket.audioData.size(); samplesToCopy > 0) {
-                        if (m_outputVolume != 1.0f) {
-                            for (size_t i = 0; i < samplesToCopy; ++i) {
-                                output[i] = softClip(currentPacket.audioData[i] * m_outputVolume);
-                            }
-                        }
-                        else {
-                            for (size_t i = 0; i < samplesToCopy; ++i) {
-                                output[i] = currentPacket.audioData[i];
-                            }
-                        }
-                    }
-                }
-
+                mixPacketIntoBuffer(m_outputAudioQueue.front(), output, frameCount);
                 m_outputAudioQueue.pop();
             }
+
+            constexpr auto kRemoteStreamRetention = std::chrono::seconds(2);
+            const auto now = std::chrono::steady_clock::now();
+            for (auto it = m_remoteAudioStreams.begin(); it != m_remoteAudioStreams.end(); ) {
+                auto& streamState = it->second;
+                if (!streamState.packets.empty()) {
+                    mixPacketIntoBuffer(streamState.packets.front(), output, frameCount);
+                    streamState.packets.pop_front();
+                }
+
+                if (streamState.packets.empty() && (now - streamState.lastEnqueueAt) > kRemoteStreamRetention) {
+                    it = m_remoteAudioStreams.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        const size_t mixedSamples = static_cast<size_t>(frameCount) * static_cast<size_t>(m_outputChannels);
+        for (size_t i = 0; i < mixedSamples; ++i) {
+            output[i] = softClip(output[i] * m_outputVolume);
         }
     }
 
@@ -369,6 +406,7 @@ namespace core::media
         }
 
         m_isStream = false;
+        clearOutputBuffers();
         return m_lastError == paNoError;
     }
 
