@@ -70,6 +70,16 @@ if(WIN32)
     )
 endif()
 
+# ASIO's Windows headers error out if `WinSock.h` was included before `winsock2.h`.
+# Qt (and other Windows headers) may pull in `windows.h`, which may include `WinSock.h`.
+# For all UI sources, force-include winsock2 first to guarantee a consistent include order.
+if(WIN32 AND MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        /FIwinsock2.h
+        /FIws2tcpip.h
+    )
+endif()
+
 if(WIN32)
     set(SPDLOG_DIR "${ROOT_DIR}/vendor/spdlog/build")
 else()
