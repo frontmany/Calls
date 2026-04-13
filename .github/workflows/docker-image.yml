@@ -99,12 +99,12 @@ jobs:
             IMAGE_TAG=${{ github.ref_name }}
             EOF
 
-            COMPOSE="docker-compose -p callifornia -f $DEPLOY_ROOT/docker-compose.yml"
+            COMPOSE="docker compose -p callifornia -f $DEPLOY_ROOT/docker-compose.yml"
 
             # Stop previous containers so `up -d` can recreate them.
             # Legacy path: if a previous deploy used /opt/callifornia, stop that stack too.
             if [ -f /opt/callifornia/docker-compose.yml ]; then
-              (cd /opt/callifornia && docker-compose -p callifornia -f docker-compose.yml down --remove-orphans) 2>/dev/null || true
+              (cd /opt/callifornia && docker compose -p callifornia -f docker-compose.yml down --remove-orphans) 2>/dev/null || true
             fi
             $COMPOSE down --remove-orphans 2>/dev/null || true
 
