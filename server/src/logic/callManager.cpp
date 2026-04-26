@@ -35,4 +35,14 @@ namespace server::logic
 		std::lock_guard<std::mutex> lock(m_mutex);
 		return m_pendingCalls.find(pendingCall) != m_pendingCalls.end();
 	}
+
+	size_t CallManager::getActiveCallsCount() const {
+		std::lock_guard<std::mutex> lock(m_mutex);
+		return m_calls.size();
+	}
+
+	size_t CallManager::getPendingCallsCount() const {
+		std::lock_guard<std::mutex> lock(m_mutex);
+		return m_pendingCalls.size();
+	}
 }

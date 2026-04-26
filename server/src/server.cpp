@@ -23,6 +23,8 @@ using namespace server::utilities;
 
 namespace
 {
+    constexpr size_t kMaxMetricsProcesses = 20;
+
     std::vector<unsigned char> toBytes(const std::string& s) {
         return std::vector<unsigned char>(s.begin(), s.end());
     }
@@ -540,12 +542,43 @@ namespace server
 
     void Server::handleGetMetrics(const nlohmann::json&, network::tcp::ConnectionPtr conn) {
         try {
-            double cpuUsage = getCpuUsagePercent();
-            auto [memoryUsed, memoryAvailable] = getMemoryUsedAndAvailable();
-            size_t activeUsers = m_userRepository.getActiveUsersCount();
+            const auto snapshot = collectSystemMetricsSnapshot(kMaxMetricsProcesses);
+            const size_t activeUsers = m_userRepository.getActiveUsersCount();
+            const size_t activeCalls = m_callManager.getActiveCallsCount();
+            const size_t activeMeetings = m_meetingManager.getActiveMeetingsCount();
+            const size_t pendingCalls = m_callManager.getPendingCallsCount();
+            const size_t pendingMeetingRequests = m_meetingManager.getPendingJoinRequestsCount();
+            const auto uptimeSec = static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - m_startedAt).count());
+
+            nlohmann::json serverRuntime = {
+                { ACTIVE_USERS, activeUsers },
+                { ACTIVE_CALLS, activeCalls },
+                { ACTIVE_MEETINGS, activeMeetings },
+                { PENDING_CALLS, pendingCalls },
+                { PENDING_MEETING_REQUESTS, pendingMeetingRequests },
+                { UPTIME_SEC, uptimeSec }
+            };
+
+            nlohmann::json processes = nlohmann::json::array();
+            for (const auto& process : snapshot.processes) {
+                processes.push_back({
+                    { PID, process.pid },
+                    { NAME, process.name },
+                    { CPU_USAGE, process.cpuUsagePercent },
+                    { MEMORY_RSS, process.memoryRssBytes },
+                    { THREADS, process.threads },
+                    { FD_COUNT, process.fdCount },
+                    { UPTIME_SEC, process.uptimeSec }
+                });
+            }
 
             auto packet = PacketFactory::getMetricsResultPacket(
-                cpuUsage, static_cast<uint64_t>(memoryUsed), static_cast<uint64_t>(memoryAvailable), activeUsers);
+                snapshot.cpuUsagePercent,
+                snapshot.memoryUsedBytes,
+                snapshot.memoryAvailableBytes,
+                serverRuntime,
+                processes);
             
             sendTcp(conn, static_cast<uint32_t>(PacketType::GET_METRICS_RESULT), packet);
         }

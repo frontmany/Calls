@@ -5,16 +5,38 @@
 #include <utility>
 #include <string>
 #include <thread>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
 #elif defined(__linux__)
+#include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <unistd.h>
 #endif
 
 namespace server::utilities
 {
+    struct ProcessMetrics {
+        int32_t pid = 0;
+        std::string name;
+        double cpuUsagePercent = 0.0;
+        uint64_t memoryRssBytes = 0;
+        uint32_t threads = 0;
+        uint64_t fdCount = 0;
+        uint64_t uptimeSec = 0;
+    };
+
+    struct SystemMetricsSnapshot {
+        double cpuUsagePercent = 0.0;
+        uint64_t memoryUsedBytes = 0;
+        uint64_t memoryAvailableBytes = 0;
+        std::vector<ProcessMetrics> processes;
+    };
+
 #ifdef _WIN32
     namespace
     {
@@ -58,37 +80,219 @@ namespace server::utilities
         uint64_t usedPhys = totalPhys - availPhys;
         return {usedPhys, availPhys};
     }
-#elif defined(__linux__)
-    inline double getCpuUsagePercent() {
-        std::ifstream stat1("/proc/stat");
-        if (!stat1) return 0.0;
-        std::string line;
-        if (!std::getline(stat1, line) || line.compare(0, 4, "cpu ") != 0)
-            return 0.0;
-        stat1.close();
 
-        uint64_t user1 = 0, nice1 = 0, system1 = 0, idle1 = 0, iowait1 = 0, irq1 = 0, softirq1 = 0, steal1 = 0;
-        std::istringstream iss1(line.substr(4));
-        iss1 >> user1 >> nice1 >> system1 >> idle1 >> iowait1 >> irq1 >> softirq1 >> steal1;
-        uint64_t total1 = user1 + nice1 + system1 + idle1 + iowait1 + irq1 + softirq1 + steal1;
-        uint64_t idleTotal1 = idle1 + iowait1;
+    inline SystemMetricsSnapshot collectSystemMetricsSnapshot(size_t maxProcesses = 15, std::chrono::milliseconds sampleWindow = std::chrono::milliseconds(200)) {
+        (void)maxProcesses;
+        (void)sampleWindow;
+        auto [memoryUsed, memoryAvailable] = getMemoryUsedAndAvailable();
+        SystemMetricsSnapshot snapshot;
+        snapshot.cpuUsagePercent = getCpuUsagePercent();
+        snapshot.memoryUsedBytes = memoryUsed;
+        snapshot.memoryAvailableBytes = memoryAvailable;
+        return snapshot;
+    }
+#elif defined(__linux__)
+    namespace
+    {
+        struct LinuxCpuTimes {
+            uint64_t total = 0;
+            uint64_t idleTotal = 0;
+            bool valid = false;
+        };
+
+        struct LinuxProcessSample {
+            int32_t pid = 0;
+            std::string name;
+            uint64_t totalCpuJiffies = 0;
+            uint64_t processStartJiffies = 0;
+            uint64_t memoryRssBytes = 0;
+            uint32_t threads = 0;
+            uint64_t fdCount = 0;
+        };
+
+        inline LinuxCpuTimes readLinuxCpuTimes() {
+            std::ifstream stat("/proc/stat");
+            if (!stat) {
+                return {};
+            }
+
+            std::string line;
+            if (!std::getline(stat, line) || line.compare(0, 4, "cpu ") != 0) {
+                return {};
+            }
+
+            uint64_t user = 0;
+            uint64_t nice = 0;
+            uint64_t system = 0;
+            uint64_t idle = 0;
+            uint64_t iowait = 0;
+            uint64_t irq = 0;
+            uint64_t softirq = 0;
+            uint64_t steal = 0;
+            std::istringstream iss(line.substr(4));
+            iss >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+            LinuxCpuTimes times;
+            times.total = user + nice + system + idle + iowait + irq + softirq + steal;
+            times.idleTotal = idle + iowait;
+            times.valid = times.total > 0;
+            return times;
+        }
+
+        inline uint64_t readLinuxSystemUptimeSec() {
+            std::ifstream uptime("/proc/uptime");
+            if (!uptime) {
+                return 0;
+            }
+
+            double uptimeSeconds = 0.0;
+            uptime >> uptimeSeconds;
+            if (uptimeSeconds < 0.0) {
+                return 0;
+            }
+            return static_cast<uint64_t>(uptimeSeconds);
+        }
+
+        inline uint64_t countProcessFds(int32_t pid) {
+            const std::filesystem::path fdPath = std::filesystem::path("/proc") / std::to_string(pid) / "fd";
+            std::error_code ec;
+            if (!std::filesystem::exists(fdPath, ec) || ec) {
+                return 0;
+            }
+
+            uint64_t count = 0;
+            std::filesystem::directory_iterator it(fdPath, std::filesystem::directory_options::skip_permission_denied, ec);
+            if (ec) {
+                return 0;
+            }
+            for (const auto& entry : it) {
+                (void)entry;
+                ++count;
+            }
+            return count;
+        }
+
+        inline bool readLinuxProcessSample(int32_t pid, LinuxProcessSample& sample) {
+            const std::filesystem::path statPath = std::filesystem::path("/proc") / std::to_string(pid) / "stat";
+            std::ifstream statFile(statPath);
+            if (!statFile) {
+                return false;
+            }
+
+            std::string line;
+            if (!std::getline(statFile, line)) {
+                return false;
+            }
+
+            const size_t openParen = line.find('(');
+            const size_t closeParen = line.rfind(')');
+            if (openParen == std::string::npos || closeParen == std::string::npos || closeParen <= openParen) {
+                return false;
+            }
+
+            sample.pid = pid;
+            sample.name = line.substr(openParen + 1, closeParen - openParen - 1);
+
+            const size_t restOffset = closeParen + 2;
+            if (restOffset >= line.size()) {
+                return false;
+            }
+
+            std::istringstream rest(line.substr(restOffset));
+            std::vector<std::string> fields;
+            std::string token;
+            while (rest >> token) {
+                fields.push_back(token);
+            }
+
+            // fields index starts from stat field #3 (state).
+            if (fields.size() <= 21) {
+                return false;
+            }
+
+            uint64_t utime = 0;
+            uint64_t stime = 0;
+            uint64_t numThreads = 0;
+            uint64_t startTime = 0;
+            try {
+                utime = std::stoull(fields[11]);      // field #14
+                stime = std::stoull(fields[12]);      // field #15
+                numThreads = std::stoull(fields[17]); // field #20
+                startTime = std::stoull(fields[19]);  // field #22
+            } catch (...) {
+                return false;
+            }
+
+            const std::filesystem::path statmPath = std::filesystem::path("/proc") / std::to_string(pid) / "statm";
+            std::ifstream statmFile(statmPath);
+            uint64_t rssPages = 0;
+            if (statmFile) {
+                uint64_t totalPages = 0;
+                statmFile >> totalPages >> rssPages;
+            }
+            const long pageSize = sysconf(_SC_PAGESIZE);
+            sample.memoryRssBytes = (pageSize > 0) ? rssPages * static_cast<uint64_t>(pageSize) : 0;
+
+            sample.totalCpuJiffies = utime + stime;
+            sample.processStartJiffies = startTime;
+            sample.threads = static_cast<uint32_t>(numThreads);
+            sample.fdCount = countProcessFds(pid);
+            return true;
+        }
+
+        inline std::unordered_map<int32_t, LinuxProcessSample> readAllLinuxProcessSamples() {
+            std::unordered_map<int32_t, LinuxProcessSample> samples;
+            const std::filesystem::path procPath("/proc");
+            std::error_code ec;
+            std::filesystem::directory_iterator it(procPath, std::filesystem::directory_options::skip_permission_denied, ec);
+            if (ec) {
+                return samples;
+            }
+
+            for (const auto& entry : it) {
+                if (!entry.is_directory(ec) || ec) {
+                    continue;
+                }
+
+                const std::string name = entry.path().filename().string();
+                if (name.empty() || !std::all_of(name.begin(), name.end(), [](unsigned char c) { return c >= '0' && c <= '9'; })) {
+                    continue;
+                }
+
+                int32_t pid = 0;
+                try {
+                    pid = std::stoi(name);
+                } catch (...) {
+                    continue;
+                }
+
+                LinuxProcessSample sample;
+                if (readLinuxProcessSample(pid, sample)) {
+                    samples.emplace(pid, std::move(sample));
+                }
+            }
+            return samples;
+        }
+    }
+
+    inline double getCpuUsagePercent() {
+        const LinuxCpuTimes first = readLinuxCpuTimes();
+        if (!first.valid) {
+            return 0.0;
+        }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        std::ifstream stat2("/proc/stat");
-        if (!stat2) return 0.0;
-        if (!std::getline(stat2, line) || line.compare(0, 4, "cpu ") != 0)
+        const LinuxCpuTimes second = readLinuxCpuTimes();
+        if (!second.valid || second.total <= first.total || second.idleTotal < first.idleTotal) {
             return 0.0;
+        }
 
-        uint64_t user2 = 0, nice2 = 0, system2 = 0, idle2 = 0, iowait2 = 0, irq2 = 0, softirq2 = 0, steal2 = 0;
-        std::istringstream iss2(line.substr(4));
-        iss2 >> user2 >> nice2 >> system2 >> idle2 >> iowait2 >> irq2 >> softirq2 >> steal2;
-        uint64_t total2 = user2 + nice2 + system2 + idle2 + iowait2 + irq2 + softirq2 + steal2;
-        uint64_t idleTotal2 = idle2 + iowait2;
-
-        uint64_t diffTotal = total2 - total1;
-        uint64_t diffIdle = idleTotal2 - idleTotal1;
-        if (diffTotal == 0) return 0.0;
+        const uint64_t diffTotal = second.total - first.total;
+        const uint64_t diffIdle = second.idleTotal - first.idleTotal;
+        if (diffTotal == 0) {
+            return 0.0;
+        }
         return 100.0 * (1.0 - static_cast<double>(diffIdle) / static_cast<double>(diffTotal));
     }
 
@@ -113,8 +317,93 @@ namespace server::utilities
         uint64_t usedBytes = totalBytes > availBytes ? totalBytes - availBytes : 0;
         return {usedBytes, availBytes};
     }
+
+    inline SystemMetricsSnapshot collectSystemMetricsSnapshot(size_t maxProcesses = 15, std::chrono::milliseconds sampleWindow = std::chrono::milliseconds(200)) {
+        SystemMetricsSnapshot snapshot;
+        auto [memoryUsed, memoryAvailable] = getMemoryUsedAndAvailable();
+        snapshot.memoryUsedBytes = memoryUsed;
+        snapshot.memoryAvailableBytes = memoryAvailable;
+
+        const LinuxCpuTimes cpuBefore = readLinuxCpuTimes();
+        auto processesBefore = readAllLinuxProcessSamples();
+
+        std::this_thread::sleep_for(sampleWindow);
+
+        const LinuxCpuTimes cpuAfter = readLinuxCpuTimes();
+        auto processesAfter = readAllLinuxProcessSamples();
+
+        if (!cpuBefore.valid || !cpuAfter.valid || cpuAfter.total <= cpuBefore.total || cpuAfter.idleTotal < cpuBefore.idleTotal) {
+            return snapshot;
+        }
+
+        const uint64_t diffTotal = cpuAfter.total - cpuBefore.total;
+        const uint64_t diffIdle = cpuAfter.idleTotal - cpuBefore.idleTotal;
+        if (diffTotal == 0) {
+            return snapshot;
+        }
+        snapshot.cpuUsagePercent = 100.0 * (1.0 - static_cast<double>(diffIdle) / static_cast<double>(diffTotal));
+
+        const long clockTicks = sysconf(_SC_CLK_TCK);
+        const uint64_t systemUptimeSec = readLinuxSystemUptimeSec();
+
+        snapshot.processes.reserve(processesAfter.size());
+        for (const auto& [pid, processAfter] : processesAfter) {
+            auto beforeIt = processesBefore.find(pid);
+            if (beforeIt == processesBefore.end()) {
+                continue;
+            }
+
+            const uint64_t cpuBeforeJiffies = beforeIt->second.totalCpuJiffies;
+            const uint64_t cpuAfterJiffies = processAfter.totalCpuJiffies;
+            if (cpuAfterJiffies < cpuBeforeJiffies) {
+                continue;
+            }
+
+            const uint64_t diffProcess = cpuAfterJiffies - cpuBeforeJiffies;
+            const double processCpuUsage = (diffTotal == 0)
+                ? 0.0
+                : (100.0 * static_cast<double>(diffProcess) / static_cast<double>(diffTotal));
+
+            uint64_t processUptimeSec = 0;
+            if (clockTicks > 0) {
+                const uint64_t processStartSec = processAfter.processStartJiffies / static_cast<uint64_t>(clockTicks);
+                processUptimeSec = systemUptimeSec > processStartSec ? (systemUptimeSec - processStartSec) : 0;
+            }
+
+            ProcessMetrics processMetrics;
+            processMetrics.pid = processAfter.pid;
+            processMetrics.name = processAfter.name;
+            processMetrics.cpuUsagePercent = processCpuUsage;
+            processMetrics.memoryRssBytes = processAfter.memoryRssBytes;
+            processMetrics.threads = processAfter.threads;
+            processMetrics.fdCount = processAfter.fdCount;
+            processMetrics.uptimeSec = processUptimeSec;
+            snapshot.processes.push_back(std::move(processMetrics));
+        }
+
+        std::sort(snapshot.processes.begin(), snapshot.processes.end(), [](const ProcessMetrics& lhs, const ProcessMetrics& rhs) {
+            if (lhs.cpuUsagePercent != rhs.cpuUsagePercent) {
+                return lhs.cpuUsagePercent > rhs.cpuUsagePercent;
+            }
+            if (lhs.memoryRssBytes != rhs.memoryRssBytes) {
+                return lhs.memoryRssBytes > rhs.memoryRssBytes;
+            }
+            return lhs.pid < rhs.pid;
+        });
+
+        if (snapshot.processes.size() > maxProcesses) {
+            snapshot.processes.resize(maxProcesses);
+        }
+
+        return snapshot;
+    }
 #else
     inline double getCpuUsagePercent() { return 0.0; }
     inline std::pair<uint64_t, uint64_t> getMemoryUsedAndAvailable() { return {0, 0}; }
+    inline SystemMetricsSnapshot collectSystemMetricsSnapshot(size_t maxProcesses = 15, std::chrono::milliseconds sampleWindow = std::chrono::milliseconds(200)) {
+        (void)maxProcesses;
+        (void)sampleWindow;
+        return {};
+    }
 #endif
 }

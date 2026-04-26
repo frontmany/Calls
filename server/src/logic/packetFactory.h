@@ -5,6 +5,7 @@
 #include <optional>
 #include <cstddef>
 #include <cstdint>
+#include <nlohmann/json.hpp>
 
 #include "utilities/crypto.h"
 
@@ -40,7 +41,12 @@ namespace server
         static std::vector<unsigned char> getMeetingParticipantJoinedPacket(const std::string& encryptedNickname, const std::string& serializedPublicKey);
         static std::vector<unsigned char> getMeetingParticipantLeftPacket(const std::string& nicknameHash);
         static std::vector<unsigned char> getMeetingJoinRejectedPacket(const std::string& reason);
-        static std::vector<unsigned char> getMetricsResultPacket(double cpuUsagePercent, uint64_t memoryUsedBytes, uint64_t memoryAvailableBytes, size_t activeUsers);
+        static std::vector<unsigned char> getMetricsResultPacket(
+            double cpuUsagePercent,
+            uint64_t memoryUsedBytes,
+            uint64_t memoryAvailableBytes,
+            const nlohmann::json& serverRuntime,
+            const nlohmann::json& processes);
 
         // Helper packets for media sharing state (used for late joiners / reconnect).
         static std::vector<unsigned char> getMediaSharingBeginPacket(const std::string& senderNicknameHash);

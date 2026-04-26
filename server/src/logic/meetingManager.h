@@ -3,6 +3,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <cstddef>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -22,6 +23,8 @@ namespace server::logic
 
         void addPendingJoinRequest(const PendingMeetingJoinRequestPtr& pendingJoinRequest);
         void removePendingJoinRequest(const PendingMeetingJoinRequestPtr& pendingJoinRequest);
+        size_t getActiveMeetingsCount() const;
+        size_t getPendingJoinRequestsCount() const;
 
     private:
         mutable std::mutex m_mutex;

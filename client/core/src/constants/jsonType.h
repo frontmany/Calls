@@ -24,6 +24,18 @@ namespace core::constant
     static constexpr const char* MEMORY_AVAILABLE = "memory_available";
     static constexpr const char* ACTIVE_USERS = "active_users";
     static constexpr const char* RECORDED_AT = "recorded_at";
+    static constexpr const char* PROCESSES = "processes";
+    static constexpr const char* SERVER_RUNTIME = "server_runtime";
+    static constexpr const char* ACTIVE_CALLS = "active_calls";
+    static constexpr const char* ACTIVE_MEETINGS = "active_meetings";
+    static constexpr const char* PENDING_CALLS = "pending_calls";
+    static constexpr const char* PENDING_MEETING_REQUESTS = "pending_meeting_requests";
+    static constexpr const char* UPTIME_SEC = "uptime_sec";
+    static constexpr const char* PID = "pid";
+    static constexpr const char* NAME = "name";
+    static constexpr const char* MEMORY_RSS = "memory_rss";
+    static constexpr const char* THREADS = "threads";
+    static constexpr const char* FD_COUNT = "fd_count";
 
     // meeting
     static constexpr const char* MEETING_ID = "meeting_id";

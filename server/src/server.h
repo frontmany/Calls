@@ -102,5 +102,6 @@ namespace server
         std::unordered_map<constant::PacketType, TcpPacketHandler> m_packetHandlers;
         std::unordered_map<network::tcp::ConnectionPtr, UserPtr> m_connToUser;
         std::unordered_map<std::string, ReceiverAbrState> m_receiverAbrStates;
+        std::chrono::steady_clock::time_point m_startedAt = std::chrono::steady_clock::now();
     };
 }

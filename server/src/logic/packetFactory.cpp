@@ -220,13 +220,19 @@ std::vector<unsigned char> PacketFactory::getMeetingJoinRejectedPacket(const std
     return toBytes(jsonObject.dump());
 }
 
-std::vector<unsigned char> PacketFactory::getMetricsResultPacket(double cpuUsagePercent, uint64_t memoryUsedBytes, uint64_t memoryAvailableBytes, size_t activeUsers) {
+std::vector<unsigned char> PacketFactory::getMetricsResultPacket(
+    double cpuUsagePercent,
+    uint64_t memoryUsedBytes,
+    uint64_t memoryAvailableBytes,
+    const nlohmann::json& serverRuntime,
+    const nlohmann::json& processes) {
     nlohmann::json jsonObject;
 
     jsonObject[CPU_USAGE] = cpuUsagePercent;
     jsonObject[MEMORY_USED] = memoryUsedBytes;
     jsonObject[MEMORY_AVAILABLE] = memoryAvailableBytes;
-    jsonObject[ACTIVE_USERS] = activeUsers;
+    jsonObject[SERVER_RUNTIME] = serverRuntime;
+    jsonObject[PROCESSES] = processes;
     jsonObject[RECORDED_AT] = utcTimestampIso8601();
 
     return toBytes(jsonObject.dump());

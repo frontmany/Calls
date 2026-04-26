@@ -50,4 +50,16 @@ namespace server::logic
         std::lock_guard<std::mutex> lock(m_mutex);
         m_pendingJoinRequests.erase(pendingJoinRequest);
     }
+
+    size_t MeetingManager::getActiveMeetingsCount() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_meetingsByIdHash.size();
+    }
+
+    size_t MeetingManager::getPendingJoinRequestsCount() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_pendingJoinRequests.size();
+    }
 }

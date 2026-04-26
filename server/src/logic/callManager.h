@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <cstddef>
 #include "models/call.h"
 #include "models/pendingCall.h"
 #include "models/user.h"
@@ -20,6 +21,8 @@ namespace server::logic
 		void addPendingCall(std::shared_ptr<PendingCall> pendingCall);
 		void removePendingCall(std::shared_ptr<PendingCall> pendingCall);
 		bool hasPendingCall(std::shared_ptr<PendingCall> pendingCall) const;
+		size_t getActiveCallsCount() const;
+		size_t getPendingCallsCount() const;
 
 	private:
 		mutable std::mutex m_mutex;
